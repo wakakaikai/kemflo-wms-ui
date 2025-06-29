@@ -31,6 +31,10 @@ export interface PackingVO {
   remark: string;
 }
 
+export interface PackingExtVO {
+  packingBoList: any[];
+}
+
 export interface PackingForm extends BaseEntity {
   /**
    * 唯一ID

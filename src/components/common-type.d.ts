@@ -48,3 +48,8 @@ export type OperationObj = {
   operation: string;
   operationDesc: string;
 };
+
+export type ResourceTypeObj = {
+  resourceType: string;
+  resourceTypeDesc: string;
+};

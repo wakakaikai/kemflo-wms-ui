@@ -26,16 +26,16 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button v-hasPermi="['wms:operation:add']" type="primary" plain icon="Plus" @click="handleAdd">新增</el-button>
+            <el-button v-hasPermi="['mes:operation:add']" type="primary" plain icon="Plus" @click="handleAdd">新增</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['wms:operation:edit']" type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()">修改</el-button>
+            <el-button v-hasPermi="['mes:operation:edit']" type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()">修改</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['wms:operation:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">删除</el-button>
+            <el-button v-hasPermi="['mes:operation:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">删除</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['wms:operation:export']" type="warning" plain icon="Download" @click="handleExport">导出</el-button>
+            <el-button v-hasPermi="['mes:operation:export']" type="warning" plain icon="Download" @click="handleExport">导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @query-table="getList"></right-toolbar>
         </el-row>
@@ -55,10 +55,10 @@
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
-              <el-button v-hasPermi="['wms:operation:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row)"></el-button>
+              <el-button v-hasPermi="['mes:operation:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row)"></el-button>
             </el-tooltip>
             <el-tooltip content="删除" placement="top">
-              <el-button v-hasPermi="['wms:operation:remove']" link type="primary" icon="Delete" @click="handleDelete(scope.row)"></el-button>
+              <el-button v-hasPermi="['mes:operation:remove']" link type="primary" icon="Delete" @click="handleDelete(scope.row)"></el-button>
             </el-tooltip>
           </template>
         </el-table-column>
@@ -129,18 +129,6 @@ const initFormData: OperationForm = {
   beforeIntervalDuration: undefined,
   requiredTimeInProcess: undefined,
   remark: undefined,
-  createUserId: undefined,
-  creator: undefined,
-  modifyUserId: undefined,
-  updater: undefined,
-  modifyTime: undefined,
-  deleteFlag: undefined,
-  auditDataVersion: undefined,
-  secBuId: undefined,
-  secUserId: undefined,
-  secOuId: undefined,
-  belongOrgId: undefined,
-  tenantOrgId: undefined
 };
 const data = reactive<PageData<OperationForm, OperationQuery>>({
   form: { ...initFormData },
@@ -158,18 +146,6 @@ const data = reactive<PageData<OperationForm, OperationQuery>>({
     maxLoop: undefined,
     beforeIntervalDuration: undefined,
     requiredTimeInProcess: undefined,
-    createUserId: undefined,
-    creator: undefined,
-    modifyUserId: undefined,
-    updater: undefined,
-    modifyTime: undefined,
-    deleteFlag: undefined,
-    auditDataVersion: undefined,
-    secBuId: undefined,
-    secUserId: undefined,
-    secOuId: undefined,
-    belongOrgId: undefined,
-    tenantOrgId: undefined,
     params: {}
   },
   rules: {

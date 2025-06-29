@@ -23,7 +23,7 @@
           <!-- 单选列（通过高亮行实现） -->
           <el-table-column width="55">
             <template #default="checkedDataScope">
-              <el-radio v-model="selectedWorkOrder.id" :label="checkedDataScope.row.id">
+              <el-radio v-model="selectedWorkOrder.id" :label="checkedDataScope.row.id" class="radio-no-label">
                 <span class="el-radio__label"></span>
               </el-radio>
             </template>
@@ -69,6 +69,11 @@
           <el-col :lg="12" :md="8" :sm="24">
             <el-form-item label="已交货数量">
               <el-text> {{ form.deliveredQty }}</el-text>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="12" :md="8" :sm="24">
+            <el-form-item label="已打包数量">
+              <el-text> {{ form.waitStockQty }}</el-text>
             </el-form-item>
           </el-col>
           <el-col :lg="12" :md="8" :sm="24">
@@ -140,7 +145,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
       { required: true, message: '请输入工单打包数量', trigger: 'blur' },
       {
         validator: (rule, value, callback) => {
-          let maxInboundQty = Math.max(form.value.plannedQty - form.value.deliveredQty, 0);
+          const maxInboundQty = Math.max(form.value.plannedQty - form.value.deliveredQty, 0);
           if (value > maxInboundQty) {
             callback(new Error(`工单打包数量不能超过${maxInboundQty}`));
           } else {
@@ -159,7 +164,7 @@ const { title, visible, openDialog, closeDialog } = useDialog({
 
 // 计算剩余数量
 const getMaxInboundQty = computed(() => {
-  return Math.max(form.value.plannedQty - form.value.deliveredQty - beforeInStockQty.value, 0);
+  return Math.max(form.value.plannedQty - form.value.deliveredQty - form.value.waitStockQty, 0);
 });
 
 const { queryParams, form, rules } = toRefs(data);
@@ -240,7 +245,7 @@ const submitForm = () => {
       const existingIndex = records.value.findIndex((r) => r.workOrderNo === form.value.workOrderNo);
       if (existingIndex !== -1) {
         // 累加入库值并保留最大可入库数量限制
-        let newValue = Number(records.value[existingIndex].packingQty) + Number(form.value.packingQty);
+        const newValue = Number(records.value[existingIndex].packingQty) + Number(form.value.packingQty);
         const maxAllowed = form.value.plannedQty;
 
         if (maxAllowed && newValue > maxAllowed) {
@@ -273,15 +278,12 @@ const resetForm = () => {
     recordFormRef.value.resetFields();
   }
   selectedWorkOrder.value = initFormData;
-  debugger;
 };
 
-// 模拟加载工单数据
-onMounted(() => {
-  getWorkOrderList();
-});
+onMounted(() => {});
 const initWorkOrderDialog = (packingDetailList: any) => {
   records.value = packingDetailList;
+  getWorkOrderList();
 };
 
 defineExpose({
@@ -302,5 +304,15 @@ h2 {
   color: #999;
   line-height: 1;
   padding-top: 4px;
+}
+
+.radio-no-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: -12px;
+  .el-radio__label {
+    display: none;
+  }
 }
 </style>

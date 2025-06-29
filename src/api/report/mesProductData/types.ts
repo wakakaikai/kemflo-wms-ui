@@ -46,4 +46,3 @@ export interface MesProductDataQuery extends PageQuery {
    */
   params?: any;
 }
-

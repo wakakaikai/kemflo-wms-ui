@@ -52,14 +52,14 @@
 
       <el-table v-loading="loading" :data="packingDetailList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="打包编号" align="center" prop="packingCode" />
+        <el-table-column label="打包编号" align="center" prop="packingCode" width="150" />
         <el-table-column label="栈板编号" align="center" prop="palletCode" />
         <el-table-column label="工单号" align="center" prop="workOrderNo" />
         <el-table-column label="料号" align="center" prop="item" />
         <el-table-column label="数量" align="center" prop="packingQty" />
         <el-table-column label="物料凭证号" align="center" prop="martialOrderNo" />
         <el-table-column label="物料文件项次" align="center" prop="martialItem" />
-        <el-table-column label="备注" align="center" prop="remark" />
+<!--        <el-table-column label="备注" align="center" prop="remark" />-->
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">

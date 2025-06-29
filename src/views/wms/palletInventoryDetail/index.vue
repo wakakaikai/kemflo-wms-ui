@@ -3,7 +3,7 @@
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="栈板编号" prop="palletCode">
               <el-input v-model="queryParams.palletCode" placeholder="请输入栈板编号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -16,12 +16,9 @@
             <el-form-item label="料号" prop="item">
               <el-input v-model="queryParams.item" placeholder="请输入料号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="待入库数量" prop="waitStockQty">
-              <el-input v-model="queryParams.waitStockQty" placeholder="请输入待入库数量" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="状态" prop="status">
-              <el-select v-model="queryParams.status" placeholder="请选择状态" clearable >
-                <el-option v-for="dict in wms_pallet_inventory_status" :key="dict.value" :label="dict.label" :value="dict.value"/>
+              <el-select v-model="queryParams.status" placeholder="请选择状态" clearable>
+                <el-option v-for="dict in wms_pallet_inventory_status" :key="dict.value" :label="dict.label" :value="dict.value" />
               </el-select>
             </el-form-item>
             <el-form-item label="物料凭证号" prop="materialOrderNo">
@@ -31,20 +28,10 @@
               <el-input v-model="queryParams.materialItem" placeholder="请输入物料文件项次" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="生产日期" prop="productDate">
-              <el-date-picker clearable
-                v-model="queryParams.productDate"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择生产日期"
-              />
+              <el-date-picker clearable v-model="queryParams.productDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择生产日期" />
             </el-form-item>
             <el-form-item label="失效日期" prop="expireDate">
-              <el-date-picker clearable
-                v-model="queryParams.expireDate"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择失效日期"
-              />
+              <el-date-picker clearable v-model="queryParams.expireDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择失效日期" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -76,15 +63,14 @@
 
       <el-table v-loading="loading" :data="palletInventoryDetailList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />
         <el-table-column label="栈板编号" align="center" prop="palletCode" />
         <el-table-column label="打包编号" align="center" prop="packingCode" />
         <el-table-column label="工单号" align="center" prop="workOrderNo" />
         <el-table-column label="料号" align="center" prop="item" />
-        <el-table-column label="待入库数量" align="center" prop="waitStockQty" />
+        <el-table-column label="待入库数量" align="center" prop="packingQty" />
         <el-table-column label="状态" align="center" prop="status">
           <template #default="scope">
-            <dict-tag :options="wms_pallet_inventory_status" :value="scope.row.status"/>
+            <dict-tag :options="wms_pallet_inventory_status" :value="scope.row.status" />
           </template>
         </el-table-column>
         <el-table-column label="物料凭证号" align="center" prop="materialOrderNo" />
@@ -129,17 +115,12 @@
         <el-form-item label="料号" prop="item">
           <el-input v-model="form.item" placeholder="请输入料号" />
         </el-form-item>
-        <el-form-item label="待入库数量" prop="waitStockQty">
-          <el-input v-model="form.waitStockQty" placeholder="请输入待入库数量" />
+        <el-form-item label="待入库数量" prop="packingQty">
+          <el-input v-model="form.packingQty" placeholder="请输入待入库数量" />
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-select v-model="form.status" placeholder="请选择状态">
-            <el-option
-                v-for="dict in wms_pallet_inventory_status"
-                :key="dict.value"
-                :label="dict.label"
-                :value="parseInt(dict.value)"
-            ></el-option>
+            <el-option v-for="dict in wms_pallet_inventory_status" :key="dict.value" :label="dict.label" :value="parseInt(dict.value)"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="物料凭证号" prop="materialOrderNo">
@@ -149,23 +130,13 @@
           <el-input v-model="form.materialItem" placeholder="请输入物料文件项次" />
         </el-form-item>
         <el-form-item label="生产日期" prop="productDate">
-          <el-date-picker clearable
-            v-model="form.productDate"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="请选择生产日期">
-          </el-date-picker>
+          <el-date-picker clearable v-model="form.productDate" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择生产日期"> </el-date-picker>
         </el-form-item>
         <el-form-item label="失效日期" prop="expireDate">
-          <el-date-picker clearable
-            v-model="form.expireDate"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="请选择失效日期">
-          </el-date-picker>
+          <el-date-picker clearable v-model="form.expireDate" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择失效日期"> </el-date-picker>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
-            <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
+          <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -179,7 +150,7 @@
 </template>
 
 <script setup name="PalletInventoryDetail" lang="ts">
-import { listPalletInventoryDetail, getPalletInventoryDetail, delPalletInventoryDetail, addPalletInventoryDetail, updatePalletInventoryDetail } from '@/api/wms/palletInventoryDetail';
+import { pagePalletInventoryDetail, getPalletInventoryDetail, delPalletInventoryDetail, addPalletInventoryDetail, updatePalletInventoryDetail } from '@/api/wms/palletInventoryDetail';
 import { PalletInventoryDetailVO, PalletInventoryDetailQuery, PalletInventoryDetailForm } from '@/api/wms/palletInventoryDetail/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -208,16 +179,16 @@ const initFormData: PalletInventoryDetailForm = {
   packingCode: undefined,
   workOrderNo: undefined,
   item: undefined,
-  waitStockQty: undefined,
+  packingQty: undefined,
   status: undefined,
   materialOrderNo: undefined,
   materialItem: undefined,
   productDate: undefined,
   expireDate: undefined,
   remark: undefined
-}
+};
 const data = reactive<PageData<PalletInventoryDetailForm, PalletInventoryDetailQuery>>({
-  form: {...initFormData},
+  form: { ...initFormData },
   queryParams: {
     pageNum: 1,
     pageSize: 10,
@@ -225,52 +196,27 @@ const data = reactive<PageData<PalletInventoryDetailForm, PalletInventoryDetailQ
     packingCode: undefined,
     workOrderNo: undefined,
     item: undefined,
-    waitStockQty: undefined,
+    packingQty: undefined,
     status: undefined,
     materialOrderNo: undefined,
     materialItem: undefined,
     productDate: undefined,
     expireDate: undefined,
-    params: {
-    }
+    params: {}
   },
   rules: {
-    id: [
-      { required: true, message: "唯一ID不能为空", trigger: "blur" }
-    ],
-    palletCode: [
-      { required: true, message: "栈板编号不能为空", trigger: "blur" }
-    ],
-    packingCode: [
-      { required: true, message: "打包编号不能为空", trigger: "blur" }
-    ],
-    workOrderNo: [
-      { required: true, message: "工单号不能为空", trigger: "blur" }
-    ],
-    item: [
-      { required: true, message: "料号不能为空", trigger: "blur" }
-    ],
-    waitStockQty: [
-      { required: true, message: "待入库数量不能为空", trigger: "blur" }
-    ],
-    status: [
-      { required: true, message: "状态不能为空", trigger: "change" }
-    ],
-    materialOrderNo: [
-      { required: true, message: "物料凭证号不能为空", trigger: "blur" }
-    ],
-    materialItem: [
-      { required: true, message: "物料文件项次不能为空", trigger: "blur" }
-    ],
-    productDate: [
-      { required: true, message: "生产日期不能为空", trigger: "blur" }
-    ],
-    expireDate: [
-      { required: true, message: "失效日期不能为空", trigger: "blur" }
-    ],
-    remark: [
-      { required: true, message: "备注不能为空", trigger: "blur" }
-    ]
+    id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
+    palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'blur' }],
+    packingCode: [{ required: true, message: '打包编号不能为空', trigger: 'blur' }],
+    workOrderNo: [{ required: true, message: '工单号不能为空', trigger: 'blur' }],
+    item: [{ required: true, message: '料号不能为空', trigger: 'blur' }],
+    packingQty: [{ required: true, message: '待入库数量不能为空', trigger: 'blur' }],
+    status: [{ required: true, message: '状态不能为空', trigger: 'change' }],
+    materialOrderNo: [{ required: true, message: '物料凭证号不能为空', trigger: 'blur' }],
+    materialItem: [{ required: true, message: '物料文件项次不能为空', trigger: 'blur' }],
+    productDate: [{ required: true, message: '生产日期不能为空', trigger: 'blur' }],
+    expireDate: [{ required: true, message: '失效日期不能为空', trigger: 'blur' }],
+    remark: [{ required: true, message: '备注不能为空', trigger: 'blur' }]
   }
 });
 
@@ -279,59 +225,59 @@ const { queryParams, form, rules } = toRefs(data);
 /** 查询栈板物料库存明细列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await listPalletInventoryDetail(queryParams.value);
+  const res = await pagePalletInventoryDetail(queryParams.value);
   palletInventoryDetailList.value = res.rows;
   total.value = res.total;
   loading.value = false;
-}
+};
 
 /** 取消按钮 */
 const cancel = () => {
   reset();
   dialog.visible = false;
-}
+};
 
 /** 表单重置 */
 const reset = () => {
-  form.value = {...initFormData};
+  form.value = { ...initFormData };
   palletInventoryDetailFormRef.value?.resetFields();
-}
+};
 
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
   getList();
-}
+};
 
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   handleQuery();
-}
+};
 
 /** 多选框选中数据 */
 const handleSelectionChange = (selection: PalletInventoryDetailVO[]) => {
-  ids.value = selection.map(item => item.id);
+  ids.value = selection.map((item) => item.id);
   single.value = selection.length != 1;
   multiple.value = !selection.length;
-}
+};
 
 /** 新增按钮操作 */
 const handleAdd = () => {
   reset();
   dialog.visible = true;
-  dialog.title = "添加栈板物料库存明细";
-}
+  dialog.title = '添加栈板物料库存明细';
+};
 
 /** 修改按钮操作 */
 const handleUpdate = async (row?: PalletInventoryDetailVO) => {
   reset();
-  const _id = row?.id || ids.value[0]
+  const _id = row?.id || ids.value[0];
   const res = await getPalletInventoryDetail(_id);
   Object.assign(form.value, res.data);
   dialog.visible = true;
-  dialog.title = "修改栈板物料库存明细";
-}
+  dialog.title = '修改栈板物料库存明细';
+};
 
 /** 提交按钮 */
 const submitForm = () => {
@@ -339,32 +285,36 @@ const submitForm = () => {
     if (valid) {
       buttonLoading.value = true;
       if (form.value.id) {
-        await updatePalletInventoryDetail(form.value).finally(() =>  buttonLoading.value = false);
+        await updatePalletInventoryDetail(form.value).finally(() => (buttonLoading.value = false));
       } else {
-        await addPalletInventoryDetail(form.value).finally(() =>  buttonLoading.value = false);
+        await addPalletInventoryDetail(form.value).finally(() => (buttonLoading.value = false));
       }
-      proxy?.$modal.msgSuccess("操作成功");
+      proxy?.$modal.msgSuccess('操作成功');
       dialog.visible = false;
       await getList();
     }
   });
-}
+};
 
 /** 删除按钮操作 */
 const handleDelete = async (row?: PalletInventoryDetailVO) => {
   const _ids = row?.id || ids.value;
-  await proxy?.$modal.confirm('是否确认删除栈板物料库存明细编号为"' + _ids + '"的数据项？').finally(() => loading.value = false);
+  await proxy?.$modal.confirm('是否确认删除栈板物料库存明细编号为"' + _ids + '"的数据项？').finally(() => (loading.value = false));
   await delPalletInventoryDetail(_ids);
-  proxy?.$modal.msgSuccess("删除成功");
+  proxy?.$modal.msgSuccess('删除成功');
   await getList();
-}
+};
 
 /** 导出按钮操作 */
 const handleExport = () => {
-  proxy?.download('wms/palletInventoryDetail/export', {
-    ...queryParams.value
-  }, `palletInventoryDetail_${new Date().getTime()}.xlsx`)
-}
+  proxy?.download(
+    'wms/palletInventoryDetail/export',
+    {
+      ...queryParams.value
+    },
+    `palletInventoryDetail_${new Date().getTime()}.xlsx`
+  );
+};
 
 onMounted(() => {
   getList();

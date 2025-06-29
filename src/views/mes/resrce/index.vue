@@ -26,16 +26,16 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button v-hasPermi="['wms:resrce:add']" type="primary" plain icon="Plus" @click="handleAdd">新增</el-button>
+            <el-button v-hasPermi="['mes:resrce:add']" type="primary" plain icon="Plus" @click="handleAdd">新增</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['wms:resrce:edit']" type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()">修改</el-button>
+            <el-button v-hasPermi="['mes:resrce:edit']" type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()">修改</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['wms:resrce:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">删除</el-button>
+            <el-button v-hasPermi="['mes:resrce:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">删除</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['wms:resrce:export']" type="warning" plain icon="Download" @click="handleExport">导出</el-button>
+            <el-button v-hasPermi="['mes:resrce:export']" type="warning" plain icon="Download" @click="handleExport">导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @query-table="getList"></right-toolbar>
         </el-row>
@@ -55,10 +55,10 @@
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
-              <el-button v-hasPermi="['wms:resrce:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row)"></el-button>
+              <el-button v-hasPermi="['mes:resrce:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row)"></el-button>
             </el-tooltip>
             <el-tooltip content="删除" placement="top">
-              <el-button v-hasPermi="['wms:resrce:remove']" link type="primary" icon="Delete" @click="handleDelete(scope.row)"></el-button>
+              <el-button v-hasPermi="['mes:resrce:remove']" link type="primary" icon="Delete" @click="handleDelete(scope.row)"></el-button>
             </el-tooltip>
           </template>
         </el-table-column>
@@ -180,27 +180,8 @@ const data = reactive<PageData<ResrceForm, ResrceQuery>>({
   },
   rules: {
     id: [{ required: true, message: '记录唯一ID不能为空', trigger: 'blur' }],
-    handle: [{ required: true, message: '数据行索引不能为空', trigger: 'blur' }],
     resrce: [{ required: true, message: '资源不能为空', trigger: 'blur' }],
-    description: [{ required: true, message: '资源描述不能为空', trigger: 'blur' }],
-    status: [{ required: true, message: '状态不能为空', trigger: 'change' }],
-    processResource: [{ required: true, message: '流程资源不能为空', trigger: 'blur' }],
-    validFrom: [{ required: true, message: '有效期自不能为空', trigger: 'blur' }],
-    validTo: [{ required: true, message: '有效期至不能为空', trigger: 'blur' }],
-    setupState: [{ required: true, message: '设置状态不能为空', trigger: 'blur' }],
-    remark: [{ required: true, message: '备注不能为空', trigger: 'blur' }],
-    createUserId: [{ required: true, message: '记录创建者ID不能为空', trigger: 'blur' }],
-    creator: [{ required: true, message: '记录创建者不能为空', trigger: 'blur' }],
-    modifyUserId: [{ required: true, message: '记录最后更新者ID不能为空', trigger: 'blur' }],
-    updater: [{ required: true, message: '记录最后更新者不能为空', trigger: 'blur' }],
-    modifyTime: [{ required: true, message: '记录最后更新时间不能为空', trigger: 'blur' }],
-    deleteFlag: [{ required: true, message: '删除标记不能为空', trigger: 'blur' }],
-    auditDataVersion: [{ required: true, message: '锁版本不能为空', trigger: 'blur' }],
-    secBuId: [{ required: true, message: '数据归属组织id不能为空', trigger: 'blur' }],
-    secUserId: [{ required: true, message: '数据归属雇员id不能为空', trigger: 'blur' }],
-    secOuId: [{ required: true, message: '数据归属公司id不能为空', trigger: 'blur' }],
-    belongOrgId: [{ required: true, message: '所属组织ID不能为空', trigger: 'blur' }],
-    tenantOrgId: [{ required: true, message: '租户组织ID不能为空', trigger: 'blur' }]
+    description: [{ required: true, message: '资源描述不能为空', trigger: 'blur' }]
   }
 });
 

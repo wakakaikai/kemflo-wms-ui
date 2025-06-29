@@ -112,6 +112,8 @@ const { title, visible, openDialog, closeDialog } = useDialog({
 /** 查询工序列表 */
 const getList = async () => {
   loading.value = true;
+  queryParams.value.isLastWorkCenter = true;
+  queryParams.value.status = 'ENABLED';
   const res = await listWorkCenter(queryParams.value);
   workCenterList.value = res.rows;
   total.value = res.total;
@@ -164,7 +166,7 @@ defineExpose({
 });
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .radio-no-label :deep(.el-radio__label) {
   display: none;
 }

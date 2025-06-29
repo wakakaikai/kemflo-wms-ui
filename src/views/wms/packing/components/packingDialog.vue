@@ -2,7 +2,7 @@
   <el-dialog v-model="visible" :title="title" width="70%" append-to-body>
     <el-form ref="packingFormRef" :model="form" :rules="rules" label-width="80px">
       <el-form-item label="栈板编号" prop="palletCode">
-        <el-input v-model="form.palletCode" placeholder="请输入栈板编号或点击选择">
+        <el-input v-model="form.palletCode" clearable placeholder="请输入栈板编号或点击选择">
           <template #append>
             <el-button icon="Search" type="primary" @click="showPalletDialog" />
           </template>
@@ -35,19 +35,32 @@
             </template>
           </el-table-column>
           <el-table-column label="产品料号" align="center" width="150" prop="item" />
-          <el-table-column label="产品描述" align="left" prop="itemDesc" />
-          <el-table-column label="计划数量" align="center" width="130" prop="plannedQty" />
-          <el-table-column label="已交货数量" align="center" width="130" prop="deliveredQty" />
-          <el-table-column label="待入库数量" align="center" width="130" prop="waitStockQty" />
-          <el-table-column label="打包数量" align="center" width="130" prop="packingQty" />
-          <el-table-column label="是否需要入库检" align="center" width="100" prop="checkEnable">
+          <el-table-column label="产品描述" align="left" prop="itemDesc" :show-overflow-tooltip="true" />
+          <el-table-column label="计划数量" align="center" prop="plannedQty" />
+          <el-table-column label="已交货数量" align="center" prop="deliveredQty" />
+          <el-table-column label="待入库数量" align="center" prop="waitStockQty" />
+          <el-table-column label="打包数量" align="center" min-width="120" prop="packingQty">
+            <template #default="scope">
+              <div @dblclick="enableEditing(scope.row)" style="cursor: pointer">
+                <div v-if="!scope.row.isEditing">
+                  {{ scope.row.packingQty }}
+                </div>
+                <div v-else>
+                  <el-input v-model.number="scope.row.packingQty" @blur="savePackingQty(scope.row)" @keyup.enter="savePackingQty(scope.row)" autofocus size="small" style="width: 100px" />
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="入库检" align="center" prop="checkEnable">
             <template #default="scope">
               <dict-tag :options="wms_work_order_check_enable" :value="scope.row.checkEnable" />
             </template>
           </el-table-column>
           <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
             <template #default="{ $index }">
-              <el-button link type="danger" icon="Delete" @click="deleteRecord($index)">删除</el-button>
+              <el-tooltip content="删除" placement="top">
+                <el-button link type="danger" icon="Delete" @click="deleteRecord($index)"></el-button>
+              </el-tooltip>
             </template>
           </el-table-column>
         </el-table>
@@ -87,7 +100,7 @@ import { addPacking, getPacking, updatePacking } from '@/api/wms/packing';
 const { wms_work_order_check_enable } = toRefs<any>(proxy?.useDict('wms_work_order_check_enable'));
 const packingFormRef = ref<ElFormInstance>();
 const buttonLoading = ref(false);
-const emit = defineEmits(['workOrderSelectCallBack']);
+const emit = defineEmits(['packingCallBack']);
 // 表单数据
 const initFormData: WorkOrderForm = {
   id: undefined,
@@ -101,7 +114,8 @@ const initFormData: WorkOrderForm = {
   deliveredQty: undefined,
   waitStockQty: undefined,
   packingQty: undefined,
-  remark: undefined
+  remark: undefined,
+  isEditing: false
 };
 const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
   form: { ...initFormData },
@@ -122,11 +136,12 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
     params: {}
   },
   rules: {
+    palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'change' }],
     packingQty: [
       { required: true, message: '请输入工单打包数量', trigger: 'blur' },
       {
         validator: (rule, value, callback) => {
-          let maxInboundQty = Math.max(form.value.plannedQty - form.value.deliveredQty, 0);
+          const maxInboundQty = Math.max(form.value.plannedQty - form.value.deliveredQty, 0);
           if (value > maxInboundQty) {
             callback(new Error(`工单打包数量不能超过${maxInboundQty}`));
           } else {
@@ -184,6 +199,7 @@ const submitForm = () => {
       }
       proxy?.$modal.msgSuccess('操作成功');
       visible.value = false;
+      emit('packingCallBack');
     }
   });
 };
@@ -191,6 +207,7 @@ const submitForm = () => {
 // 显示栈板选择对话框
 const showPalletDialog = () => {
   palletDialogRef.value.openDialog();
+  palletDialogRef.value.handleQuery();
 };
 const palletSelectCallBack = (record) => {
   form.value.palletCode = record.palletCode;
@@ -228,13 +245,35 @@ const deleteRecord = (index: any) => {
 const warehouseLocationList = ref<WarehouseLocationVO[]>([]);
 /** 查询仓位信息列表 */
 const getWarehouseList = async () => {
-  let warehouseQueryParams = {
-    pageNum: 1,
-    pageSize: 10000,
+  const res = await listWarehouseLocation({
     parentId: 0
-  };
-  const res = await listWarehouseLocation(warehouseQueryParams);
-  warehouseLocationList.value = res.rows;
+  });
+  warehouseLocationList.value = res.data;
+};
+// 启用编辑模式
+const enableEditing = (row: WorkOrderForm) => {
+  row.isEditing = true;
+};
+
+// 保存打包数量
+const savePackingQty = (row: WorkOrderForm) => {
+  row.isEditing = false;
+
+  // 计算最大允许值
+  const maxInboundQty = Math.max(row.plannedQty - row.deliveredQty, 0);
+
+  if (row.packingQty === null || row.packingQty === undefined) {
+    proxy?.$modal.msgError('打包数量不能为空');
+    return;
+  }
+
+  if (row.packingQty > maxInboundQty) {
+    proxy?.$modal.msgError(`工单打包数量不能超过${maxInboundQty}`);
+    row.packingQty = maxInboundQty; // 自动修正为最大值
+    return;
+  }
+
+  console.log('保存后的打包数量:', row.packingQty);
 };
 
 // 模拟加载工单数据

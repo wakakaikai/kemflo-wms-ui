@@ -8,6 +8,19 @@ import { PalletInventoryDetailVO, PalletInventoryDetailForm, PalletInventoryDeta
  * @returns {*}
  */
 
+export const pagePalletInventoryDetail = (query?: PalletInventoryDetailQuery): AxiosPromise<PalletInventoryDetailVO[]> => {
+  return request({
+    url: '/wms/palletInventoryDetail/page',
+    method: 'get',
+    params: query
+  });
+};
+/**
+ * 查询栈板物料库存明细列表
+ * @param query
+ * @returns {*}
+ */
+
 export const listPalletInventoryDetail = (query?: PalletInventoryDetailQuery): AxiosPromise<PalletInventoryDetailVO[]> => {
   return request({
     url: '/wms/palletInventoryDetail/list',
@@ -15,6 +28,7 @@ export const listPalletInventoryDetail = (query?: PalletInventoryDetailQuery): A
     params: query
   });
 };
+
 
 /**
  * 查询栈板物料库存明细详细

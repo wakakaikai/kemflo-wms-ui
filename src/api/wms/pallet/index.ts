@@ -1,7 +1,33 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
 import { PalletVO, PalletForm, PalletQuery } from '@/api/wms/pallet/types';
+/**
+ * 查询栈板信息列表
+ * @param query
+ * @returns {*}
+ */
 
+export const pagePallet = (query?: PalletQuery): AxiosPromise<PalletVO[]> => {
+  return request({
+    url: '/wms/pallet/page',
+    method: 'get',
+    params: query
+  });
+};
+
+/**
+ * 查询栈板信息列表
+ * @param query
+ * @returns {*}
+ */
+
+export const pagePalletInventory = (query?: PalletQuery): AxiosPromise<PalletVO[]> => {
+  return request({
+    url: '/wms/pallet/inventory/page',
+    method: 'get',
+    params: query
+  });
+};
 /**
  * 查询栈板信息列表
  * @param query
@@ -69,3 +95,15 @@ export const delPallet = (id: string | number | Array<string | number>) => {
     method: 'delete'
   });
 };
+
+/**
+ * 清空栈板信息
+ * @param id
+ */
+export const emptyPallet = (id: string | number | Array<string | number>) => {
+  return request({
+    url: '/wms/pallet/empty/' + id,
+    method: 'put'
+  });
+};
+

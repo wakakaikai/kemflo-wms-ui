@@ -27,7 +27,7 @@ export interface PalletInventoryDetailVO {
   /**
    * 待入库数量
    */
-  waitStockQty: number;
+  packingQty: number;
 
   /**
    * 状态
@@ -90,7 +90,7 @@ export interface PalletInventoryDetailForm extends BaseEntity {
   /**
    * 待入库数量
    */
-  waitStockQty?: number;
+  packingQty?: number;
 
   /**
    * 状态
@@ -149,7 +149,7 @@ export interface PalletInventoryDetailQuery extends PageQuery {
   /**
    * 待入库数量
    */
-  waitStockQty?: number;
+  packingQty?: number;
 
   /**
    * 状态

@@ -62,29 +62,29 @@ export interface DemoForm extends BaseEntity {
   value?: string;
 }
 
-export interface ShippingNoticeQuery extends PageQuery {
+export interface DemoQuery extends PageQuery {
   /**
-   * 客户代码
+   * 部门id
    */
-  customerCode?: string;
+  deptId?: string | number;
 
   /**
-   * 客户名称
+   * 用户id
    */
-  customerName?: string
+  userId?: string | number;
 
   /**
-   * 客户订单号
+   * 排序号
    */
-  customerOrder?: string;
+  orderNum?: number;
 
   /**
-   * 物料
+   * key键
    */
-  item?: string;
+  testKey?: string;
 
   /**
-   * 物料描述
+   * 值
    */
-  itemDesc?: string;
+  value?: string;
 }

@@ -34,7 +34,7 @@ defineProps({
   }
 });
 
-const title = ref('仓库管理系统');
+const title = ref('溢泰制造管理系统');
 const settingsStore = useSettingsStore();
 const sideTheme = computed(() => settingsStore.sideTheme);
 </script>

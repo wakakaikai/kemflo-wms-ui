@@ -38,7 +38,7 @@ export const hasRoles: Directive = {
         return false;
       }
     } else {
-      throw new Error("check roles! Like v-has-roles=\"['admin','test']\"");
+      throw new Error("check roles! Like v-has-roles=\"['admin','dataCollection']\"");
     }
   }
 };

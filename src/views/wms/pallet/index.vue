@@ -31,6 +31,14 @@
           <el-col :span="1.5">
             <el-button v-hasPermi="['wms:pallet:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">删除</el-button>
           </el-col>
+
+          <el-button v-hasPermi="['wms:pallet:edit']" color="#722ED1" plain :disabled="multiple" @click="handleEmpty()" class="empty-btn">
+            <template #icon>
+              <svg-icon icon-class="empty" class="icon-empty" />
+            </template>
+            清空
+          </el-button>
+
           <el-col :span="1.5">
             <el-button v-hasPermi="['wms:pallet:export']" type="warning" plain icon="Download" @click="handleExport">导出</el-button>
           </el-col>
@@ -40,6 +48,24 @@
 
       <el-table v-loading="loading" :data="palletList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
+        <el-table-column type="expand">
+          <template #default="scope">
+            <el-table v-loading="loading" :data="scope.row.palletInventoryDetailVoList" style="width: calc(100% - 110px); float: right; margin: 10px 0" empty-text="暂无数据">
+              <el-table-column label="栈板编号" align="center" prop="palletCode" />
+              <el-table-column label="打包编号" min-width="120" align="center" prop="packingCode" />
+              <el-table-column label="工单号" align="center" prop="workOrderNo" />
+              <el-table-column label="料号" align="center" prop="item" />
+              <el-table-column label="待入库数量" align="center" prop="packingQty" />
+              <el-table-column label="状态" align="center" prop="status">
+                <template #default="scope">
+                  <dict-tag :options="wms_pallet_inventory_status" :value="scope.row.status" />
+                </template>
+              </el-table-column>
+              <el-table-column label="物料凭证号" align="center" prop="materialOrderNo" />
+              <el-table-column label="物料文件项次" align="center" prop="materialItem" />
+            </el-table>
+          </template>
+        </el-table-column>
         <el-table-column label="栈板编号" align="center" prop="palletCode" />
         <el-table-column label="栈板描述" align="center" prop="description" />
         <el-table-column label="状态" align="center" prop="status">
@@ -48,6 +74,7 @@
           </template>
         </el-table-column>
         <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
+        <el-table-column label="仓库描述" align="center" prop="warehouseDesc" />
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
@@ -72,6 +99,11 @@
         <el-form-item label="栈板描述" prop="description">
           <el-input v-model="form.description" placeholder="请输入栈板描述" />
         </el-form-item>
+        <el-form-item label="目的仓库" prop="warehouseCode">
+          <el-select v-model="form.warehouseCode" placeholder="请选择目的仓库" clearable filterable>
+            <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.code" :label="`${warehouse.code}-${warehouse.name}`" :value="warehouse.code" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-select v-model="form.status" placeholder="请选择状态">
             <el-option v-for="dict in wms_pallet_status" :key="dict.value" :label="dict.label" :value="parseInt(dict.value)"></el-option>
@@ -92,17 +124,23 @@
 </template>
 
 <script setup name="Pallet" lang="ts">
-import { listPallet, getPallet, delPallet, addPallet, updatePallet } from '@/api/wms/pallet';
-import { PalletVO, PalletQuery, PalletForm } from '@/api/wms/pallet/types';
-import { listWorkOrder, getWorkOrder, delWorkOrder, addWorkOrder, updateWorkOrder } from '@/api/wms/workOrder';
+import { addPallet, delPallet, emptyPallet, getPallet, pagePalletInventory, updatePallet } from '@/api/wms/pallet';
+
+import { PalletForm, PalletQuery, PalletVO } from '@/api/wms/pallet/types';
+import { ref } from 'vue';
+import { WarehouseLocationVO } from '@/api/wms/warehouseLocation/types';
+import { listWarehouseLocation } from '@/api/wms/warehouseLocation';
+
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_pallet_status } = toRefs<any>(proxy?.useDict('wms_pallet_status'));
+const { wms_pallet_inventory_status } = toRefs<any>(proxy?.useDict('wms_pallet_inventory_status'));
 
 const palletList = ref<PalletVO[]>([]);
 const buttonLoading = ref(false);
 const loading = ref(true);
 const showSearch = ref(true);
 const ids = ref<Array<string | number>>([]);
+const palletCodeList = ref<Array<string | number>>([]);
 const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
@@ -114,7 +152,10 @@ const dialog = reactive<DialogOption>({
   visible: false,
   title: ''
 });
-
+const inventoryDialog = reactive<DialogOption>({
+  visible: false,
+  title: ''
+});
 const initFormData: PalletForm = {
   id: undefined,
   palletCode: undefined,
@@ -136,18 +177,25 @@ const data = reactive<PageData<PalletForm, PalletQuery>>({
   },
   rules: {
     id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
-    palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'blur' }],
-    description: [{ required: true, message: '栈板描述不能为空', trigger: 'blur' }],
-    status: [{ required: true, message: '状态不能为空', trigger: 'blur' }]
+    palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'blur' }]
   }
 });
 
 const { queryParams, form, rules } = toRefs(data);
+const warehouseLocationList = ref<WarehouseLocationVO[]>([]);
+/** 查询仓位信息列表 */
+const getWarehouseList = async () => {
+  const warehouseQueryParams = {
+    parentId: 0
+  };
+  const res = await listWarehouseLocation(warehouseQueryParams);
+  warehouseLocationList.value = res.data;
+};
 
 /** 查询栈板信息列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await listPallet(queryParams.value);
+  const res = await pagePalletInventory(queryParams.value);
   palletList.value = res.rows;
   total.value = res.total;
   loading.value = false;
@@ -179,7 +227,15 @@ const resetQuery = () => {
 
 /** 多选框选中数据 */
 const handleSelectionChange = (selection: PalletVO[]) => {
-  ids.value = selection.map((item) => item.id);
+  [ids.value, palletCodeList.value] = selection.reduce(
+    (acc, { id, palletCode }) => {
+      acc[0].push(id);
+      acc[1].push(palletCode);
+      return acc;
+    },
+    [[], []]
+  );
+
   single.value = selection.length != 1;
   multiple.value = !selection.length;
 };
@@ -189,6 +245,7 @@ const handleAdd = () => {
   reset();
   dialog.visible = true;
   dialog.title = '添加栈板信息';
+  getWarehouseList();
 };
 
 /** 修改按钮操作 */
@@ -199,6 +256,7 @@ const handleUpdate = async (row?: PalletVO) => {
   Object.assign(form.value, res.data);
   dialog.visible = true;
   dialog.title = '修改栈板信息';
+  getWarehouseList();
 };
 
 /** 提交按钮 */
@@ -221,9 +279,20 @@ const submitForm = () => {
 /** 删除按钮操作 */
 const handleDelete = async (row?: PalletVO) => {
   const _ids = row?.id || ids.value;
-  await proxy?.$modal.confirm('是否确认删除栈板信息编号为"' + _ids + '"的数据项？').finally(() => (loading.value = false));
+  const palletCodes = row?.palletCode || palletCodeList.value;
+  await proxy?.$modal.confirm('确认是否删除栈板编号为"' + palletCodes + '"的数据项？').finally(() => (loading.value = false));
   await delPallet(_ids);
   proxy?.$modal.msgSuccess('删除成功');
+  await getList();
+};
+
+/** 清空按钮操作 */
+const handleEmpty = async (row?: PalletVO) => {
+  const _ids = row?.id || ids.value;
+  const palletCodes = row?.palletCode || palletCodeList.value;
+  await proxy?.$modal.confirm('确认是否清空栈板编号为"' + palletCodes + '"的数据项？').finally(() => (loading.value = false));
+  await emptyPallet(_ids);
+  proxy?.$modal.msgSuccess('清空成功');
   await getList();
 };
 
@@ -242,3 +311,17 @@ onMounted(() => {
   getList();
 });
 </script>
+
+<style scoped>
+.icon-path {
+  fill: currentColor;
+}
+
+/* 悬停、激活、聚焦状态 - 白色 */
+.empty-btn:not(.is-disabled):hover,
+.empty-btn:not(.is-disabled):active,
+.empty-btn:not(.is-disabled):focus {
+  color: white !important;
+  fill: white !important;
+}
+</style>

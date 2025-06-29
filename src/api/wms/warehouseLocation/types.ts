@@ -186,7 +186,7 @@ export interface WarehouseLocationQuery extends PageQuery {
   /**
    * 父ID
    */
-  parentId?: string | number;
+  parentId?: number;
 
   /**
    * 祖级列表

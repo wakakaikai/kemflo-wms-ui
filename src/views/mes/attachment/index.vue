@@ -13,50 +13,6 @@
             <el-form-item label="附加顺序号" prop="sequence">
               <el-input v-model="queryParams.sequence" placeholder="请输入附加顺序号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="记录创建者ID" prop="createUserId">
-              <el-input v-model="queryParams.createUserId" placeholder="请输入记录创建者ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录创建者" prop="creator">
-              <el-input v-model="queryParams.creator" placeholder="请输入记录创建者" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录最后更新者ID" prop="modifyUserId">
-              <el-input v-model="queryParams.modifyUserId" placeholder="请输入记录最后更新者ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录最后更新者" prop="updater">
-              <el-input v-model="queryParams.updater" placeholder="请输入记录最后更新者" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录最后更新时间" prop="modifyTime">
-              <el-date-picker clearable
-                v-model="queryParams.modifyTime"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择记录最后更新时间"
-              />
-            </el-form-item>
-            <el-form-item label="删除标记" prop="deleteFlag">
-              <el-input v-model="queryParams.deleteFlag" placeholder="请输入删除标记" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="锁版本" prop="auditDataVersion">
-              <el-input v-model="queryParams.auditDataVersion" placeholder="请输入锁版本" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数据归属组织id" prop="secBuId">
-              <el-input v-model="queryParams.secBuId" placeholder="请输入数据归属组织id" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数据归属雇员id" prop="secUserId">
-              <el-input v-model="queryParams.secUserId" placeholder="请输入数据归属雇员id" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数据归属公司id" prop="secOuId">
-              <el-input v-model="queryParams.secOuId" placeholder="请输入数据归属公司id" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="所属组织ID" prop="belongOrgId">
-              <el-input v-model="queryParams.belongOrgId" placeholder="请输入所属组织ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="租户组织ID" prop="tenantOrgId">
-              <el-input v-model="queryParams.tenantOrgId" placeholder="请输入租户组织ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="所需数量" prop="qtyReq">
-              <el-input v-model="queryParams.qtyReq" placeholder="请输入所需数量" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
               <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -93,23 +49,6 @@
         <el-table-column label="附加顺序号" align="center" prop="sequence" />
         <el-table-column label="附加的类型" align="center" prop="attachmentType" />
         <el-table-column label="备注" align="center" prop="remark" />
-        <el-table-column label="记录创建者ID" align="center" prop="createUserId" />
-        <el-table-column label="记录创建者" align="center" prop="creator" />
-        <el-table-column label="记录最后更新者ID" align="center" prop="modifyUserId" />
-        <el-table-column label="记录最后更新者" align="center" prop="updater" />
-        <el-table-column label="记录最后更新时间" align="center" prop="modifyTime" width="180">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.modifyTime, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="删除标记" align="center" prop="deleteFlag" />
-        <el-table-column label="锁版本" align="center" prop="auditDataVersion" />
-        <el-table-column label="数据归属组织id" align="center" prop="secBuId" />
-        <el-table-column label="数据归属雇员id" align="center" prop="secUserId" />
-        <el-table-column label="数据归属公司id" align="center" prop="secOuId" />
-        <el-table-column label="所属组织ID" align="center" prop="belongOrgId" />
-        <el-table-column label="租户组织ID" align="center" prop="tenantOrgId" />
-        <el-table-column label="所需数量" align="center" prop="qtyReq" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">

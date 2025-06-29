@@ -143,10 +143,9 @@
 </template>
 
 <script setup name="ShippingNotice" lang="ts">
-import { ref, reactive, nextTick } from 'vue';
-import type { TableInstance } from 'element-plus';
+import { reactive, ref } from 'vue';
 import { listShippingNotice, updateBatchShippingNotice } from '@/api/wms/shippingNotice';
-import { ShippingNoticeVO, ShippingNoticeQuery, ShippingNoticeForm } from '@/api/wms/shippingNotice/types';
+import { ShippingNoticeForm, ShippingNoticeQuery, ShippingNoticeVO } from '@/api/wms/shippingNotice/types';
 import QRCode from './QRCode.vue';
 import { parseTime } from '@/utils/ruoyi';
 import printJS from 'print-js';

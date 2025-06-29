@@ -4,6 +4,7 @@ import localforage from 'localforage';
 
 // 消息类型定义
 export enum MessageCategory {
+  ABNORMAL_CALL = 'abnormalCall',
   SYSTEM = 'system',
   ALERT = 'alert',
   TASK = 'task',

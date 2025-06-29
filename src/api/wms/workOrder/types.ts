@@ -53,6 +53,11 @@ export interface WorkOrderVO {
    * 备注
    */
   remark: string;
+
+  /**
+   * 是否编辑状态
+   */
+  isEditing?: boolean;
 }
 
 export interface WorkOrderForm extends BaseEntity {
@@ -134,6 +139,11 @@ export interface WorkOrderForm extends BaseEntity {
    * 打包明细
    */
   packingDetailBoList: any[];
+
+  /**
+   * 是否编辑状态
+   */
+  isEditing?: boolean;
 }
 
 export interface WorkOrderQuery extends PageQuery {

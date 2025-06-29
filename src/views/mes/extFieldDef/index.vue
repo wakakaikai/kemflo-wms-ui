@@ -16,53 +16,6 @@
             <el-form-item label="定义扩展字段的描述" prop="description">
               <el-input v-model="queryParams.description" placeholder="请输入定义扩展字段的描述" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="顺序号" prop="sequence">
-              <el-input v-model="queryParams.sequence" placeholder="请输入顺序号" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="是否必须" prop="required">
-              <el-input v-model="queryParams.required" placeholder="请输入是否必须" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录创建者ID" prop="createUserId">
-              <el-input v-model="queryParams.createUserId" placeholder="请输入记录创建者ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录创建者" prop="creator">
-              <el-input v-model="queryParams.creator" placeholder="请输入记录创建者" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录最后更新者ID" prop="modifyUserId">
-              <el-input v-model="queryParams.modifyUserId" placeholder="请输入记录最后更新者ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录最后更新者" prop="updater">
-              <el-input v-model="queryParams.updater" placeholder="请输入记录最后更新者" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录最后更新时间" prop="modifyTime">
-              <el-date-picker clearable
-                v-model="queryParams.modifyTime"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择记录最后更新时间"
-              />
-            </el-form-item>
-            <el-form-item label="删除标记" prop="deleteFlag">
-              <el-input v-model="queryParams.deleteFlag" placeholder="请输入删除标记" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="锁版本" prop="auditDataVersion">
-              <el-input v-model="queryParams.auditDataVersion" placeholder="请输入锁版本" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数据归属组织id" prop="secBuId">
-              <el-input v-model="queryParams.secBuId" placeholder="请输入数据归属组织id" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数据归属雇员id" prop="secUserId">
-              <el-input v-model="queryParams.secUserId" placeholder="请输入数据归属雇员id" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数据归属公司id" prop="secOuId">
-              <el-input v-model="queryParams.secOuId" placeholder="请输入数据归属公司id" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="所属组织ID" prop="belongOrgId">
-              <el-input v-model="queryParams.belongOrgId" placeholder="请输入所属组织ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="租户组织ID" prop="tenantOrgId">
-              <el-input v-model="queryParams.tenantOrgId" placeholder="请输入租户组织ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
               <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -101,23 +54,6 @@
         <el-table-column label="顺序号" align="center" prop="sequence" />
         <el-table-column label="是否必须" align="center" prop="required" />
         <el-table-column label="定义扩展字段的类型" align="center" prop="fieldType" />
-        <el-table-column label="备注" align="center" prop="remark" />
-        <el-table-column label="记录创建者ID" align="center" prop="createUserId" />
-        <el-table-column label="记录创建者" align="center" prop="creator" />
-        <el-table-column label="记录最后更新者ID" align="center" prop="modifyUserId" />
-        <el-table-column label="记录最后更新者" align="center" prop="updater" />
-        <el-table-column label="记录最后更新时间" align="center" prop="modifyTime" width="180">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.modifyTime, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="删除标记" align="center" prop="deleteFlag" />
-        <el-table-column label="锁版本" align="center" prop="auditDataVersion" />
-        <el-table-column label="数据归属组织id" align="center" prop="secBuId" />
-        <el-table-column label="数据归属雇员id" align="center" prop="secUserId" />
-        <el-table-column label="数据归属公司id" align="center" prop="secOuId" />
-        <el-table-column label="所属组织ID" align="center" prop="belongOrgId" />
-        <el-table-column label="租户组织ID" align="center" prop="tenantOrgId" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -155,47 +91,6 @@
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" placeholder="请输入备注" />
-        </el-form-item>
-        <el-form-item label="记录创建者ID" prop="createUserId">
-          <el-input v-model="form.createUserId" placeholder="请输入记录创建者ID" />
-        </el-form-item>
-        <el-form-item label="记录创建者" prop="creator">
-          <el-input v-model="form.creator" placeholder="请输入记录创建者" />
-        </el-form-item>
-        <el-form-item label="记录最后更新者ID" prop="modifyUserId">
-          <el-input v-model="form.modifyUserId" placeholder="请输入记录最后更新者ID" />
-        </el-form-item>
-        <el-form-item label="记录最后更新者" prop="updater">
-          <el-input v-model="form.updater" placeholder="请输入记录最后更新者" />
-        </el-form-item>
-        <el-form-item label="记录最后更新时间" prop="modifyTime">
-          <el-date-picker clearable
-            v-model="form.modifyTime"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="请选择记录最后更新时间">
-          </el-date-picker>
-        </el-form-item>
-        <el-form-item label="删除标记" prop="deleteFlag">
-          <el-input v-model="form.deleteFlag" placeholder="请输入删除标记" />
-        </el-form-item>
-        <el-form-item label="锁版本" prop="auditDataVersion">
-          <el-input v-model="form.auditDataVersion" placeholder="请输入锁版本" />
-        </el-form-item>
-        <el-form-item label="数据归属组织id" prop="secBuId">
-          <el-input v-model="form.secBuId" placeholder="请输入数据归属组织id" />
-        </el-form-item>
-        <el-form-item label="数据归属雇员id" prop="secUserId">
-          <el-input v-model="form.secUserId" placeholder="请输入数据归属雇员id" />
-        </el-form-item>
-        <el-form-item label="数据归属公司id" prop="secOuId">
-          <el-input v-model="form.secOuId" placeholder="请输入数据归属公司id" />
-        </el-form-item>
-        <el-form-item label="所属组织ID" prop="belongOrgId">
-          <el-input v-model="form.belongOrgId" placeholder="请输入所属组织ID" />
-        </el-form-item>
-        <el-form-item label="租户组织ID" prop="tenantOrgId">
-          <el-input v-model="form.tenantOrgId" placeholder="请输入租户组织ID" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -306,45 +201,6 @@ const data = reactive<PageData<ExtFieldDefForm, ExtFieldDefQuery>>({
     fieldType: [
       { required: true, message: "定义扩展字段的类型不能为空", trigger: "change" }
     ],
-    remark: [
-      { required: true, message: "备注不能为空", trigger: "blur" }
-    ],
-    createUserId: [
-      { required: true, message: "记录创建者ID不能为空", trigger: "blur" }
-    ],
-    creator: [
-      { required: true, message: "记录创建者不能为空", trigger: "blur" }
-    ],
-    modifyUserId: [
-      { required: true, message: "记录最后更新者ID不能为空", trigger: "blur" }
-    ],
-    updater: [
-      { required: true, message: "记录最后更新者不能为空", trigger: "blur" }
-    ],
-    modifyTime: [
-      { required: true, message: "记录最后更新时间不能为空", trigger: "blur" }
-    ],
-    deleteFlag: [
-      { required: true, message: "删除标记不能为空", trigger: "blur" }
-    ],
-    auditDataVersion: [
-      { required: true, message: "锁版本不能为空", trigger: "blur" }
-    ],
-    secBuId: [
-      { required: true, message: "数据归属组织id不能为空", trigger: "blur" }
-    ],
-    secUserId: [
-      { required: true, message: "数据归属雇员id不能为空", trigger: "blur" }
-    ],
-    secOuId: [
-      { required: true, message: "数据归属公司id不能为空", trigger: "blur" }
-    ],
-    belongOrgId: [
-      { required: true, message: "所属组织ID不能为空", trigger: "blur" }
-    ],
-    tenantOrgId: [
-      { required: true, message: "租户组织ID不能为空", trigger: "blur" }
-    ]
   }
 });
 

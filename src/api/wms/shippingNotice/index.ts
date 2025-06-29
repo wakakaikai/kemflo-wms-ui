@@ -30,7 +30,6 @@ export const listCustomerShippingNotice = (query?: ShippingNoticeQuery): AxiosPr
   });
 };
 
-
 /**
  * 查询出货通知详细
  * @param id
@@ -70,7 +69,7 @@ export const updateShippingNotice = (data: ShippingNoticeForm) => {
  * 批量修改出货通知
  * @param data
  */
-export const updateBatchShippingNotice = (data?: shippingNoticeBoList): AxiosPromise<ShippingNoticeForm[]> => {
+export const updateBatchShippingNotice = (data?: any): AxiosPromise<ShippingNoticeForm[]> => {
   return request({
     url: '/wms/shippingNotice/editBatch',
     method: 'put',

@@ -3,81 +3,12 @@
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-            <el-form-item label="数据行索引" prop="handle">
-              <el-input v-model="queryParams.handle" placeholder="请输入数据行索引" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="物料清单" prop="bom">
               <el-input v-model="queryParams.bom" placeholder="请输入物料清单" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="资源描述" prop="description">
               <el-input v-model="queryParams.description" placeholder="请输入资源描述" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="版本" prop="revision">
-              <el-input v-model="queryParams.revision" placeholder="请输入版本" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="当前版本" prop="currentRevision">
-              <el-input v-model="queryParams.currentRevision" placeholder="请输入当前版本" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="有效期自" prop="validFrom">
-              <el-date-picker clearable
-                v-model="queryParams.validFrom"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择有效期自"
-              />
-            </el-form-item>
-            <el-form-item label="有效期至" prop="validTo">
-              <el-date-picker clearable
-                v-model="queryParams.validTo"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择有效期至"
-              />
-            </el-form-item>
-            <el-form-item label="是否被使用" prop="hasBeenUsed">
-              <el-input v-model="queryParams.hasBeenUsed" placeholder="请输入是否被使用" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录创建者ID" prop="createUserId">
-              <el-input v-model="queryParams.createUserId" placeholder="请输入记录创建者ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录创建者" prop="creator">
-              <el-input v-model="queryParams.creator" placeholder="请输入记录创建者" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录最后更新者ID" prop="modifyUserId">
-              <el-input v-model="queryParams.modifyUserId" placeholder="请输入记录最后更新者ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录最后更新者" prop="updater">
-              <el-input v-model="queryParams.updater" placeholder="请输入记录最后更新者" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录最后更新时间" prop="modifyTime">
-              <el-date-picker clearable
-                v-model="queryParams.modifyTime"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择记录最后更新时间"
-              />
-            </el-form-item>
-            <el-form-item label="删除标记" prop="deleteFlag">
-              <el-input v-model="queryParams.deleteFlag" placeholder="请输入删除标记" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="锁版本" prop="auditDataVersion">
-              <el-input v-model="queryParams.auditDataVersion" placeholder="请输入锁版本" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数据归属组织id" prop="secBuId">
-              <el-input v-model="queryParams.secBuId" placeholder="请输入数据归属组织id" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数据归属雇员id" prop="secUserId">
-              <el-input v-model="queryParams.secUserId" placeholder="请输入数据归属雇员id" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数据归属公司id" prop="secOuId">
-              <el-input v-model="queryParams.secOuId" placeholder="请输入数据归属公司id" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="所属组织ID" prop="belongOrgId">
-              <el-input v-model="queryParams.belongOrgId" placeholder="请输入所属组织ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="租户组织ID" prop="tenantOrgId">
-              <el-input v-model="queryParams.tenantOrgId" placeholder="请输入租户组织ID" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -129,22 +60,6 @@
         </el-table-column>
         <el-table-column label="是否被使用" align="center" prop="hasBeenUsed" />
         <el-table-column label="备注" align="center" prop="remark" />
-        <el-table-column label="记录创建者ID" align="center" prop="createUserId" />
-        <el-table-column label="记录创建者" align="center" prop="creator" />
-        <el-table-column label="记录最后更新者ID" align="center" prop="modifyUserId" />
-        <el-table-column label="记录最后更新者" align="center" prop="updater" />
-        <el-table-column label="记录最后更新时间" align="center" prop="modifyTime" width="180">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.modifyTime, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="删除标记" align="center" prop="deleteFlag" />
-        <el-table-column label="锁版本" align="center" prop="auditDataVersion" />
-        <el-table-column label="数据归属组织id" align="center" prop="secBuId" />
-        <el-table-column label="数据归属雇员id" align="center" prop="secUserId" />
-        <el-table-column label="数据归属公司id" align="center" prop="secOuId" />
-        <el-table-column label="所属组织ID" align="center" prop="belongOrgId" />
-        <el-table-column label="租户组织ID" align="center" prop="tenantOrgId" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -178,20 +93,10 @@
           <el-input v-model="form.currentRevision" placeholder="请输入当前版本" />
         </el-form-item>
         <el-form-item label="有效期自" prop="validFrom">
-          <el-date-picker clearable
-            v-model="form.validFrom"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="请选择有效期自">
-          </el-date-picker>
+          <el-date-picker clearable v-model="form.validFrom" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择有效期自"> </el-date-picker>
         </el-form-item>
         <el-form-item label="有效期至" prop="validTo">
-          <el-date-picker clearable
-            v-model="form.validTo"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="请选择有效期至">
-          </el-date-picker>
+          <el-date-picker clearable v-model="form.validTo" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择有效期至"> </el-date-picker>
         </el-form-item>
         <el-form-item label="是否被使用" prop="hasBeenUsed">
           <el-input v-model="form.hasBeenUsed" placeholder="请输入是否被使用" />
@@ -212,12 +117,7 @@
           <el-input v-model="form.updater" placeholder="请输入记录最后更新者" />
         </el-form-item>
         <el-form-item label="记录最后更新时间" prop="modifyTime">
-          <el-date-picker clearable
-            v-model="form.modifyTime"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="请选择记录最后更新时间">
-          </el-date-picker>
+          <el-date-picker clearable v-model="form.modifyTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择记录最后更新时间"> </el-date-picker>
         </el-form-item>
         <el-form-item label="删除标记" prop="deleteFlag">
           <el-input v-model="form.deleteFlag" placeholder="请输入删除标记" />
@@ -299,9 +199,9 @@ const initFormData: BomForm = {
   secOuId: undefined,
   belongOrgId: undefined,
   tenantOrgId: undefined
-}
+};
 const data = reactive<PageData<BomForm, BomQuery>>({
-  form: {...initFormData},
+  form: { ...initFormData },
   queryParams: {
     pageNum: 1,
     pageSize: 10,
@@ -327,82 +227,33 @@ const data = reactive<PageData<BomForm, BomQuery>>({
     secOuId: undefined,
     belongOrgId: undefined,
     tenantOrgId: undefined,
-    params: {
-    }
+    params: {}
   },
   rules: {
-    id: [
-      { required: true, message: "记录唯一ID不能为空", trigger: "blur" }
-    ],
-    handle: [
-      { required: true, message: "数据行索引不能为空", trigger: "blur" }
-    ],
-    bom: [
-      { required: true, message: "物料清单不能为空", trigger: "blur" }
-    ],
-    bomType: [
-      { required: true, message: "物料清单类型不能为空", trigger: "change" }
-    ],
-    description: [
-      { required: true, message: "资源描述不能为空", trigger: "blur" }
-    ],
-    status: [
-      { required: true, message: "状态不能为空", trigger: "change" }
-    ],
-    revision: [
-      { required: true, message: "版本不能为空", trigger: "blur" }
-    ],
-    currentRevision: [
-      { required: true, message: "当前版本不能为空", trigger: "blur" }
-    ],
-    validFrom: [
-      { required: true, message: "有效期自不能为空", trigger: "blur" }
-    ],
-    validTo: [
-      { required: true, message: "有效期至不能为空", trigger: "blur" }
-    ],
-    hasBeenUsed: [
-      { required: true, message: "是否被使用不能为空", trigger: "blur" }
-    ],
-    remark: [
-      { required: true, message: "备注不能为空", trigger: "blur" }
-    ],
-    createUserId: [
-      { required: true, message: "记录创建者ID不能为空", trigger: "blur" }
-    ],
-    creator: [
-      { required: true, message: "记录创建者不能为空", trigger: "blur" }
-    ],
-    modifyUserId: [
-      { required: true, message: "记录最后更新者ID不能为空", trigger: "blur" }
-    ],
-    updater: [
-      { required: true, message: "记录最后更新者不能为空", trigger: "blur" }
-    ],
-    modifyTime: [
-      { required: true, message: "记录最后更新时间不能为空", trigger: "blur" }
-    ],
-    deleteFlag: [
-      { required: true, message: "删除标记不能为空", trigger: "blur" }
-    ],
-    auditDataVersion: [
-      { required: true, message: "锁版本不能为空", trigger: "blur" }
-    ],
-    secBuId: [
-      { required: true, message: "数据归属组织id不能为空", trigger: "blur" }
-    ],
-    secUserId: [
-      { required: true, message: "数据归属雇员id不能为空", trigger: "blur" }
-    ],
-    secOuId: [
-      { required: true, message: "数据归属公司id不能为空", trigger: "blur" }
-    ],
-    belongOrgId: [
-      { required: true, message: "所属组织ID不能为空", trigger: "blur" }
-    ],
-    tenantOrgId: [
-      { required: true, message: "租户组织ID不能为空", trigger: "blur" }
-    ]
+    id: [{ required: true, message: '记录唯一ID不能为空', trigger: 'blur' }],
+    handle: [{ required: true, message: '数据行索引不能为空', trigger: 'blur' }],
+    bom: [{ required: true, message: '物料清单不能为空', trigger: 'blur' }],
+    bomType: [{ required: true, message: '物料清单类型不能为空', trigger: 'change' }],
+    description: [{ required: true, message: '资源描述不能为空', trigger: 'blur' }],
+    status: [{ required: true, message: '状态不能为空', trigger: 'change' }],
+    revision: [{ required: true, message: '版本不能为空', trigger: 'blur' }],
+    currentRevision: [{ required: true, message: '当前版本不能为空', trigger: 'blur' }],
+    validFrom: [{ required: true, message: '有效期自不能为空', trigger: 'blur' }],
+    validTo: [{ required: true, message: '有效期至不能为空', trigger: 'blur' }],
+    hasBeenUsed: [{ required: true, message: '是否被使用不能为空', trigger: 'blur' }],
+    remark: [{ required: true, message: '备注不能为空', trigger: 'blur' }],
+    createUserId: [{ required: true, message: '记录创建者ID不能为空', trigger: 'blur' }],
+    creator: [{ required: true, message: '记录创建者不能为空', trigger: 'blur' }],
+    modifyUserId: [{ required: true, message: '记录最后更新者ID不能为空', trigger: 'blur' }],
+    updater: [{ required: true, message: '记录最后更新者不能为空', trigger: 'blur' }],
+    modifyTime: [{ required: true, message: '记录最后更新时间不能为空', trigger: 'blur' }],
+    deleteFlag: [{ required: true, message: '删除标记不能为空', trigger: 'blur' }],
+    auditDataVersion: [{ required: true, message: '锁版本不能为空', trigger: 'blur' }],
+    secBuId: [{ required: true, message: '数据归属组织id不能为空', trigger: 'blur' }],
+    secUserId: [{ required: true, message: '数据归属雇员id不能为空', trigger: 'blur' }],
+    secOuId: [{ required: true, message: '数据归属公司id不能为空', trigger: 'blur' }],
+    belongOrgId: [{ required: true, message: '所属组织ID不能为空', trigger: 'blur' }],
+    tenantOrgId: [{ required: true, message: '租户组织ID不能为空', trigger: 'blur' }]
   }
 });
 
@@ -415,55 +266,55 @@ const getList = async () => {
   bomList.value = res.rows;
   total.value = res.total;
   loading.value = false;
-}
+};
 
 /** 取消按钮 */
 const cancel = () => {
   reset();
   dialog.visible = false;
-}
+};
 
 /** 表单重置 */
 const reset = () => {
-  form.value = {...initFormData};
+  form.value = { ...initFormData };
   bomFormRef.value?.resetFields();
-}
+};
 
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
   getList();
-}
+};
 
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   handleQuery();
-}
+};
 
 /** 多选框选中数据 */
 const handleSelectionChange = (selection: BomVO[]) => {
-  ids.value = selection.map(item => item.id);
+  ids.value = selection.map((item) => item.id);
   single.value = selection.length != 1;
   multiple.value = !selection.length;
-}
+};
 
 /** 新增按钮操作 */
 const handleAdd = () => {
   reset();
   dialog.visible = true;
-  dialog.title = "添加物料清单";
-}
+  dialog.title = '添加物料清单';
+};
 
 /** 修改按钮操作 */
 const handleUpdate = async (row?: BomVO) => {
   reset();
-  const _id = row?.id || ids.value[0]
+  const _id = row?.id || ids.value[0];
   const res = await getBom(_id);
   Object.assign(form.value, res.data);
   dialog.visible = true;
-  dialog.title = "修改物料清单";
-}
+  dialog.title = '修改物料清单';
+};
 
 /** 提交按钮 */
 const submitForm = () => {
@@ -471,32 +322,36 @@ const submitForm = () => {
     if (valid) {
       buttonLoading.value = true;
       if (form.value.id) {
-        await updateBom(form.value).finally(() =>  buttonLoading.value = false);
+        await updateBom(form.value).finally(() => (buttonLoading.value = false));
       } else {
-        await addBom(form.value).finally(() =>  buttonLoading.value = false);
+        await addBom(form.value).finally(() => (buttonLoading.value = false));
       }
-      proxy?.$modal.msgSuccess("操作成功");
+      proxy?.$modal.msgSuccess('操作成功');
       dialog.visible = false;
       await getList();
     }
   });
-}
+};
 
 /** 删除按钮操作 */
 const handleDelete = async (row?: BomVO) => {
   const _ids = row?.id || ids.value;
-  await proxy?.$modal.confirm('是否确认删除物料清单编号为"' + _ids + '"的数据项？').finally(() => loading.value = false);
+  await proxy?.$modal.confirm('是否确认删除物料清单编号为"' + _ids + '"的数据项？').finally(() => (loading.value = false));
   await delBom(_ids);
-  proxy?.$modal.msgSuccess("删除成功");
+  proxy?.$modal.msgSuccess('删除成功');
   await getList();
-}
+};
 
 /** 导出按钮操作 */
 const handleExport = () => {
-  proxy?.download('mes/bom/export', {
-    ...queryParams.value
-  }, `bom_${new Date().getTime()}.xlsx`)
-}
+  proxy?.download(
+    'mes/bom/export',
+    {
+      ...queryParams.value
+    },
+    `bom_${new Date().getTime()}.xlsx`
+  );
+};
 
 onMounted(() => {
   getList();

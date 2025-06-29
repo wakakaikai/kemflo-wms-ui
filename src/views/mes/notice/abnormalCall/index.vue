@@ -1,571 +1,820 @@
 <template>
-  <div class="message-container">
-    <el-card shadow="hover" class="message-card">
-      <template #header>
-        <div class="card-header">
-          <span>消息通知</span>
-          <div class="header-actions">
-            <el-button type="primary" size="small" :icon="playbackState.isPlaying ? 'VideoPause' : 'VideoPlay'" @click="togglePlayback">
-              {{ playbackState.isPlaying ? '暂停播报' : '开始播报' }}
-            </el-button>
-            <el-button type="danger" size="small" icon="Delete" :disabled="selectedMessages.length === 0" @click="batchDeleteMessages"> 批量删除 </el-button>
+  <div class="p-2">
+    <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
+      <div v-show="true" class="mb-[10px]">
+        <el-card shadow="hover">
+          <div class="flex items-center">
+            <div class="flex-1 flex items-center gap-6 flex-wrap">
+              <!-- 工作岗位区块 -->
+              <div class="flex items-center group">
+                <div class="flex items-center min-w-[80px]">
+                  <span class="text-red-500 mr-1.5">*</span>
+                  <span class="text-sm font-medium text-gray-600 flex items-center min-w-[95px]">
+                    <el-icon class="mr-1.5 text-purple-500"><Operation /></el-icon>
+                    工作岗位:
+                  </span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <el-button @click="openWorkStationDialog" class="dashed-blue-btn min-w-[120px]" size="small">
+                    {{ podConfig.resourceType || '点击选择工作岗位' }}
+                  </el-button>
+                  <el-button v-if="podConfig.resourceType" @click="clearSelection('abnormalCallSite')" text size="small" class="!text-gray-400 hover:!text-red-500">
+                    <el-icon>
+                      <Close />
+                    </el-icon>
+                  </el-button>
+                </div>
+              </div>
+
+              <!-- 工作中心区块 -->
+              <div class="flex items-center group">
+                <div class="flex items-center min-w-[80px]">
+                  <span class="text-red-500 mr-1.5">*</span>
+                  <span class="text-sm font-medium text-gray-600 flex items-center min-w-[95px]">
+                    <el-icon class="mr-1.5 text-green-500"><HomeFilled /></el-icon>
+                    工作中心:
+                  </span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <el-button @click="openWorkCenterDialog" class="dashed-blue-btn min-w-[120px]" size="small">
+                    {{ podConfig.workCenter || '点击选择工作中心' }}
+                  </el-button>
+                  <el-button v-if="podConfig.workCenter" @click="clearSelection('workCenter')" text size="small" class="!text-gray-400 hover:!text-red-500">
+                    <el-icon>
+                      <Close />
+                    </el-icon>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center mt-[10px] py-4 px-0 bg-gray-50">
+            <div class="flex flex-1 md:flex-none ml-[10px]">
+              <!-- 物料呼叫 (蓝色) -->
+              <el-button type="primary" class="call-btn material-call relative ml-[11px]" @click="confirmMaterialCall">
+                <el-icon class="mr-1">
+                  <Box />
+                </el-icon>
+                物料
+                <div class="indicator-bar"></div>
+              </el-button>
+
+              <!-- 设备呼叫 (橙色) -->
+              <el-button type="warning" class="call-btn equipment-call relative" @click="confirmEquipmentCall">
+                <div class="lang-select--style mr-1">
+                  <svg-icon icon-class="equipment" />
+                </div>
+                设备
+                <div class="indicator-bar"></div>
+              </el-button>
+
+              <!-- 品质呼叫 (红色+金色图标) -->
+              <el-button type="danger" class="call-btn quality-call relative" @click="confirmQualityCall">
+                <div class="lang-select--style mr-1">
+                  <svg-icon icon-class="quality" />
+                </div>
+                品质
+                <div class="indicator-bar"></div>
+              </el-button>
+
+              <!-- 其他呼叫 (紫色) -->
+              <el-button class="call-btn other-call relative bg-purple-500 hover:bg-purple-600 text-white" @click="confirmOtherCall">
+                <div class="lang-select--style mr-1">
+                  <svg-icon icon-class="other" />
+                </div>
+                其他
+                <div class="indicator-bar"></div>
+              </el-button>
+            </div>
+          </div>
+        </el-card>
+      </div>
+    </transition>
+    <!-- 弹框 -->
+    <WorkStationDialog ref="workStationRef" @work-station-call-back="workStationCallBack" />
+    <WorkCenterDialog ref="workCenterDialogRef" @work-center-call-back="workCenterCallBack" />
+    <AbnormalCallDialog ref="abnormalCallDialogRef" :podConfig="podConfig" @abnormal-call-call-back="abnormalCallCallBack" />
+
+    <!-- 工作中心 -->
+    <el-card shadow="never" class="mt-[10px] work-order-card">
+      <div class="process-steps">
+        <div
+          v-for="(workStation, index) in workStationAbnormalCallList"
+          :key="workStation.id"
+          class="process-step"
+          :class="{
+            'step-selected': workStation.resourceType === podConfig.resourceType,
+            'step-warning': (workStation.messageVoList || []).length > 0
+          }"
+          @click="handleSelectedWorkStation(workStation)"
+        >
+          <div class="step-index">
+            <el-icon v-if="(workStation.messageVoList || []).length > 0" class="warning-icon">
+              <svg-icon icon-class="alarm" />
+            </el-icon>
+            <span v-else>{{ index + 1 }}</span>
+          </div>
+
+          <!--          <div class="step-index">
+            <el-icon v-if="(workStation.messageVoList || []).length > 0" class="warning-icon">
+              <svg-icon icon-class="alarm" />
+              <span class="badge">{{ workStation.messageVoList.length }}</span>
+            </el-icon>
+            <span v-else>{{ index + 1 }}</span>
+          </div>-->
+
+          <div class="step-content">
+            <div class="step-name">
+              <div>{{ workStation.description }}</div>
+              <div>{{ workStation.messageSummaryTitle ? workStation.messageSummaryTitle.replace(/,/g, ' ') : '' }}</div>
+            </div>
           </div>
         </div>
-      </template>
-
-      <el-table v-loading="loading" :data="paginatedMessages" style="width: 100%" :row-class-name="tableRowClassName" @row-dblclick="handleRowClick" @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="55" />
-        <el-table-column prop="time" label="时间" width="180">
-          <template #default="{ row }">
-            {{ parseTime(row.time, '{y}-{m}-{d} {h}:{i}:{s}') }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="title" label="标题" />
-        <el-table-column prop="message" label="内容" />
-        <el-table-column prop="category" label="类型" width="120">
-          <template #default="{ row }">
-            <el-tag :type="getCategoryTagType(row.category)">
-              {{ getCategoryName(row.category) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="priority" label="优先级" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getPriorityTagType(row.priority)">
-              {{ getPriorityName(row.priority) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.read ? 'success' : 'danger'">
-              {{ row.read ? '已读' : '未读' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="120">
-          <template #default="{ row }">
-            <el-button
-              size="small"
-              :type="playbackState.currentId === row.id && playbackState.isPlaying ? 'warning' : 'primary'"
-              :icon="playbackState.currentId === row.id && playbackState.isPlaying ? 'VideoPause' : 'VideoPlay'"
-              circle
-              @click="playOrPauseMessage(row)"
-            />
-            <el-button size="small" type="danger" icon="Delete" circle @click="deleteMessage(row.id)" />
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="pagination.currentPage"
-          v-model:page-size="pagination.pageSize"
-          :total="filteredMessages.length"
-          layout="total, sizes, prev, pager, next, jumper"
-          :page-sizes="[10, 20, 50, 100]"
-        />
       </div>
     </el-card>
-
-    <!-- 语音播放状态栏 -->
-    <div v-if="playbackState.currentMessage" class="playback-status">
-      <div class="status-content">
-        <span>正在播报: {{ playbackState.currentMessage.title }}</span>
-        <el-progress :percentage="playbackState.progress" :stroke-width="4" :show-text="false" />
-      </div>
-      <el-button type="danger" size="small" icon="VideoPause" @click="stopPlayback"> 停止 </el-button>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { useNoticeStore } from '@/store/modules/notice';
-import Speech from 'speak-tts';
-import { parseTime } from '@/utils/ruoyi';
+import { Operation, HomeFilled, Close, Medal, Box, MoreFilled, Setting } from '@element-plus/icons-vue';
 
-// 消息类型和优先级枚举
-enum MessageCategory {
-  SYSTEM = 'system',
-  ALERT = 'alert',
-  TASK = 'task',
-  NOTICE = 'notice'
-}
-
-enum MessagePriority {
-  LOW = 1,
-  MEDIUM = 2,
-  HIGH = 3,
-  CRITICAL = 4
-}
-
-interface MessageItem {
-  id: string;
-  title: string;
-  message: string;
-  category: MessageCategory;
-  priority: MessagePriority;
-  read: boolean;
-  time: string;
-  line?: string;
-}
-
-// 存储和语音相关
-const noticeStore = useNoticeStore();
-const speech = new Speech();
-
-// 播放控制状态
-const playbackState = reactive({
-  isPlaying: false,
-  currentId: '',
-  currentMessage: null as MessageItem | null,
-  progress: 0,
-  startTime: 0,
-  intervalId: null as NodeJS.Timeout | null,
-  estimatedDuration: 5000, // 默认预估时长5秒
-  isAutoPlayMode: false
-});
-
-// 页面数据
+import { ResourceTypeVO } from '@/api/mes/resourceType/types';
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+import { useRouter } from 'vue-router';
 const loading = ref(false);
-const messages = ref<any[]>([]);
-const selectedMessages = ref<MessageItem[]>([]);
-const pagination = reactive({
-  currentPage: 1,
-  pageSize: 10
+import { ResourceTypeObj, WorkCenterObj } from '@/components/common-type';
+import { ref } from 'vue';
+import { addMessage, queryWorkCenterAbnormalCallList } from '@/api/mes/message';
+
+const props = defineProps({
+  id: {
+    required: true,
+    type: String
+  }
 });
 
-// 初始化语音引擎
-const initSpeech = async () => {
-  try {
-    await speech.init({
-      volume: 0.8,
-      lang: 'zh-CN',
-      rate: 1,
-      pitch: 1,
-      voice: 'Microsoft Huihui - Chinese (Simplified, PRC)'
-    });
-  } catch (error) {
-    console.error('语音初始化失败:', error);
-    ElMessage.error('语音播报功能初始化失败');
+import WorkStationDialog from '@/views/mes/notice/abnormalCall/components/workStationDialog.vue';
+import WorkCenterDialog from '@/views/mes/workpanel/components/workCenterDialog.vue';
+import AbnormalCallDialog from '@/views/mes/notice/abnormalCall/components/abnormalCallDialog.vue';
+import SvgIcon from '@/components/SvgIcon/index.vue';
+
+const workStationRef = ref<InstanceType<typeof WorkStationDialog>>();
+const workCenterDialogRef = ref<InstanceType<typeof WorkCenterDialog>>();
+const abnormalCallDialogRef = ref<InstanceType<typeof AbnormalCallDialog>>();
+
+const podConfig = ref<{ [key: string]: any }>({});
+
+const resourceTypeList = ref<ResourceTypeVO[]>([]);
+const workStationAbnormalCallList = ref<ResourceTypeVO[]>([]);
+
+const handleSelectedWorkStation = (workStation: any) => {
+  podConfig.value.resourceType = workStation.resourceType;
+  podConfig.value.resourceTypeDesc = workStation.description;
+  saveWorkStationToLocalStorage({
+    resourceType: workStation.resourceType,
+    resourceTypeDesc: workStation.description
+  });
+  if (workStation.messageVoList && workStation.messageVoList.length > 0) {
+    openAbnormalCallDialog();
   }
 };
 
-// 加载消息
-const loadMessages = async () => {
-  try {
-    loading.value = true;
-    messages.value = noticeStore.state.notices;
-    // messages.value = messages.value.map((notice) => ({
-    //   id: notice.id,
-    //   title: notice.title || '无标题',
-    //   message: notice.message,
-    //   category: notice.category || MessageCategory.SYSTEM,
-    //   priority: notice.priority || MessagePriority.MEDIUM,
-    //   read: notice.read || false,
-    //   time: notice.time
-    // }));
-  } catch (error) {
-    console.error('加载消息失败:', error);
-    ElMessage.error('加载消息失败');
-  } finally {
-    loading.value = false;
+// 获取路由参数
+const { currentRoute } = useRouter();
+
+/** 查询异常呼叫工位列表 */
+const queryWorkCenterAbnormalCall = async () => {
+  loading.value = true;
+  const res = await queryWorkCenterAbnormalCallList({ workCenter: podConfig.value.workCenter });
+  workStationAbnormalCallList.value = res.data;
+  loading.value = false;
+};
+
+// 工位对话框
+const openWorkStationDialog = () => {
+  workStationRef.value.openDialog();
+};
+
+const workStationCallBack = (data: any) => {
+  podConfig.value.resourceType = data.resourceType;
+  podConfig.value.resourceTypeDesc = data.description;
+  saveWorkStationToLocalStorage({
+    resourceType: data.resourceType,
+    resourceTypeDesc: data.description
+  });
+};
+
+// 工作中心对话框
+const openWorkCenterDialog = () => {
+  workCenterDialogRef.value.openDialog();
+};
+const workCenterCallBack = (data: any) => {
+  podConfig.value.workCenter = data.workCenter;
+  podConfig.value.workCenterDesc = data.description;
+  saveWorkCenterToLocalStorage({
+    workCenter: data.workCenter,
+    workCenterDesc: data.description
+  });
+  queryWorkCenterAbnormalCall();
+};
+
+// 工作中心对话框
+const openAbnormalCallDialog = () => {
+  abnormalCallDialogRef.value.openDialog();
+};
+const abnormalCallCallBack = (data: any) => {
+  queryWorkCenterAbnormalCall();
+};
+
+const clearSelection = (type) => {
+  podConfig.value[type] = '';
+  switch (type) {
+    case 'workStation':
+      removeWorkStationInLocalStorage();
+      break;
+    case 'workCenter':
+      removeWorkCenterInLocalStorage();
+      break;
+  }
+};
+const findPodConfig = () => {
+  const resourceTypeObj = getWorkStationFromLocalStorage();
+  if (resourceTypeObj) {
+    const { resourceType, resourceTypeDesc } = resourceTypeObj;
+    podConfig.value.resourceType = resourceType;
+    podConfig.value.resourceTypeDesc = resourceTypeDesc;
+  }
+
+  const workCenterObj = getWorkCenterFromLocalStorage();
+  if (workCenterObj) {
+    const { workCenter, workCenterDesc } = workCenterObj;
+    podConfig.value.workCenter = workCenter;
+    podConfig.value.workCenterDesc = workCenterDesc;
   }
 };
 
-// 过滤后的消息（分页前）
-const filteredMessages = computed(() => {
-  return messages.value.filter((msg) => msg.message); // 过滤掉空消息
-  // .sort((a, b) => {
-  //   // 未读消息优先
-  //   if (a.read !== b.read) return a.read ? 1 : -1;
-  //   // 高优先级优先
-  //   if (a.priority !== b.priority) return b.priority - a.priority;
-  //   // 最新时间优先
-  //   return new Date(b.time).getTime() - new Date(a.time).getTime();
-  // });
-});
-
-// 分页后的消息
-const paginatedMessages = computed(() => {
-  const start = (pagination.currentPage - 1) * pagination.pageSize;
-  const end = start + pagination.pageSize;
-  return filteredMessages.value.slice(start, end);
-});
-
-// 播放/暂停单条消息
-const playOrPauseMessage = async (message: MessageItem) => {
-  if (playbackState.currentId === message.id && playbackState.isPlaying) {
-    await pausePlayback();
-  } else {
-    playbackState.isAutoPlayMode = false; // 设置为单条播放模式
-    await playMessage(message);
-  }
+// 工位缓存操作
+const saveWorkStationToLocalStorage = (resourceTypeObj: ResourceTypeObj) => {
+  const localResourceType = localStorage.getItem('workPanelWorkStation');
+  const preObj = JSON.parse(localResourceType || '{}');
+  const currentObj = {
+    ...preObj,
+    [currentRoute.value.fullPath]: resourceTypeObj
+  };
+  localStorage.setItem('workPanelWorkStation', JSON.stringify(currentObj));
 };
 
-// 播放消息
-const playMessage = async (message: MessageItem, repeatCount = 3) => {
-  try {
-    // 停止当前播放
-    if (playbackState.isPlaying) {
-      speech.cancel();
-    }
+const getWorkStationFromLocalStorage = () => {
+  const localResourceType = localStorage.getItem('workPanelWorkStation');
+  return localResourceType ? JSON.parse(localResourceType)[currentRoute.value.fullPath] : null;
+};
 
-    // 设置当前播放消息
-    playbackState.currentId = message.id;
-    playbackState.currentMessage = message;
-    playbackState.isPlaying = true;
+const removeWorkStationInLocalStorage = () => {
+  saveWorkStationToLocalStorage(null);
+};
 
-    // 开始进度条
-    startProgressTimer();
+// 工作中心缓存操作
+const saveWorkCenterToLocalStorage = (workCenterObj: WorkCenterObj) => {
+  const localOperation = localStorage.getItem('workPanelWorkCenter');
+  const preObj = JSON.parse(localOperation || '{}');
+  const currentObj = {
+    ...preObj,
+    [currentRoute.value.fullPath]: workCenterObj
+  };
+  localStorage.setItem('workPanelWorkCenter', JSON.stringify(currentObj));
+};
 
-    // 创建播放文本
-    const playText = `${message.title}。${message.message}`;
-    const repeatedText = Array(repeatCount).fill(playText).join('。');
+const getWorkCenterFromLocalStorage = () => {
+  const localOperation = localStorage.getItem('workPanelWorkCenter');
+  return localOperation ? JSON.parse(localOperation)[currentRoute.value.fullPath] : null;
+};
 
-    // 标记消息为已读
-    await markAsRead(message.id);
+const removeWorkCenterInLocalStorage = () => {
+  saveWorkCenterToLocalStorage(null);
+};
 
-    // 开始播放
-    await speech.speak({
-      text: repeatedText,
-      listeners: {
-        onstart: () => {
-          playbackState.startTime = Date.now();
-          // 根据文本长度估计播放时长
-          playbackState.estimatedDuration = Math.max(5000, playText.length * 1000);
-        },
-        onend: () => {
-          playbackState.progress = 100;
-          // 如果是自动播放模式，才播放下一条
-          if (playbackState.isAutoPlayMode) {
-            playNextMessage();
-          } else {
-            resetPlaybackState();
-          }
-        },
-        onerror: (e) => {
-          console.error('播报出错:', e);
-          resetPlaybackState();
-          ElMessage.error('消息播报失败');
-        }
+// 物料呼叫确认
+const confirmMaterialCall = () => {
+  if (!podConfig.value.workCenter) {
+    proxy.$modal.msgWarning('请选择工作中心');
+    return;
+  }
+  if (!podConfig.value.resourceType) {
+    proxy.$modal.msgWarning('请选择工位');
+    return;
+  }
+  ElMessageBox({
+    title: '物料呼叫',
+    message: h('div', null, [
+      h('p', null, [
+        h('span', { innerHTML: '线体：', style: 'font-size: 18px; line-height: 40px;' }), // 使用 innerHTML 确保 HTML 实体解析
+        h('span', { style: 'color: #3b82f6; font-size: 18px; font-weight: bold' }, podConfig.value.workCenter)
+      ]),
+      h('p', null, [
+        h('span', { innerHTML: '岗位：', style: 'font-size: 18px; line-height: 40px;' }), // 使用 innerHTML 和 HTML 实体
+        h('span', { style: 'color: #3b82f6; font-size: 18px;font-weight: bold' }, `${podConfig.value.resourceType}(${podConfig.value.resourceTypeDesc})`)
+      ])
+    ]),
+    center: true,
+    showCancelButton: true,
+    showConfirmButton: true,
+    showClose: true,
+    closeOnClickModal: false, // 点击遮罩层不关闭
+    closeOnPressEscape: false, // 按ESC键不关闭
+    confirmButtonText: '呼叫',
+    cancelButtonText: '取消',
+    dangerouslyUseHTMLString: true, // 必须设置为 true
+    beforeClose: (action, instance, done) => {
+      if (action === 'confirm') {
+        instance.confirmButtonLoading = true;
+        handleMaterialCall().finally(() => {
+          instance.confirmButtonLoading = false;
+          done();
+        });
+      } else {
+        done();
       }
-    });
-  } catch (error) {
-    console.error('播放失败:', error);
-    resetPlaybackState();
-    ElMessage.error('消息播报失败');
-  }
-};
-
-// 暂停播放
-const pausePlayback = async () => {
-  try {
-    await speech.pause();
-    playbackState.isPlaying = false;
-    stopProgressTimer();
-  } catch (error) {
-    console.error('暂停失败:', error);
-    ElMessage.error('暂停播报失败');
-  }
-};
-
-// 恢复播放
-const resumePlayback = async () => {
-  if (!playbackState.currentMessage) return;
-
-  try {
-    await speech.resume();
-    playbackState.isPlaying = true;
-    startProgressTimer();
-  } catch (error) {
-    console.error('恢复失败:', error);
-    ElMessage.error('恢复播报失败');
-  }
-};
-
-// 停止播放
-const stopPlayback = async () => {
-  try {
-    await speech.cancel();
-    resetPlaybackState();
-  } catch (error) {
-    console.error('停止失败:', error);
-    ElMessage.error('停止播报失败');
-  }
-};
-
-// 播放下一条消息
-const playNextMessage = async () => {
-  if (!playbackState.isAutoPlayMode) return;
-
-  const currentIndex = filteredMessages.value.findIndex((msg) => msg.id === playbackState.currentId);
-  if (currentIndex >= 0 && currentIndex < filteredMessages.value.length - 1) {
-    const nextMessage = filteredMessages.value[currentIndex + 1];
-    await playMessage(nextMessage);
-  } else {
-    await stopPlayback();
-    ElMessage.success('所有消息已播报完毕');
-  }
-  R;
-};
-
-// 开始进度计时器
-const startProgressTimer = () => {
-  stopProgressTimer();
-  playbackState.progress = 0;
-  playbackState.startTime = Date.now();
-
-  playbackState.intervalId = setInterval(() => {
-    const elapsed = Date.now() - playbackState.startTime;
-    playbackState.progress = Math.min((elapsed / playbackState.estimatedDuration) * 100, 100);
-  }, 100);
-};
-
-// 停止进度计时器
-const stopProgressTimer = () => {
-  if (playbackState.intervalId) {
-    clearInterval(playbackState.intervalId);
-    playbackState.intervalId = null;
-  }
-  playbackState.progress = 0;
-};
-
-// 重置播放状态
-const resetPlaybackState = () => {
-  playbackState.isPlaying = false;
-  playbackState.currentId = '';
-  playbackState.currentMessage = null;
-  stopProgressTimer();
-};
-
-// 标记为已读
-const markAsRead = async (id: string) => {
-  try {
-    // 更新本地状态
-    const index = messages.value.findIndex((msg) => msg.id === id);
-    if (index >= 0 && !messages.value[index].read) {
-      messages.value[index].read = true;
-      // 同步到服务器
-      await noticeStore.markAsRead(id);
     }
-  } catch (error) {
-    console.error('标记已读失败:', error);
-    ElMessage.error('标记已读失败');
-  }
+  }).catch(() => {
+    // 取消操作
+  });
 };
 
-// 删除单条消息
-const deleteMessage = async (id: string) => {
-  try {
-    await ElMessageBox.confirm('确定要删除这条消息吗?', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    });
-
-    if (playbackState.currentId === id) {
-      await stopPlayback();
+// 设备呼叫确认
+const confirmEquipmentCall = () => {
+  ElMessageBox({
+    title: '设备呼叫',
+    message: h('div', null, [
+      h('p', null, [
+        h('span', { innerHTML: '线体：', style: 'font-size: 18px; line-height: 40px;' }), // 使用 innerHTML 确保 HTML 实体解析
+        h('span', { style: 'color: #f59e0b; font-size: 18px;font-weight: bold' }, podConfig.value.workCenter)
+      ]),
+      h('p', null, [
+        h('span', { innerHTML: '岗位：', style: 'font-size: 18px; line-height: 40px;' }), // 使用 innerHTML 和 HTML 实体
+        h('span', { style: 'color: #f59e0b;font-size: 18px; font-weight: bold' }, `${podConfig.value.resourceType}(${podConfig.value.resourceTypeDesc})`)
+      ])
+    ]),
+    center: true,
+    showCancelButton: true,
+    showConfirmButton: true,
+    showClose: true,
+    closeOnClickModal: false, // 点击遮罩层不关闭
+    closeOnPressEscape: false, // 按ESC键不关闭
+    confirmButtonText: '呼叫',
+    cancelButtonText: '取消',
+    dangerouslyUseHTMLString: true, // 必须设置为 true
+    beforeClose: (action, instance, done) => {
+      if (action === 'confirm') {
+        instance.confirmButtonLoading = true;
+        handleEquipmentCall().finally(() => {
+          instance.confirmButtonLoading = false;
+          done();
+        });
+      } else {
+        done();
+      }
     }
-
-    await noticeStore.removeNotice(id);
-    messages.value = messages.value.filter((msg) => msg.id !== id);
-
-    // 如果删除的是选中消息，从选中列表中移除
-    selectedMessages.value = selectedMessages.value.filter((msg) => msg.id !== id);
-
-    ElMessage.success('删除成功');
-  } catch (error) {
-    console.error('删除失败:', error);
-  }
+  }).catch(() => {
+    // 取消操作
+  });
 };
 
-// 批量删除消息
-const batchDeleteMessages = async () => {
-  if (selectedMessages.value.length === 0) return;
-
-  try {
-    await ElMessageBox.confirm(`确定要删除选中的 ${selectedMessages.value.length} 条消息吗?`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    });
-
-    const ids = selectedMessages.value.map((msg) => msg.id);
-
-    if (ids.includes(playbackState.currentId)) {
-      await stopPlayback();
+// 品质呼叫确认
+const confirmQualityCall = () => {
+  ElMessageBox({
+    title: '品质呼叫',
+    message: h('div', null, [
+      h('p', null, [
+        h('span', { innerHTML: '线体：', style: 'font-size: 18px; line-height: 40px;' }), // 使用 innerHTML 确保 HTML 实体解析
+        h('span', { style: 'color: #ef4444;font-size: 18px; font-weight: bold' }, podConfig.value.workCenter)
+      ]),
+      h('p', null, [
+        h('span', { innerHTML: '岗位：', style: 'font-size: 18px; line-height: 40px;' }), // 使用 innerHTML 和 HTML 实体
+        h('span', { style: 'color: #ef4444; font-size: 18px;font-weight: bold' }, `${podConfig.value.resourceType}(${podConfig.value.resourceTypeDesc})`)
+      ])
+    ]),
+    center: true,
+    showCancelButton: true,
+    showConfirmButton: true,
+    showClose: true,
+    closeOnClickModal: false, // 点击遮罩层不关闭
+    closeOnPressEscape: false, // 按ESC键不关闭
+    confirmButtonText: '呼叫',
+    cancelButtonText: '取消',
+    dangerouslyUseHTMLString: true, // 必须设置为 true
+    beforeClose: (action, instance, done) => {
+      if (action === 'confirm') {
+        instance.confirmButtonLoading = true;
+        handleQualityCall().finally(() => {
+          instance.confirmButtonLoading = false;
+          done();
+        });
+      } else {
+        done();
+      }
     }
-
-    await noticeStore.removeNotices(ids);
-    messages.value = messages.value.filter((msg) => !ids.includes(msg.id));
-    selectedMessages.value = [];
-    ElMessage.success('删除成功');
-  } catch (error) {
-    console.error('批量删除失败:', error);
-  }
+  }).catch(() => {
+    // 取消操作
+  });
 };
 
-// 表格选择变化
-const handleSelectionChange = (selection: MessageItem[]) => {
-  selectedMessages.value = selection;
-};
-
-// 开始/暂停自动播报
-const togglePlayback = async () => {
-  if (playbackState.isPlaying) {
-    await stopPlayback();
-  } else {
-    if (filteredMessages.value.length > 0) {
-      playbackState.isAutoPlayMode = true; // 设置为自动播放模式
-      await playMessage(filteredMessages.value[0]);
-    } else {
-      ElMessage.info('没有可播报的消息');
+// 其他呼叫确认
+const confirmOtherCall = () => {
+  ElMessageBox({
+    title: '其他呼叫',
+    message: h('div', null, [
+      h('p', null, [
+        h('span', { innerHTML: '线体：', style: 'font-size: 18px; line-height: 40px;' }), // 使用 innerHTML 确保 HTML 实体解析
+        h('span', { style: 'color: #8b5cf6; font-size: 18px;font-weight: bold' }, podConfig.value.workCenter)
+      ]),
+      h('p', null, [
+        h('span', { innerHTML: '岗位：', style: 'font-size: 18px; line-height: 40px;' }), // 使用 innerHTML 和 HTML 实体
+        h('span', { style: 'color: #8b5cf6;font-size: 18px; font-weight: bold' }, `${podConfig.value.resourceType}(${podConfig.value.resourceTypeDesc})`)
+      ])
+    ]),
+    center: true,
+    showCancelButton: true,
+    showConfirmButton: true,
+    showClose: true,
+    closeOnClickModal: false, // 点击遮罩层不关闭
+    closeOnPressEscape: false, // 按ESC键不关闭
+    confirmButtonText: '呼叫',
+    cancelButtonText: '取消',
+    dangerouslyUseHTMLString: true, // 必须设置为 true
+    beforeClose: (action, instance, done) => {
+      if (action === 'confirm') {
+        instance.confirmButtonLoading = true;
+        handleOtherCall().finally(() => {
+          instance.confirmButtonLoading = false;
+          done();
+        });
+      } else {
+        done();
+      }
     }
-  }
+  }).catch(() => {
+    // 取消操作
+  });
 };
 
-// 辅助函数：获取分类名称和样式
-const getCategoryName = (category: MessageCategory) => {
-  const names = {
-    [MessageCategory.SYSTEM]: '系统',
-    [MessageCategory.ALERT]: '警报',
-    [MessageCategory.TASK]: '任务',
-    [MessageCategory.NOTICE]: '通知'
-  };
-  return names[category] || '未知';
+const handleMaterialCall = async () => {
+  await addMessage({
+    workCenter: podConfig.value.workCenter,
+    workStation: podConfig.value.resourceType,
+    workStationDesc: podConfig.value.resourceTypeDesc,
+    title: '物料呼叫',
+    content: '线体' + podConfig.value.workCenter + '在工作岗位' + podConfig.value.resourceTypeDesc + '呼叫物料问题',
+    messageType: 1,
+    priority: 2,
+    status: 1
+  });
+  await queryWorkCenterAbnormalCall();
 };
 
-const getCategoryTagType = (category: MessageCategory) => {
-  const types = {
-    [MessageCategory.SYSTEM]: '',
-    [MessageCategory.ALERT]: 'danger',
-    [MessageCategory.TASK]: 'warning',
-    [MessageCategory.NOTICE]: 'success'
-  };
-  return types[category] || '';
+const handleEquipmentCall = async () => {
+  await addMessage({
+    workCenter: podConfig.value.workCenter,
+    workStation: podConfig.value.resourceType,
+    workStationDesc: podConfig.value.resourceTypeDesc,
+    title: '设备呼叫',
+    content: '线体' + podConfig.value.workCenter + '在工作岗位' + podConfig.value.resourceTypeDesc + '呼叫设备问题',
+    messageType: 1,
+    priority: 3,
+    status: 1
+  });
+  await queryWorkCenterAbnormalCall();
 };
 
-// 辅助函数：获取优先级名称和样式
-const getPriorityName = (priority: MessagePriority) => {
-  const names = {
-    [MessagePriority.LOW]: '低',
-    [MessagePriority.MEDIUM]: '中',
-    [MessagePriority.HIGH]: '高',
-    [MessagePriority.CRITICAL]: '紧急'
-  };
-  return names[priority] || '未知';
+const handleQualityCall = async () => {
+  await addMessage({
+    workCenter: podConfig.value.workCenter,
+    workStation: podConfig.value.resourceType,
+    workStationDesc: podConfig.value.resourceTypeDesc,
+    title: '品质呼叫',
+    content: '线体' + podConfig.value.workCenter + '在工作岗位' + podConfig.value.resourceTypeDesc + '呼叫品质问题',
+    messageType: 1,
+    priority: 4,
+    status: 1
+  });
+  await queryWorkCenterAbnormalCall();
 };
 
-const getPriorityTagType = (priority: MessagePriority) => {
-  const types = {
-    [MessagePriority.LOW]: 'info',
-    [MessagePriority.MEDIUM]: '',
-    [MessagePriority.HIGH]: 'warning',
-    [MessagePriority.CRITICAL]: 'danger'
-  };
-  return types[priority] || '';
+const handleOtherCall = async () => {
+  await addMessage({
+    workCenter: podConfig.value.workCenter,
+    workStation: podConfig.value.resourceType,
+    workStationDesc: podConfig.value.resourceTypeDesc,
+    title: '其他呼叫',
+    content: '线体' + podConfig.value.workCenter + '在工作岗位' + podConfig.value.resourceTypeDesc + '呼叫生产问题',
+    messageType: 1,
+    priority: 1,
+    status: 1
+  });
+  await queryWorkCenterAbnormalCall();
 };
 
-// 添加行样式函数
-const tableRowClassName = ({ row }) => {
-  return row.id === playbackState.currentId ? 'highlight-row' : '';
+const handleCancel = () => {
+  console.log('取消');
+  // 处理取消逻辑
 };
 
-// 点击行处理
-const handleRowClick = (row: MessageItem) => {
-  if (playbackState.currentId === row.id) {
-    stopPlayback();
-  } else {
-    playbackState.isAutoPlayMode = false;
-    playMessage(row);
-  }
-};
-
-// 初始化
-onMounted(async () => {
-  await initSpeech();
-  await loadMessages();
-});
-
-// 清理
-onUnmounted(() => {
-  stopPlayback();
-  speech.cancel();
+onMounted(() => {
+  findPodConfig();
+  queryWorkCenterAbnormalCall();
 });
 </script>
 
 <style scoped>
-.message-container {
-  padding: 20px;
+.white-text {
+  color: white !important;
 }
 
-.message-card {
-  margin-bottom: 20px;
+:deep(.el-segmented-item) {
+  padding: 12px 16px;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.dashed-blue-btn {
+  border: 1px dashed #3b82f6 !important;
+  color: #3b82f6 !important;
+  background-color: rgba(59, 130, 246, 0.05) !important;
 }
 
-.header-actions {
-  display: flex;
-  gap: 10px;
+.dashed-blue-btn:hover {
+  border-color: #2563eb !important;
+  color: #2563eb !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
 }
 
-.pagination-container {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.playback-status {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: var(--el-bg-color);
-  padding: 10px 20px;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+/**异常呼叫 */
+/* 基础按钮样式 */
+.call-btn {
+  width: 120px;
+  height: 50px;
+  border-radius: 25px !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: visible;
   display: flex;
   align-items: center;
-  gap: 20px;
-  z-index: 2000;
+  justify-content: center;
+  font-weight: 500;
+  border: none !important;
 }
 
-.status-content {
+/* 指示条样式 */
+.indicator-bar {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 30px;
+  background: currentColor;
+  border-radius: 2px;
+  opacity: 0.8;
+  transition: all 0.3s ease;
+}
+
+/* 悬停效果 */
+.call-btn:hover {
+  transform: translate(2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.call-btn:hover .indicator-bar {
+  right: -8px;
+  opacity: 1;
+}
+
+/* 各按钮颜色配置 */
+.material-call {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  color: white !important;
+}
+
+.material-call:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; /* 深蓝 */
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.25);
+}
+
+.equipment-call {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: white !important;
+}
+
+.equipment-call:hover {
+  background: linear-gradient(135deg, #d97706, #b45309) !important; /* 深橙 */
+  box-shadow: 0 6px 12px rgba(245, 158, 11, 0.25);
+}
+
+.quality-call {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  color: white !important;
+}
+
+.quality-call:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c) !important; /* 深红 */
+  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.25);
+}
+
+.other-call {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
+  color: white !important;
+}
+
+.other-call:hover {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+}
+
+.cancel-call {
+  background: linear-gradient(135deg, #94a3b8, #64748b) !important;
+  color: white !important;
+}
+
+.cancel-call:hover {
+  background: linear-gradient(135deg, #64748b, #475569) !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .call-btn {
+    width: 100px;
+    height: 44px;
+    font-size: 14px;
+  }
+
+  .indicator-bar {
+    height: 24px;
+  }
+}
+
+.text-white {
+  color: white !important;
+}
+
+.work-order-card {
+  background-color: #f8fafc;
+  border-radius: 8px;
+}
+
+.process-steps {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 300px;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-start;
+  align-items: stretch; /* 确保所有卡片高度一致 */
 }
 
-.el-progress {
-  margin-top: 5px;
+.process-step {
+  /* 移除固定宽度 */
+  width: auto;
+  min-width: 240px; /* 设置最小宽度 */
+  flex: 1; /* 允许卡片弹性增长 */
+  max-width: calc(20%); /* 仍然限制最大宽度 */
+
+  max-height: 150px;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #556682;
+  border: 1px solid #475569;
+  box-sizing: border-box;
+  flex-grow: 0;
+  flex-shrink: 0;
 }
 
-/* 高亮行样式 */
-:deep(.el-table .highlight-row) {
-  background-color: var(--el-color-primary-light-9);
-  transition: background-color 0.3s ease;
-  animation: pulse 2s infinite;
+.step-name {
+  white-space: pre-line; /* 保留换行符并正常换行 */
+  overflow: hidden;
+  text-overflow: ellipsis; /* 文字过长时显示省略号 */
+  color: white !important;
+  font-size: 20px;
+  width: 100%; /* 确保宽度填充 */
 }
 
-/* 脉冲动画效果 */
+/*
+.process-step:hover {
+  border-color: #cbd5e1;
+  background-color: #f1f5f9;
+}
+*/
+
+.step-selected {
+  border-color: #409eff;
+  background-color: #0b317e;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.step-selected .step-index {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.step-index {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  font-weight: 500;
+  color: #64748b;
+  background-color: #e2e8f0;
+  font-size: 12px;
+}
+
+.step-content {
+  flex: 1;
+}
+
+.step-name {
+  text-align: center;
+  font-weight: 500;
+  color: #1e293b;
+  margin-bottom: 2px;
+}
+
+.step-status {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* 状态颜色 */
+.step-status[status='completed'] {
+  color: #10b981;
+}
+
+.step-status[status='processing'] {
+  color: #3b82f6;
+}
+
+.step-status[status='pending'] {
+  color: #64748b;
+}
+
+/* 异常状态样式 */
+.step-warning {
+  border: 2px solid #f56c6c;
+  animation: pulse 1.5s infinite ease-in-out;
+  position: relative;
+  background: linear-gradient(45deg, #b91c1c, #ef4444) !important;
+}
+
+.step-warning .step-index {
+  background-color: #ff0b4d;
+  color: white;
+  animation: blink 1.5s infinite;
+}
+
+.warning-icon {
+  position: relative;
+  font-size: 16px;
+  animation: blink 1.5s infinite;
+}
+
 @keyframes pulse {
   0% {
-    background-color: var(--el-color-primary-light-9);
+    box-shadow: 0 0 0 0 rgba(245, 108, 108, 0.7);
+    transform: scale(1);
   }
   50% {
-    background-color: var(--el-color-primary-light-7);
+    box-shadow: 0 0 0 8px rgba(245, 108, 108, 0);
+    transform: scale(1.02);
   }
   100% {
-    background-color: var(--el-color-primary-light-9);
+    box-shadow: 0 0 0 0 rgba(245, 108, 108, 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .step-warning {
+    border-width: 1px;
+  }
+
+  .warning-icon {
+    font-size: 14px;
   }
 }
 </style>

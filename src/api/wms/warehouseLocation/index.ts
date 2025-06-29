@@ -1,14 +1,26 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
 import { WarehouseLocationVO, WarehouseLocationForm, WarehouseLocationQuery } from '@/api/wms/warehouseLocation/types';
-
 /**
  * 查询仓位信息列表
  * @param query
  * @returns {*}
  */
 
-export const listWarehouseLocation = (query?: WarehouseLocationQuery): AxiosPromise<WarehouseLocationVO[]> => {
+export const pageWarehouseLocation = (query?: WarehouseLocationQuery): AxiosPromise<WarehouseLocationVO[]> => {
+  return request({
+    url: '/wms/warehouseLocation/page',
+    method: 'get',
+    params: query
+  });
+};
+/**
+ * 查询仓位信息列表
+ * @param query
+ * @returns {*}
+ */
+
+export const listWarehouseLocation = (query?: any): AxiosPromise<WarehouseLocationVO[]> => {
   return request({
     url: '/wms/warehouseLocation/list',
     method: 'get',

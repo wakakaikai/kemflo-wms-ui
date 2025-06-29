@@ -38,13 +38,13 @@
       </el-button>
 
       <!-- 取消按钮 (使用独特灰色) -->
-      <el-button class="call-btn cancel-call relative bg-gray-500 hover:bg-gray-600 text-white" @click="handleCancel">
+<!--      <el-button class="call-btn cancel-call relative bg-gray-500 hover:bg-gray-600 text-white" @click="handleCancel">
         <el-icon class="mr-1">
           <Close />
         </el-icon>
         取消
         <div class="indicator-bar"></div>
-      </el-button>
+      </el-button>-->
     </div>
   </div>
 </template>

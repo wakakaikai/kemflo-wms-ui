@@ -25,6 +25,14 @@
       </template>
 
       <el-table ref="tableRef" v-loading="loading" :data="palletList" style="width: 100%" border highlight-current-row @current-change="handleSelectionChange">
+        <!-- 单选列（通过高亮行实现） -->
+        <el-table-column width="55">
+          <template #default="scope">
+            <el-radio v-model="selectedRow.id" :label="scope.row?.id" class="radio-no-label">
+              <span class="el-radio__label"></span>
+            </el-radio>
+          </template>
+        </el-table-column>
         <el-table-column label="栈板编号" align="center" prop="palletCode" />
         <el-table-column label="栈板描述" align="center" prop="description" />
         <el-table-column label="状态" align="center" prop="status">
@@ -32,8 +40,6 @@
             <dict-tag :options="wms_pallet_status" :value="scope.row.status" />
           </template>
         </el-table-column>
-        <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
-        <el-table-column label="备注" align="center" prop="remark" />
       </el-table>
 
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
@@ -49,8 +55,11 @@
 
 <script setup name="PalletDialog" lang="ts">
 import useDialog from '@/hooks/useDialog';
-import { listPallet } from '@/api/wms/pallet';
-import { PalletVO, PalletQuery, PalletForm } from '@/api/wms/pallet/types';
+import { pagePallet } from '@/api/wms/pallet';
+import { PalletForm, PalletQuery, PalletVO } from '@/api/wms/pallet/types';
+import { ref } from 'vue';
+import { WorkOrderForm } from '@/api/wms/workOrder/types';
+
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_pallet_status } = toRefs<any>(proxy?.useDict('wms_pallet_status'));
 
@@ -92,11 +101,11 @@ const data = reactive<PageData<PalletForm, PalletQuery>>({
 });
 
 const { queryParams, form } = toRefs(data);
-
 /** 查询栈板信息列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await listPallet(queryParams.value);
+  queryParams.value.status = 0;
+  const res = await pagePallet(queryParams.value);
   palletList.value = res.rows;
   total.value = res.total;
   loading.value = false;
@@ -117,6 +126,8 @@ const reset = () => {
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
+  selectedRow.value = initFormData;
+  selectedRow.value.id = '';
   getList();
 };
 
@@ -127,9 +138,9 @@ const resetQuery = () => {
 };
 
 /** 多选框选中数据 */
-const selectedRow = ref(null);
+const selectedRow = ref<PalletForm>({});
 const handleSelectionChange = (val: any) => {
-  selectedRow.value = val;
+  selectedRow.value = val || {};
 };
 
 /** 提交按钮 */
@@ -138,12 +149,23 @@ const submitForm = () => {
   closeDialog();
 };
 
-onMounted(() => {
-  getList();
-});
+onMounted(() => {});
 
 defineExpose({
   openDialog,
-  closeDialog
+  closeDialog,
+  handleQuery
 });
 </script>
+
+<style lang="scss" scoped>
+.radio-no-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: -12px;
+  .el-radio__label {
+    display: none;
+  }
+}
+</style>

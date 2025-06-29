@@ -244,7 +244,7 @@ export const dynamicRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: 'index/:warehouseLocateIds(\\d+)',
-        component: () => import('@/views/wms/warehouseLocation/index'),
+        component: () => import('@/views/wms/warehouseLocation/index.vue'),
         name: 'storage',
         meta: { title: '库区管理' }
       }
@@ -259,7 +259,7 @@ export const dynamicRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: 'index/:warehouseLocateIds(\\d+)',
-        component: () => import('@/views/wms/warehouseLocation/index'),
+        component: () => import('@/views/wms/warehouseLocation/index.vue'),
         name: 'shelf',
         meta: { title: '货架管理' }
       }
@@ -274,24 +274,9 @@ export const dynamicRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: 'index/:warehouseLocateIds(\\d+)',
-        component: () => import('@/views/wms/warehouseLocation/index'),
+        component: () => import('@/views/wms/warehouseLocation/index.vue'),
         name: 'location',
         meta: { title: '库位管理' }
-      }
-    ]
-  },
-  {
-    path: '/receiptOrder/wms/pallet',
-    component: Layout,
-    // hidden: true,  // 如果父路由不需要显示在菜单，可以保留
-    permissions: ['wms:palletInventoryDetail:query'],
-    children: [
-      {
-        path: 'detail/:palletCode',
-        component: () => import('@/views/wms/palletInventoryDetail/index.vue'),
-        name: 'palletInventoryDetail',
-        meta: { title: '栈板库存明细' },
-        props: true
       }
     ]
   }

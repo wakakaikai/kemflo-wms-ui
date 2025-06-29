@@ -21,18 +21,18 @@
               </el-select>
             </el-form-item>
             <el-form-item label="允许产品混放" prop="productMixing">
-              <el-select v-model="queryParams.productMixing" placeholder="请选择是否允许批次混放" clearable >
-                <el-option v-for="dict in sys_yes_no" :key="dict.value" :label="dict.label" :value="dict.value"/>
+              <el-select v-model="queryParams.productMixing" placeholder="请选择是否允许批次混放" clearable>
+                <el-option v-for="dict in sys_yes_no" :key="dict.value" :label="dict.label" :value="dict.value" />
               </el-select>
             </el-form-item>
             <el-form-item label="允许批次混放" prop="batchMixing">
-              <el-select v-model="queryParams.batchMixing" placeholder="请选择是否允许批次混放" clearable >
-                <el-option v-for="dict in sys_yes_no" :key="dict.value" :label="dict.label" :value="dict.value"/>
+              <el-select v-model="queryParams.batchMixing" placeholder="请选择是否允许批次混放" clearable>
+                <el-option v-for="dict in sys_yes_no" :key="dict.value" :label="dict.label" :value="dict.value" />
               </el-select>
             </el-form-item>
             <el-form-item label="是否启用" prop="enableFlag">
-              <el-select v-model="queryParams.enableFlag" placeholder="请选择是否允许批次混放" clearable >
-                <el-option v-for="dict in sys_yes_no" :key="dict.value" :label="dict.label" :value="dict.value"/>
+              <el-select v-model="queryParams.enableFlag" placeholder="请选择是否允许批次混放" clearable>
+                <el-option v-for="dict in sys_yes_no" :key="dict.value" :label="dict.label" :value="dict.value" />
               </el-select>
             </el-form-item>
 
@@ -74,7 +74,7 @@
 
         <el-table-column label="编码" align="left" prop="code" />
         <el-table-column label="名称" align="left" prop="name" width="200" />
-        <el-table-column label="库位条码" align="left" prop="barcode" width="140"/>
+        <el-table-column label="库位条码" align="left" prop="barcode" width="140" />
         <el-table-column label="显示顺序" align="center" prop="orderNum" />
         <el-table-column label="层级" align="center" prop="level">
           <template #default="scope">
@@ -190,13 +190,11 @@
 </template>
 
 <script setup name="WarehouseLocation" lang="ts">
-import { listWarehouseLocation, getWarehouseLocation, delWarehouseLocation, addWarehouseLocation, updateWarehouseLocation } from '@/api/wms/warehouseLocation';
+import { pageWarehouseLocation, getWarehouseLocation, delWarehouseLocation, addWarehouseLocation, updateWarehouseLocation } from '@/api/wms/warehouseLocation';
 import { WarehouseLocationVO, WarehouseLocationQuery, WarehouseLocationForm } from '@/api/wms/warehouseLocation/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_warehouse_level, wms_warehouse_status, wms_warehouse_type, sys_yes_no } = toRefs<any>(
-  proxy?.useDict('wms_warehouse_level', 'wms_warehouse_status', 'wms_warehouse_type', 'sys_yes_no')
-);
+const { wms_warehouse_level, wms_warehouse_status, wms_warehouse_type, sys_yes_no } = toRefs<any>(proxy?.useDict('wms_warehouse_level', 'wms_warehouse_status', 'wms_warehouse_type', 'sys_yes_no'));
 const route = useRoute();
 const warehouseLocationList = ref<WarehouseLocationVO[]>([]);
 const buttonLoading = ref(false);
@@ -282,7 +280,7 @@ const { queryParams, form, rules } = toRefs(data);
 /** 查询仓位信息列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await listWarehouseLocation(queryParams.value);
+  const res = await pageWarehouseLocation(queryParams.value);
   warehouseLocationList.value = res.rows;
   total.value = res.total;
   loading.value = false;
@@ -323,7 +321,7 @@ const handleSelectionChange = (selection: WarehouseLocationVO[]) => {
 const handleAdd = () => {
   reset();
   getRouterParams();
-  console.log(form.value)
+  console.log(form.value);
   dialog.visible = true;
   dialog.title = '添加仓位信息';
 };
