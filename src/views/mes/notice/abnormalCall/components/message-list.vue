@@ -62,13 +62,25 @@
               {{ newMessageAutoPlayVoice ? '停止监听新消息' : '监听新消息自动播报' }}
             </el-button>
           </el-col>
+          <el-col :span="1.5" style="float: right">
+            <el-button :type="loopPlayback.enabled ? 'danger' : 'info'" :icon="loopPlayback.enabled ? 'VideoPause' : 'VideoPlay'" @click="toggleLoopPlayback">
+              {{ loopPlayback.enabled ? '停止自动循环播报' : '开启自动循环播报' }}
+            </el-button>
+          </el-col>
           <!--          <el-col :span="1.5">
             <el-button type="danger" icon="Delete" :disabled="selectedMessages.length === 0" @click="batchDeleteMessages"> 批量删除 </el-button>
           </el-col>-->
+          <!-- 循环次数设置 -->
+          <div style="margin-left: auto; float: right">
+            <el-col :span="1.5">
+              <span style="margin-right: 10px; font-size: 14px; color: #606266">整体循环次数：</span>
+              <el-input-number v-model="loopPlayback.maxLoops" :min="-1" :max="100" style="width: 100px" controls-position="right" />
+            </el-col>
+          </div>
           <!-- 循环次数输入框 -->
           <div style="margin-left: auto; float: right">
             <el-col :span="1.5">
-              <span style="margin-right: 10px; font-size: 14px; color: #606266">循环播放次数：</span>
+              <span style="margin-right: 10px; font-size: 14px; color: #606266">单条消息播放次数：</span>
               <el-input-number v-model="playRepeatCount" :min="1" :max="10" style="width: 100px" controls-position="right" />
             </el-col>
           </div>
@@ -321,9 +333,17 @@ interface MessageItem {
   time: string;
   line?: string;
 }
+// 消息循环播报状态
+const loopPlayback = reactive({
+  enabled: false, // 是否开启循环
+  queue: [] as MessageItem[], // 循环播放队列
+  currentIndex: 0, // 当前播放索引
+  loopCount: 0, // 已循环次数
+  maxLoops: -1 // 最大循环次数(-1表示无限循环)
+});
 
 // 添加循环次数变量
-const playRepeatCount = ref(3); // 默认3次
+const playRepeatCount = ref(1); // 默认3次
 // 手动播放队列
 const playManualQueue = ref<MessageItem[]>([]);
 // 新消息播放队列
@@ -388,7 +408,8 @@ const speech = new Speech();
 // 定义播放模式枚举
 enum PlayMode {
   MANUAL = 'manual', // 手动选择或从头播放
-  NEW_MESSAGE = 'new' // 监听新消息
+  NEW_MESSAGE = 'new', // 监听新消息
+  LOOP = 'loop' // 循环播报模式
 }
 // 播放控制状态
 const playbackState = reactive({
@@ -579,6 +600,9 @@ const playMessage = async (message: MessageItem, repeatCount = playRepeatCount.v
                 resetPlaybackState();
               }
               break;
+            case PlayMode.LOOP: // 新增循环模式处理
+              playNextLoopMessage();
+              break;
             default:
               resetPlaybackState();
           }
@@ -669,12 +693,19 @@ const stopPlayback = async () => {
   try {
     await speech.cancel();
     resetPlaybackState();
+
+    // 如果当前是循环模式，确保完全重置
+    if (playbackState.playMode === PlayMode.LOOP) {
+      loopPlayback.enabled = false;
+      loopPlayback.queue = [];
+      loopPlayback.currentIndex = 0;
+      loopPlayback.loopCount = 0;
+    }
   } catch (error) {
     console.error('停止失败:', error);
     ElMessage.error('停止播报失败');
   }
 };
-
 // 开始进度计时器
 const startProgressTimer = () => {
   stopProgressTimer();
@@ -875,37 +906,140 @@ const toggleNewMessageAutoPlayVoice = () => {
   }
 };
 
-// 从队列中播放消息
-const playFromQueue = async () => {
-  if (playQueue.value.length === 0) {
-    isPlayingQueue.value = false;
+// 开启/关闭循环播报
+const toggleLoopPlayback = async () => {
+  loopPlayback.enabled = !loopPlayback.enabled;
+
+  if (loopPlayback.enabled) {
+    // 开启循环播报
+    await startLoopPlayback();
+  } else {
+    // 关闭循环播报
+    await stopLoopPlayback();
+  }
+};
+
+// 开始循环播报
+const startLoopPlayback = async () => {
+  // 初始化循环队列，按优先级排序
+  loopPlayback.queue = [...filteredMessages.value]
+    .filter((msg) => msg.messageStatus === 1) // 只播放已发送的消息
+    .sort((a, b) => {
+      // 优先级排序
+      if (a.priority !== b.priority) return b.priority - a.priority;
+      // 时间排序
+      return new Date(b.time).getTime() - new Date(a.time).getTime();
+    });
+
+  if (loopPlayback.queue.length === 0) {
+    // ElMessage.warning('没有可播放的消息');
+    loopPlayback.enabled = true;
+    await stopLoopPlayback(); // 确保完全停止
     return;
   }
 
-  isPlayingQueue.value = true;
-  const nextMessage = playQueue.value.shift(); // 取出队列第一个消息
-  if (nextMessage) {
-    await playMessage(nextMessage);
+  loopPlayback.currentIndex = 0;
+  loopPlayback.loopCount = 0;
+
+  // 设置播放模式
+  playbackState.playMode = PlayMode.LOOP;
+
+  // 开始播放第一条消息
+  await playMessage(loopPlayback.queue[0]);
+};
+
+// 停止循环播报
+const stopLoopPlayback = async () => {
+  loopPlayback.queue = [];
+  loopPlayback.currentIndex = 0;
+  loopPlayback.loopCount = 0;
+  await stopPlayback(); // 调用通用停止方法
+};
+
+// 播放下一条循环消息
+const playNextLoopMessage = async () => {
+  if (!loopPlayback.enabled) return;
+
+  loopPlayback.currentIndex++;
+
+  // 检查是否到达队列末尾
+  if (loopPlayback.currentIndex >= loopPlayback.queue.length) {
+    loopPlayback.currentIndex = 0;
+    loopPlayback.loopCount++;
+
+    // 检查是否达到最大循环次数
+    if (loopPlayback.maxLoops > 0 && loopPlayback.loopCount >= loopPlayback.maxLoops) {
+      await stopLoopPlayback();
+      ElMessage.success('循环播报完成');
+      loopPlayback.enabled = false;
+      return;
+    }
+
+    // 重新填充队列(防止有新消息加入)
+    loopPlayback.queue = [...filteredMessages.value].filter((msg) => msg.messageStatus === 1).sort((a, b) => b.priority - a.priority);
+
+    // 检查重新填充后是否为空
+    if (loopPlayback.queue.length === 0) {
+      await stopLoopPlayback();
+      return;
+    }
+  }
+
+  // 播放下一条
+  if (loopPlayback.queue[loopPlayback.currentIndex]) {
+    await playMessage(loopPlayback.queue[loopPlayback.currentIndex]);
+  } else {
+    await stopLoopPlayback();
+  }
+};
+// 检查并自动开始循环播报
+const checkAndStartLoopPlayback = async () => {
+  if (loopPlayback.enabled && !playbackState.isPlaying) {
+    // 确保当前没有其他播放模式在运行
+    if (playbackState.playMode !== PlayMode.LOOP) {
+      playbackState.playMode = PlayMode.LOOP;
+    }
+    await startLoopPlayback();
   }
 };
 
 // 初始化
 onMounted(async () => {
+  onUnmounted(() => {
+    stopPlayback();
+    speech.cancel();
+  });
+
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate());
   start.setHours(0, 0, 0, 0);
   end.setHours(23, 59, 59, 999);
   queryParams.value.sendTimeRange = [parseTime(start), parseTime(end)];
+
+  // 异步初始化
   await initSpeech();
   await loadMessages();
+
+  // 监听播放状态变化
+  watch(
+    () => playbackState.isPlaying,
+    (isPlaying) => {
+      if (!isPlaying && loopPlayback.enabled) {
+        // 播放停止且循环播放启用时，尝试重新开始
+        setTimeout(checkAndStartLoopPlayback, 1000);
+      }
+    }
+  );
 
   // 监听新消息并加入播放队列
   watch(
     () => messages.value,
     (newMessages) => {
       if (!newMessageAutoPlayVoice.value) return;
-
+      if (loopPlayback.enabled && !playbackState.isPlaying) {
+        checkAndStartLoopPlayback();
+      }
       const newUnreadMessages = newMessages.filter((msg) => !msg.read && !playNewMessageQueue.value.some((q) => q.id === msg.id) && (playbackState.currentId !== msg.id || !playbackState.isPlaying));
 
       if (newUnreadMessages.length > 0) {
@@ -917,15 +1051,11 @@ onMounted(async () => {
           playNextNewMessage();
         }
       }
+      // 无论是否有新消息，都检查循环播报状态
+      checkAndStartLoopPlayback();
     },
     { deep: true }
   );
-});
-
-// 清理
-onUnmounted(() => {
-  stopPlayback();
-  speech.cancel();
 });
 </script>
 
@@ -979,6 +1109,21 @@ onUnmounted(() => {
 
 .el-progress {
   margin-top: 5px;
+}
+.loop-active {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 /* 高亮行样式 */

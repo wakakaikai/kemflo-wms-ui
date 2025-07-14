@@ -124,11 +124,18 @@ export const useAbnormalCallNoticeStore = defineStore('abnormalCallNotice', () =
       workCenter: notice.metadata.workCenter,
       workStation: notice.metadata.workStation
     };
-
-    // 使用 unshift 将新消息添加到数组开头
-    state.notices.unshift(newNotice);
-
-    await saveToDB();
+    const existingIndex = state.notices.findIndex((n) => n.id === notice.metadata.id);
+    // const existNotice = state.notices.find((n) => n.id === notice.metadata.id);
+    if (existingIndex >= 0) {
+      // 更新现有通知
+      notice.read = state.notices[existingIndex].read;
+      state.notices[existingIndex] = { ...notice};
+      await saveToDB();
+    } else {
+      // 使用 unshift 将新消息添加到数组开头
+      state.notices.unshift(newNotice);
+      await saveToDB();
+    }
     return newNotice;
   };
 
