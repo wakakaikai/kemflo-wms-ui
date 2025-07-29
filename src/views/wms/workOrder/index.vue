@@ -19,10 +19,10 @@
               </el-select>
             </el-form-item>
             <el-form-item label="计划开工日期" prop="plannedStartDate">
-              <el-date-picker v-model="queryParams.plannedStartDate" clearable type="date" value-format="YYYY-MM-DD" placeholder="请选择计划开工日期" />
+              <el-date-picker v-model="queryParams.plannedStartDate" clearable type="date" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择计划开工日期" />
             </el-form-item>
             <el-form-item label="计划完工日期" prop="plannedEndDate">
-              <el-date-picker v-model="queryParams.plannedEndDate" clearable type="date" value-format="YYYY-MM-DD" placeholder="请选择计划完工日期" />
+              <el-date-picker v-model="queryParams.plannedEndDate" clearable type="date" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择计划完工日期" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -74,7 +74,6 @@
         </el-table-column>
         <el-table-column label="计划数量" align="center" prop="plannedQty" />
         <el-table-column label="已交货数量" align="center" prop="deliveredQty" />
-        <el-table-column label="待入库数量" align="center" prop="waitStockQty" />
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
@@ -118,9 +117,6 @@
         </el-form-item>
         <el-form-item label="已交货数量" prop="deliveredQty">
           <el-input v-model="form.deliveredQty" placeholder="请输入已交货数量" />
-        </el-form-item>
-        <el-form-item label="待入库数量" prop="waitStockQty">
-          <el-input v-model="form.waitStockQty" placeholder="请输入待入库数量" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" />

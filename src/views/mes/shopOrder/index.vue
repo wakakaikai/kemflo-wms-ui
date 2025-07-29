@@ -17,34 +17,16 @@
               <el-input v-model="queryParams.plannedRouterBo" placeholder="请输入计划工艺路线" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="计划开始时间" prop="plannedStartDate">
-              <el-date-picker
-                clearable
-                v-model="queryParams.plannedStartDate"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择计划开始时间"
-              />
+              <el-date-picker clearable v-model="queryParams.plannedStartDate" type="date" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择计划开始时间" />
             </el-form-item>
             <el-form-item label="计划完成时间" prop="plannedCompDate">
-              <el-date-picker
-                clearable
-                v-model="queryParams.plannedCompDate"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择计划完成时间"
-              />
+              <el-date-picker clearable v-model="queryParams.plannedCompDate" type="date" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择计划完成时间" />
             </el-form-item>
             <el-form-item label="实际开始时间" prop="actualStartDate">
-              <el-date-picker
-                clearable
-                v-model="queryParams.actualStartDate"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择实际开始时间"
-              />
+              <el-date-picker clearable v-model="queryParams.actualStartDate" type="date" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择实际开始时间" />
             </el-form-item>
             <el-form-item label="实际完成时间" prop="actualCompDate">
-              <el-date-picker clearable v-model="queryParams.actualCompDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择实际完成时间" />
+              <el-date-picker clearable v-model="queryParams.actualCompDate" type="date" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择实际完成时间" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -62,14 +44,10 @@
             <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['mes:shopOrder:add']">新增</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['mes:shopOrder:edit']"
-              >修改</el-button
-            >
+            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['mes:shopOrder:edit']">修改</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['mes:shopOrder:remove']"
-              >删除</el-button
-            >
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['mes:shopOrder:remove']">删除</el-button>
           </el-col>
           <el-col :span="1.5">
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['mes:shopOrder:export']">导出</el-button>
@@ -154,22 +132,10 @@
           <el-input v-model="form.qtyReleased" placeholder="请输入下达数量" />
         </el-form-item>
         <el-form-item label="计划开始时间" prop="plannedStartDate">
-          <el-date-picker
-            clearable
-            v-model="form.plannedStartDate"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="请选择计划开始时间"
-          />
+          <el-date-picker clearable v-model="form.plannedStartDate" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择计划开始时间" />
         </el-form-item>
         <el-form-item label="计划完成时间" prop="plannedCompDate">
-          <el-date-picker
-            clearable
-            v-model="form.plannedCompDate"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="请选择计划完成时间"
-          />
+          <el-date-picker clearable v-model="form.plannedCompDate" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择计划完成时间" />
         </el-form-item>
         <el-form-item label="完成数量" prop="qtyDone">
           <el-input v-model="form.qtyDone" placeholder="请输入完成数量" />
@@ -178,18 +144,10 @@
           <el-input v-model="form.qtyScrapped" placeholder="请输入报废数量" />
         </el-form-item>
         <el-form-item label="实际开始时间" prop="actualStartDate">
-          <el-date-picker
-            clearable
-            v-model="form.actualStartDate"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="请选择实际开始时间"
-          >
-          </el-date-picker>
+          <el-date-picker clearable v-model="form.actualStartDate" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择实际开始时间"> </el-date-picker>
         </el-form-item>
         <el-form-item label="实际完成时间" prop="actualCompDate">
-          <el-date-picker clearable v-model="form.actualCompDate" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择实际完成时间">
-          </el-date-picker>
+          <el-date-picker clearable v-model="form.actualCompDate" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择实际完成时间"> </el-date-picker>
         </el-form-item>
         <el-form-item label="客户编号" prop="customer">
           <el-input v-model="form.customer" placeholder="请输入客户编号" />

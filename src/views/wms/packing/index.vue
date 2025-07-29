@@ -13,6 +13,18 @@
             <el-form-item label="目的仓库" prop="warehouseCode">
               <el-input v-model="queryParams.warehouseCode" placeholder="请输入目的仓库" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="操作时间" prop="dateTimeRange">
+              <el-date-picker
+                v-model="queryParams.dateTimeRange"
+                type="datetimerange"
+                :shortcuts="shortcuts"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                range-separator="-"
+                start-placeholder="请选择开始日期"
+                end-placeholder="请选择结束日期"
+                :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
+              />
+            </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
               <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -21,11 +33,55 @@
         </el-card>
       </div>
     </transition>
-    <el-tabs v-model="tabActiveName" @tab-change="changeTab">
+
+    <!--    <el-tabs v-model="tabActiveName" @tab-change="changeTab">
       <el-tab-pane label="全部" name="all"> </el-tab-pane>
       <el-tab-pane label="待产线送库" name="waitInStore"> </el-tab-pane>
       <el-tab-pane label="待入库接收" name="pendingInbound"> </el-tab-pane>
       <el-tab-pane label="已驳回" name="warehouseReject"> </el-tab-pane>
+      <el-tab-pane label="SAP同步异常" name="warehouseFailed"> </el-tab-pane>
+    </el-tabs>-->
+
+    <!-- 打包列表Tab标签页 -->
+    <el-tabs v-model="tabActiveName" @tab-change="changeTab">
+      <el-tab-pane name="all">
+        <template #label>
+          <el-badge :value="allCount" class="item" color="#67c23a" :offset="[10, 0]">
+            <span>全部</span>
+          </el-badge>
+        </template>
+      </el-tab-pane>
+
+      <el-tab-pane name="waitInStore">
+        <template #label>
+          <el-badge :value="waitInStoreCount" class="item" color="#409EFF" :offset="[10, 0]">
+            <span>待产线送库</span>
+          </el-badge>
+        </template>
+      </el-tab-pane>
+
+      <el-tab-pane name="pendingInbound">
+        <template #label>
+          <el-badge :value="pendingInboundCount" class="item" color="#e6a23c" :offset="[10, 0]">
+            <span>待入库接收</span>
+          </el-badge>
+        </template>
+      </el-tab-pane>
+
+      <el-tab-pane name="warehouseReject">
+        <template #label>
+          <el-badge :value="warehouseRejectCount" class="item" color="#f56c6c" :offset="[10, 0]">
+            <span>已退回</span>
+          </el-badge>
+        </template>
+      </el-tab-pane>
+<!--      <el-tab-pane name="warehouseFailed">
+        <template #label>
+          <el-badge :value="warehouseFailedCount" class="item" color="#f56c6c" :offset="[10, 0]">
+            <span>SAP同步异常</span>
+          </el-badge>
+        </template>
+      </el-tab-pane>-->
     </el-tabs>
 
     <el-card shadow="never">
@@ -56,23 +112,28 @@
         <el-table-column type="expand">
           <template #default="scope">
             <el-table :data="scope.row.packingDetailVoList" style="width: calc(100% - 110px); float: right; margin: 10px 0" empty-text="暂无数据">
+              <el-table-column label="序号" align="center" width="60">
+                <template #default="{ $index }">
+                  {{ $index + 1 }}
+                </template>
+              </el-table-column>
               <el-table-column label="工单号" align="center" width="130" prop="workOrderNo" />
               <el-table-column label="产品料号" align="center" width="150" prop="item" />
               <el-table-column label="产品描述" align="left" prop="itemDesc" />
               <el-table-column label="计划数量" align="center" width="130" prop="plannedQty" />
-              <el-table-column label="已交货数量" align="center" width="130" prop="deliveredQty" />
               <el-table-column label="打包数量" align="center" width="130" prop="packingQty" />
               <el-table-column label="入库检" prop="checkEnable" width="120" align="center">
                 <template #default="scope">
                   <dict-tag :options="wms_work_order_check_enable" :value="scope.row.checkEnable" />
                 </template>
               </el-table-column>
+              <el-table-column label="备注" align="left" prop="remark" />
             </el-table>
           </template>
         </el-table-column>
-        <el-table-column label="打包编号" align="center" prop="packingCode" />
-        <el-table-column label="栈板编号" align="center" prop="palletCode" />
-        <el-table-column label="目的仓库" align="center" prop="warehouseCode">
+        <el-table-column label="打包编号" align="left" prop="packingCode" />
+        <el-table-column label="栈板编号" align="left" prop="palletCode" />
+        <el-table-column label="目的仓库" align="left" prop="warehouseCode">
           <template #default="scope">
             <span v-if="scope.row.warehouseCode">{{ `${scope.row.warehouseCode} - ${scope.row.warehouseDesc}` }}</span>
             <span v-else></span>
@@ -83,16 +144,26 @@
             <dict-tag :options="wms_packing_status" :value="scope.row.status" />
           </template>
         </el-table-column>
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <el-table-column label="项次数" align="left" prop="countPackingDetail">
           <template #default="scope">
-            <el-tooltip content="修改" placement="top" v-if="scope.row.status == 1 || scope.row.status == 4">
+            <span>{{ scope.row.packingDetailVoList.length || 0 }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" align="center" prop="createTime" />
+        <el-table-column label="创建者" align="center" prop="createByName" />
+        <el-table-column label="更新时间" align="center" prop="updateTime" />
+        <el-table-column label="更新者" align="center" prop="updateByName" />
+        <el-table-column label="备注" align="left" prop="remark" />
+        <el-table-column label="操作" align="center" class-name="small-padding" fixed="right" width="220">
+          <template #default="scope">
+            <el-tooltip content="修改" placement="top" v-if="scope.row.status == 1 || scope.row.status == 4 || scope.row.status == 5">
               <el-button v-hasPermi="['wms:packing:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
             </el-tooltip>
-            <el-tooltip content="删除" placement="top" v-if="scope.row.status == 1 || scope.row.status == 4">
-              <el-button v-hasPermi="['wms:packing:remove']" link type="primary" icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
+            <el-tooltip content="送仓" placement="top" v-if="scope.row.status == 1 || scope.row.status == 4 || scope.row.status == 5">
+              <el-button v-hasPermi="['wms:packing:edit']" link type="success" icon="ShoppingCart" @click="handlePendingInbound(scope.row)">送仓</el-button>
             </el-tooltip>
-            <el-tooltip content="送仓" placement="top" v-if="scope.row.status == 1 || scope.row.status == 4">
-              <el-button v-hasPermi="['wms:packing:edit']" link type="primary" icon="ShoppingCart" @click="handlePendingInbound(scope.row)">送仓</el-button>
+            <el-tooltip content="删除" placement="top" v-if="scope.row.status == 1 || scope.row.status == 4 || scope.row.status == 5">
+              <el-button v-hasPermi="['wms:packing:remove']" link type="danger" icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
             </el-tooltip>
           </template>
         </el-table-column>
@@ -138,7 +209,7 @@
 </template>
 
 <script setup name="Packing" lang="ts">
-import { listPacking, delPacking, inBoundPending } from '@/api/wms/packing';
+import { listPackingAndDetail, delPacking, inBoundPending } from '@/api/wms/packing';
 import { PackingVO, PackingQuery, PackingForm } from '@/api/wms/packing/types';
 import PackingDialog from '@/views/wms/packing/components/packingDialog.vue';
 import { ref } from 'vue';
@@ -158,10 +229,96 @@ const ids = ref<Array<string | number>>([]);
 const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
+
+const allCount = ref(0);
+const waitInStoreCount = ref(0);
+const pendingInboundCount = ref(0);
+const warehouseRejectCount = ref(0);
+const warehouseFailedCount = ref(0);
+
 const buttonLoading = ref(false);
 const queryFormRef = ref<ElFormInstance>();
 const packingFormRef = ref<ElFormInstance>();
-
+const shortcuts = [
+  {
+    text: '今天',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate());
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '昨天',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近两天',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近三天',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 2);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近一周',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近一月',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setMonth(start.getMonth() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近三月',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setMonth(start.getMonth() - 3);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  }
+];
 const initFormData: PackingForm = {
   id: undefined,
   packingCode: undefined,
@@ -197,16 +354,31 @@ const { queryParams, form, rules } = toRefs(data);
 const getList = async () => {
   loading.value = true;
   queryParams.value.status = null;
-  if (tabActiveName.value == 'waitInStore') {
+  if (tabActiveName.value == 'all') {
+    queryParams.value.status = null;
+  } else if (tabActiveName.value == 'waitInStore') {
     queryParams.value.status = 1;
   } else if (tabActiveName.value == 'pendingInbound') {
     queryParams.value.status = 2;
   } else if (tabActiveName.value == 'warehouseReject') {
     queryParams.value.status = 4;
+  } else if (tabActiveName.value == 'warehouseFailed') {
+    queryParams.value.status = 5;
   }
-  const res = await listPacking(queryParams.value);
+  const res = await listPackingAndDetail(queryParams.value);
   packingList.value = res.rows;
   total.value = res.total;
+  if (tabActiveName.value == 'all') {
+    allCount.value = res.total;
+  } else if (tabActiveName.value == 'waitInStore') {
+    waitInStoreCount.value = res.total;
+  } else if (tabActiveName.value == 'pendingInbound') {
+    pendingInboundCount.value = res.total;
+  } else if (tabActiveName.value == 'warehouseReject') {
+    warehouseRejectCount.value = res.total;
+  } else if (tabActiveName.value == 'warehouseFailed') {
+    warehouseFailedCount.value = res.total;
+  }
   loading.value = false;
 };
 
@@ -302,7 +474,12 @@ const submitInbound = () => {
     if (valid) {
       buttonLoading.value = true;
       if (form.value.id) {
-        await inBoundPending(form.value).finally(() => (buttonLoading.value = false));
+        await inBoundPending({
+          id: form.value.id,
+          warehouseCode: form.value.warehouseCode,
+          palletCode: form.value.palletCode,
+          packingCode: form.value.packingCode
+        }).finally(() => (buttonLoading.value = false));
       }
       visible.value = false;
       proxy?.$modal.msgSuccess('送仓成功');

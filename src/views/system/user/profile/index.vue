@@ -61,6 +61,9 @@
             <el-tab-pane label="在线设备" name="onlineDevice">
               <onlineDevice :devices="state.devices" />
             </el-tab-pane>
+            <el-tab-pane label="消息配置" name="messageConfig">
+              <message-config :devices="state.devices" />
+            </el-tab-pane>
           </el-tabs>
         </el-card>
       </el-col>
@@ -74,6 +77,7 @@ import UserInfo from './userInfo.vue';
 import ResetPwd from './resetPwd.vue';
 import ThirdParty from './thirdParty.vue';
 import OnlineDevice from './onlineDevice.vue';
+import MessageConfig from '@/views/system/user/profile/messageConfig.vue';
 import { getAuthList } from '@/api/system/social/auth';
 import { getUserProfile } from '@/api/system/user';
 import { getOnline } from '@/api/monitor/online';

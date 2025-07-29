@@ -234,6 +234,7 @@ const titles = {
   material: '物料呼叫',
   equipment: '设备呼叫',
   quality: '品质呼叫',
+  process: '制程呼叫',
   other: '其他呼叫'
 };
 
@@ -302,6 +303,12 @@ const loadAbnormalCallScadaData = async () => {
     avgTime: res.data.qualityCallAvgResponseTime || 0,
     closeRate: res.data.qualityCallExceptionCloseRate || 100
   };
+  summary.value.process = {
+    total: res?.data.processCallCount,
+    avgTime: res.data.processCallAvgResponseTime || 0,
+    closeRate: res.data.processCallExceptionCloseRate || 100
+  };
+
   summary.value.other = {
     total: res?.data.otherCallCount,
     avgTime: res.data.otherCallAvgResponseTime || 0,

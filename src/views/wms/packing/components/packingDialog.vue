@@ -37,8 +37,6 @@
           <el-table-column label="产品料号" align="center" width="150" prop="item" />
           <el-table-column label="产品描述" align="left" prop="itemDesc" :show-overflow-tooltip="true" />
           <el-table-column label="计划数量" align="center" prop="plannedQty" />
-          <el-table-column label="已交货数量" align="center" prop="deliveredQty" />
-          <el-table-column label="待入库数量" align="center" prop="waitStockQty" />
           <el-table-column label="打包数量" align="center" min-width="120" prop="packingQty">
             <template #default="scope">
               <div @dblclick="enableEditing(scope.row)" style="cursor: pointer">
@@ -46,7 +44,8 @@
                   {{ scope.row.packingQty }}
                 </div>
                 <div v-else>
-                  <el-input v-model.number="scope.row.packingQty" @blur="savePackingQty(scope.row)" @keyup.enter="savePackingQty(scope.row)" autofocus size="small" style="width: 100px" />
+                  <el-input-number :min="1" v-model="scope.row.packingQty" @blur="savePackingQty(scope.row)" @keyup.enter="savePackingQty(scope.row)" autofocus size="small" style="width: 100px" />
+                  <div class="el-form-item__tip">当前最大可入打包数量: {{ scope.row.maxInboundQty || 0 }}</div>
                 </div>
               </div>
             </template>
@@ -82,20 +81,21 @@
 </template>
 
 <script setup name="PackingDialog" lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { listWarehouseLocation } from '@/api/wms/warehouseLocation';
 import { WarehouseLocationVO } from '@/api/wms/warehouseLocation/types';
 import PalletDialog from '@/views/wms/packing/components/palletDialog.vue';
 import WorkOrderDialog from '@/views/wms/packing/components/workOrderDialog.vue';
+import { WorkOrderForm, WorkOrderQuery } from '@/api/wms/workOrder/types';
+import useDialog from '@/hooks/useDialog';
+
+import { addPacking, getPacking, updatePacking } from '@/api/wms/packing';
+import { getWorkOrderPackedQty } from '@/api/wms/packingDetail';
 
 const palletDialogRef = ref<InstanceType<typeof PalletDialog>>();
 const workOrderDialogRef = ref<InstanceType<typeof WorkOrderDialog>>();
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-import { WorkOrderForm, WorkOrderQuery } from '@/api/wms/workOrder/types';
-import useDialog from '@/hooks/useDialog';
-
-import { addPacking, getPacking, updatePacking } from '@/api/wms/packing';
 
 const { wms_work_order_check_enable } = toRefs<any>(proxy?.useDict('wms_work_order_check_enable'));
 const packingFormRef = ref<ElFormInstance>();
@@ -114,6 +114,7 @@ const initFormData: WorkOrderForm = {
   deliveredQty: undefined,
   waitStockQty: undefined,
   packingQty: undefined,
+  otherPackingQty: undefined,
   remark: undefined,
   isEditing: false
 };
@@ -133,6 +134,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
     deliveredQty: undefined,
     waitStockQty: null,
     packingQty: null,
+    otherPackingQty: null,
     params: {}
   },
   rules: {
@@ -157,7 +159,8 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
 const { title, visible, openDialog, closeDialog } = useDialog({
   title: '选择栈板'
 });
-
+// 创建一个工单号到otherPackingQty的映射
+const workOrderToOtherPackingQtyMap = new Map<string, number>();
 const { queryParams, form, rules } = toRefs(data);
 // 打包记录列表
 const packingDetailBoList = ref<WorkOrderForm[]>([]);
@@ -172,10 +175,24 @@ const filteredData = computed(() => {
 // 初始化数据
 const initPackingDialog = async (id: any) => {
   resetForm();
+  workOrderToOtherPackingQtyMap.clear(); // 清空原有数据
   if (id) {
     const res = await getPacking(id);
     Object.assign(form.value, res.data);
-    packingDetailBoList.value = res.data?.packingDetailVoList;
+    // 初始化列表数据并创建映射
+    packingDetailBoList.value =
+      res.data?.packingDetailVoList?.map((item) => {
+        // 更新工单到otherPackingQty的映射
+        if (item.workOrderNo && item.otherPackingQty !== undefined) {
+          workOrderToOtherPackingQtyMap.set(item.workOrderNo, Number(item.otherPackingQty));
+        }
+
+        return {
+          ...item,
+          originPackingQty: item.packingQty // 保存原始打包数量
+        };
+      }) || [];
+    console.log(workOrderToOtherPackingQtyMap);
   }
 };
 
@@ -184,19 +201,33 @@ const submitForm = () => {
   packingFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
       buttonLoading.value = true;
-      form.value.packingDetailBoList = packingDetailBoList.value;
+      // 校验 packingQty 是否存在
+      const invalidItem = packingDetailBoList.value.find((item) => item.packingQty === null || item.packingQty === undefined || isNaN(Number(item.packingQty)) || Number(item.packingQty) <= 0);
+
+      if (invalidItem) {
+        proxy?.$modal.msgError('请填写有效的打包数量');
+        buttonLoading.value = false;
+        return;
+      }
+      // 提交前删除 packingDetailVoList 属性
+      const submitData = { ...form.value };
+      delete submitData.packingDetailVoList;
+
+      // 设置 packingDetailBoList 到 packingDetailBoList 属性中
+      submitData.packingDetailBoList = packingDetailBoList.value;
       if (form.value.id) {
         packingDetailBoList.value.map((item: any) => {
           item.palletCode = form.value.palletCode;
         });
-        await updatePacking(form.value).finally(() => (buttonLoading.value = false));
+        await updatePacking(submitData).finally(() => (buttonLoading.value = false));
       } else {
         packingDetailBoList.value.map((item: any) => {
           item.palletCode = form.value.palletCode;
           item.id = null;
         });
-        await addPacking(form.value).finally(() => (buttonLoading.value = false));
+        await addPacking(submitData).finally(() => (buttonLoading.value = false));
       }
+
       proxy?.$modal.msgSuccess('操作成功');
       visible.value = false;
       emit('packingCallBack');
@@ -216,7 +247,8 @@ const palletSelectCallBack = (record) => {
 // 显示工单选择对话框
 const showWorkOrderDialog = () => {
   workOrderDialogRef.value.openDialog();
-  workOrderDialogRef.value.initWorkOrderDialog(packingDetailBoList.value);
+  console.log(workOrderToOtherPackingQtyMap);
+  workOrderDialogRef.value.initWorkOrderDialog(packingDetailBoList.value, workOrderToOtherPackingQtyMap);
 };
 
 // 重置表单
@@ -246,34 +278,59 @@ const warehouseLocationList = ref<WarehouseLocationVO[]>([]);
 /** 查询仓位信息列表 */
 const getWarehouseList = async () => {
   const res = await listWarehouseLocation({
-    parentId: 0
+    level: 1
   });
   warehouseLocationList.value = res.data;
 };
+
 // 启用编辑模式
-const enableEditing = (row: WorkOrderForm) => {
+const enableEditing = async (row: WorkOrderForm) => {
   row.isEditing = true;
+  const totalOtherPackingQty = packingDetailBoList.value.filter((r) => r.workOrderNo === row.workOrderNo && r.id !== row.id).reduce((sum, record) => sum + Number(record.packingQty), 0);
+  if (form.value.id && row.packingCode) {
+    // 编辑模式下计算
+    const totalPackingInList = packingDetailBoList.value.filter((r) => r.workOrderNo === row.workOrderNo && r.id !== row.id).reduce((sum, record) => sum + Number(record.packingQty), 0);
+    row.maxInboundQty = Math.max(Number(row.plannedQty) - Number(row.otherPackingQty) - Number(totalPackingInList), 0);
+  } else {
+    // 新增模式下计算
+    let otherPackingQty = workOrderToOtherPackingQtyMap.get(row.workOrderNo);
+    if (otherPackingQty === undefined) {
+      const res = await getWorkOrderPackedQty(row.workOrderNo);
+      otherPackingQty = Number(res.data);
+      // 将获取的值存入map
+      // workOrderToOtherPackingQtyMap.set(row.workOrderNo, otherPackingQty);
+    }
+    row.maxInboundQty = Math.max(Number(row.plannedQty) - (Number(otherPackingQty) + totalOtherPackingQty), 0);
+  }
 };
 
 // 保存打包数量
-const savePackingQty = (row: WorkOrderForm) => {
-  row.isEditing = false;
-
-  // 计算最大允许值
-  const maxInboundQty = Math.max(row.plannedQty - row.deliveredQty, 0);
-
+const savePackingQty = async (row: WorkOrderForm) => {
   if (row.packingQty === null || row.packingQty === undefined) {
     proxy?.$modal.msgError('打包数量不能为空');
     return;
   }
 
-  if (row.packingQty > maxInboundQty) {
-    proxy?.$modal.msgError(`工单打包数量不能超过${maxInboundQty}`);
-    row.packingQty = maxInboundQty; // 自动修正为最大值
+  // 计算当前工单其他记录的打包总量（不包括当前行）
+  const totalOtherPackingQty = packingDetailBoList.value.filter((r) => r.workOrderNo === row.workOrderNo && r.id !== row.id).reduce((sum, record) => sum + Number(record.packingQty), 0);
+  if (form.value.id && row.packingCode) {
+    // 编辑模式下计算
+    const totalPackingInList = packingDetailBoList.value.filter((r) => r.workOrderNo === row.workOrderNo && r.id !== row.id).reduce((sum, record) => sum + Number(record.packingQty), 0);
+    row.maxInboundQty = Math.max(Number(row.plannedQty) - Number(row.otherPackingQty) - Number(totalPackingInList), 0);
+  } else {
+    // 新增模式下计算
+    const res = await getWorkOrderPackedQty(row.workOrderNo);
+    row.maxInboundQty = Math.max(row.plannedQty - (Number(res.data) + totalOtherPackingQty), 0);
+  }
+
+  // 验证打包数量
+  if (row.packingQty > row.maxInboundQty) {
+    proxy?.$modal.msgError(`当前打包数量${row.packingQty}不能超过可打包数量${row.maxInboundQty}`);
+    row.packingQty = row.originPackingQty;
     return;
   }
 
-  console.log('保存后的打包数量:', row.packingQty);
+  row.isEditing = false;
 };
 
 // 模拟加载工单数据
@@ -311,5 +368,18 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 5px;
+}
+.el-form-item__error {
+  color: #f56c6c;
+  font-size: 12px;
+  line-height: 1;
+  padding-top: 4px;
+  margin-top: 2px;
+}
+
+.is-error {
+  :deep(.el-input__wrapper) {
+    box-shadow: 0 0 0 1px #f56c6c inset;
+  }
 }
 </style>

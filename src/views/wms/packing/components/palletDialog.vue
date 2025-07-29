@@ -1,8 +1,8 @@
 <template>
-  <el-dialog v-model="visible" :title="title" width="70%" append-to-body>
+  <el-dialog v-model="visible" :title="title" width="70%" append-to-body @opened="handleDialogOpen">
     <el-card>
       <template #header>
-        <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto" class="mt-[18px]">
+        <el-form ref="palletFormRef" :model="queryParams" :inline="true" label-width="auto" class="mt-[18px]">
           <el-row>
             <el-col :lg="8" :md="8" :sm="24">
               <el-form-item label="栈板编号" prop="palletCode">
@@ -58,7 +58,6 @@ import useDialog from '@/hooks/useDialog';
 import { pagePallet } from '@/api/wms/pallet';
 import { PalletForm, PalletQuery, PalletVO } from '@/api/wms/pallet/types';
 import { ref } from 'vue';
-import { WorkOrderForm } from '@/api/wms/workOrder/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_pallet_status } = toRefs<any>(proxy?.useDict('wms_pallet_status'));
@@ -147,6 +146,11 @@ const handleSelectionChange = (val: any) => {
 const submitForm = () => {
   emit('palletSelectCallBack', selectedRow.value);
   closeDialog();
+};
+
+const handleDialogOpen = () => {
+  reset();
+  getList();
 };
 
 onMounted(() => {});

@@ -13,20 +13,23 @@
             <el-form-item label="消息标题" prop="title">
               <el-input v-model="queryParams.title" placeholder="请输入消息标题" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="优先级0-9，数字越大优先级越高" prop="priority">
-              <el-input v-model="queryParams.priority" placeholder="请输入优先级0-9，数字越大优先级越高" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="确认状态" prop="status">
+              <el-select v-model="queryParams.status" placeholder="请选择确认状态" clearable filterable>
+                <el-option label="已发送" value="1" />
+                <el-option label="已确认" value="2" />
+              </el-select>
             </el-form-item>
-            <el-form-item label="消息发送时间" prop="sendTime">
-              <el-date-picker clearable v-model="queryParams.sendTime" type="date" value-format="YYYY-MM-DD" placeholder="请选择消息发送时间" />
-            </el-form-item>
-            <el-form-item label="消息发送人" prop="sendUser">
-              <el-input v-model="queryParams.sendUser" placeholder="请输入消息发送人" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="消息确认时间" prop="confirmTime">
-              <el-date-picker clearable v-model="queryParams.confirmTime" type="date" value-format="YYYY-MM-DD" placeholder="请选择消息确认时间" />
-            </el-form-item>
-            <el-form-item label="消息确认人" prop="confirmUser">
-              <el-input v-model="queryParams.confirmUser" placeholder="请输入消息确认人" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="发送时间" prop="sendTimeRange">
+              <el-date-picker
+                v-model="queryParams.sendTimeRange"
+                type="datetimerange"
+                :shortcuts="shortcuts"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                range-separator="-"
+                start-placeholder="请选择开始日期"
+                end-placeholder="请选择结束日期"
+                :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
+              />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -41,16 +44,16 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['mes:message:add']">新增</el-button>
+            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['mes:message:add']">新增 </el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['mes:message:edit']">修改</el-button>
+            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['mes:message:edit']">修改 </el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['mes:message:remove']">删除</el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['mes:message:remove']">删除 </el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['mes:message:export']">导出</el-button>
+            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['mes:message:export']"> 导出 </el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
         </el-row>
@@ -58,26 +61,31 @@
 
       <el-table v-loading="loading" :data="messageList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="消息唯一ID" align="center" prop="id" v-if="true" />
         <el-table-column label="工作中心" align="center" prop="workCenter" />
-        <el-table-column label="工位" align="center" prop="workStation" />
+        <el-table-column prop="workStation" align="left" label="工作岗位">
+          <template #default="{ row }">
+            <span v-if="row.workStation || row.workStationDesc"> {{ row.workStation }}（{{ row.workStationDesc }}） </span>
+          </template>
+        </el-table-column>
         <el-table-column label="消息标题" align="center" prop="title" />
         <el-table-column label="消息内容" align="center" prop="content" />
-        <el-table-column label="消息类型：1-异常呼叫通知,2-警报,3-私信,4-任务,5-系统" align="center" prop="messageType" />
-        <el-table-column label="优先级0-9，数字越大优先级越高" align="center" prop="priority" />
-        <el-table-column label="消息状态：0-草稿,1-活跃,2-已失效" align="center" prop="status" />
-        <el-table-column label="消息发送时间" align="center" prop="sendTime" width="180">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.sendTime, '{y}-{m}-{d}') }}</span>
+        <el-table-column prop="priority" label="优先级" sortable :sort-method="prioritySort">
+          <template #default="{ row }">
+            <el-tag :type="getPriorityTagType(row.priority as MessagePriority)">
+              {{ getPriorityName(row.priority) }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="消息发送人" align="center" prop="sendUser" />
-        <el-table-column label="消息确认时间" align="center" prop="confirmTime" width="180">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.confirmTime, '{y}-{m}-{d}') }}</span>
+        <el-table-column label="确认状态" align="center" prop="messageStatus" sortable :sort-method="statusSort">
+          <template #default="{ row }">
+            <dict-tag :options="mes_message_status" :value="row.status" />
           </template>
         </el-table-column>
-        <el-table-column label="消息确认人" align="center" prop="confirmUser" />
+        <el-table-column label="呼叫发送人" align="center" prop="sendUserName" />
+        <el-table-column label="呼叫时间" align="center" prop="sendTime" sortable />
+        <el-table-column label="响应确认人" align="center" prop="confirmUserName" />
+        <el-table-column label="响应时间" align="center" prop="confirmTime" sortable />
+        <el-table-column label="响应时长（分）" align="center" prop="confirmDurationTime" />
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
@@ -94,7 +102,7 @@
       <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
     </el-card>
     <!-- 添加或修改消息主表对话框 -->
-    <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" append-to-body>
+    <el-dialog :title="dialog.title" v-model="dialog.visible" width="70%" append-to-body>
       <el-form ref="messageFormRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="工作中心" prop="workCenter">
           <el-input v-model="form.workCenter" placeholder="请输入工作中心" />
@@ -108,20 +116,8 @@
         <el-form-item label="消息内容">
           <editor v-model="form.content" :min-height="192" />
         </el-form-item>
-        <el-form-item label="优先级0-9，数字越大优先级越高" prop="priority">
+        <el-form-item label="优先级" prop="priority">
           <el-input v-model="form.priority" placeholder="请输入优先级0-9，数字越大优先级越高" />
-        </el-form-item>
-        <el-form-item label="消息发送时间" prop="sendTime">
-          <el-date-picker clearable v-model="form.sendTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择消息发送时间"> </el-date-picker>
-        </el-form-item>
-        <el-form-item label="消息发送人" prop="sendUser">
-          <el-input v-model="form.sendUser" placeholder="请输入消息发送人" />
-        </el-form-item>
-        <el-form-item label="消息确认时间" prop="confirmTime">
-          <el-date-picker clearable v-model="form.confirmTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择消息确认时间"> </el-date-picker>
-        </el-form-item>
-        <el-form-item label="消息确认人" prop="confirmUser">
-          <el-input v-model="form.confirmUser" placeholder="请输入消息确认人" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" placeholder="请输入备注" />
@@ -140,9 +136,10 @@
 <script setup name="Message" lang="ts">
 import { listMessage, getMessage, delMessage, addMessage, updateMessage } from '@/api/mes/message';
 import { MessageVO, MessageQuery, MessageForm } from '@/api/mes/message/types';
+import { parseTime } from '@/utils/ruoyi';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-
+const { mes_message_status } = toRefs<any>(proxy?.useDict('mes_message_status'));
 const messageList = ref<MessageVO[]>([]);
 const buttonLoading = ref(false);
 const loading = ref(true);
@@ -199,18 +196,137 @@ const data = reactive<PageData<MessageForm, MessageQuery>>({
     workStation: [{ required: true, message: '工位不能为空', trigger: 'blur' }],
     title: [{ required: true, message: '消息标题不能为空', trigger: 'blur' }],
     content: [{ required: true, message: '消息内容不能为空', trigger: 'blur' }],
-    messageType: [{ required: true, message: '消息类型：1-异常呼叫通知,2-警报,3-私信,4-任务,5-系统不能为空', trigger: 'change' }],
+    messageType: [
+      {
+        required: true,
+        message: '消息类型：1-异常呼叫通知,2-警报,3-私信,4-任务,5-系统不能为空',
+        trigger: 'change'
+      }
+    ],
     priority: [{ required: true, message: '优先级0-9，数字越大优先级越高不能为空', trigger: 'blur' }],
-    status: [{ required: true, message: '消息状态：0-草稿,1-活跃,2-已失效不能为空', trigger: 'change' }],
-    sendTime: [{ required: true, message: '消息发送时间不能为空', trigger: 'blur' }],
-    sendUser: [{ required: true, message: '消息发送人不能为空', trigger: 'blur' }],
-    confirmTime: [{ required: true, message: '消息确认时间不能为空', trigger: 'blur' }],
-    confirmUser: [{ required: true, message: '消息确认人不能为空', trigger: 'blur' }],
-    remark: [{ required: true, message: '备注不能为空', trigger: 'blur' }]
+    status: [{ required: true, message: '消息状态：0-草稿,1-活跃,2-已失效不能为空', trigger: 'change' }]
   }
 });
 
 const { queryParams, form, rules } = toRefs(data);
+// 辅助函数：获取优先级名称和样式
+enum MessagePriority {
+  LOW = 1,
+  MEDIUM = 2,
+  HIGH = 3,
+  CRITICAL = 4
+}
+
+const getPriorityName = (priority: MessagePriority) => {
+  const names = {
+    [MessagePriority.LOW]: '低',
+    [MessagePriority.MEDIUM]: '中',
+    [MessagePriority.HIGH]: '高',
+    [MessagePriority.CRITICAL]: '紧急'
+  };
+  return names[priority] || '未知';
+};
+
+const getPriorityTagType = (priority: MessagePriority) => {
+  const types: Record<MessagePriority, string> = {
+    [MessagePriority.LOW]: 'info',
+    [MessagePriority.MEDIUM]: 'primary', // 中优先级使用蓝色
+    [MessagePriority.HIGH]: 'warning',
+    [MessagePriority.CRITICAL]: 'danger'
+  };
+  return types[priority] ?? 'primary'; // 使用空值合并运算符确保非空
+};
+// 优先级自定义排序
+const prioritySort = (a: MessageVO, b: MessageVO) => {
+  return a.priority - b.priority; // 数字越大优先级越高
+};
+// 确认状态自定义排序 (1=已发送, 2=已确认)
+const statusSort = (a: MessageVO, b: MessageVO) => {
+  // 确保未定义的状态排在最后
+  if (!a.status) return 1;
+  if (!b.status) return -1;
+  return Number(a.status) - Number(b.status);
+};
+const shortcuts = [
+  {
+    text: '今天',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate());
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '昨天',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近两天',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近三天',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 2);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近一周',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近一月',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setMonth(start.getMonth() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近三月',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setMonth(start.getMonth() - 3);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  }
+];
 
 /** 查询消息主表列表 */
 const getList = async () => {
@@ -307,6 +423,12 @@ const handleExport = () => {
 };
 
 onMounted(() => {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate());
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  queryParams.value.sendTimeRange = [parseTime(start), parseTime(end)];
   getList();
 });
 </script>

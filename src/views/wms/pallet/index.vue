@@ -10,6 +10,11 @@
             <el-form-item label="栈板描述" prop="description">
               <el-input v-model="queryParams.description" placeholder="请输入栈板描述" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="状态" prop="status">
+              <el-select v-model="queryParams.status" placeholder="请选择状态" clearable filterable>
+                <el-option v-for="dict in wms_pallet_status" :key="dict.value" :label="dict.label" :value="dict.value" />
+              </el-select>
+            </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
               <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -51,11 +56,16 @@
         <el-table-column type="expand">
           <template #default="scope">
             <el-table v-loading="loading" :data="scope.row.palletInventoryDetailVoList" style="width: calc(100% - 110px); float: right; margin: 10px 0" empty-text="暂无数据">
-              <el-table-column label="栈板编号" align="center" prop="palletCode" />
-              <el-table-column label="打包编号" min-width="120" align="center" prop="packingCode" />
+              <el-table-column label="序号" align="center" width="60">
+                <template #default="{ $index }">
+                  {{ $index + 1 }}
+                </template>
+              </el-table-column>
+              <el-table-column label="打包编号" align="center" prop="packingCode" />
               <el-table-column label="工单号" align="center" prop="workOrderNo" />
               <el-table-column label="料号" align="center" prop="item" />
-              <el-table-column label="待入库数量" align="center" prop="packingQty" />
+              <el-table-column label="描述" align="center" prop="itemDesc" />
+              <el-table-column label="数量" align="center" prop="packingQty" />
               <el-table-column label="状态" align="center" prop="status">
                 <template #default="scope">
                   <dict-tag :options="wms_pallet_inventory_status" :value="scope.row.status" />
@@ -66,15 +76,20 @@
             </el-table>
           </template>
         </el-table-column>
-        <el-table-column label="栈板编号" align="center" prop="palletCode" />
-        <el-table-column label="栈板描述" align="center" prop="description" />
-        <el-table-column label="状态" align="center" prop="status">
+        <el-table-column label="栈板编号" align="left" prop="palletCode" />
+        <el-table-column label="栈板描述" align="left" prop="description" />
+        <el-table-column label="状态" align="left" prop="status">
           <template #default="scope">
             <dict-tag :options="wms_pallet_status" :value="scope.row.status" />
           </template>
         </el-table-column>
-        <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
-        <el-table-column label="仓库描述" align="center" prop="warehouseDesc" />
+        <el-table-column label="项次数" align="left" prop="countPackingDetail">
+          <template #default="scope">
+            <span>{{ (scope.row.palletInventoryDetailVoList || []).length }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="仓库编码" align="left" prop="warehouseCode" />
+        <el-table-column label="仓库描述" align="left" prop="warehouseDesc" />
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">

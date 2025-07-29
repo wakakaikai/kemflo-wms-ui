@@ -18,16 +18,16 @@
           <template #prefix><svg-icon icon-class="password" class="el-input__icon input-icon" /></template>
         </el-input>
       </el-form-item>
-<!--      <el-form-item v-if="captchaEnabled" prop="code">-->
-<!--        <el-input v-model="loginForm.code" size="large" auto-complete="off" placeholder="验证码" style="width: 63%" @keyup.enter="handleLogin">-->
-<!--          <template #prefix><svg-icon icon-class="validCode" class="el-input__icon input-icon" /></template>-->
-<!--        </el-input>-->
-<!--        <div class="login-code">-->
-<!--          <img :src="codeUrl" class="login-code-img" @click="getCode" />-->
-<!--        </div>-->
-<!--      </el-form-item>-->
+      <!--      <el-form-item v-if="captchaEnabled" prop="code">-->
+      <!--        <el-input v-model="loginForm.code" size="large" auto-complete="off" placeholder="验证码" style="width: 63%" @keyup.enter="handleLogin">-->
+      <!--          <template #prefix><svg-icon icon-class="validCode" class="el-input__icon input-icon" /></template>-->
+      <!--        </el-input>-->
+      <!--        <div class="login-code">-->
+      <!--          <img :src="codeUrl" class="login-code-img" @click="getCode" />-->
+      <!--        </div>-->
+      <!--      </el-form-item>-->
       <el-checkbox v-model="loginForm.rememberMe" style="margin: 0 0 25px 0">记住密码</el-checkbox>
-<!--      <el-form-item style="float: right">
+      <!--      <el-form-item style="float: right">
         <el-button circle title="微信登录" @click="doSocialLogin('wechat')">
           <svg-icon icon-class="wechat" />
         </el-button>
@@ -68,6 +68,7 @@ import { useUserStore } from '@/store/modules/user';
 import { LoginData, TenantVO } from '@/api/types';
 import { to } from 'await-to-js';
 import { HttpStatus } from '@/enums/RespEnum';
+import { setToken } from '@/utils/auth';
 
 const userStore = useUserStore();
 const router = useRouter();
@@ -205,6 +206,29 @@ onMounted(() => {
   getCode();
   initTenantList();
   getLoginData();
+
+  // 定义允许的源列表
+  const allowedOrigins = ['http://127.0.0.1:3000', 'https://mesqas.yakimagroup.com:8998', 'https://mes.yakimagroup.com:8999'];
+
+  // 监听事件
+  window.addEventListener('message', function (event) {
+    // 检查事件源是否在允许列表中
+    if (!allowedOrigins.includes(event.origin)) return;
+
+    if (event.data && event.data.type === 'AUTO_LOGIN') {
+      console.log('event.data', event.data);
+      loginForm.value.rememberMe = true;
+      loginForm.value.tenantId = event.data.tenantId;
+      loginForm.value.username = event.data.username;
+      loginForm.value.password = event.data.password;
+      localStorage.setItem('tenantId', String(loginForm.value.tenantId));
+      localStorage.setItem('username', String(loginForm.value.username));
+      localStorage.setItem('password', String(loginForm.value.password));
+      localStorage.setItem('rememberMe', String(loginForm.value.rememberMe));
+      localStorage.setItem('sidebarStatus', String(0));
+      handleLogin();
+    }
+  });
 });
 </script>
 

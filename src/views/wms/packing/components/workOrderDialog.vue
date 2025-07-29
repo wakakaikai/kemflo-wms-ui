@@ -32,22 +32,20 @@
           <el-table-column label="产品料号" align="center" width="150" prop="item" />
           <el-table-column label="产品描述" align="left" prop="itemDesc" />
           <el-table-column label="计划数量" align="center" width="130" prop="plannedQty" />
-          <el-table-column label="已交货数量" align="center" width="130" prop="deliveredQty" />
-          <el-table-column label="待入库数量" align="center" width="130" prop="waitStockQty" />
+<!--          <el-table-column label="已交货数量" align="center" width="130" prop="deliveredQty" />-->
+          <!--          <el-table-column label="已打包数量" align="center" width="130" prop="waitStockQty" />-->
         </el-table>
 
         <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getWorkOrderList" />
       </el-card>
       <template #footer>
-        <!--        <el-button @click="workOrderDialogVisible = false">取消</el-button>-->
-        <!--        <el-button type="primary" @click="confirmWorkOrder"> 确认 </el-button>-->
         <el-button @click="cancel">取 消</el-button>
         <el-button :loading="buttonLoading" type="primary" :disabled="!selectedWorkOrder" @click="confirmWorkOrder">确 定</el-button>
       </template>
     </el-dialog>
 
     <!-- 工单打包选择对话框 -->
-    <el-dialog v-model="inboundDialogVisible" :title="`打包工单（工单号: ${form.workOrderNo}）`" width="70%">
+    <el-dialog v-model="inboundDialogVisible" :title="`打包工单（工单号: ${form.workOrderNo}）`" width="70%" @opened="handlePackingQtyDialogOpen">
       <el-form ref="recordFormRef" :model="form" :rules="rules" label-width="auto">
         <el-row :gutter="24">
           <el-col :lg="12" :md="8" :sm="24">
@@ -66,26 +64,22 @@
               <el-text> {{ form.plannedQty }}</el-text>
             </el-form-item>
           </el-col>
-          <el-col :lg="12" :md="8" :sm="24">
+<!--          <el-col :lg="12" :md="8" :sm="24">
             <el-form-item label="已交货数量">
               <el-text> {{ form.deliveredQty }}</el-text>
             </el-form-item>
-          </el-col>
+          </el-col>-->
           <el-col :lg="12" :md="8" :sm="24">
-            <el-form-item label="已打包数量">
-              <el-text> {{ form.waitStockQty }}</el-text>
+            <el-form-item label="工单总的包数量">
+              <el-text> {{ packedQty }}</el-text>
             </el-form-item>
           </el-col>
           <el-col :lg="12" :md="8" :sm="24">
-            <el-form-item label="最大可入库数量">
-              <el-text>{{ getMaxInboundQty }}</el-text>
+            <el-form-item label="打包数量" prop="packingQty" style="width: 100%">
+              <el-input-number ref="packingQtyRef" v-model="form.packingQty" :min="1" :precision="0" placeholder="请输入数量" />
+              <div class="el-form-item__tip">最大可入库数量: {{ getMaxInboundQty }}</div>
             </el-form-item>
           </el-col>
-
-          <el-form-item label="打包数量" prop="packingQty">
-            <el-input-number v-model="form.packingQty" v-focus-select :min="0" :max="getMaxInboundQty" :precision="0" placeholder="请输入数量" />
-            <div class="el-form-item__tip">最大可入库数量: {{ getMaxInboundQty }}</div>
-          </el-form-item>
         </el-row>
       </el-form>
 
@@ -102,10 +96,12 @@ import { onMounted, reactive, ref } from 'vue';
 import { listWorkOrder } from '@/api/wms/workOrder';
 import { WorkOrderForm, WorkOrderQuery } from '@/api/wms/workOrder/types';
 import useDialog from '@/hooks/useDialog';
+import { getWorkOrderPackedQty } from '@/api/wms/packingDetail';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const queryFormRef = ref<ElFormInstance>();
 const buttonLoading = ref(false);
+const packingQtyRef = ref<HTMLInputElement>();
 const emit = defineEmits(['packingDetailListCallBack']);
 // 表单数据
 const initFormData: WorkOrderForm = {
@@ -145,7 +141,8 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
       { required: true, message: '请输入工单打包数量', trigger: 'blur' },
       {
         validator: (rule, value, callback) => {
-          const maxInboundQty = Math.max(form.value.plannedQty - form.value.deliveredQty, 0);
+          const totalPackedInList = records.value.filter((r) => r.workOrderNo === form.value.workOrderNo).reduce((sum, record) => sum + Number(record.packingQty), 0);
+          const maxInboundQty = Math.max(form.value.plannedQty - (Number(packedQty.value) + totalPackedInList), 0);
           if (value > maxInboundQty) {
             callback(new Error(`工单打包数量不能超过${maxInboundQty}`));
           } else {
@@ -164,7 +161,10 @@ const { title, visible, openDialog, closeDialog } = useDialog({
 
 // 计算剩余数量
 const getMaxInboundQty = computed(() => {
-  return Math.max(form.value.plannedQty - form.value.deliveredQty - form.value.waitStockQty, 0);
+  // 计算当前工单所有记录的打包总量
+  const totalPackedInList = records.value.filter((r) => r.workOrderNo === form.value.workOrderNo).reduce((sum, record) => sum + Number(record.packingQty), 0);
+  // 最大可入库数量 = 计划数量 - (数据库已打包 + 列表中已存在的打包数量)
+  return Math.max(form.value.plannedQty - (Number(packedQty.value) + totalPackedInList), 0);
 });
 
 const { queryParams, form, rules } = toRefs(data);
@@ -180,8 +180,9 @@ const filteredData = computed(() => {
 const workOrderList = ref([]);
 const total = ref(0);
 const beforeInStockQty = ref(0);
+const packedQty = ref(0);
 const loading = ref(false);
-
+const workOrderToOtherPackingQtyMap = new Map<string, number>();
 /** 取消按钮 */
 const cancel = () => {
   visible.value = false;
@@ -241,28 +242,28 @@ const confirmWorkOrder = () => {
 const submitForm = () => {
   recordFormRef.value.validate((valid) => {
     if (valid) {
-      // 检查工单号是否已存在
-      const existingIndex = records.value.findIndex((r) => r.workOrderNo === form.value.workOrderNo);
-      if (existingIndex !== -1) {
-        // 累加入库值并保留最大可入库数量限制
-        const newValue = Number(records.value[existingIndex].packingQty) + Number(form.value.packingQty);
-        const maxAllowed = form.value.plannedQty;
+      // 计算当前工单所有记录的打包总量
+      const totalPackedQty = records.value.filter((r) => r.workOrderNo === form.value.workOrderNo).reduce((sum, record) => sum + Number(record.packingQty), 0);
 
-        if (maxAllowed && newValue > maxAllowed) {
-          proxy?.$modal.msgError(`工单${form.value.workOrderNo}打包数量不能超过最大可入库数量：${maxAllowed}`);
-          records.value[existingIndex].packingQty = maxAllowed;
-          inboundDialogVisible.value = false;
-          resetForm();
-          return;
-        }
+      // 加上当前要提交的打包数量
+      const totalAfterSubmit = totalPackedQty + Number(form.value.packingQty);
+      const maxAllowed = Number(form.value.plannedQty);
 
-        records.value[existingIndex].packingQty = newValue;
-        proxy?.$modal.msgSuccess(`工单${form.value.workOrderNo}打包数量已累加，总打包数量：${form.value.packingQty}`);
-      } else {
-        // 添加新记录
-        records.value.push({ ...form.value });
-        proxy?.$modal.msgSuccess(`工单${form.value.workOrderNo}，总打包数量：${form.value.packingQty}`);
+      // 校验总打包数量
+      if (totalAfterSubmit > maxAllowed) {
+        proxy?.$modal.msgError(`工单${form.value.workOrderNo}的总打包数量(${totalAfterSubmit})不能超过计划数量(${maxAllowed})`);
+        return;
       }
+
+      if (Number(form.value.packingQty) == 0) {
+        proxy?.$modal.msgError(`工单${form.value.workOrderNo}的打包数量(${form.value.packingQty})不能为0)`);
+        return;
+      }
+
+      // 添加新记录（不合并）
+      records.value.push({ ...form.value });
+      proxy?.$modal.msgSuccess(`新增工单${form.value.workOrderNo}打包记录，数量：${form.value.packingQty}`);
+
       inboundDialogVisible.value = false;
       resetForm();
     }
@@ -280,11 +281,32 @@ const resetForm = () => {
   selectedWorkOrder.value = initFormData;
 };
 
-onMounted(() => {});
-const initWorkOrderDialog = (packingDetailList: any) => {
+const handlePackingQtyDialogOpen = async () => {
+  const otherPackingQty = workOrderToOtherPackingQtyMap.get(selectedWorkOrder.value.workOrderNo);
+  if (otherPackingQty === undefined) {
+    const res = await getWorkOrderPackedQty(selectedWorkOrder.value.workOrderNo);
+    packedQty.value = Number(res.data);
+    // 将获取的值存入map
+    workOrderToOtherPackingQtyMap.set(selectedWorkOrder.value.workOrderNo, packedQty.value);
+  } else {
+    packedQty.value = otherPackingQty;
+  }
+  // 聚焦输入框
+  await nextTick(() => {
+    packingQtyRef.value?.focus();
+  });
+};
+
+const initWorkOrderDialog = (packingDetailList: any, sourceMap: Map<string, number>) => {
   records.value = packingDetailList;
+  workOrderToOtherPackingQtyMap.clear();
+  sourceMap.forEach((value, key) => {
+    workOrderToOtherPackingQtyMap.set(key, value);
+  });
   getWorkOrderList();
 };
+
+onMounted(() => {});
 
 defineExpose({
   openDialog,

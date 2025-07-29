@@ -78,6 +78,15 @@
                 <div class="indicator-bar"></div>
               </el-button>
 
+              <!-- 品质呼叫 (红色+金色图标) -->
+              <el-button type="danger" class="call-btn product-call relative" @click="confirmProductCall">
+                <div class="lang-select--style mr-1">
+                  <svg-icon icon-class="process" />
+                </div>
+                制程
+                <div class="indicator-bar"></div>
+              </el-button>
+
               <!-- 其他呼叫 (紫色) -->
               <el-button class="call-btn other-call relative bg-purple-500 hover:bg-purple-600 text-white" @click="confirmOtherCall">
                 <div class="lang-select--style mr-1">
@@ -343,6 +352,14 @@ const confirmMaterialCall = () => {
 
 // 设备呼叫确认
 const confirmEquipmentCall = () => {
+  if (!podConfig.value.workCenter) {
+    proxy.$modal.msgWarning('请选择工作中心');
+    return;
+  }
+  if (!podConfig.value.resourceType) {
+    proxy.$modal.msgWarning('请选择工位');
+    return;
+  }
   ElMessageBox({
     title: '设备呼叫',
     message: h('div', null, [
@@ -382,6 +399,14 @@ const confirmEquipmentCall = () => {
 
 // 品质呼叫确认
 const confirmQualityCall = () => {
+  if (!podConfig.value.workCenter) {
+    proxy.$modal.msgWarning('请选择工作中心');
+    return;
+  }
+  if (!podConfig.value.resourceType) {
+    proxy.$modal.msgWarning('请选择工位');
+    return;
+  }
   ElMessageBox({
     title: '品质呼叫',
     message: h('div', null, [
@@ -419,8 +444,63 @@ const confirmQualityCall = () => {
   });
 };
 
+// 制程呼叫确认
+const confirmProductCall = () => {
+  if (!podConfig.value.workCenter) {
+    proxy.$modal.msgWarning('请选择工作中心');
+    return;
+  }
+  if (!podConfig.value.resourceType) {
+    proxy.$modal.msgWarning('请选择工位');
+    return;
+  }
+  ElMessageBox({
+    title: '制程呼叫',
+    message: h('div', null, [
+      h('p', null, [
+        h('span', { innerHTML: '线体：', style: 'font-size: 18px; line-height: 40px;' }), // 使用 innerHTML 确保 HTML 实体解析
+        h('span', { style: 'color: #0d9488;font-size: 18px; font-weight: bold' }, podConfig.value.workCenter)
+      ]),
+      h('p', null, [
+        h('span', { innerHTML: '岗位：', style: 'font-size: 18px; line-height: 40px;' }), // 使用 innerHTML 和 HTML 实体
+        h('span', { style: 'color: #0d9488; font-size: 18px;font-weight: bold' }, `${podConfig.value.resourceType}(${podConfig.value.resourceTypeDesc})`)
+      ])
+    ]),
+    center: true,
+    showCancelButton: true,
+    showConfirmButton: true,
+    showClose: true,
+    closeOnClickModal: false, // 点击遮罩层不关闭
+    closeOnPressEscape: false, // 按ESC键不关闭
+    confirmButtonText: '呼叫',
+    cancelButtonText: '取消',
+    dangerouslyUseHTMLString: true, // 必须设置为 true
+    beforeClose: (action, instance, done) => {
+      if (action === 'confirm') {
+        instance.confirmButtonLoading = true;
+        handleProductCall().finally(() => {
+          instance.confirmButtonLoading = false;
+          done();
+        });
+      } else {
+        done();
+      }
+    }
+  }).catch(() => {
+    // 取消操作
+  });
+};
+
 // 其他呼叫确认
 const confirmOtherCall = () => {
+  if (!podConfig.value.workCenter) {
+    proxy.$modal.msgWarning('请选择工作中心');
+    return;
+  }
+  if (!podConfig.value.resourceType) {
+    proxy.$modal.msgWarning('请选择工位');
+    return;
+  }
   ElMessageBox({
     title: '其他呼叫',
     message: h('div', null, [
@@ -493,6 +573,20 @@ const handleQualityCall = async () => {
     workStationDesc: podConfig.value.resourceTypeDesc,
     title: '品质呼叫',
     content: '线体' + podConfig.value.workCenter + '在工作岗位' + podConfig.value.resourceTypeDesc + '呼叫品质问题',
+    messageType: 1,
+    priority: 4,
+    status: 1
+  });
+  await queryWorkCenterAbnormalCall();
+};
+
+const handleProductCall = async () => {
+  await addMessage({
+    workCenter: podConfig.value.workCenter,
+    workStation: podConfig.value.resourceType,
+    workStationDesc: podConfig.value.resourceTypeDesc,
+    title: '制程呼叫',
+    content: '线体' + podConfig.value.workCenter + '在工作岗位' + podConfig.value.resourceTypeDesc + '呼叫制程问题',
     messageType: 1,
     priority: 4,
     status: 1
@@ -617,6 +711,16 @@ onMounted(() => {
 .quality-call:hover {
   background: linear-gradient(135deg, #dc2626, #b91c1c) !important; /* 深红 */
   box-shadow: 0 6px 12px rgba(239, 68, 68, 0.25);
+}
+
+.product-call {
+  background: linear-gradient(135deg, #14b8a6, #0d9488) !important; /* 蓝绿色系 */
+  color: white !important;
+}
+
+.product-call:hover {
+  background: linear-gradient(135deg, #0d9488, #0f766e) !important;
+  box-shadow: 0 6px 12px rgba(20, 184, 166, 0.25);
 }
 
 .other-call {

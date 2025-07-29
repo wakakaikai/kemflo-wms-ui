@@ -217,7 +217,7 @@ const initFormData: WarehouseLocationForm = {
   id: undefined,
   code: undefined,
   name: undefined,
-  parentId: undefined,
+  parentId: 0,
   ancestors: undefined,
   orderNum: undefined,
   level: 1,
@@ -239,7 +239,7 @@ const data = reactive<PageData<WarehouseLocationForm, WarehouseLocationQuery>>({
     pageSize: 10,
     code: undefined,
     name: undefined,
-    parentId: undefined,
+    parentId: 0,
     ancestors: undefined,
     orderNum: undefined,
     level: undefined,
@@ -434,6 +434,7 @@ const getRouterParams = async () => {
 onMounted(() => {
   queryParams.value.level = 1;
   form.value.level = 1;
+  form.value.parentId = 0;
   getRouterParams();
   getList();
 });

@@ -102,7 +102,7 @@ const handleSelectionChange = (selection: MessageVO[]) => {
 };
 
 const confirmMessage = async (row) => {
-  await ElMessageBox.confirm(`确认【${row.content}】异常已经受到处理?`, '提示', {
+  await ElMessageBox.confirm(`确认【${row.content}】异常呼叫已被响应?`, '提示', {
     confirmButtonText: '确认',
     cancelButtonText: '取消',
     type: 'warning'

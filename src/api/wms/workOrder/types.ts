@@ -122,6 +122,16 @@ export interface WorkOrderForm extends BaseEntity {
   packingQty?: number;
 
   /**
+   * 修改前原始打包数量
+   */
+  originPackingQty?: number;
+
+  /**
+   * 其他打包数量
+   */
+  otherPackingQty?: number;
+
+  /**
    * 备注
    */
   remark?: string;

@@ -377,6 +377,7 @@ const getList = async () => {
     });
   });
   messages.value = noticeStore.state.notices;
+  console.log(messages.value);
   loading.value = false;
 };
 

@@ -16,6 +16,19 @@ export const listPacking = (query?: PackingQuery): AxiosPromise<PackingVO[]> => 
   });
 };
 
+/**
+ * 查询打包及明细记录列表
+ * @param query
+ * @returns {*}
+ */
+
+export const listPackingAndDetail = (query?: PackingQuery): AxiosPromise<PackingVO[]> => {
+  return request({
+    url: '/wms/packing/packingDetail/list',
+    method: 'get',
+    params: query
+  });
+};
 
 /**
  * 查询打包记录详细

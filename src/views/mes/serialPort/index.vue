@@ -25,7 +25,7 @@
 
           <el-col :span="12">
             <el-form-item label="波特率">
-              <el-select v-model="form.baudRate" placeholder="请选择波特率" :disabled="isConnected">
+              <el-select v-model="form.baudRate" placeholder="请选择波特率" :disabled="isConnected" filterable>
                 <el-option v-for="rate in baudRates" :key="rate" :label="rate.toString()" :value="rate" />
               </el-select>
             </el-form-item>
@@ -84,7 +84,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { serialPortApi } from '@/api/mes/serialPort';
-import { SerialPortForm, SerialPortQuery } from '@/api/mes/serialPort/types';
+import { SerialPortVo, SerialPortQuery } from '@/api/mes/serialPort/types';
 import { useSerialNoticeStore } from '@/store/modules/serialNotice';
 
 const initFormData: SerialPortForm = {

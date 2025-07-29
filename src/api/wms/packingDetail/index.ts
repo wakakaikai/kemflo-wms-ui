@@ -61,3 +61,14 @@ export const delPackingDetail = (id: string | number | Array<string | number>) =
     method: 'delete'
   });
 };
+
+/**
+ * 根据工单号查询已打包数量
+ * @param workOrderNo
+ */
+export const getWorkOrderPackedQty = (workOrderNo: string | number | Array<string | number>) => {
+  return request({
+    url: '/wms/packingDetail/getWorkOrderPackedQty/' + workOrderNo,
+    method: 'get'
+  });
+};
