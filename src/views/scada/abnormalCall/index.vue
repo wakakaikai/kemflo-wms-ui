@@ -187,6 +187,7 @@ import { queryAbnormalCallScada } from '@/api/mes/message';
 import { parseTime } from '@/utils/ruoyi';
 import { CaretRight } from '@element-plus/icons-vue';
 import { useRequest } from 'vue-request';
+import { checkPermi } from '@/utils/permission';
 interface SummaryItem {
   total: number;
   avgTime: number;
@@ -235,6 +236,8 @@ const titles = {
   equipment: '设备呼叫',
   quality: '品质呼叫',
   process: '制程呼叫',
+  power: '动力呼叫',
+  fixture: '治具呼叫',
   other: '其他呼叫'
 };
 
@@ -288,32 +291,56 @@ const loadAbnormalCallScadaData = async () => {
     startTime: userSettingsForm.value.startTime
   });
   // 更新统计卡片数据
-  summary.value.material = {
-    total: res?.data.itemCallCount,
-    avgTime: res.data.itemCallAvgResponseTime || 0,
-    closeRate: res.data.itemCallExceptionCloseRate || 100
-  };
-  summary.value.equipment = {
-    total: res?.data.equipmentCallCount,
-    avgTime: res.data.equipmentCallAvgResponseTime || 0,
-    closeRate: res.data.equipmentCallExceptionCloseRate || 100
-  };
-  summary.value.quality = {
-    total: res?.data.qualityCallCount,
-    avgTime: res.data.qualityCallAvgResponseTime || 0,
-    closeRate: res.data.qualityCallExceptionCloseRate || 100
-  };
-  summary.value.process = {
-    total: res?.data.processCallCount,
-    avgTime: res.data.processCallAvgResponseTime || 0,
-    closeRate: res.data.processCallExceptionCloseRate || 100
-  };
+  if (checkPermi(['mes:messageCall:material'])) {
+    summary.value.material = {
+      total: res?.data.itemCallCount,
+      avgTime: res.data.itemCallAvgResponseTime || 0,
+      closeRate: res.data.itemCallExceptionCloseRate || 100
+    };
+  }
+  if (checkPermi(['mes:messageCall:equipment'])) {
+    summary.value.equipment = {
+      total: res?.data.equipmentCallCount,
+      avgTime: res.data.equipmentCallAvgResponseTime || 0,
+      closeRate: res.data.equipmentCallExceptionCloseRate || 100
+    };
+  }
+  if (checkPermi(['mes:messageCall:quality'])) {
+    summary.value.quality = {
+      total: res?.data.qualityCallCount,
+      avgTime: res.data.qualityCallAvgResponseTime || 0,
+      closeRate: res.data.qualityCallExceptionCloseRate || 100
+    };
+  }
+  if (checkPermi(['mes:messageCall:process'])) {
+    summary.value.process = {
+      total: res?.data.processCallCount,
+      avgTime: res.data.processCallAvgResponseTime || 0,
+      closeRate: res.data.processCallExceptionCloseRate || 100
+    };
+  }
+  if (checkPermi(['mes:messageCall:power'])) {
+    summary.value.power = {
+      total: res?.data.powerCallCount,
+      avgTime: res.data.powerCallAvgResponseTime || 0,
+      closeRate: res.data.powerCallExceptionCloseRate || 100
+    };
+  }
+  if (checkPermi(['mes:messageCall:fixture'])) {
+    summary.value.fixture = {
+      total: res?.data.fixtureCallCount,
+      avgTime: res.data.fixtureCallAvgResponseTime || 0,
+      closeRate: res.data.fixtureCallExceptionCloseRate || 100
+    };
+  }
 
-  summary.value.other = {
-    total: res?.data.otherCallCount,
-    avgTime: res.data.otherCallAvgResponseTime || 0,
-    closeRate: res.data.otherCallExceptionCloseRate || 100
-  };
+  if (checkPermi(['mes:messageCall:other'])) {
+    summary.value.other = {
+      total: res?.data.otherCallCount,
+      avgTime: res.data.otherCallAvgResponseTime || 0,
+      closeRate: res.data.otherCallExceptionCloseRate || 100
+    };
+  }
   // 转换并更新生产线数据
   productionLines.value = transformResponseToProductionLines(res.data);
 };

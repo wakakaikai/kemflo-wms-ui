@@ -51,8 +51,8 @@
 
           <div class="flex flex-wrap items-center mt-[10px] py-4 px-0 bg-gray-50">
             <div class="flex flex-1 md:flex-none ml-[10px]">
-              <!-- 物料呼叫 (蓝色) -->
-              <el-button type="primary" class="call-btn material-call relative ml-[11px]" @click="confirmMaterialCall">
+              <!-- 物料呼叫-->
+              <el-button type="primary" class="call-btn material-call relative ml-[11px]" @click="confirmMaterialCall" v-hasPermi="['mes:messageCall:material']">
                 <el-icon class="mr-1">
                   <Box />
                 </el-icon>
@@ -60,8 +60,8 @@
                 <div class="indicator-bar"></div>
               </el-button>
 
-              <!-- 设备呼叫 (橙色) -->
-              <el-button type="warning" class="call-btn equipment-call relative" @click="confirmEquipmentCall">
+              <!-- 设备呼叫-->
+              <el-button type="warning" class="call-btn equipment-call relative" @click="confirmEquipmentCall" v-hasPermi="['mes:messageCall:equipment']">
                 <div class="lang-select--style mr-1">
                   <svg-icon icon-class="equipment" />
                 </div>
@@ -69,8 +69,8 @@
                 <div class="indicator-bar"></div>
               </el-button>
 
-              <!-- 品质呼叫 (红色+金色图标) -->
-              <el-button type="danger" class="call-btn quality-call relative" @click="confirmQualityCall">
+              <!-- 品质呼叫-->
+              <el-button type="danger" class="call-btn quality-call relative" @click="confirmQualityCall" v-hasPermi="['mes:messageCall:quality']">
                 <div class="lang-select--style mr-1">
                   <svg-icon icon-class="quality" />
                 </div>
@@ -78,8 +78,8 @@
                 <div class="indicator-bar"></div>
               </el-button>
 
-              <!-- 品质呼叫 (红色+金色图标) -->
-              <el-button type="danger" class="call-btn product-call relative" @click="confirmProductCall">
+              <!-- 制程呼叫 -->
+              <el-button type="danger" class="call-btn product-call relative" @click="confirmProductCall" v-hasPermi="['mes:messageCall:process']">
                 <div class="lang-select--style mr-1">
                   <svg-icon icon-class="process" />
                 </div>
@@ -87,8 +87,26 @@
                 <div class="indicator-bar"></div>
               </el-button>
 
+              <!-- 动力呼叫按钮 -->
+              <el-button type="success" class="call-btn power-call relative" @click="confirmPowerCall" v-hasPermi="['mes:messageCall:power']">
+                <div class="lang-select--style mr-1">
+                  <svg-icon icon-class="power" />
+                </div>
+                动力
+                <div class="indicator-bar"></div>
+              </el-button>
+
+              <!-- 治具呼叫按钮 -->
+              <el-button type="info" class="call-btn fixture-call relative" @click="confirmFixtureCall" v-hasPermi="['mes:messageCall:fixture']">
+                <div class="lang-select--style mr-1">
+                  <svg-icon icon-class="fixture" />
+                </div>
+                治具
+                <div class="indicator-bar"></div>
+              </el-button>
+
               <!-- 其他呼叫 (紫色) -->
-              <el-button class="call-btn other-call relative bg-purple-500 hover:bg-purple-600 text-white" @click="confirmOtherCall">
+              <el-button class="call-btn other-call relative bg-purple-500 hover:bg-purple-600 text-white" @click="confirmOtherCall" v-hasPermi="['mes:messageCall:other']">
                 <div class="lang-select--style mr-1">
                   <svg-icon icon-class="other" />
                 </div>
@@ -491,6 +509,100 @@ const confirmProductCall = () => {
   });
 };
 
+// 动力呼叫
+const confirmPowerCall = () => {
+  if (!podConfig.value.workCenter) {
+    proxy.$modal.msgWarning('请选择工作中心');
+    return;
+  }
+  if (!podConfig.value.resourceType) {
+    proxy.$modal.msgWarning('请选择工位');
+    return;
+  }
+  ElMessageBox({
+    title: '动力呼叫',
+    message: h('div', null, [
+      h('p', null, [
+        h('span', { innerHTML: '线体：', style: 'font-size: 18px; line-height: 40px;' }),
+        h('span', { style: 'color: #22c55e; font-size: 18px;font-weight: bold' }, podConfig.value.workCenter)
+      ]),
+      h('p', null, [
+        h('span', { innerHTML: '岗位：', style: 'font-size: 18px; line-height: 40px;' }),
+        h('span', { style: 'color: #22c55e; font-size: 18px;font-weight: bold' }, `${podConfig.value.resourceType}(${podConfig.value.resourceTypeDesc})`)
+      ])
+    ]),
+    center: true,
+    showCancelButton: true,
+    showConfirmButton: true,
+    showClose: true,
+    closeOnClickModal: false,
+    closeOnPressEscape: false,
+    confirmButtonText: '呼叫',
+    cancelButtonText: '取消',
+    dangerouslyUseHTMLString: true,
+    beforeClose: (action, instance, done) => {
+      if (action === 'confirm') {
+        instance.confirmButtonLoading = true;
+        handlePowerCall().finally(() => {
+          instance.confirmButtonLoading = false;
+          done();
+        });
+      } else {
+        done();
+      }
+    }
+  }).catch(() => {
+    // 取消操作
+  });
+};
+
+// 治具呼叫确认函数
+const confirmFixtureCall = () => {
+  if (!podConfig.value.workCenter) {
+    proxy.$modal.msgWarning('请选择工作中心');
+    return;
+  }
+  if (!podConfig.value.resourceType) {
+    proxy.$modal.msgWarning('请选择工位');
+    return;
+  }
+  ElMessageBox({
+    title: '治具呼叫',
+    message: h('div', null, [
+      h('p', null, [
+        h('span', { innerHTML: '线体：', style: 'font-size: 18px; line-height: 40px;' }),
+        h('span', { style: 'color: #64748b; font-size: 18px;font-weight: bold' }, podConfig.value.workCenter)
+      ]),
+      h('p', null, [
+        h('span', { innerHTML: '岗位：', style: 'font-size: 18px; line-height: 40px;' }),
+        h('span', { style: 'color: #64748b; font-size: 18px;font-weight: bold' }, `${podConfig.value.resourceType}(${podConfig.value.resourceTypeDesc})`)
+      ])
+    ]),
+    center: true,
+    showCancelButton: true,
+    showConfirmButton: true,
+    showClose: true,
+    closeOnClickModal: false,
+    closeOnPressEscape: false,
+    confirmButtonText: '呼叫',
+    cancelButtonText: '取消',
+    dangerouslyUseHTMLString: true,
+    beforeClose: (action, instance, done) => {
+      if (action === 'confirm') {
+        instance.confirmButtonLoading = true;
+        handleFixtureCall().finally(() => {
+          instance.confirmButtonLoading = false;
+          done();
+        });
+      } else {
+        done();
+      }
+    }
+  }).catch(() => {
+    // 取消操作
+  });
+};
+
 // 其他呼叫确认
 const confirmOtherCall = () => {
   if (!podConfig.value.workCenter) {
@@ -594,6 +706,21 @@ const handleProductCall = async () => {
   await queryWorkCenterAbnormalCall();
 };
 
+// 动力呼叫处理函数
+const handlePowerCall = async () => {
+  await addMessage({
+    workCenter: podConfig.value.workCenter,
+    workStation: podConfig.value.resourceType,
+    workStationDesc: podConfig.value.resourceTypeDesc,
+    title: '动力呼叫',
+    content: '线体' + podConfig.value.workCenter + '在工作岗位' + podConfig.value.resourceTypeDesc + '呼叫动力问题',
+    messageType: 1,
+    priority: 2,
+    status: 1
+  });
+  await queryWorkCenterAbnormalCall();
+};
+
 const handleOtherCall = async () => {
   await addMessage({
     workCenter: podConfig.value.workCenter,
@@ -603,6 +730,21 @@ const handleOtherCall = async () => {
     content: '线体' + podConfig.value.workCenter + '在工作岗位' + podConfig.value.resourceTypeDesc + '呼叫生产问题',
     messageType: 1,
     priority: 1,
+    status: 1
+  });
+  await queryWorkCenterAbnormalCall();
+};
+
+// 治具呼叫处理函数
+const handleFixtureCall = async () => {
+  await addMessage({
+    workCenter: podConfig.value.workCenter,
+    workStation: podConfig.value.resourceType,
+    workStationDesc: podConfig.value.resourceTypeDesc,
+    title: '治具呼叫',
+    content: '线体' + podConfig.value.workCenter + '在工作岗位' + podConfig.value.resourceTypeDesc + '呼叫治具问题',
+    messageType: 1,
+    priority: 3,
     status: 1
   });
   await queryWorkCenterAbnormalCall();
@@ -721,6 +863,27 @@ onMounted(() => {
 .product-call:hover {
   background: linear-gradient(135deg, #0d9488, #0f766e) !important;
   box-shadow: 0 6px 12px rgba(20, 184, 166, 0.25);
+}
+
+.power-call {
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  color: white !important;
+}
+
+.power-call:hover {
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  box-shadow: 0 6px 12px rgba(34, 197, 94, 0.25);
+}
+
+/* 治具呼叫按钮样式 */
+.fixture-call {
+  background: linear-gradient(135deg, #64748b, #475569) !important;
+  color: white !important;
+}
+
+.fixture-call:hover {
+  background: linear-gradient(135deg, #475569, #334155) !important;
+  box-shadow: 0 6px 12px rgba(100, 116, 139, 0.25);
 }
 
 .other-call {
