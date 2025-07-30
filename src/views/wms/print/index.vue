@@ -1,5 +1,5 @@
 <template>
-  <div class="heihu-print-system">
+  <div class="print-container">
     <el-container>
       <!-- 左侧菜单区域 -->
       <el-aside width="320px" class="sidebar">
@@ -13,7 +13,7 @@
                 <el-radio label="qr5060">工业二维码(50×60mm)</el-radio>
                 <el-radio label="qr3040">工业二维码(30×40mm)</el-radio>
                 <el-radio label="qr8060">工业二维码(80×60mm)</el-radio>
-                <!-- 新增选项 -->
+                <!--                <el-radio label="qr9784">工业二维码(97×84mm)</el-radio>-->
               </el-radio-group>
             </el-tab-pane>
             <el-tab-pane label="Excel模板打印" name="excel">
@@ -95,17 +95,13 @@
 
           <div class="preview-content">
             <!-- 生产入库单模板 -->
-            <div v-if="currentTemplate === 'productionReceipt'" class="production-receipt thermal-size" ref="printContent">
+            <div v-if="currentTemplate === 'productionReceipt'" :class="['production-receipt', getPaperSizeClass()]" ref="printContent">
               <div class="receipt-header">
                 <div class="company-name-container">
                   <span class="company-name">{{ workOrderInfo.companyName }}</span>
-<!--                  <hr class="company-name-hr" />-->
                 </div>
-                <!--                <span class="title">生产入库单</span>
-                    <span class="mr-number">MR(P) - {{ workOrderInfo.mrNumber }}</span>-->
               </div>
               <hr class="top-hr" />
-              <!-- 工单号上方横线 -->
               <div class="receipt-body">
                 <div class="content-section">
                   <div class="info-row">
@@ -133,11 +129,11 @@
                     <span>{{ workOrderInfo.productionLevel }}</span>
                   </div>
                   <div class="info-row">
-                    <label>操作员</label>
+                    <label>操&nbsp;&nbsp;作 员</label>
                     <span>{{ workOrderInfo.operator }}</span>
                   </div>
                   <div class="info-row">
-                    <label>检验员</label>
+                    <label>检&nbsp;&nbsp;验 员</label>
                     <span>{{ workOrderInfo.inspector }}</span>
                   </div>
                 </div>
@@ -146,7 +142,6 @@
                 </div>
               </div>
               <hr class="bottom-hr" />
-              <!-- 检验员下方横线 -->
             </div>
 
             <!-- 工业二维码(80×60mm)模板 -->
@@ -174,7 +169,8 @@
     </el-container>
   </div>
 </template>
-<script setup>
+
+<script setup lang="ts">
 import { ref, onMounted, watch, nextTick, computed } from 'vue';
 import { Printer, Picture, Document } from '@element-plus/icons-vue';
 import QRCode from 'qrcode';
@@ -182,17 +178,18 @@ import html2canvas from 'html2canvas';
 import { ElMessage } from 'element-plus';
 
 const activeTab = ref('content');
-const currentTemplate = ref('designA4');
+const currentTemplate = ref('productionReceipt'); // 默认选中生产入库单模板
 const selectedExcelTemplate = ref('qrExcel');
 
-const paperSize = ref('A4');
+const paperSize = ref('9784'); // 默认纸张大小设置为97×84mm
 const copies = ref(1);
 const availablePaperSizes = ref([
   { value: 'A4', label: 'A4 (210×297mm)' },
   { value: 'A5', label: 'A5 (148×210mm)' },
   { value: '5060', label: '50×60mm' },
   { value: '3040', label: '30×40mm' },
-  { value: '8060', label: '80×60mm' } // 新增选项
+  { value: '8060', label: '80×60mm' },
+  { value: '9784', label: '97×84mm' } // 默认选中项
 ]);
 
 // 工单信息
@@ -213,18 +210,47 @@ const workOrderInfo = ref({
 // DOM引用
 const qrcodeCanvas = ref(null);
 const qrCanvas5060 = ref(null);
-const qrCanvas8060 = ref(null); // 新增引用
+const qrCanvas8060 = ref(null);
 const printContent = ref(null);
+
+// 根据选择的纸张大小返回对应的CSS类名
+const getPaperSizeClass = () => {
+  switch (paperSize.value) {
+    case '5060':
+      return 'size5060';
+    case '3040':
+      return 'size3040';
+    case '8060':
+      return 'size8060';
+    case '9784':
+      return 'size9784';
+    case 'A4':
+    case 'A5':
+    default:
+      return 'thermal-size';
+  }
+};
+
+// 处理纸张大小变化
+const handlePaperSizeChange = () => {
+  nextTick(() => {
+    generateQRCode();
+  });
+};
 
 // 生成二维码
 const generateQRCode = () => {
-  if (!qrcodeCanvas.value && !qrCanvas5060.value && !qrCanvas8060.value) return;
-
-  const content = `工单号码:${workOrderInfo.value.workOrderNo}, 产品品号:${workOrderInfo.value.productCode}, 入库数量:${workOrderInfo.value.stockInQuantity}, 生产日期:${workOrderInfo.value.productionDate}`;
+  const content = `20250717000201`;
 
   if (qrcodeCanvas.value) {
+    // 根据纸张大小调整二维码尺寸
+    let qrSize = 120;
+    if (paperSize.value === '5060') qrSize = 150;
+    if (paperSize.value === '8060') qrSize = 180;
+    if (paperSize.value === '9784') qrSize = 80;
+
     QRCode.toCanvas(qrcodeCanvas.value, content, {
-      width: 120, // 调整二维码大小
+      width: qrSize,
       margin: 1,
       color: { dark: '#000', light: '#fff' }
     });
@@ -255,7 +281,9 @@ const handlePrint = async () => {
     const canvas = await html2canvas(printContent.value, {
       scale: 2,
       logging: false,
-      useCORS: true
+      useCORS: true,
+      scrollX: 0,
+      scrollY: 0
     });
 
     const printWindow = window.open('', '_blank');
@@ -264,9 +292,80 @@ const handlePrint = async () => {
       for (let i = 0; i < copies.value; i++) {
         printContentHTML += `
           <div style="page-break-after: ${i < copies.value - 1 ? 'always' : 'auto'};">
-            <img src="${canvas.toDataURL('image/png')}" style="width:100%;" />
+            <img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" />
           </div>
         `;
+      }
+
+      // 根据纸张大小设置打印页面尺寸
+      let printStyles = '';
+      switch (paperSize.value) {
+        case '9784':
+          printStyles = `
+            @page {
+              size: 97mm 84mm;
+              margin: 0;
+            }
+            body {
+              width: 97mm;
+              height: 84mm;
+              margin: 0;
+              padding: 0;
+            }
+          `;
+          break;
+        case '8060':
+          printStyles = `
+            @page {
+              size: 80mm 60mm;
+              margin: 0;
+            }
+            body {
+              width: 80mm;
+              height: 60mm;
+              margin: 0;
+              padding: 0;
+            }
+          `;
+          break;
+        case '5060':
+          printStyles = `
+            @page {
+              size: 50mm 60mm;
+              margin: 0;
+            }
+            body {
+              width: 50mm;
+              height: 60mm;
+              margin: 0;
+              padding: 0;
+            }
+          `;
+          break;
+        case '3040':
+          printStyles = `
+            @page {
+              size: 30mm 40mm;
+              margin: 0;
+            }
+            body {
+              width: 30mm;
+              height: 40mm;
+              margin: 0;
+              padding: 0;
+            }
+          `;
+          break;
+        default:
+          printStyles = `
+            @page {
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+            }
+          `;
       }
 
       printWindow.document.write(`
@@ -274,13 +373,18 @@ const handlePrint = async () => {
           <head>
             <title>打印预览</title>
             <style>
+              ${printStyles}
               @media print {
-                body { margin: 0; padding: 0; }
-                img { max-width: 100%; height: auto; }
+                img {
+                  width: 100%;
+                  height: 100%;
+                  max-width: 100%;
+                  max-height: 100%;
+                }
               }
             </style>
           </head>
-          <body onload="window.print(); setTimeout(() => window.close(), 1000);">
+          <body onload="window.print(); setTimeout(() => window.close(), 500);">
             ${printContentHTML}
           </body>
         </html>
@@ -321,6 +425,13 @@ watch(currentTemplate, () => {
   });
 });
 
+// 监听纸张大小变化
+watch(paperSize, () => {
+  nextTick(() => {
+    generateQRCode();
+  });
+});
+
 // 监听工单信息变化
 watch(
   workOrderInfo,
@@ -335,8 +446,9 @@ onMounted(() => {
   generateQRCode();
 });
 </script>
+
 <style scoped>
-.heihu-print-system {
+.print-container {
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -369,7 +481,10 @@ onMounted(() => {
   margin-bottom: 8px;
   width: 100%;
 }
-
+/* 为最后一个 el-radio 元素添加左边距 */
+.template-list .el-radio:last-child {
+  margin-left: -30px;
+}
 .preview-area {
   padding: 16px;
   background-color: #f5f7fa;
@@ -425,6 +540,7 @@ onMounted(() => {
   justify-content: center;
   align-items: flex-start;
 }
+
 /* 生产入库单模板 */
 .production-receipt {
   width: 100%;
@@ -433,7 +549,10 @@ onMounted(() => {
   background-color: #fff;
   display: flex;
   flex-direction: column;
+  /* 添加以下属性来隐藏多余部分 */
+  overflow: hidden;
 }
+
 /* 产品描述最多显示3行 */
 .product-description span {
   display: -webkit-box;
@@ -442,11 +561,71 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* 热敏纸尺寸 (80×60mm) */
+
+/* 默认热敏纸尺寸 */
 .thermal-size {
   width: 80mm;
   height: 60mm;
   font-size: 10px;
+}
+
+/* 不同纸张尺寸 */
+.size5060 {
+  width: 50mm;
+  height: 60mm;
+  font-size: 10px;
+}
+
+.size3040 {
+  width: 30mm;
+  height: 40mm;
+  font-size: 8px;
+}
+
+.size8060 {
+  width: 80mm;
+  height: 60mm;
+  font-size: 10px;
+}
+
+.size9784 {
+  width: 97mm;
+  height: 84mm;
+  font-size: 12px;
+  /* 添加以下属性来确保内容不会超出容器 */
+  overflow: hidden;
+  box-sizing: border-box;
+}
+/* 适配97×84mm尺寸的内容样式 */
+.size9784 .receipt-header {
+  margin-bottom: 8px;
+}
+
+.size9784 .company-name {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.size9784 .info-row label {
+  width: 22mm;
+  font-size: 13px;
+  margin-right: 1mm;
+}
+
+.size9784 .info-row span {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.size9784 .qr-section canvas {
+  max-width: 90%;
+  max-height: 90%;
+}
+
+.size9784 .top-hr,
+.size9784 .bottom-hr {
+  margin: 6px 0;
+  height: 2px;
 }
 
 .receipt-header {
@@ -458,292 +637,48 @@ onMounted(() => {
 
 /* 公司名称容器 */
 .company-name-container {
-  text-align: center; /* 公司名称居中 */
-  width: 100%; /* 占满整个宽度 */
+  text-align: center;
+  width: 100%;
 }
 
 .company-name {
-  font-size: 12px;
+  font-size: 14px; /* 增大公司名称字体 */
   font-weight: bold;
-  display: block; /* 确保公司名称独占一行 */
-}
-
-/* 公司名称下的横线 */
-.company-name-hr {
-  margin: 2px 0; /* 调整横线与公司名称之间的间距 */
-  border: none;
-  height: 1px; /* 横线粗细 */
-  background-color: #000; /* 横线颜色 */
-  width: 100%; /* 横线贯穿整个标签内容 */
-}
-
-.receipt-header .title,
-.receipt-header .mr-number {
-  font-size: 12px;
-  font-weight: bold;
+  display: block;
 }
 
 .receipt-body {
   display: flex;
-  flex-direction: row; /* 左右布局 */
+  flex-direction: row;
 }
 
 .content-section {
-  flex: 5; /* 左侧内容区域占比3/4 */
+  flex: 3;
   padding-right: 5px;
-  /* border-right: 1px solid #ddd; */
 }
 
 .info-row {
   display: flex;
-  margin-bottom: 3px;
+  margin-bottom: 5px; /* 增加行间距 */
 }
 
 .info-row label {
-  width: 13mm;
+  width: 18mm; /* 增加标签宽度 */
   font-weight: bold;
+  flex-shrink: 0;
+  font-size: 12px; /* 增大标签字体 */
+  margin-right: 0mm; /* 增加标签与内容的间距 */
 }
 
 .info-row span {
   flex: 1;
-  word-break: break-all; /* 允许换行 */
+  word-break: break-all;
+  font-size: 12px; /* 增大内容字体 */
+  line-height: 1.4; /* 增加行高 */
 }
 
 .qr-section {
-  flex: 1; /* 右侧二维码区域占比1/4 */
-  padding-left: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.qr-section canvas {
-  width: 40%; /* 进一步缩小二维码大小 */
-  height: auto;
-}
-
-/* 横线样式 */
-.top-hr,
-.bottom-hr {
-  margin: 5px 0; /* 调整横线与内容之间的间距 */
-  border: none;
-  height: 2px; /* 加粗横线 */
-  background-color: #000; /* 横线颜色 */
-  width: 100%; /* 横线贯穿整个标签内容 */
-}
-
-.top-hr {
-  margin-top: 10px; /* 调整顶部横线位置 */
-}
-
-.bottom-hr {
-  margin-bottom: 10px; /* 调整底部横线位置 */
-}
-
-/* 热敏纸尺寸 (80×60mm) */
-.thermal-size {
-  width: 80mm;
-  height: 60mm;
-  font-size: 10px;
-}
-
-.receipt-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-}
-
-.receipt-header .company-name,
-.receipt-header .title,
-.receipt-header .mr-number {
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.receipt-body {
-  display: flex;
-  flex-direction: row; /* 左右布局 */
-}
-
-.content-section {
-  flex: 5; /* 左侧内容区域占比3/4 */
-  padding-right: 5px;
-  /* border-right: 1px solid #ddd; */
-}
-
-.info-row {
-  display: flex;
-  margin-bottom: 3px;
-}
-
-.info-row label {
-  width: 13mm;
-  font-weight: bold;
-}
-
-.info-row span {
   flex: 1;
-  word-break: break-all; /* 允许换行 */
-}
-
-.qr-section {
-  flex: 1; /* 右侧二维码区域占比1/4 */
-  padding-left: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.qr-section canvas {
-  width: 40%; /* 进一步缩小二维码大小 */
-  height: auto;
-}
-
-/* 横线样式 */
-.top-hr,
-.bottom-hr {
-  margin: 5px 0; /* 调整横线与内容之间的间距 */
-  border: none;
-  height: 2px; /* 加粗横线 */
-  background-color: #000; /* 横线颜色 */
-  width: 100%; /* 横线贯穿整个标签内容 */
-}
-
-.top-hr {
-  margin-top: 10px; /* 调整顶部横线位置 */
-}
-
-.bottom-hr {
-  margin-bottom: 10px; /* 调整底部横线位置 */
-}
-
-.receipt-bo
-
-/* 热敏纸尺寸 (80×60mm) */
-.thermal-size {
-  width: 80mm;
-  height: 60mm;
-  font-size: 10px;
-}
-
-.receipt-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-}
-
-.receipt-header .company-name,
-.receipt-header .title,
-.receipt-header .mr-number {
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.receipt-body {
-  display: flex;
-  flex-direction: row; /* 左右布局 */
-}
-
-.content-section {
-  flex: 5; /* 左侧内容区域占比3/4 */
-  padding-right: 5px;
-  /* border-right: 1px solid #ddd; */
-}
-
-.info-row {
-  display: flex;
-  margin-bottom: 3px;
-}
-
-.info-row label {
-  width: 13mm;
-  font-weight: bold;
-}
-
-.info-row span {
-  flex: 1;
-  word-break: break-all; /* 允许换行 */
-}
-
-.qr-section {
-  flex: 1; /* 右侧二维码区域占比1/4 */
-  padding-left: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.qr-section canvas {
-  width: 50%; /* 二维码大小调整为容器宽度的50% */
-  height: auto;
-}
-
-/* 横线样式 */
-hr {
-  margin: 5px 0; /* 调整横线与内容之间的间距 */
-  border: none;
-  height: 1px;
-  background-color: #000; /* 横线颜色 */
-  width: 100%; /* 横线贯穿整个标签内容 */
-}
-
-.receipt-body::before,
-.receipt-body::after {
-  content: '';
-  flex: 1; /* 确保横线贯穿整个标签内容 */
-}
-
-/* 热敏纸尺寸 (80×60mm) */
-.thermal-size {
-  width: 80mm;
-  height: 60mm;
-  font-size: 10px;
-}
-
-.receipt-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-}
-
-.receipt-header .company-name,
-.receipt-header .title,
-.receipt-header .mr-number {
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.receipt-body {
-  display: flex;
-  flex-direction: row; /* 左右布局 */
-}
-
-.content-section {
-  flex: 0 0 45mm; /* 固定左侧内容宽度 */
-  padding-right: 5px;
-  /*  border-right: 1px solid #ddd;*/
-}
-
-.info-row {
-  display: flex;
-  margin-bottom: 3px;
-}
-
-.info-row label {
-  width: 13mm;
-  font-weight: bold;
-}
-
-.info-row span {
-  flex: 1;
-  word-break: break-all; /* 允许换行 */
-}
-
-.qr-section {
-  flex: 0 0 30mm; /* 固定二维码宽度 */
   padding-left: 5px;
   display: flex;
   align-items: center;
@@ -753,6 +688,26 @@ hr {
 .qr-section canvas {
   width: 100%;
   height: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* 横线样式 */
+.top-hr,
+.bottom-hr {
+  margin: 5px 0;
+  border: none;
+  height: 2px;
+  background-color: #000;
+  width: 100%;
+}
+
+.top-hr {
+  margin-top: 10px;
+}
+
+.bottom-hr {
+  margin-bottom: 10px;
 }
 
 /* 二维码模板样式 - 80×60mm */
@@ -813,12 +768,6 @@ hr {
 
   .preview-content {
     padding: 10px;
-  }
-
-  .work-order-card {
-    width: 100%;
-    min-height: auto;
-    transform-origin: top left;
   }
 }
 </style>
