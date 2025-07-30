@@ -13,7 +13,7 @@
                 <el-radio label="qr5060">工业二维码(50×60mm)</el-radio>
                 <el-radio label="qr3040">工业二维码(30×40mm)</el-radio>
                 <el-radio label="qr8060">工业二维码(80×60mm)</el-radio>
-                <!--                <el-radio label="qr9784">工业二维码(97×84mm)</el-radio>-->
+                <el-radio label="qr9784">工业二维码(97×84mm)</el-radio>
               </el-radio-group>
             </el-tab-pane>
             <el-tab-pane label="Excel模板打印" name="excel">
@@ -157,6 +157,63 @@
             </div>
 
             <!-- 其他模板... -->
+            <!-- 生产入库单模板 -->
+            <div v-if="currentTemplate === 'qr9784'" :class="['production-receipt', getPaperSizeClass()]" ref="printContent">
+              <div class="receipt-header">
+                <div class="company-name-container">
+                  <span class="company-name">{{ workOrderInfo.companyName }}</span>
+                </div>
+              </div>
+              <hr class="top-hr" />
+              <div class="receipt-body">
+                <div class="content-section">
+                  <!-- 工单号码占一行 -->
+                  <div class="info-row full-row">
+                    <label>工单号码</label>
+                    <span>{{ workOrderInfo.workOrderNo }}</span>
+                  </div>
+                  <!-- 产品品号占一行 -->
+                  <div class="info-row full-row">
+                    <label>产品品号</label>
+                    <span>{{ workOrderInfo.productCode }}</span>
+                  </div>
+                  <!-- 产品描述占一行 -->
+                  <div class="info-row full-row product-description">
+                    <label>产品描述</label>
+                    <span>{{ workOrderInfo.productDescription }}</span>
+                  </div>
+                  <!-- 其他字段与二维码同行 -->
+                  <div class="info-with-qr">
+                    <div class="info-column">
+                      <div class="info-row">
+                        <label>入库数量</label>
+                        <span>{{ workOrderInfo.stockInQuantity }} PCS</span>
+                      </div>
+                      <div class="info-row">
+                        <label>生产日期</label>
+                        <span>{{ workOrderInfo.productionDate }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>生产线别</label>
+                        <span>{{ workOrderInfo.productionLevel }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>操&nbsp;&nbsp;作 员</label>
+                        <span>{{ workOrderInfo.operator }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>检&nbsp;&nbsp;验 员</label>
+                        <span>{{ workOrderInfo.inspector }}</span>
+                      </div>
+                    </div>
+                    <div class="qr-section">
+                      <canvas ref="qrcodeCanvas"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <hr class="bottom-hr" />
+            </div>
           </div>
 
           <div class="action-buttons">
@@ -248,6 +305,7 @@ const generateQRCode = () => {
     if (paperSize.value === '5060') qrSize = 150;
     if (paperSize.value === '8060') qrSize = 180;
     if (paperSize.value === '9784') qrSize = 80;
+    if (currentTemplate.value === 'qr9784' && paperSize.value === '9784') qrSize = 100;
 
     QRCode.toCanvas(qrcodeCanvas.value, content, {
       width: qrSize,
@@ -708,6 +766,30 @@ onMounted(() => {
 
 .bottom-hr {
   margin-bottom: 10px;
+}
+
+/* 新增样式 */
+.info-with-qr {
+  display: flex;
+  flex-direction: row;
+}
+
+.info-column {
+  flex: 2;
+}
+
+.info-row.full-row {
+  display: block;
+}
+
+.info-row.full-row label {
+  width: auto;
+  display: inline-block;
+  margin-right: 10px;
+}
+
+.info-row.full-row span {
+  display: inline-block;
 }
 
 /* 二维码模板样式 - 80×60mm */
