@@ -4,25 +4,25 @@
       <!-- 左侧菜单区域 -->
       <el-aside width="320px" class="sidebar">
         <div class="menu-section">
-          <h4>选择打印数据</h4>
+          <!--          <h4>选择打印数据</h4>-->
           <el-tabs v-model="activeTab" class="print-tabs">
             <el-tab-pane label="内容打印" name="content">
               <el-radio-group v-model="currentTemplate" class="template-list">
-                <el-radio label="designA4">工业设计+A4/A5纸</el-radio>
-                <el-radio label="productionReceipt">生产入库单模板打印</el-radio>
-                <el-radio label="qr5060">工业二维码(50×60mm)</el-radio>
-                <el-radio label="qr3040">工业二维码(30×40mm)</el-radio>
-                <el-radio label="qr8060">工业二维码(80×60mm)</el-radio>
-                <el-radio label="qr9784">工业二维码(97×84mm)</el-radio>
+                <el-radio value="designA4">工业设计+A4/A5纸</el-radio>
+                <el-radio value="receiptOrderTemplate">生产入库单模板打印(97×84mm)</el-radio>
+                <!--                <el-radio label="receiptOrderTemplate2">生产入库单模板打印-1(97×84mm)</el-radio>-->
+                <el-radio value="qr8060">工业二维码(80×60mm)</el-radio>
+                <el-radio value="qr5060">工业二维码(50×60mm)</el-radio>
+                <el-radio value="qr3040">工业二维码(30×40mm)</el-radio>
               </el-radio-group>
             </el-tab-pane>
-            <el-tab-pane label="Excel模板打印" name="excel">
+            <!--            <el-tab-pane label="Excel模板打印" name="excel">
               <el-radio-group v-model="selectedExcelTemplate" class="template-list">
                 <el-radio label="qrExcel">工业二维码.xlsx</el-radio>
                 <el-radio label="listExcel">工业列表.xlsx</el-radio>
                 <el-radio label="materialExcel">用料清单.xlsx</el-radio>
               </el-radio-group>
-            </el-tab-pane>
+            </el-tab-pane>-->
           </el-tabs>
         </div>
 
@@ -32,38 +32,44 @@
           <!-- 工单信息输入 -->
           <el-form label-position="top">
             <el-form-item label="公司名称">
-              <el-input v-model="workOrderInfo.companyName" placeholder="请输入公司名称" />
-            </el-form-item>
-            <el-form-item label="MR编号">
-              <el-input v-model="workOrderInfo.mrNumber" placeholder="请输入MR编号" />
+              <!--              <el-input v-model="workOrderInfo.companyName" placeholder="请输入公司名称" />-->
+              <el-select v-model="workOrderInfo.companyName" placeholder="请选择公司名称">
+                <el-option v-for="dict in wms_company_name" :key="dict.value" :label="dict.label" :value="dict.value" />
+              </el-select>
             </el-form-item>
             <el-form-item label="工单号码">
-              <el-input v-model="workOrderInfo.workOrderNo" placeholder="请输入工单号码" />
+              <el-input v-model="workOrderInfo.workOrderNo" placeholder="请输入工单号码">
+                <template #append>
+                  <el-button icon="Search" @click="showWorkOrderDialog" />
+                </template>
+              </el-input>
+              <!--              <el-input v-model="workOrderInfo.workOrderNo" placeholder="请输入工单号码" />-->
             </el-form-item>
-            <el-form-item label="版本号">
-              <el-input v-model="workOrderInfo.versionNo" placeholder="请输入版本号" />
-            </el-form-item>
-            <el-form-item label="产品品号">
-              <el-input v-model="workOrderInfo.productCode" placeholder="请输入产品品号" />
+
+            <!--            <el-form-item label="产品品号">
+              <el-input v-model="workOrderInfo.material" placeholder="请输入产品品号" />
             </el-form-item>
             <el-form-item label="产品描述">
-              <el-input v-model="workOrderInfo.productDescription" placeholder="请输入产品描述" />
-            </el-form-item>
+              <el-input v-model="workOrderInfo.materialDesc" placeholder="请输入产品描述" />
+            </el-form-item>-->
             <el-form-item label="入库数量">
-              <el-input-number v-model="workOrderInfo.stockInQuantity" :min="1" />
+              <el-input-number v-model="workOrderInfo.qty" :min="1" />
+            </el-form-item>
+            <el-form-item label="条码内容">
+              <el-input v-model="workOrderInfo.sfcContent" placeholder="请输入条码内容" />
             </el-form-item>
             <el-form-item label="生产日期">
-              <el-date-picker v-model="workOrderInfo.productionDate" type="date" placeholder="请选择生产日期" value-format="YYYY/MM/DD" />
+              <el-date-picker v-model="workOrderInfo.productDate" type="date" placeholder="请选择生产日期" value-format="YYYY-MM-DD" clearable :disabled-date="disabledFutureDate" />
             </el-form-item>
-            <el-form-item label="生产级别">
-              <el-input v-model="workOrderInfo.productionLevel" placeholder="请输入生产级别" />
+            <el-form-item label="生产线体">
+              <el-input v-model="workOrderInfo.productLine" placeholder="请输入生产线体" />
             </el-form-item>
-            <el-form-item label="操作员">
+            <!--            <el-form-item label="操作员">
               <el-input v-model="workOrderInfo.operator" placeholder="请输入操作员" />
             </el-form-item>
             <el-form-item label="检验员">
               <el-input v-model="workOrderInfo.inspector" placeholder="请输入检验员" />
-            </el-form-item>
+            </el-form-item>-->
           </el-form>
         </div>
 
@@ -72,7 +78,7 @@
             <el-icon><Printer /></el-icon>
             立即打印
           </el-button>
-          <el-button @click="handleExport" class="export-btn">
+          <el-button @click="handleExportImage" class="export-btn">
             <el-icon><Picture /></el-icon>
             导出图片
           </el-button>
@@ -85,17 +91,78 @@
           <div class="preview-header">
             <h3>打印预览</h3>
             <div class="preview-controls">
+              <div>纸张大小</div>
               <el-select v-model="paperSize" class="paper-size-select" @change="handlePaperSizeChange">
-                <el-option v-for="size in availablePaperSizes" :key="size.value" :label="size.label" :value="size.value" />
+                <el-option v-for="size in printTemplates" :key="size.value" :label="size.label" :value="size.value" />
               </el-select>
-
-              <el-input-number v-model="copies" :min="1" :max="100" label="打印份数" class="copies-input" />
+              <div>打印张数</div>
+              <el-input-number v-model="copies" :min="1" :max="9999" label="打印份数" class="copies-input" />
             </div>
           </div>
 
           <div class="preview-content">
             <!-- 生产入库单模板 -->
-            <div v-if="currentTemplate === 'productionReceipt'" :class="['production-receipt', getPaperSizeClass()]" ref="printContent">
+            <div v-if="currentTemplate === 'receiptOrderTemplate'" :class="['production-receipt', getPaperSizeClass()]" ref="printContent">
+              <div class="receipt-header">
+                <div class="company-name-container">
+                  <span class="company-name">{{ workOrderInfo.companyName }}</span>
+                </div>
+              </div>
+              <hr class="top-hr" />
+              <div class="receipt-body">
+                <div class="content-section">
+                  <!-- 工单号码占一行 -->
+                  <div class="info-row full-row">
+                    <label>工单号码</label>
+                    <span>{{ workOrderInfo.workOrderNo }}</span>
+                  </div>
+                  <!-- 产品品号占一行 -->
+                  <div class="info-row full-row">
+                    <label>产品品号</label>
+                    <span>{{ workOrderInfo.material }}</span>
+                  </div>
+                  <div class="info-row product-description">
+                    <label>产品描述</label>
+                    <span>{{ workOrderInfo.materialDesc }}</span>
+                  </div>
+                  <!-- 其他字段与二维码同行 -->
+                  <div class="info-with-qr">
+                    <div class="info-column">
+                      <div class="info-row">
+                        <label>入库数量</label>
+                        <span>{{ workOrderInfo.qty }} {{ workOrderInfo.unit }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>生产日期</label>
+                        <span>{{ workOrderInfo.productDate }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>生产线别</label>
+                        <span>{{ workOrderInfo.productLine }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>操&nbsp;&nbsp;作 员</label>
+                        <span>{{ workOrderInfo.operator }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>检&nbsp;&nbsp;验 员</label>
+                        <span>{{ workOrderInfo.inspector }}</span>
+                      </div>
+                    </div>
+                    <div class="qr-section">
+                      <div class="qr-info">
+                        <p>{{ workOrderInfo.sfcContent }}</p>
+                      </div>
+                      <canvas ref="qrcodeCanvas"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <hr class="bottom-hr" />
+            </div>
+
+            <!-- 生产入库单模板2 -->
+            <div v-if="currentTemplate === 'receiptOrderTemplate2'" :class="['production-receipt', getPaperSizeClass()]" ref="printContent">
               <div class="receipt-header">
                 <div class="company-name-container">
                   <span class="company-name">{{ workOrderInfo.companyName }}</span>
@@ -110,23 +177,23 @@
                   </div>
                   <div class="info-row">
                     <label>产品品号</label>
-                    <span>{{ workOrderInfo.productCode }}</span>
+                    <span>{{ workOrderInfo.material }}</span>
                   </div>
                   <div class="info-row product-description">
                     <label>产品描述</label>
-                    <span>{{ workOrderInfo.productDescription }}</span>
+                    <span>{{ workOrderInfo.materialDesc }}</span>
                   </div>
                   <div class="info-row">
                     <label>入库数量</label>
-                    <span>{{ workOrderInfo.stockInQuantity }} PCS</span>
+                    <span>{{ workOrderInfo.qty }} PCS</span>
                   </div>
                   <div class="info-row">
                     <label>生产日期</label>
-                    <span>{{ workOrderInfo.productionDate }}</span>
+                    <span>{{ workOrderInfo.productDate }}</span>
                   </div>
                   <div class="info-row">
                     <label>生产线别</label>
-                    <span>{{ workOrderInfo.productionLevel }}</span>
+                    <span>{{ workOrderInfo.productLine }}</span>
                   </div>
                   <div class="info-row">
                     <label>操&nbsp;&nbsp;作 员</label>
@@ -150,101 +217,85 @@
                 <canvas ref="qrCanvas8060"></canvas>
                 <div class="qr-info">
                   <p>{{ workOrderInfo.workOrderNo }}</p>
-                  <p>{{ workOrderInfo.productCode }}</p>
-                  <p>{{ workOrderInfo.stockInQuantity }} PCS</p>
+                  <p>{{ workOrderInfo.material }}</p>
+                  <p>{{ workOrderInfo.qty }} PCS</p>
                 </div>
               </div>
-            </div>
-
-            <!-- 其他模板... -->
-            <!-- 生产入库单模板 -->
-            <div v-if="currentTemplate === 'qr9784'" :class="['production-receipt', getPaperSizeClass()]" ref="printContent">
-              <div class="receipt-header">
-                <div class="company-name-container">
-                  <span class="company-name">{{ workOrderInfo.companyName }}</span>
-                </div>
-              </div>
-              <hr class="top-hr" />
-              <div class="receipt-body">
-                <div class="content-section">
-                  <!-- 工单号码占一行 -->
-                  <div class="info-row full-row">
-                    <label>工单号码</label>
-                    <span>{{ workOrderInfo.workOrderNo }}</span>
-                  </div>
-                  <!-- 产品品号占一行 -->
-                  <div class="info-row full-row">
-                    <label>产品品号</label>
-                    <span>{{ workOrderInfo.productCode }}</span>
-                  </div>
-                  <!-- 产品描述占一行 -->
-                  <div class="info-row full-row product-description">
-                    <label>产品描述</label>
-                    <span>{{ workOrderInfo.productDescription }}</span>
-                  </div>
-                  <!-- 其他字段与二维码同行 -->
-                  <div class="info-with-qr">
-                    <div class="info-column">
-                      <div class="info-row">
-                        <label>入库数量</label>
-                        <span>{{ workOrderInfo.stockInQuantity }} PCS</span>
-                      </div>
-                      <div class="info-row">
-                        <label>生产日期</label>
-                        <span>{{ workOrderInfo.productionDate }}</span>
-                      </div>
-                      <div class="info-row">
-                        <label>生产线别</label>
-                        <span>{{ workOrderInfo.productionLevel }}</span>
-                      </div>
-                      <div class="info-row">
-                        <label>操&nbsp;&nbsp;作 员</label>
-                        <span>{{ workOrderInfo.operator }}</span>
-                      </div>
-                      <div class="info-row">
-                        <label>检&nbsp;&nbsp;验 员</label>
-                        <span>{{ workOrderInfo.inspector }}</span>
-                      </div>
-                    </div>
-                    <div class="qr-section">
-                      <canvas ref="qrcodeCanvas"></canvas>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <hr class="bottom-hr" />
             </div>
           </div>
 
           <div class="action-buttons">
-            <el-button type="primary" @click="handlePrint" :icon="Printer">打印</el-button>
+            <!--            <el-button type="primary" @click="generateSerialNumber" :icon="Printer">演示效果图</el-button>-->
+            <el-button type="primary" @click="generateSerialNumbers" :icon="Printer">查询工单已下达条码</el-button>
+            <el-button @click="handlePrint" color="#626aef" :icon="Printer">下达打印</el-button>
+            <el-button type="primary" @click="handlePrintCurrent" :icon="Printer">打印当前标签</el-button>
             <el-button @click="handleExportImage" :icon="Picture">导出图片</el-button>
-            <el-button @click="handleExportExcel" :icon="Document" v-if="printType === 'excel'">导出Excel</el-button>
+
+            <!--            <el-button @click="handleExportExcel" :icon="Document" v-if="printType === 'excel'">导出Excel</el-button>-->
           </div>
         </div>
       </el-main>
     </el-container>
+    <!-- 工单选择对话框 -->
+    <work-order-dialog ref="workOrderDialogRef" @workOrderCallBack="workOrderCallBack" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick, computed } from 'vue';
-import { Printer, Picture, Document } from '@element-plus/icons-vue';
+import { Printer, Picture, Document, Search } from '@element-plus/icons-vue';
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { ElMessage } from 'element-plus';
+import { generateWorkOrderSn } from '@/api/wms/workOrderSn';
+
+import { WorkOrderSnQuery, WorkOrderSnForm } from '@/api/wms/workOrderSn/types';
+import { getUserProfile } from '@/api/system/user';
+import { parseTime } from '@/utils/ruoyi';
+import WorkOrderDialog from '@/views/wms/print/components/workOrderDialog.vue';
+
+const workOrderDialogRef = ref<InstanceType<typeof WorkOrderDialog>>();
+
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const { wms_company_name } = toRefs<any>(proxy?.useDict('wms_company_name'));
+
+const initFormData: WorkOrderSnForm = {
+  id: undefined,
+  workOrderNo: undefined,
+  sn: undefined,
+  qty: undefined,
+  remark: undefined
+};
+const data = reactive<PageData<WorkOrderSnForm, WorkOrderSnQuery>>({
+  form: { ...initFormData },
+  queryParams: {
+    pageNum: 1,
+    pageSize: 10,
+    workOrderNo: undefined,
+    sn: undefined,
+    qty: undefined,
+    params: {}
+  },
+  rules: {}
+});
+
+const { queryParams, form, rules } = toRefs(data);
 
 const activeTab = ref('content');
-const currentTemplate = ref('productionReceipt'); // 默认选中生产入库单模板
+const currentTemplate = ref('receiptOrderTemplate'); // 默认选中生产入库单模板
 const selectedExcelTemplate = ref('qrExcel');
 
 const paperSize = ref('9784'); // 默认纸张大小设置为97×84mm
+// 打印份数
 const copies = ref(1);
-const availablePaperSizes = ref([
+// 添加序列号列表状态
+const serialNumbers = ref<string[]>([]);
+const isBatchPrinting = ref(false);
+const printTemplates = ref([
   { value: 'A4', label: 'A4 (210×297mm)' },
   { value: 'A5', label: 'A5 (148×210mm)' },
-  { value: '5060', label: '50×60mm' },
   { value: '3040', label: '30×40mm' },
+  { value: '5060', label: '50×60mm' },
   { value: '8060', label: '80×60mm' },
   { value: '9784', label: '97×84mm' } // 默认选中项
 ]);
@@ -252,18 +303,42 @@ const availablePaperSizes = ref([
 // 工单信息
 const workOrderInfo = ref({
   companyName: '溢泰（南京）环保科技有限公司',
-  mrNumber: '21-02',
-  workOrderNo: '000120015113',
-  versionNo: '2025071700201 v1',
-  productCode: '13014122802-02',
-  productDescription: '后置碳棒滤瓶，φ46*179, PP+20% TALC染抽,白,海尔,后置碳棒滤瓶，φ46*179, PP+20% TALC染抽,白,海尔',
-  stockInQuantity: 168,
-  productionDate: '2025/07/10',
-  productionLevel: 'A12',
-  operator: '雷革',
+  workOrderNo: '',
+  sfcContent: '',
+  material: '',
+  materialDesc: '',
+  qty: null,
+  unit: 'PCS',
+  productDate: '',
+  productLine: '',
+  operator: '',
   inspector: ''
 });
 
+// 显示工单选择对话框
+const showWorkOrderDialog = () => {
+  workOrderDialogRef.value.openDialog();
+};
+
+const workOrderCallBack = (workOrderNoInfo: string) => {
+  console.log(workOrderNoInfo);
+  workOrderInfo.value.workOrderNo = workOrderNoInfo.workOrderNo;
+  workOrderInfo.value.material = workOrderNoInfo.item;
+  workOrderInfo.value.materialDesc = workOrderNoInfo.itemDesc;
+  workOrderInfo.value.productLine = workOrderNoInfo.productLine;
+};
+
+// 禁用未来的时间
+const disabledFutureDate = (time: Date) => {
+  // 获取当前时间，并将毫秒设为0以确保精确到秒
+  const now = new Date();
+  // 加上指定秒数（默认3秒）
+  now.setSeconds(now.getSeconds() + 3);
+  now.setMilliseconds(0);
+
+  // 禁止选择当前时间之后的日期
+  return time.getTime() > now.getTime();
+};
 // DOM引用
 const qrcodeCanvas = ref(null);
 const qrCanvas5060 = ref(null);
@@ -273,14 +348,14 @@ const printContent = ref(null);
 // 根据选择的纸张大小返回对应的CSS类名
 const getPaperSizeClass = () => {
   switch (paperSize.value) {
+    case '9784':
+      return 'size9784';
     case '5060':
       return 'size5060';
     case '3040':
       return 'size3040';
     case '8060':
       return 'size8060';
-    case '9784':
-      return 'size9784';
     case 'A4':
     case 'A5':
     default:
@@ -297,15 +372,15 @@ const handlePaperSizeChange = () => {
 
 // 生成二维码
 const generateQRCode = () => {
-  const content = `20250717000201`;
-
+  const content = workOrderInfo.value.sfcContent;
+  if (!content) return;
   if (qrcodeCanvas.value) {
     // 根据纸张大小调整二维码尺寸
     let qrSize = 120;
     if (paperSize.value === '5060') qrSize = 150;
     if (paperSize.value === '8060') qrSize = 180;
     if (paperSize.value === '9784') qrSize = 80;
-    if (currentTemplate.value === 'qr9784' && paperSize.value === '9784') qrSize = 100;
+    if (currentTemplate.value === 'receiptOrderTemplate' && paperSize.value === '9784') qrSize = 100;
 
     QRCode.toCanvas(qrcodeCanvas.value, content, {
       width: qrSize,
@@ -330,12 +405,35 @@ const generateQRCode = () => {
     });
   }
 };
+// 生成序列号列表（示例方法，根据实际需求调整）
+const generateSerialNumbers = async () => {
+  const res: any = await generateWorkOrderSn({
+    companyName: workOrderInfo.value.companyName,
+    productLine: workOrderInfo.value.productLine,
+    productDate: workOrderInfo.value.productDate + ' 00:00:00',
+    workOrderNo: workOrderInfo.value.workOrderNo,
+    qty: workOrderInfo.value.qty,
+    continuousQty: copies.value
+  });
+  return res.data || [];
+};
 
-// 打印处理
-const handlePrint = async () => {
+const generateSerialNumber = () => {
+  workOrderInfo.value.companyName = '溢泰（南京）环保科技有限公司';
+  workOrderInfo.value.workOrderNo = '000170000312';
+  workOrderInfo.value.sfcContent = 'SCRK-20250801-0001';
+  workOrderInfo.value.material = 'A02000600004';
+  workOrderInfo.value.materialDesc = 'BSH嵌入式饮水机，博世AV Pro黑色款，型号WBB8060C1C';
+  workOrderInfo.value.qty = 1;
+  workOrderInfo.value.productDate = '2025-08-01';
+  workOrderInfo.value.productLine = 'YS0028-1';
+};
+// 打印当前预览内容
+const handlePrintCurrent = async () => {
   if (!printContent.value) return;
 
   try {
+    // 生成当前内容的截图
     const canvas = await html2canvas(printContent.value, {
       scale: 2,
       logging: false,
@@ -346,21 +444,11 @@ const handlePrint = async () => {
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-      let printContentHTML = '';
-      for (let i = 0; i < copies.value; i++) {
-        printContentHTML += `
-          <div style="page-break-after: ${i < copies.value - 1 ? 'always' : 'auto'};">
-            <img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" />
-          </div>
-        `;
-      }
-
       // 根据纸张大小设置打印页面尺寸
       let printStyles = '';
       switch (paperSize.value) {
         case '9784':
-          printStyles = `
-            @page {
+          printStyles = `            @page {
               size: 97mm 84mm;
               margin: 0;
             }
@@ -373,8 +461,7 @@ const handlePrint = async () => {
           `;
           break;
         case '8060':
-          printStyles = `
-            @page {
+          printStyles = `            @page {
               size: 80mm 60mm;
               margin: 0;
             }
@@ -387,8 +474,7 @@ const handlePrint = async () => {
           `;
           break;
         case '5060':
-          printStyles = `
-            @page {
+          printStyles = `            @page {
               size: 50mm 60mm;
               margin: 0;
             }
@@ -401,8 +487,7 @@ const handlePrint = async () => {
           `;
           break;
         case '3040':
-          printStyles = `
-            @page {
+          printStyles = `            @page {
               size: 30mm 40mm;
               margin: 0;
             }
@@ -415,8 +500,7 @@ const handlePrint = async () => {
           `;
           break;
         default:
-          printStyles = `
-            @page {
+          printStyles = `            @page {
               margin: 0;
             }
             body {
@@ -426,13 +510,11 @@ const handlePrint = async () => {
           `;
       }
 
-      printWindow.document.write(`
-        <html>
+      printWindow.document.write(`        <html>
           <head>
             <title>打印预览</title>
             <style>
-              ${printStyles}
-              @media print {
+              ${printStyles}              @media print {
                 img {
                   width: 100%;
                   height: 100%;
@@ -443,8 +525,145 @@ const handlePrint = async () => {
             </style>
           </head>
           <body onload="window.print(); setTimeout(() => window.close(), 500);">
-            ${printContentHTML}
+            <img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" />
           </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  } catch (error) {
+    console.error('打印失败:', error);
+    ElMessage.error('打印失败，请重试');
+  }
+};
+
+// 打印处理支持连续打印不同二维码
+const handlePrint = async () => {
+  if (!printContent.value) return;
+
+  try {
+    // 生成序列号列表
+    const snList = await generateSerialNumbers();
+
+    let printContentHTML = '';
+
+    // 为每个序列号生成一个打印页面
+    for (let i = 0; i < snList.length; i++) {
+      // 临时更新二维码内容
+      // const originalSfcContent = workOrderInfo.value.sfcContent;
+      workOrderInfo.value.sfcContent = snList[i];
+
+      // 重新生成二维码
+      await nextTick();
+      generateQRCode();
+      await nextTick(); // 确保二维码渲染完成
+
+      // 生成截图
+      const canvas = await html2canvas(printContent.value, {
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        scrollX: 0,
+        scrollY: 0
+      });
+
+      printContentHTML += `        <div style="page-break-after: ${i < snList.length - 1 ? 'always' : 'auto'};">
+          <img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" />
+        </div>
+      `;
+
+      // 恢复原始内容
+      // workOrderInfo.value.sfcContent = originalSfcContent;
+    }
+
+    // 重新生成原始二维码
+    await nextTick();
+    generateQRCode();
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      // 根据纸张大小设置打印页面尺寸
+      let printStyles = '';
+      switch (paperSize.value) {
+        case '9784':
+          printStyles = `            @page {
+              size: 97mm 84mm;
+              margin: 0;
+            }
+            body {
+              width: 97mm;
+              height: 84mm;
+              margin: 0;
+              padding: 0;
+            }
+          `;
+          break;
+        case '8060':
+          printStyles = `            @page {
+              size: 80mm 60mm;
+              margin: 0;
+            }
+            body {
+              width: 80mm;
+              height: 60mm;
+              margin: 0;
+              padding: 0;
+            }
+          `;
+          break;
+        case '5060':
+          printStyles = `            @page {
+              size: 50mm 60mm;
+              margin: 0;
+            }
+            body {
+              width: 50mm;
+              height: 60mm;
+              margin: 0;
+              padding: 0;
+            }
+          `;
+          break;
+        case '3040':
+          printStyles = `            @page {
+              size: 30mm 40mm;
+              margin: 0;
+            }
+            body {
+              width: 30mm;
+              height: 40mm;
+              margin: 0;
+              padding: 0;
+            }
+          `;
+          break;
+        default:
+          printStyles = `            @page {
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+            }
+          `;
+      }
+
+      printWindow.document.write(`        <html>
+          <head>
+            <title>批量打印预览</title>
+            <style>
+              ${printStyles}              @media print {
+                img {
+                  width: 100%;
+                  height: 100%;
+                  max-width: 100%;
+                  max-height: 100%;
+                }
+              }
+            </style>
+          </head>
+          <body onload="window.print(); setTimeout(() => window.close(), 500);">
+            ${printContentHTML}          </body>
         </html>
       `);
       printWindow.document.close();
@@ -498,16 +717,21 @@ watch(
   },
   { deep: true }
 );
-
+const getUser = async () => {
+  const res = await getUserProfile();
+  workOrderInfo.value.operator = res.data.user.nickName;
+};
 // 初始化
 onMounted(() => {
+  workOrderInfo.value.productDate = parseTime(new Date(), '{y}-{m}-{d}');
+  getUser();
   generateQRCode();
 });
 </script>
 
 <style scoped>
 .print-container {
-  height: 100vh;
+  height: calc(100vh - 200px);
   display: flex;
   flex-direction: column;
   background-color: #f5f7fa;
@@ -609,6 +833,8 @@ onMounted(() => {
   flex-direction: column;
   /* 添加以下属性来隐藏多余部分 */
   overflow: hidden;
+  /* 添加以下样式使内容居中 */
+  justify-content: center;
 }
 
 /* 产品描述最多显示3行 */
@@ -656,16 +882,16 @@ onMounted(() => {
 }
 /* 适配97×84mm尺寸的内容样式 */
 .size9784 .receipt-header {
-  margin-bottom: 8px;
+  /*  margin-bottom: 8px;*/
 }
 
 .size9784 .company-name {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: bold;
 }
 
 .size9784 .info-row label {
-  width: 22mm;
+  /*  width: 22mm;*/
   font-size: 13px;
   margin-right: 1mm;
 }
@@ -725,7 +951,7 @@ onMounted(() => {
   font-weight: bold;
   flex-shrink: 0;
   font-size: 12px; /* 增大标签字体 */
-  margin-right: 0mm; /* 增加标签与内容的间距 */
+  margin-right: 1mm; /* 增加标签与内容的间距 */
 }
 
 .info-row span {
@@ -735,12 +961,27 @@ onMounted(() => {
   line-height: 1.4; /* 增加行高 */
 }
 
+.qr-section .qr-info {
+  text-align: center;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.qr-section .qr-info p {
+  margin: 0;
+  padding: 0;
+  word-break: break-all;
+}
+
+/* 调整二维码和工单号的整体布局 */
 .qr-section {
-  flex: 1;
+  flex: 1.1;
   padding-left: 5px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .qr-section canvas {
@@ -785,7 +1026,7 @@ onMounted(() => {
 .info-row.full-row label {
   width: auto;
   display: inline-block;
-  margin-right: 10px;
+  margin-right: 20px;
 }
 
 .info-row.full-row span {

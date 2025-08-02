@@ -38,7 +38,7 @@
     <el-tabs v-model="tabActiveName" @tab-change="changeTab">
       <el-tab-pane name="pendingInbound">
         <template #label>
-          <el-badge :value="pendingCount" class="item" :offset="[10, 0]">
+          <el-badge :value="pendingCount" class="item" :offset="[10, 0]" :max="9999999999">
             <span>待接收</span>
           </el-badge>
         </template>
@@ -46,7 +46,7 @@
 
       <el-tab-pane name="warehouseFailed">
         <template #label>
-          <el-badge :value="warehouseFailedCount" class="item" color="#f56c6c" :offset="[10, 0]">
+          <el-badge :value="warehouseFailedCount" class="item" color="#f56c6c" :offset="[10, 0]" :max="9999999999">
             <span>接收失败</span>
           </el-badge>
         </template>
@@ -54,7 +54,7 @@
 
       <el-tab-pane name="warehouseReceive">
         <template #label>
-          <el-badge :value="receivedCount" class="item" color="#32CD32" :offset="[10, 0]">
+          <el-badge :value="receivedCount" class="item" color="#32CD32" :offset="[10, 0]" :max="9999999999">
             <span>已接收</span>
           </el-badge>
         </template>

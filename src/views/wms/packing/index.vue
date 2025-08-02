@@ -46,7 +46,7 @@
     <el-tabs v-model="tabActiveName" @tab-change="changeTab">
       <el-tab-pane name="all">
         <template #label>
-          <el-badge :value="allCount" class="item" color="#67c23a" :offset="[10, 0]">
+          <el-badge :value="allCount" class="item" color="#67c23a" :offset="[10, 0]" :max="9999999999">
             <span>全部</span>
           </el-badge>
         </template>
@@ -54,7 +54,7 @@
 
       <el-tab-pane name="waitInStore">
         <template #label>
-          <el-badge :value="waitInStoreCount" class="item" color="#409EFF" :offset="[10, 0]">
+          <el-badge :value="waitInStoreCount" class="item" color="#409EFF" :offset="[10, 0]" :max="9999999999">
             <span>待产线送库</span>
           </el-badge>
         </template>
@@ -62,7 +62,7 @@
 
       <el-tab-pane name="pendingInbound">
         <template #label>
-          <el-badge :value="pendingInboundCount" class="item" color="#e6a23c" :offset="[10, 0]">
+          <el-badge :value="pendingInboundCount" class="item" color="#e6a23c" :offset="[10, 0]" :max="9999999999">
             <span>待入库接收</span>
           </el-badge>
         </template>
@@ -70,7 +70,7 @@
 
       <el-tab-pane name="warehouseReject">
         <template #label>
-          <el-badge :value="warehouseRejectCount" class="item" color="#f56c6c" :offset="[10, 0]">
+          <el-badge :value="warehouseRejectCount" class="item" color="#f56c6c" :offset="[10, 0]" :max="9999999999">
             <span>已退回</span>
           </el-badge>
         </template>

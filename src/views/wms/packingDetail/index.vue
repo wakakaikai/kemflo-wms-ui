@@ -16,11 +16,11 @@
             <el-form-item label="料号" prop="item">
               <el-input v-model="queryParams.item" placeholder="请输入料号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="物料凭证号" prop="martialOrderNo">
-              <el-input v-model="queryParams.martialOrderNo" placeholder="请输入物料凭证号" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="物料凭证号" prop="materialOrderNo">
+              <el-input v-model="queryParams.materialOrderNo" placeholder="请输入物料凭证号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="物料文件项次" prop="martialItem">
-              <el-input v-model="queryParams.martialItem" placeholder="请输入物料文件项次" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="物料文件项次" prop="materialItem">
+              <el-input v-model="queryParams.materialItem" placeholder="请输入物料文件项次" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -57,8 +57,8 @@
         <el-table-column label="工单号" align="center" prop="workOrderNo" />
         <el-table-column label="料号" align="center" prop="item" />
         <el-table-column label="数量" align="center" prop="packingQty" />
-        <el-table-column label="物料凭证号" align="center" prop="martialOrderNo" />
-        <el-table-column label="物料文件项次" align="center" prop="martialItem" />
+        <el-table-column label="物料凭证号" align="center" prop="materialOrderNo" />
+        <el-table-column label="物料文件项次" align="center" prop="materialItem" />
 <!--        <el-table-column label="备注" align="center" prop="remark" />-->
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
@@ -92,11 +92,11 @@
         <el-form-item label="打包数量" prop="packingQty">
           <el-input v-model="form.packingQty" placeholder="请输入数量" />
         </el-form-item>
-        <el-form-item label="物料凭证号" prop="martialOrderNo">
-          <el-input v-model="form.martialOrderNo" placeholder="请输入物料凭证号" />
+        <el-form-item label="物料凭证号" prop="materialOrderNo">
+          <el-input v-model="form.materialOrderNo" placeholder="请输入物料凭证号" />
         </el-form-item>
-        <el-form-item label="物料文件项次" prop="martialItem">
-          <el-input v-model="form.martialItem" placeholder="请输入物料文件项次" />
+        <el-form-item label="物料文件项次" prop="materialItem">
+          <el-input v-model="form.materialItem" placeholder="请输入物料文件项次" />
         </el-form-item>
 <!--        <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
@@ -142,8 +142,8 @@ const initFormData: PackingDetailForm = {
   workOrderNo: undefined,
   item: undefined,
   packingQty: undefined,
-  martialOrderNo: undefined,
-  martialItem: undefined,
+  materialOrderNo: undefined,
+  materialItem: undefined,
   remark: undefined
 };
 const data = reactive<PageData<PackingDetailForm, PackingDetailQuery>>({
@@ -156,8 +156,8 @@ const data = reactive<PageData<PackingDetailForm, PackingDetailQuery>>({
     workOrderNo: undefined,
     item: undefined,
     packingQty: undefined,
-    martialOrderNo: undefined,
-    martialItem: undefined,
+    materialOrderNo: undefined,
+    materialItem: undefined,
     params: {}
   },
   rules: {
@@ -167,8 +167,8 @@ const data = reactive<PageData<PackingDetailForm, PackingDetailQuery>>({
     workOrderNo: [{ required: true, message: '工单号不能为空', trigger: 'blur' }],
     item: [{ required: true, message: '料号不能为空', trigger: 'blur' }],
     packingQty: [{ required: true, message: '打包数量不能为空', trigger: 'blur' }],
-    // martialOrderNo: [{ required: true, message: '物料凭证号不能为空', trigger: 'blur' }],
-    // martialItem: [{ required: true, message: '物料文件项次不能为空', trigger: 'blur' }],
+    // materialOrderNo: [{ required: true, message: '物料凭证号不能为空', trigger: 'blur' }],
+    // materialItem: [{ required: true, message: '物料文件项次不能为空', trigger: 'blur' }],
     // remark: [{ required: true, message: '备注不能为空', trigger: 'blur' }]
   }
 });

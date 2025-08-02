@@ -32,12 +32,12 @@ export interface PackingDetailVO {
   /**
    * 物料凭证号
    */
-  martialOrderNo: string;
+  materialOrderNo: string;
 
   /**
    * 物料文件项次
    */
-  martialItem: string;
+  materialItem: string;
 
   /**
    * 备注
@@ -79,12 +79,12 @@ export interface PackingDetailForm extends BaseEntity {
   /**
    * 物料凭证号
    */
-  martialOrderNo?: string;
+  materialOrderNo?: string;
 
   /**
    * 物料文件项次
    */
-  martialItem?: string;
+  materialItem?: string;
 
   /**
    * 备注
@@ -121,12 +121,12 @@ export interface PackingDetailQuery extends PageQuery {
   /**
    * 物料凭证号
    */
-  martialOrderNo?: string;
+  materialOrderNo?: string;
 
   /**
    * 物料文件项次
    */
-  martialItem?: string;
+  materialItem?: string;
 
   /**
    * 日期范围参数

@@ -219,7 +219,7 @@ const userSettingsForm = ref<UserSettingsForm>({
   autoPlayInterval: 10,
   freshScadaData: 30
 });
-// 工序顺序定义
+// 禁用未来的时间
 const disabledFutureDate = (time: Date) => {
   // 获取当前时间，并将毫秒设为0以确保精确到秒
   const now = new Date();
@@ -288,7 +288,8 @@ const transformResponseToProductionLines = (data: any): ProductionLine[] => {
 };
 const loadAbnormalCallScadaData = async () => {
   const res = await queryAbnormalCallScada({
-    startTime: userSettingsForm.value.startTime
+    startTime: userSettingsForm.value.startTime,
+    endTime: userSettingsForm.value.endTime
   });
   // 更新统计卡片数据
   if (checkPermi(['mes:messageCall:material'])) {
