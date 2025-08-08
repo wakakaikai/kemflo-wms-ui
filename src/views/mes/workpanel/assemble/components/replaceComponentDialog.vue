@@ -87,7 +87,8 @@ const handleChange = async (record: any) => {
     validateStatus = 'error';
     return callbackValidate(validateMsg, validateStatus, record);
   }
-  if (sfc.length !== record.itemSfcLength) {
+  debugger;
+  if (Number(record.itemSfcLength) > 0 && sfc.length !== record.itemSfcLength) {
     validateMsg = `条码:${sfc}长度:${sfc.length}与设置的长度:${record.itemSfcLength}不匹配`;
     validateStatus = 'error';
     return callbackValidate(validateMsg, validateStatus, record);

@@ -279,6 +279,21 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         meta: { title: '库位管理' }
       }
     ]
+  },
+  {
+    path: '/warehouse/workOrder',
+    component: Layout,
+    hidden: true,
+    permissions: ['wms:workOrder:list'],
+    children: [
+      {
+        path: 'detail/:workOrderNo',
+        component: () => import('@/views/wms/workOrder/components/workOrderDetail.vue'),
+        name: 'workOrderDetail',
+        meta: { title: '工单明细', activeMenu: '/basic/warehouse/workOrder', icon: '' },
+        hidden: true
+      }
+    ]
   }
 ];
 

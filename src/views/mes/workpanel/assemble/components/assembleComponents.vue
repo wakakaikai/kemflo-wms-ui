@@ -110,12 +110,14 @@ const querySfcQueueInfo = async () => {
     sfc: form.value.sfc
   });
   assembleInfo.value = res.data || {};
+  form.value.sfc = assembleInfo.value.sfc;
 };
 
 const querySfcInfo = async () => {
   try {
     loading.value = true;
-    await Promise.all([querySfcQueueInfo(), querySfcProcessList(), querySfcBomComponentList()]);
+    await querySfcQueueInfo();
+    await Promise.all([querySfcProcessList(), querySfcBomComponentList()]);
   } finally {
     loading.value = false;
   }
@@ -245,7 +247,7 @@ const handleChange = async (record: any, index: number) => {
     validateStatus = 'error';
     return callbackValidate(validateMsg, validateStatus, record);
   }
-  if (sfc.length !== record.itemSfcLength) {
+  if (Number(record.itemSfcLength) > 0 && sfc.length !== record.itemSfcLength) {
     validateMsg = `条码:${sfc}长度:${sfc.length}与设置的长度:${record.itemSfcLength}不匹配`;
     validateStatus = 'error';
     return callbackValidate(validateMsg, validateStatus, record);

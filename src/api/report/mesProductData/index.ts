@@ -10,6 +10,7 @@ export const listMesProductData = (data: MesProductDataForm) => {
   return request({
     url: '/wms/mes/productData/list',
     method: 'post',
-    data: data
+    data: data,
+    timeout: 180000
   });
 };

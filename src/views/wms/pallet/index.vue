@@ -119,11 +119,11 @@
             <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.code" :label="`${warehouse.code}-${warehouse.name}`" :value="warehouse.code" />
           </el-select>
         </el-form-item>
-        <el-form-item label="状态" prop="status">
+<!--        <el-form-item label="状态" prop="status">
           <el-select v-model="form.status" placeholder="请选择状态">
             <el-option v-for="dict in wms_pallet_status" :key="dict.value" :label="dict.label" :value="parseInt(dict.value)"></el-option>
           </el-select>
-        </el-form-item>
+        </el-form-item>-->
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" />
         </el-form-item>

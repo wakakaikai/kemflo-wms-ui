@@ -4,14 +4,6 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-            <el-form-item label="公司名称" prop="companyName">
-              <el-select v-model="queryParams.companyName" placeholder="请选择公司名称" clearable>
-                <el-option v-for="dict in wms_company_name" :key="dict.value" :label="dict.label" :value="dict.value" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="工单号" prop="workOrderNo">
-              <el-input v-model="queryParams.workOrderNo" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="条码" prop="sn">
               <el-input v-model="queryParams.sn" placeholder="请输入条码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -274,6 +266,13 @@ const dialog = reactive<DialogOption>({
   title: ''
 });
 
+const props = defineProps({
+  workOrderNo: {
+    type: String,
+    required: true
+  }
+});
+
 // 打印相关引用
 const printDialogVisible = ref(false);
 const printLoading = ref(false);
@@ -360,6 +359,7 @@ const disabledFutureDate = (time: Date) => {
 /** 查询工单条码列表 */
 const getList = async () => {
   loading.value = true;
+  queryParams.value.workOrderNo = props.workOrderNo;
   const res = await listWorkOrderSn(queryParams.value);
   workOrderSnList.value = res.rows;
   total.value = res.total;

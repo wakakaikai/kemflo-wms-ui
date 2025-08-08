@@ -186,7 +186,8 @@ export function download(url: string, params: any, fileName: string) {
         }
       ],
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      responseType: 'blob'
+      responseType: 'blob',
+      timeout: 300000
     }).then(async (resp: any) => {
       const isLogin = blobValidate(resp);
       if (isLogin) {

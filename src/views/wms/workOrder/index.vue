@@ -54,7 +54,13 @@
 
       <el-table v-loading="loading" :data="workOrderList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="工单号" align="center" prop="workOrderNo" />
+        <el-table-column label="工单号" align="center" prop="workOrderNo">
+          <template #default="scope">
+            <router-link :to="'/warehouse/workOrder/detail/' + scope.row.workOrderNo" class="link-type">
+              <span>{{ scope.row.workOrderNo }}</span>
+            </router-link>
+          </template>
+        </el-table-column>
         <el-table-column label="产品料号" align="center" prop="item" />
         <el-table-column label="产品描述" align="center" prop="itemDesc" />
         <el-table-column label="入库检" align="center" prop="checkEnable">
@@ -74,6 +80,7 @@
         </el-table-column>
         <el-table-column label="计划数量" align="center" prop="plannedQty" />
         <el-table-column label="已交货数量" align="center" prop="deliveredQty" />
+        <el-table-column label="单位" align="center" prop="unit" />
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">

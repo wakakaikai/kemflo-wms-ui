@@ -45,6 +45,11 @@ export interface WorkOrderSnVO {
   status: number;
 
   /**
+   * 单位
+   */
+  unit: string;
+
+  /**
    * 备注
    */
   remark: string;
@@ -97,6 +102,11 @@ export interface WorkOrderSnForm extends BaseEntity {
   status?: number;
 
   /**
+   * 单位
+   */
+  unit: string;
+
+  /**
    * 备注
    */
   remark?: string;
@@ -142,6 +152,11 @@ export interface WorkOrderSnQuery extends PageQuery {
    * 状态
    */
   status?: number;
+
+  /**
+   * 单位
+   */
+  unit: string;
 
   /**
    * 日期范围参数

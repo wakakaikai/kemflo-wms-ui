@@ -88,6 +88,7 @@
                 </template>
               </el-table-column>
               <el-table-column label="工单号" align="center" prop="workOrderNo" />
+              <el-table-column label="条码" align="center" width="130" prop="sn" />
               <el-table-column label="产品料号" align="center" prop="item" />
               <el-table-column label="产品描述" align="left" prop="itemDesc" />
               <el-table-column label="计划数量" align="center" prop="plannedQty" />
@@ -118,7 +119,7 @@
         </el-table-column>
         <el-table-column label="项次数" align="left" prop="countPackingDetail">
           <template #default="scope">
-            <span>{{ scope.row.packingDetailVoList.length || 0 }}</span>
+            <span>{{ (scope.row.packingDetailVoList || []).length }}</span>
           </template>
         </el-table-column>
         <el-table-column label="创建时间" align="center" prop="createTime" />

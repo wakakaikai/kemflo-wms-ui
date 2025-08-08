@@ -75,7 +75,7 @@
           </el-badge>
         </template>
       </el-tab-pane>
-<!--      <el-tab-pane name="warehouseFailed">
+      <!--      <el-tab-pane name="warehouseFailed">
         <template #label>
           <el-badge :value="warehouseFailedCount" class="item" color="#f56c6c" :offset="[10, 0]">
             <span>SAP同步异常</span>
@@ -92,6 +92,12 @@
           </el-col>
           <el-col v-if="tabActiveName == 'all' || tabActiveName == 'waitInStore'" :span="1.5">
             <el-button v-hasPermi="['wms:packing:edit']" type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()">修改</el-button>
+          </el-col>
+          <el-col v-if="tabActiveName == 'all' || tabActiveName == 'waitInStore'" :span="1.5">
+            <el-button v-hasPermi="['wms:packing:add']" type="primary" plain icon="Plus" @click="handleScanAdd">扫码新增</el-button>
+          </el-col>
+          <el-col v-if="tabActiveName == 'all' || tabActiveName == 'waitInStore'" :span="1.5">
+            <el-button v-hasPermi="['wms:packing:edit']" type="success" plain icon="Edit" :disabled="single" @click="handleScanUpdate()">扫码修改</el-button>
           </el-col>
           <el-col v-if="tabActiveName == 'all' || tabActiveName == 'waitInStore'" :span="1.5">
             <el-button v-hasPermi="['wms:packing:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">删除</el-button>
@@ -118,6 +124,7 @@
                 </template>
               </el-table-column>
               <el-table-column label="工单号" align="center" width="130" prop="workOrderNo" />
+              <el-table-column label="条码" align="center" width="130" prop="sn" />
               <el-table-column label="产品料号" align="center" width="150" prop="item" />
               <el-table-column label="产品描述" align="left" prop="itemDesc" />
               <el-table-column label="计划数量" align="center" width="130" prop="plannedQty" />
@@ -146,7 +153,7 @@
         </el-table-column>
         <el-table-column label="项次数" align="left" prop="countPackingDetail">
           <template #default="scope">
-            <span>{{ scope.row.packingDetailVoList.length || 0 }}</span>
+            <span>{{ (scope.row.packingDetailVoList || []).length }}</span>
           </template>
         </el-table-column>
         <el-table-column label="创建时间" align="center" prop="createTime" />
@@ -156,8 +163,11 @@
         <el-table-column label="备注" align="left" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding" fixed="right" width="220">
           <template #default="scope">
-            <el-tooltip content="修改" placement="top" v-if="scope.row.status == 1 || scope.row.status == 4 || scope.row.status == 5">
+            <el-tooltip content="修改" placement="top" v-if="scope.row.packingType == 0 && (scope.row.status == 1 || scope.row.status == 4 || scope.row.status == 5)">
               <el-button v-hasPermi="['wms:packing:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
+            </el-tooltip>
+            <el-tooltip content="扫码修改" placement="top" v-if="scope.row.packingType == 1 && (scope.row.status == 1 || scope.row.status == 4 || scope.row.status == 5)">
+              <el-button v-hasPermi="['wms:packing:edit']" link type="primary" icon="Edit" @click="handleScanUpdate(scope.row)">扫码修改</el-button>
             </el-tooltip>
             <el-tooltip content="送仓" placement="top" v-if="scope.row.status == 1 || scope.row.status == 4 || scope.row.status == 5">
               <el-button v-hasPermi="['wms:packing:edit']" link type="success" icon="ShoppingCart" @click="handlePendingInbound(scope.row)">送仓</el-button>
@@ -174,6 +184,9 @@
 
     <!-- 添加或修改打包记录对话框 -->
     <PackingDialog ref="packingRef" @packingCallBack="packingCallBack" />
+
+    <!-- 添加或修改扫码标签方式打包记录对话框 -->
+    <PackingScanDialog ref="packingScanRef" @packingCallBack="packingCallBack" />
 
     <!-- 送仓对话框 -->
     <el-dialog v-model="visible" :title="title" width="60%" append-to-body>
@@ -212,11 +225,13 @@
 import { listPackingAndDetail, delPacking, inBoundPending } from '@/api/wms/packing';
 import { PackingVO, PackingQuery, PackingForm } from '@/api/wms/packing/types';
 import PackingDialog from '@/views/wms/packing/components/packingDialog.vue';
+import PackingScanDialog from '@/views/wms/packing/components/packingScanDialog.vue';
 import { ref } from 'vue';
 import { WarehouseLocationVO } from '@/api/wms/warehouseLocation/types';
 import { listWarehouseLocation } from '@/api/wms/warehouseLocation';
 import useDialog from '@/hooks/useDialog';
 const packingRef = ref<InstanceType<typeof PackingDialog>>();
+const packingScanRef = ref<InstanceType<typeof PackingScanDialog>>();
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_packing_status, wms_work_order_check_enable } = toRefs<any>(proxy?.useDict('wms_packing_status', 'wms_work_order_check_enable'));
@@ -413,15 +428,33 @@ const handleSelectionChange = (selection: PackingVO[]) => {
 /** 新增按钮操作 */
 const handleAdd = () => {
   reset();
+  packingRef.value.title = '新增打包记录';
   packingRef.value.openDialog();
   packingRef.value?.initPackingDialog(null);
+};
+
+/** 扫码新增按钮操作 */
+const handleScanAdd = () => {
+  reset();
+  packingScanRef.value.title = '扫码新增打包记录';
+  packingScanRef.value.openDialog();
+  packingScanRef.value?.initPackingDialog(null);
 };
 
 /** 修改按钮操作 */
 const handleUpdate = (row?: PackingVO) => {
   const _id = row?.id || ids.value[0];
+  packingRef.value.title = '修改打包记录';
   packingRef.value.openDialog();
   packingRef.value?.initPackingDialog(_id);
+};
+
+/** 扫码修改按钮操作 */
+const handleScanUpdate = (row?: PackingVO) => {
+  const _id = row?.id || ids.value[0];
+  packingScanRef.value.title = '扫码修改打包记录';
+  packingScanRef.value.openDialog();
+  packingScanRef.value?.initPackingDialog(_id);
 };
 
 /** 删除按钮操作 */

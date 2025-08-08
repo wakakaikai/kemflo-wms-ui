@@ -28,6 +28,17 @@ export const getWorkOrderSn = (id: string | number): AxiosPromise<WorkOrderSnVO>
 };
 
 /**
+ * 查询工单条码详细
+ * @param sn
+ */
+export const getSnInfo = (sn: string): AxiosPromise<WorkOrderSnVO> => {
+  return request({
+    url: '/wms/workOrderSn/sn/' + sn,
+    method: 'get'
+  });
+};
+
+/**
  * 生成单条码
  * @param data
  */

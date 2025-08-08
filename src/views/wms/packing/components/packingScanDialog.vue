@@ -19,10 +19,12 @@
             <h3>栈板物料记录表</h3>
           </el-col>
           <el-col :lg="12" :md="12" :sm="24">
-            <el-button type="primary" class="mt-[12px] float-right" @click="showWorkOrderDialog">新增记录</el-button>
+            <el-form-item label="入库单" prop="sn">
+              <el-input ref="snInputRef" v-model="form.sn" clearable placeholder="请扫码入库标签二维码" @keydown.tab.prevent="keyDownTab" @keydown.enter.prevent="keyDownTab" />
+            </el-form-item>
           </el-col>
         </el-row>
-        <el-table :data="filteredData" border style="width: 100%" empty-text="暂无数据">
+        <el-table v-loading="loading" :data="filteredData" border style="width: 100%" empty-text="暂无数据">
           <el-table-column label="工单号" align="center" width="130" prop="workOrderNo">
             <template #header>
               <div class="filter-header">
@@ -34,11 +36,12 @@
               </div>
             </template>
           </el-table-column>
+          <el-table-column label="条码" align="center" width="130" prop="sn" />
           <el-table-column label="产品料号" align="center" width="150" prop="item" />
           <el-table-column label="产品描述" align="left" prop="itemDesc" :show-overflow-tooltip="true" />
           <el-table-column label="计划数量" align="center" prop="plannedQty" />
           <el-table-column label="打包数量" align="center" min-width="120" prop="packingQty">
-            <template #default="scope">
+            <!--            <template #default="scope">
               <div @dblclick="enableEditing(scope.row)" style="cursor: pointer">
                 <div v-if="!scope.row.isEditing">
                   {{ scope.row.packingQty }}
@@ -48,7 +51,7 @@
                   <div class="el-form-item__tip">当前最大可入打包数量: {{ scope.row.maxInboundQty || 0 }}</div>
                 </div>
               </div>
-            </template>
+            </template>-->
           </el-table-column>
           <el-table-column label="入库检" align="center" prop="checkEnable">
             <template #default="scope">
@@ -78,10 +81,35 @@
 
   <!-- 工单选择对话框 -->
   <work-order-dialog ref="workOrderDialogRef" />
+
+  <!-- 添加条码选择对话框 -->
+  <el-dialog v-model="snSelectVisible" title="选择条码" width="60%" append-to-body>
+    <el-table :data="snOptions" border @row-dblclick="handleSnSelect" @row-click="handleSnSelect">
+      <!-- 单选列（通过高亮行实现） -->
+      <el-table-column width="55">
+        <template #default="scope">
+          <el-radio :model-value="selectedSn?.id === scope.row.id ? scope.row.id : ''" :label="scope.row.id" @change="() => handleSnSelect(scope.row)" class="radio-no-label">
+            <span class="el-radio__label"></span>
+          </el-radio>
+        </template>
+      </el-table-column>
+      <el-table-column label="条码" align="center" prop="sn" />
+      <el-table-column label="工单号" align="center" prop="workOrderNo" />
+      <el-table-column label="产品料号" align="center" prop="item" />
+      <el-table-column label="产品描述" align="center" prop="itemDesc" />
+      <el-table-column label="数量" align="center" prop="qty" />
+    </el-table>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="snSelectVisible = false">取 消</el-button>
+        <el-button type="primary" @click="confirmSnSelect">确 定</el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup name="PackingDialog" lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { nextTick, onMounted, reactive, ref } from 'vue';
 import { listWarehouseLocation } from '@/api/wms/warehouseLocation';
 import { WarehouseLocationVO } from '@/api/wms/warehouseLocation/types';
 import PalletDialog from '@/views/wms/packing/components/palletDialog.vue';
@@ -91,6 +119,8 @@ import useDialog from '@/hooks/useDialog';
 
 import { addPacking, getPacking, updatePacking } from '@/api/wms/packing';
 import { getWorkOrderPackedQty } from '@/api/wms/packingDetail';
+import { getSnInfo } from '@/api/wms/workOrderSn';
+import { WorkOrderSnForm } from '@/api/wms/workOrderSn/types';
 
 const palletDialogRef = ref<InstanceType<typeof PalletDialog>>();
 const workOrderDialogRef = ref<InstanceType<typeof WorkOrderDialog>>();
@@ -156,10 +186,24 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
     ]
   }
 });
+const initWorkOrderSnFormData: WorkOrderSnForm = {
+  id: undefined,
+  companyName: undefined,
+  workOrderNo: undefined,
+  sn: undefined,
+  qty: undefined,
+  sequence: undefined,
+  productLine: undefined,
+  productDate: undefined,
+  status: undefined,
+  remark: undefined
+};
+const snSelectVisible = ref(false);
+const snOptions = ref<WorkOrderSnForm[]>([]);
+const selectedSn = ref<WorkOrderSnForm>({ ...initWorkOrderSnFormData });
 
-const { title, visible, openDialog, closeDialog } = useDialog({
-
-});
+const snInputRef = ref<HTMLInputElement | null>(null);
+const { title, visible, openDialog, closeDialog } = useDialog({});
 // 创建一个工单号到otherPackingQty的映射
 const workOrderToOtherPackingQtyMap = new Map<string, number>();
 const { queryParams, form, rules } = toRefs(data);
@@ -217,7 +261,7 @@ const submitForm = () => {
 
       // 设置 packingDetailBoList 到 packingDetailBoList 属性中
       submitData.packingDetailBoList = packingDetailBoList.value;
-      submitData.packingType = 0;
+      submitData.packingType = 1;
       if (form.value.id) {
         packingDetailBoList.value.map((item: any) => {
           item.palletCode = form.value.palletCode;
@@ -238,6 +282,65 @@ const submitForm = () => {
   });
 };
 
+const keyDownTab = async () => {
+  form.value.sn = form.value.sn.trim();
+  await nextTick(() => {
+    if (snInputRef.value) {
+      snInputRef.value.focus();
+      snInputRef.value.select();
+    }
+  });
+  // 校验列表中是否有重复的SN码
+  if (packingDetailBoList.value.some((item) => item.sn === form.value.sn)) {
+    proxy?.$modal.msgError(`此${form.value.sn}码已存在`);
+    return;
+  }
+  const res = await getSnInfo(form.value.sn);
+  if (!res.data) {
+    proxy?.$modal.msgError('请输入正确的SN码');
+    return;
+  }
+  // 如果返回的条码数组长度大于1，则显示一个弹框，让用户选择，否则直接添加
+  if ((res.data || []).length > 1) {
+    snOptions.value = res.data;
+    snSelectVisible.value = true;
+    // 重置选中项
+    selectedSn.value = { ...initWorkOrderSnFormData };
+  } else {
+    const workOrderSn = res.data[0] || { ...initWorkOrderSnFormData };
+    packingDetailBoList.value.push({
+      packingDetailBoList: undefined,
+      ...workOrderSn,
+      snId: workOrderSn.id,
+      sn: workOrderSn.sn,
+      packingQty: workOrderSn.qty
+    });
+  }
+};
+
+// 添加处理条码选择的方法
+const handleSnSelect = (row) => {
+  selectedSn.value = row;
+};
+
+const confirmSnSelect = () => {
+  if (!selectedSn.value) {
+    proxy?.$modal.msgError('请选择一个条码');
+    return;
+  }
+
+  packingDetailBoList.value.push({
+    packingDetailBoList: undefined,
+    ...selectedSn.value,
+    snId: selectedSn.value.id,
+    sn: selectedSn.value.sn,
+    packingQty: selectedSn.value.qty
+  });
+
+  snSelectVisible.value = false;
+  selectedSn.value = null;
+};
+
 // 显示栈板选择对话框
 const showPalletDialog = () => {
   palletDialogRef.value.openDialog();
@@ -245,13 +348,6 @@ const showPalletDialog = () => {
 };
 const palletSelectCallBack = (record) => {
   form.value.palletCode = record.palletCode;
-};
-
-// 显示工单选择对话框
-const showWorkOrderDialog = () => {
-  workOrderDialogRef.value.openDialog();
-  console.log(workOrderToOtherPackingQtyMap);
-  workOrderDialogRef.value.initWorkOrderDialog(packingDetailBoList.value, workOrderToOtherPackingQtyMap);
 };
 
 // 重置表单
@@ -284,56 +380,6 @@ const getWarehouseList = async () => {
     level: 1
   });
   warehouseLocationList.value = res.data;
-};
-
-// 启用编辑模式
-const enableEditing = async (row: WorkOrderForm) => {
-  row.isEditing = true;
-  const totalOtherPackingQty = packingDetailBoList.value.filter((r) => r.workOrderNo === row.workOrderNo && r.id !== row.id).reduce((sum, record) => sum + Number(record.packingQty), 0);
-  if (form.value.id && row.packingCode) {
-    // 编辑模式下计算
-    const totalPackingInList = packingDetailBoList.value.filter((r) => r.workOrderNo === row.workOrderNo && r.id !== row.id).reduce((sum, record) => sum + Number(record.packingQty), 0);
-    row.maxInboundQty = Math.max(Number(row.plannedQty) - Number(row.otherPackingQty) - Number(totalPackingInList), 0);
-  } else {
-    // 新增模式下计算
-    let otherPackingQty = workOrderToOtherPackingQtyMap.get(row.workOrderNo);
-    if (otherPackingQty === undefined) {
-      const res = await getWorkOrderPackedQty(row.workOrderNo);
-      otherPackingQty = Number(res.data);
-      // 将获取的值存入map
-      // workOrderToOtherPackingQtyMap.set(row.workOrderNo, otherPackingQty);
-    }
-    row.maxInboundQty = Math.max(Number(row.plannedQty) - (Number(otherPackingQty) + totalOtherPackingQty), 0);
-  }
-};
-
-// 保存打包数量
-const savePackingQty = async (row: WorkOrderForm) => {
-  if (row.packingQty === null || row.packingQty === undefined) {
-    proxy?.$modal.msgError('打包数量不能为空');
-    return;
-  }
-
-  // 计算当前工单其他记录的打包总量（不包括当前行）
-  const totalOtherPackingQty = packingDetailBoList.value.filter((r) => r.workOrderNo === row.workOrderNo && r.id !== row.id).reduce((sum, record) => sum + Number(record.packingQty), 0);
-  if (form.value.id && row.packingCode) {
-    // 编辑模式下计算
-    const totalPackingInList = packingDetailBoList.value.filter((r) => r.workOrderNo === row.workOrderNo && r.id !== row.id).reduce((sum, record) => sum + Number(record.packingQty), 0);
-    row.maxInboundQty = Math.max(Number(row.plannedQty) - Number(row.otherPackingQty) - Number(totalPackingInList), 0);
-  } else {
-    // 新增模式下计算
-    const res = await getWorkOrderPackedQty(row.workOrderNo);
-    row.maxInboundQty = Math.max(row.plannedQty - (Number(res.data) + totalOtherPackingQty), 0);
-  }
-
-  // 验证打包数量
-  if (row.packingQty > row.maxInboundQty) {
-    proxy?.$modal.msgError(`当前打包数量${row.packingQty}不能超过可打包数量${row.maxInboundQty}`);
-    row.packingQty = row.originPackingQty;
-    return;
-  }
-
-  row.isEditing = false;
 };
 
 // 模拟加载工单数据
@@ -384,6 +430,16 @@ h2 {
 .is-error {
   :deep(.el-input__wrapper) {
     box-shadow: 0 0 0 1px #f56c6c inset;
+  }
+}
+
+.radio-no-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: -12px;
+  .el-radio__label {
+    display: none;
   }
 }
 </style>

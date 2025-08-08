@@ -30,15 +30,15 @@
           <h4>打印设置</h4>
 
           <!-- 工单信息输入 -->
-          <el-form label-position="top">
-            <el-form-item label="公司名称">
+          <el-form label-position="top" ref="queryFormRef" :rules="rules" :model="workOrderInfo">
+            <el-form-item label="公司名称" prop="companyName">
               <!--              <el-input v-model="workOrderInfo.companyName" placeholder="请输入公司名称" />-->
               <el-select v-model="workOrderInfo.companyName" placeholder="请选择公司名称">
                 <el-option v-for="dict in wms_company_name" :key="dict.value" :label="dict.label" :value="dict.value" />
               </el-select>
             </el-form-item>
-            <el-form-item label="工单号码">
-              <el-input v-model="workOrderInfo.workOrderNo" placeholder="请输入工单号码">
+            <el-form-item label="工单号码" prop="workOrderNo">
+              <el-input ref="workOrderInputRef" v-model="workOrderInfo.workOrderNo" placeholder="请输入工单号码" @keydown.tab.prevent="keyDownTab" @keydown.enter.prevent="keyDownTab">
                 <template #append>
                   <el-button icon="Search" @click="showWorkOrderDialog" />
                 </template>
@@ -52,16 +52,24 @@
             <el-form-item label="产品描述">
               <el-input v-model="workOrderInfo.materialDesc" placeholder="请输入产品描述" />
             </el-form-item>-->
-            <el-form-item label="入库数量">
-              <el-input-number v-model="workOrderInfo.qty" :min="1" />
+            <el-form-item label="入库数量" prop="qty">
+              <el-input-number v-model="workOrderInfo.qty" :precision="3" :max="workOrderInfo.plannedQty" style="width: 100%" />
             </el-form-item>
-            <el-form-item label="条码内容">
+            <el-form-item label="条码内容" prop="sfcContent">
               <el-input v-model="workOrderInfo.sfcContent" placeholder="请输入条码内容" />
             </el-form-item>
-            <el-form-item label="生产日期">
-              <el-date-picker v-model="workOrderInfo.productDate" type="date" placeholder="请选择生产日期" value-format="YYYY-MM-DD" clearable :disabled-date="disabledFutureDate" />
+            <el-form-item label="生产日期" prop="productDate">
+              <el-date-picker
+                v-model="workOrderInfo.productDate"
+                type="date"
+                placeholder="请选择生产日期"
+                value-format="YYYY-MM-DD"
+                clearable
+                :disabled-date="disabledFutureDate"
+                style="width: 100%"
+              />
             </el-form-item>
-            <el-form-item label="生产线体">
+            <el-form-item label="生产线体" prop="productLine">
               <el-input v-model="workOrderInfo.productLine" placeholder="请输入生产线体" />
             </el-form-item>
             <!--            <el-form-item label="操作员">
@@ -114,7 +122,10 @@
                   <!-- 工单号码占一行 -->
                   <div class="info-row full-row">
                     <label>工单号码</label>
-                    <span>{{ workOrderInfo.workOrderNo }}</span>
+                    <span class="work-order-content">
+                      <span>{{ workOrderInfo.workOrderNo }}</span>
+                      <span class="version-text">V{{ workOrderInfo.version }}</span>
+                    </span>
                   </div>
                   <!-- 产品品号占一行 -->
                   <div class="info-row full-row">
@@ -226,9 +237,9 @@
 
           <div class="action-buttons">
             <!--            <el-button type="primary" @click="generateSerialNumber" :icon="Printer">演示效果图</el-button>-->
-            <el-button type="primary" @click="generateSerialNumbers" :icon="Printer">查询工单已下达条码</el-button>
-            <el-button @click="handlePrint" color="#626aef" :icon="Printer">下达打印</el-button>
-            <el-button type="primary" @click="handlePrintCurrent" :icon="Printer">打印当前标签</el-button>
+            <!--            <el-button type="primary" @click="generateSerialNumbers" :icon="Printer">查询工单已下达条码</el-button>-->
+            <el-button v-hasPermi="['wms:workOrderSn:add']" @click="handlePrint" color="#626aef" :icon="Printer">下达打印</el-button>
+            <!--            <el-button type="primary" @click="handlePrintCurrent" :icon="Printer">立即打印</el-button>-->
             <el-button @click="handleExportImage" :icon="Picture">导出图片</el-button>
 
             <!--            <el-button @click="handleExportExcel" :icon="Document" v-if="printType === 'excel'">导出Excel</el-button>-->
@@ -242,20 +253,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick, computed } from 'vue';
-import { Printer, Picture, Document, Search } from '@element-plus/icons-vue';
+import { nextTick, onMounted, ref, watch } from 'vue';
+import { Picture, Printer } from '@element-plus/icons-vue';
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { ElMessage } from 'element-plus';
 import { generateWorkOrderSn } from '@/api/wms/workOrderSn';
-
-import { WorkOrderSnQuery, WorkOrderSnForm } from '@/api/wms/workOrderSn/types';
+import { addWorkOrder, listWorkOrder, updateWorkOrder } from '@/api/wms/workOrder';
+import { WorkOrderSnForm, WorkOrderSnQuery } from '@/api/wms/workOrderSn/types';
 import { getUserProfile } from '@/api/system/user';
 import { parseTime } from '@/utils/ruoyi';
 import WorkOrderDialog from '@/views/wms/print/components/workOrderDialog.vue';
 
 const workOrderDialogRef = ref<InstanceType<typeof WorkOrderDialog>>();
-
+const queryFormRef = ref<ElFormInstance>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_company_name } = toRefs<any>(proxy?.useDict('wms_company_name'));
 
@@ -276,7 +287,11 @@ const data = reactive<PageData<WorkOrderSnForm, WorkOrderSnQuery>>({
     qty: undefined,
     params: {}
   },
-  rules: {}
+  rules: {
+    workOrderNo: [{ required: true, message: '工单号不能为空', trigger: 'blur' }],
+    qty: [{ required: true, message: '入库数量不能为空', trigger: 'blur' }],
+    productDate: [{ required: true, message: '生产日期不能为空', trigger: 'blur' }]
+  }
 });
 
 const { queryParams, form, rules } = toRefs(data);
@@ -308,12 +323,44 @@ const workOrderInfo = ref({
   material: '',
   materialDesc: '',
   qty: null,
-  unit: 'PCS',
+  plannedQty: null,
+  unit: '',
   productDate: '',
   productLine: '',
   operator: '',
-  inspector: ''
+  inspector: '',
+  version: 1
 });
+
+/** 查询工单信息列表 */
+const workOrderInputRef = ref<HTMLInputElement | null>(null);
+const keyDownTab = async () => {
+  workOrderInfo.value.workOrderNo = workOrderInfo.value.workOrderNo.trim();
+  await nextTick(() => {
+    if (workOrderInputRef.value) {
+      workOrderInputRef.value.focus();
+      workOrderInputRef.value.select();
+    }
+  });
+  const res = await listWorkOrder({
+    pageNum: 1,
+    pageSize: 10,
+    workOrderNo: workOrderInfo.value.workOrderNo
+  });
+
+  if ((res.rows || []).length == 1) {
+    const workOrderNoInfo = res.rows[0] || { workOrderNo: '', item: '', itemDesc: '', productLine: '' };
+    workOrderInfo.value.workOrderNo = workOrderNoInfo.workOrderNo;
+    workOrderInfo.value.material = workOrderNoInfo.item;
+    workOrderInfo.value.materialDesc = workOrderNoInfo.itemDesc;
+    workOrderInfo.value.productLine = workOrderNoInfo.productLine;
+    workOrderInfo.value.unit = workOrderNoInfo.unit;
+  } else if ((res.rows || []).length == 0) {
+    proxy?.$modal.msgError('工单记录不存在');
+  } else if ((res.rows || []).length > 1) {
+    proxy?.$modal.msgError('工单记录存在多条');
+  }
+};
 
 // 显示工单选择对话框
 const showWorkOrderDialog = () => {
@@ -321,11 +368,12 @@ const showWorkOrderDialog = () => {
 };
 
 const workOrderCallBack = (workOrderNoInfo: string) => {
-  console.log(workOrderNoInfo);
   workOrderInfo.value.workOrderNo = workOrderNoInfo.workOrderNo;
   workOrderInfo.value.material = workOrderNoInfo.item;
   workOrderInfo.value.materialDesc = workOrderNoInfo.itemDesc;
   workOrderInfo.value.productLine = workOrderNoInfo.productLine;
+  workOrderInfo.value.unit = workOrderNoInfo.unit;
+  workOrderInfo.value.plannedQty = workOrderNoInfo.plannedQty;
 };
 
 // 禁用未来的时间
@@ -427,6 +475,7 @@ const generateSerialNumber = () => {
   workOrderInfo.value.qty = 1;
   workOrderInfo.value.productDate = '2025-08-01';
   workOrderInfo.value.productLine = 'YS0028-1';
+  workOrderInfo.value.version = 1;
 };
 // 打印当前预览内容
 const handlePrintCurrent = async () => {
@@ -533,60 +582,60 @@ const handlePrintCurrent = async () => {
     }
   } catch (error) {
     console.error('打印失败:', error);
-    ElMessage.error('打印失败，请重试');
   }
 };
 
 // 打印处理支持连续打印不同二维码
 const handlePrint = async () => {
   if (!printContent.value) return;
+  queryFormRef.value?.validate(async (valid: boolean) => {
+    if (valid) {
+      try {
+        // 生成序列号列表
+        const snList = await generateSerialNumbers();
 
-  try {
-    // 生成序列号列表
-    const snList = await generateSerialNumbers();
+        let printContentHTML = '';
 
-    let printContentHTML = '';
+        // 为每个序列号生成一个打印页面
+        for (let i = 0; i < snList.length; i++) {
+          // 临时更新二维码内容
+          // const originalSfcContent = workOrderInfo.value.sfcContent;
+          workOrderInfo.value.sfcContent = snList[i];
 
-    // 为每个序列号生成一个打印页面
-    for (let i = 0; i < snList.length; i++) {
-      // 临时更新二维码内容
-      // const originalSfcContent = workOrderInfo.value.sfcContent;
-      workOrderInfo.value.sfcContent = snList[i];
+          // 重新生成二维码
+          await nextTick();
+          generateQRCode();
+          await nextTick(); // 确保二维码渲染完成
 
-      // 重新生成二维码
-      await nextTick();
-      generateQRCode();
-      await nextTick(); // 确保二维码渲染完成
+          // 生成截图
+          const canvas = await html2canvas(printContent.value, {
+            scale: 2,
+            logging: false,
+            useCORS: true,
+            scrollX: 0,
+            scrollY: 0
+          });
 
-      // 生成截图
-      const canvas = await html2canvas(printContent.value, {
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        scrollX: 0,
-        scrollY: 0
-      });
-
-      printContentHTML += `        <div style="page-break-after: ${i < snList.length - 1 ? 'always' : 'auto'};">
+          printContentHTML += `        <div style="page-break-after: ${i < snList.length - 1 ? 'always' : 'auto'};">
           <img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" />
         </div>
       `;
 
-      // 恢复原始内容
-      // workOrderInfo.value.sfcContent = originalSfcContent;
-    }
+          // 恢复原始内容
+          // workOrderInfo.value.sfcContent = originalSfcContent;
+        }
 
-    // 重新生成原始二维码
-    await nextTick();
-    generateQRCode();
+        // 重新生成原始二维码
+        await nextTick();
+        generateQRCode();
 
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      // 根据纸张大小设置打印页面尺寸
-      let printStyles = '';
-      switch (paperSize.value) {
-        case '9784':
-          printStyles = `            @page {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          // 根据纸张大小设置打印页面尺寸
+          let printStyles = '';
+          switch (paperSize.value) {
+            case '9784':
+              printStyles = `            @page {
               size: 97mm 84mm;
               margin: 0;
             }
@@ -597,9 +646,9 @@ const handlePrint = async () => {
               padding: 0;
             }
           `;
-          break;
-        case '8060':
-          printStyles = `            @page {
+              break;
+            case '8060':
+              printStyles = `            @page {
               size: 80mm 60mm;
               margin: 0;
             }
@@ -610,9 +659,9 @@ const handlePrint = async () => {
               padding: 0;
             }
           `;
-          break;
-        case '5060':
-          printStyles = `            @page {
+              break;
+            case '5060':
+              printStyles = `            @page {
               size: 50mm 60mm;
               margin: 0;
             }
@@ -623,9 +672,9 @@ const handlePrint = async () => {
               padding: 0;
             }
           `;
-          break;
-        case '3040':
-          printStyles = `            @page {
+              break;
+            case '3040':
+              printStyles = `            @page {
               size: 30mm 40mm;
               margin: 0;
             }
@@ -636,9 +685,9 @@ const handlePrint = async () => {
               padding: 0;
             }
           `;
-          break;
-        default:
-          printStyles = `            @page {
+              break;
+            default:
+              printStyles = `            @page {
               margin: 0;
             }
             body {
@@ -646,9 +695,9 @@ const handlePrint = async () => {
               padding: 0;
             }
           `;
-      }
+          }
 
-      printWindow.document.write(`        <html>
+          printWindow.document.write(`        <html>
           <head>
             <title>批量打印预览</title>
             <style>
@@ -666,12 +715,13 @@ const handlePrint = async () => {
             ${printContentHTML}          </body>
         </html>
       `);
-      printWindow.document.close();
+          printWindow.document.close();
+        }
+      } catch (error) {
+        console.error('打印失败:', error);
+      }
     }
-  } catch (error) {
-    console.error('打印失败:', error);
-    ElMessage.error('打印失败，请重试');
-  }
+  });
 };
 
 // 导出图片
@@ -882,7 +932,11 @@ onMounted(() => {
 }
 /* 适配97×84mm尺寸的内容样式 */
 .size9784 .receipt-header {
-  /*  margin-bottom: 8px;*/
+  margin: 0 3mm;
+}
+
+.size9784 .receipt-body {
+  margin: 0 3mm;
 }
 
 .size9784 .company-name {
@@ -908,7 +962,7 @@ onMounted(() => {
 
 .size9784 .top-hr,
 .size9784 .bottom-hr {
-  margin: 6px 0;
+  margin: 6px 3mm 6px 3mm;
   height: 2px;
 }
 
@@ -934,11 +988,11 @@ onMounted(() => {
 .receipt-body {
   display: flex;
   flex-direction: row;
+  margin: 0 3mm;
 }
 
 .content-section {
   flex: 3;
-  padding-right: 5px;
 }
 
 .info-row {
@@ -976,7 +1030,7 @@ onMounted(() => {
 
 /* 调整二维码和工单号的整体布局 */
 .qr-section {
-  flex: 1.1;
+  flex: 1.3;
   padding-left: 5px;
   display: flex;
   flex-direction: column;
@@ -998,7 +1052,7 @@ onMounted(() => {
   border: none;
   height: 2px;
   background-color: #000;
-  width: 100%;
+  width: calc(100% - 6mm);
 }
 
 .top-hr {
@@ -1020,19 +1074,34 @@ onMounted(() => {
 }
 
 .info-row.full-row {
-  display: block;
+  display: flex;
+  align-items: center;
+  position: relative;
 }
 
 .info-row.full-row label {
   width: auto;
   display: inline-block;
   margin-right: 20px;
+  flex-shrink: 0;
 }
 
 .info-row.full-row span {
   display: inline-block;
 }
 
+.work-order-content {
+  flex: 1;
+  position: relative;
+  font-size: 12px;
+}
+
+.version-text {
+  position: absolute;
+  right: 0;
+  font-weight: bold;
+  white-space: nowrap;
+}
 /* 二维码模板样式 - 80×60mm */
 .qr-template.qr8060 {
   width: 80mm;
