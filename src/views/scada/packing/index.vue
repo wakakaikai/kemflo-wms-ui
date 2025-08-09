@@ -143,10 +143,11 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import * as echarts from 'echarts';
 import { onMounted, ref, nextTick, onUnmounted } from 'vue';
 import moment from 'moment';
+import { ElMessage } from 'element-plus';
 
 const tabPosition = ref('week');
 const currentDateTime = ref('');
@@ -190,39 +191,19 @@ const updateDateTime = () => {
 // 切换全屏
 const toggleFullscreen = () => {
   if (!document.fullscreenEnabled) {
-    alert('浏览器不支持全屏');
+    ElMessage.warning('浏览器不支持全屏');
     return;
   }
-
   if (!isFullscreen.value) {
-    if (boardRef.value.requestFullscreen) {
-      boardRef.value.requestFullscreen();
-    } else if (boardRef.value.mozRequestFullScreen) {
-      boardRef.value.mozRequestFullScreen();
-    } else if (boardRef.value.webkitRequestFullscreen) {
-      boardRef.value.webkitRequestFullscreen();
-    } else if (boardRef.value.msRequestFullscreen) {
-      boardRef.value.msRequestFullscreen();
-    }
+    boardRef.value?.requestFullscreen();
   } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.mozCancelFullScreen) {
-      document.mozCancelFullScreen();
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen();
-    } else if (document.msExitFullscreen) {
-      document.msExitFullscreen();
-    }
+    document.exitFullscreen();
   }
 };
 
 // 全屏状态变化处理
 const handleFullscreenChange = () => {
-  isFullscreen.value = !!(document.fullscreenElement ||
-                          document.mozFullScreenElement ||
-                          document.webkitFullscreenElement ||
-                          document.msFullscreenElement);
+  isFullscreen.value = !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
 };
 
 // 刷新数据函数
@@ -455,6 +436,12 @@ const dateChange = (value) => {
     receivedData = receivedData.reverse();
   }
 
+  // 计算各项平均值
+  const calcAverage = (arr) => (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1);
+  const packedAvg = calcAverage(packedData);
+  const sentAvg = calcAverage(sentData);
+  const receivedAvg = calcAverage(receivedData);
+
   const option = {
     backgroundColor: 'transparent',
     tooltip: {
@@ -518,6 +505,31 @@ const dateChange = (value) => {
         data: packedData,
         itemStyle: {
           color: '#5c9bff'
+        },
+        label: {
+          show: true,
+          position: 'top',
+          color: '#5c9bff',
+          formatter: '{c}'
+        },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          data: [
+            {
+              type: 'average',
+              name: '打包平均',
+              label: {
+                position: 'end',
+                formatter: '{c}',
+                color: '#5c9bff'
+              },
+              lineStyle: {
+                color: '#5c9bff',
+                type: 'dashed'
+              }
+            }
+          ]
         }
       },
       {
@@ -526,6 +538,31 @@ const dateChange = (value) => {
         data: sentData,
         itemStyle: {
           color: '#6bc9ff'
+        },
+        label: {
+          show: true,
+          position: 'top',
+          color: '#6bc9ff',
+          formatter: '{c}'
+        },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          data: [
+            {
+              type: 'average',
+              name: '送仓平均',
+              label: {
+                position: 'end',
+                formatter: '{c}',
+                color: '#6bc9ff'
+              },
+              lineStyle: {
+                color: '#6bc9ff',
+                type: 'dashed'
+              }
+            }
+          ]
         }
       },
       {
@@ -534,6 +571,31 @@ const dateChange = (value) => {
         data: receivedData,
         itemStyle: {
           color: '#a0a0ff'
+        },
+        label: {
+          show: true,
+          position: 'top',
+          color: '#a0a0ff',
+          formatter: '{c}'
+        },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          data: [
+            {
+              type: 'average',
+              name: '接收平均',
+              label: {
+                position: 'end',
+                formatter: '{c}',
+                color: '#a0a0ff'
+              },
+              lineStyle: {
+                color: '#a0a0ff',
+                type: 'dashed'
+              }
+            }
+          ]
         }
       }
     ]
