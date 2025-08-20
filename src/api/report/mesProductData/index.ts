@@ -14,3 +14,17 @@ export const listMesProductData = (data: MesProductDataForm) => {
     timeout: 180000
   });
 };
+
+/**
+ * 查询Mes巡检数据
+ * @param data
+ * @returns {*}
+ */
+export const listMesInspectionData = (data: MesProductDataForm) => {
+  return request({
+    url: '/wms/mes/inspection/list',
+    method: 'post',
+    data: data,
+    timeout: 180000
+  });
+};

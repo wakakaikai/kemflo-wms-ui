@@ -3,7 +3,8 @@
     <!-- 顶部标题 -->
     <div class="dashboard-header">
       <div class="header-left">
-        <img src="@/assets/logo/kemflo-logo.jpg" alt="Logo" class="logo" @click="toggleFullscreen" />
+        <img v-if="tenantId == '000001'" src="@/assets/logo/yakima-logo.png" alt="Logo" class="logo" @click="toggleFullscreen" />
+        <img v-else src="@/assets/logo/kemflo-logo.jpg" alt="Logo" class="logo" @click="toggleFullscreen" />
       </div>
       <div class="header-center" @click="showSettings = true">
         <!--        <h2>异常呼叫看板（ {{ currentDateTime }}）</h2>-->
@@ -209,6 +210,7 @@ interface UserSettingsForm {
 }
 const boardRef = ref<HTMLElement | null>(null);
 const isFullscreen = ref(false);
+const tenantId = ref('000000');
 const currentDateTime = ref('');
 const userSettingsForm = ref<UserSettingsForm>({
   showOperationLine: 10,
@@ -579,6 +581,8 @@ onMounted(async () => {
     clearInterval(timer);
     document.removeEventListener('fullscreenchange', handleFullscreenChange);
   });
+
+  tenantId.value = localStorage.getItem('tenantId');
 });
 </script>
 
@@ -589,7 +593,6 @@ onMounted(async () => {
   height: 100vh;
   background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
   padding: 16px;
-  /*  overflow: hidden;*/
   overflow: auto;
   box-shadow: 0 0 30px rgba(0, 10, 255, 0.3);
 }
@@ -638,6 +641,7 @@ onMounted(async () => {
 .logo {
   height: 45px;
   filter: drop-shadow(0 0 5px rgba(100, 150, 255, 0.8));
+  cursor: pointer;
 }
 
 .dashboard-header h2 {
@@ -648,6 +652,7 @@ onMounted(async () => {
   -webkit-text-fill-color: transparent;
   text-shadow: 0 2px 10px rgba(0, 100, 255, 0.3);
   letter-spacing: 1px;
+  cursor: pointer;
 }
 
 .header-right h2 {

@@ -107,3 +107,13 @@ export const emptyPallet = (id: string | number | Array<string | number>) => {
   });
 };
 
+/**
+ * 查询栈板信息详细
+ * @param palletCode
+ */
+export const getPalletPacking = (palletCode: string): AxiosPromise<PalletVO> => {
+  return request({
+    url: '/wms/pallet/packing/' + palletCode,
+    method: 'get'
+  });
+};

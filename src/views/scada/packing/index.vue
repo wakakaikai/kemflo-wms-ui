@@ -1,5 +1,5 @@
 <template>
-  <div ref="boardRef" class="app-container home">
+  <div ref="boardRef" class="app-container">
     <!-- 顶部标题 -->
     <div class="dashboard-header">
       <div class="header-left">
@@ -13,145 +13,342 @@
       </div>
     </div>
 
-    <!-- 顶部统计卡片 -->
-    <div class="station-top">
-      <el-row :gutter="12" class="mt5">
-        <el-col :span="6">
-          <div class="top-item-box item-box-one" style="display: flex">
-            <div style="flex: 2; height: 100%">
-              <div>打包</div>
-              <div style="text-align: center; margin-top: 30px"><span style="font-size: 26px; font-weight: bold">96</span></div>
-            </div>
-            <div style="flex: 3; display: flex; flex-direction: column; justify-content: space-evenly">
-              <div>今日打包：96</div>
-              <div>昨日打包：91</div>
-              <div>本周平均：68</div>
-              <div>本月累计：462</div>
-            </div>
-          </div>
-        </el-col>
-        <el-col :span="6">
-          <div class="top-item-box item-box-two" style="display: flex">
-            <div style="flex: 2; height: 100%">
-              <div>送仓</div>
-              <div style="text-align: center; margin-top: 30px"><span style="font-size: 26px; font-weight: bold">96</span></div>
-            </div>
-            <div style="flex: 3; display: flex; flex-direction: column; justify-content: space-evenly">
-              <div>今日送仓：96</div>
-              <div>昨日送仓：91</div>
-              <div>本周平均：68</div>
-              <div>本月累计：462</div>
-            </div>
-          </div>
-        </el-col>
-        <el-col :span="6">
-          <div class="top-item-box item-box-three" style="display: flex">
-            <div style="flex: 2; height: 100%">
-              <div>接收</div>
-              <div style="text-align: center; margin-top: 30px"><span style="font-size: 26px; font-weight: bold">81</span></div>
-            </div>
-            <div style="flex: 3; display: flex; flex-direction: column; justify-content: space-evenly">
-              <div>今日接收：81</div>
-              <div>昨日接收：77</div>
-              <div>接收率：84.4%</div>
-              <div>退回数：1</div>
-            </div>
-          </div>
-        </el-col>
-        <el-col :span="6">
-          <div class="top-item-box item-box-four" style="display: flex">
-            <div style="flex: 2; height: 100%">
-              <div>异常</div>
-              <div style="text-align: center; margin-top: 30px"><span style="font-size: 26px; font-weight: bold">1</span></div>
-            </div>
-            <div style="flex: 3; display: flex; flex-direction: column; justify-content: space-evenly">
-              <div>今日异常：1</div>
-              <div>昨日异常：0</div>
-              <div>本周平均：0.1</div>
-              <div>本月累计：1</div>
+    <div class="dashboard-content">
+      <!-- 顶部统计卡片 -->
+      <div class="station-top">
+        <div class="cards-container">
+          <div class="card-wrapper">
+            <div class="top-item-box item-box-one">
+              <div class="card-content">
+                <div class="card-title-large">打包</div>
+                <div class="card-main">
+                  <div class="card-value-wrapper">
+                    <div class="card-value">{{ packingData.totalInQueuePackedQty }}</div>
+                  </div>
+                  <div class="card-details">
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">今日：</span>
+                        <span class="detail-value">{{ packingData.todayTotalPackedQty }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">昨日：</span>
+                        <span class="detail-value">{{ packingData.yesterdayTotalPackedQty }}</span>
+                      </div>
+                    </div>
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">周平均：</span>
+                        <span class="detail-value">{{ packingData.weekAvgPackedQty }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">周累计：</span>
+                        <span class="detail-value">{{ packingData.weekTotalPackedQty }}</span>
+                      </div>
+                    </div>
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">月累计：</span>
+                        <span class="detail-value">{{ packingData.monthTotalPackedQty }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </el-col>
-      </el-row>
+          <div class="card-wrapper">
+            <div class="top-item-box item-box-two">
+              <div class="card-content">
+                <div class="card-title-large">待入库</div>
+                <div class="card-main">
+                  <div class="card-value-wrapper">
+                    <div class="card-value">{{ packingData.totalInQueueInboundPendingQty }}</div>
+                  </div>
+                  <div class="card-details">
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">今日：</span>
+                        <span class="detail-value">{{ packingData.todayTotalInboundPendingQty }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">昨日：</span>
+                        <span class="detail-value">{{ packingData.yesterdayTotalInboundPendingQty }}</span>
+                      </div>
+                    </div>
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">周平均：</span>
+                        <span class="detail-value">{{ packingData.weekAvgInboundPendingQty }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">周累计：</span>
+                        <span class="detail-value">{{ packingData.weekTotalInboundPendingQty }}</span>
+                      </div>
+                    </div>
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">月累计：</span>
+                        <span class="detail-value">{{ packingData.monthTotalInboundPendingQty }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-wrapper">
+            <div class="top-item-box item-box-three">
+              <div class="card-content">
+                <div class="card-title-large">已接收</div>
+                <div class="card-main">
+                  <div class="card-value-wrapper">
+                    <div class="card-value">{{ packingData.todayTotalReceivedQty }}</div>
+                  </div>
+                  <div class="card-details">
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">今日：</span>
+                        <span class="detail-value">{{ packingData.todayTotalReceivedQty }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">昨日：</span>
+                        <span class="detail-value">{{ packingData.yesterdayTotalReceivedQty }}</span>
+                      </div>
+                    </div>
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">周平均：</span>
+                        <span class="detail-value">{{ packingData.weekAvgReceivedQty }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">周累计：</span>
+                        <span class="detail-value">{{ packingData.weekTotalReceivedQty }}</span>
+                      </div>
+                    </div>
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">月累计：</span>
+                        <span class="detail-value">{{ packingData.monthTotalReceivedQty }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-wrapper">
+            <div class="top-item-box item-box-four">
+              <div class="card-content">
+                <div class="card-title-large">已退回</div>
+                <div class="card-main">
+                  <div class="card-value-wrapper">
+                    <div class="card-value">{{ packingData.totalInQueueRejectedQty }}</div>
+                  </div>
+                  <div class="card-details">
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">今日：</span>
+                        <span class="detail-value">{{ packingData.todayTotalRejectedQty }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">昨日：</span>
+                        <span class="detail-value">{{ packingData.yesterdayTotalRejectedQty }}</span>
+                      </div>
+                    </div>
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">周平均：</span>
+                        <span class="detail-value">{{ packingData.weekAvgRejectedQty }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">周累计：</span>
+                        <span class="detail-value">{{ packingData.weekTotalRejectedQty }}</span>
+                      </div>
+                    </div>
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">月累计：</span>
+                        <span class="detail-value">{{ packingData.monthTotalRejectedQty }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-wrapper">
+            <div class="top-item-box item-box-five">
+              <div class="card-content">
+                <div class="card-title-large">接收失败</div>
+                <div class="card-main">
+                  <div class="card-value-wrapper">
+                    <div class="card-value">{{ packingData.totalInQueueReceivedFailedQty }}</div>
+                  </div>
+                  <div class="card-details">
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">今日：</span>
+                        <span class="detail-value">{{ packingData.todayTotalReceivedFailedQty }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">昨日：</span>
+                        <span class="detail-value">{{ packingData.yesterdayTotalReceivedFailedQty }}</span>
+                      </div>
+                    </div>
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">周平均：</span>
+                        <span class="detail-value">{{ packingData.weekAvgReceivedFailedQty }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">周累计：</span>
+                        <span class="detail-value">{{ packingData.weekTotalReceivedFailedQty }}</span>
+                      </div>
+                    </div>
+                    <div class="detail-row">
+                      <div class="detail-item">
+                        <span class="detail-label">月累计：</span>
+                        <span class="detail-value">{{ packingData.monthTotalReceivedFailedQty }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 中间图表区 -->
+      <div class="station-middle">
+        <el-row :gutter="12" class="chart-row">
+          <el-col :span="6">
+            <el-card class="box-card" shadow="never">
+              <div class="card-title">仓库接收占比</div>
+              <div class="chart-container">
+                <div ref="pieChart" class="chart"></div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="18">
+            <el-card class="box-card" shadow="never">
+              <div style="display: flex; justify-content: space-between; align-items: center">
+                <div class="card-title">打包入库趋势</div>
+                <el-radio-group v-model="tabPosition" @change="dateChange">
+                  <el-radio-button label="week">近一周</el-radio-button>
+                  <el-radio-button label="month">本月</el-radio-button>
+                </el-radio-group>
+              </div>
+              <div class="chart-container">
+                <div ref="barChart" class="chart"></div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+      </div>
+
+      <!-- 底部折线图区 -->
+      <div class="station-bottom">
+        <div class="line-charts-container">
+          <div class="chart-wrapper">
+            <el-card class="box-card" shadow="never">
+              <div class="card-title">近7日打包数</div>
+              <div class="chart-container">
+                <div ref="lineChart1" class="chart"></div>
+              </div>
+            </el-card>
+          </div>
+          <div class="chart-wrapper">
+            <el-card class="box-card" shadow="never">
+              <div class="card-title">近7日送仓数</div>
+              <div class="chart-container">
+                <div ref="lineChart2" class="chart"></div>
+              </div>
+            </el-card>
+          </div>
+          <div class="chart-wrapper">
+            <el-card class="box-card" shadow="never">
+              <div class="card-title">近7日接收数</div>
+              <div class="chart-container">
+                <div ref="lineChart3" class="chart"></div>
+              </div>
+            </el-card>
+          </div>
+          <div class="chart-wrapper">
+            <el-card class="box-card" shadow="never">
+              <div class="card-title">近7日退回数</div>
+              <div class="chart-container">
+                <div ref="lineChart4" class="chart"></div>
+              </div>
+            </el-card>
+          </div>
+          <div class="chart-wrapper">
+            <el-card class="box-card" shadow="never">
+              <div class="card-title">近7日接收失败</div>
+              <div class="chart-container">
+                <div ref="lineChart5" class="chart"></div>
+              </div>
+            </el-card>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- 中间图表区 -->
-    <div class="station-middle">
-      <el-row :gutter="12">
-        <el-col :span="6">
-          <el-card class="box-card" shadow="never">
-            <div class="card-title">仓库接收占比</div>
-            <div style="height: calc(100% - 30px)">
-              <div ref="pieChart" style="height: 100%"></div>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col :span="18">
-          <el-card class="box-card" shadow="never">
-            <div style="display: flex; justify-content: space-between; align-items: center">
-              <div class="card-title">打包入库趋势</div>
-              <el-radio-group v-model="tabPosition" @change="dateChange">
-                <el-radio-button label="week">本周</el-radio-button>
-                <el-radio-button label="month">本月</el-radio-button>
-              </el-radio-group>
-            </div>
-            <div style="height: calc(100% - 30px)">
-              <div ref="barChart" style="height: 100%"></div>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
-    </div>
+    <el-dialog v-model="showSettings" title="显示设置" width="40%">
+      <div class="settings-content">
+        <el-form ref="queryFormRef" :model="userSettingsForm" :inline="true" label-width="auto">
+          <el-row :gutter="20">
+            <el-col :sm="24" :md="24" :lg="24">
+              <el-form-item label="数据刷新" prop="freshScadaData">
+                <el-input-number v-model="userSettingsForm.freshScadaData" :min="5" :step="1">
+                  <template #suffix>
+                    <span>秒</span>
+                  </template>
+                </el-input-number>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+      </div>
 
-    <!-- 底部折线图区 -->
-    <div class="station-bottom">
-      <el-row :gutter="12">
-        <el-col :span="6">
-          <el-card class="box-card" shadow="never">
-            <div class="card-title">近7日打包数</div>
-            <div style="height: calc(100% - 30px)">
-              <div ref="lineChart1" style="height: 100%"></div>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="box-card" shadow="never">
-            <div class="card-title">近7日送仓数</div>
-            <div style="height: calc(100% - 30px)">
-              <div ref="lineChart2" style="height: 100%"></div>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="box-card" shadow="never">
-            <div class="card-title">近7日接收数</div>
-            <div style="height: calc(100% - 30px)">
-              <div ref="lineChart3" style="height: 100%"></div>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="box-card" shadow="never">
-            <div class="card-title">近7日退回数</div>
-            <div style="height: calc(100% - 30px)">
-              <div ref="lineChart4" style="height: 100%"></div>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
-    </div>
+      <template #footer>
+        <el-button @click="showSettings = false">取消</el-button>
+        <el-button type="primary" @click="saveSettings">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup name="PackingScada" lang="ts">
 import * as echarts from 'echarts';
-import { onMounted, ref, nextTick, onUnmounted } from 'vue';
+import { useRequest } from 'vue-request';
 import moment from 'moment';
 import { ElMessage } from 'element-plus';
+import { packingScada } from '@/api/wms/scada/index';
+import { ref } from 'vue';
+interface UserSettingsForm {
+  showOperationLine: number;
+  showOperationPerRow: number;
+  startTime: any;
+  endTime: any;
+  autoPlayCarousel: string | number;
+  autoPlayInterval: number;
+  freshScadaData: number;
+}
 
 const tabPosition = ref('week');
 const currentDateTime = ref('');
-const showSettings = ref(false);
+const userSettingsForm = ref<UserSettingsForm>({
+  showOperationLine: 10,
+  showOperationPerRow: 6,
+  startTime: null,
+  endTime: null,
+  autoPlayCarousel: '1',
+  autoPlayInterval: 10,
+  freshScadaData: 30
+});
+const packingData = ref<Record<string, any>>({});
 
 // 图表DOM引用
 const pieChart = ref();
@@ -160,6 +357,7 @@ const lineChart1 = ref();
 const lineChart2 = ref();
 const lineChart3 = ref();
 const lineChart4 = ref();
+const lineChart5 = ref();
 
 // 图表实例
 let pieChartInstance = null;
@@ -168,6 +366,7 @@ let lineChartInstance1 = null;
 let lineChartInstance2 = null;
 let lineChartInstance3 = null;
 let lineChartInstance4 = null;
+let lineChartInstance5 = null;
 
 const boardRef = ref(null);
 const isFullscreen = ref(false);
@@ -203,16 +402,35 @@ const toggleFullscreen = () => {
 
 // 全屏状态变化处理
 const handleFullscreenChange = () => {
-  isFullscreen.value = !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+  isFullscreen.value = !!document.fullscreenElement;
 };
 
 // 刷新数据函数
-const refreshData = () => {
-  // 模拟刷新数据
-  console.log('刷新数据');
+const refreshData = async () => {
+  // 默认本月1号0点到当前时间
+  userSettingsForm.value.startTime = moment().startOf('month').format('YYYY-MM-DD HH:mm:ss');
+  userSettingsForm.value.endTime = moment().format('YYYY-MM-DD HH:mm:ss');
+  const res = await packingScada({ startTime: userSettingsForm.value.startTime, endTime: userSettingsForm.value.endTime });
+  packingData.value = res.data;
   initCharts();
 };
+// 控制弹框显示
+const showSettings = ref(false);
+// 保存设置
+const saveSettings = () => {
+  showSettings.value = false;
+  localStorage.setItem('packingScada', JSON.stringify(userSettingsForm.value));
+  cancel();
+  setTimeout(() => {
+    run();
+  }, 1000);
+};
 
+const { run, cancel } = useRequest(refreshData, {
+  manual: true,
+  pollingInterval: computed(() => userSettingsForm.value.freshScadaData * 1000),
+  onSuccess: async (data, params) => {}
+});
 // 初始化所有图表
 const initCharts = () => {
   initPieChart();
@@ -220,7 +438,7 @@ const initCharts = () => {
   initLineCharts();
 };
 
-// 初始化饼图 (优化暗色模式)
+// 初始化饼图
 const initPieChart = () => {
   pieChartInstance = echarts.init(pieChart.value);
   const option = {
@@ -253,9 +471,17 @@ const initPieChart = () => {
           borderWidth: 2
         },
         label: {
-          show: false,
-          position: 'center',
-          color: '#fff'
+          show: true, // 显示标签
+          position: 'outside', // 标签位置在外部
+          color: '#fff',
+          // formatter: '{b}\n{c} ({d}%)' // 显示名称、数值和百分比
+          formatter: '{d}%' // 显示名称、数值和百分比
+        },
+        labelLine: {
+          show: true, // 显示标签线
+          lineStyle: {
+            color: 'rgba(255, 255, 255, 0.3)'
+          }
         },
         emphasis: {
           label: {
@@ -265,14 +491,11 @@ const initPieChart = () => {
             color: '#fff'
           }
         },
-        labelLine: {
-          show: false
-        },
         data: [
-          { value: 81, name: '已接收', itemStyle: { color: '#5c9bff' } },
-          { value: 1, name: '已退回', itemStyle: { color: '#ff6b6b' } },
-          { value: 0, name: '接收失败', itemStyle: { color: '#a0a0ff' } },
-          { value: 14, name: '待处理', itemStyle: { color: '#ffd166' } }
+          { value: packingData.value.totalInQueueInboundPendingQty, name: '待入库', itemStyle: { color: '#9a8a4a' } },
+          { value: packingData.value.todayTotalReceivedQty, name: '已接收', itemStyle: { color: '#4a9a6a' } },
+          { value: packingData.value.totalInQueueRejectedQty, name: '已退回', itemStyle: { color: '#ff6b6b' } },
+          { value: packingData.value.totalInQueueReceivedFailedQty, name: '接收失败', itemStyle: { color: '#9a4a4a' } }
         ]
       }
     ]
@@ -286,7 +509,7 @@ const initBarChart = () => {
   dateChange('week');
 };
 
-// 初始化折线图 (优化暗色模式)
+// 初始化折线图
 const initLineCharts = () => {
   // 近7日数据
   const dates = [];
@@ -296,19 +519,23 @@ const initLineCharts = () => {
 
   // 打包数折线图
   lineChartInstance1 = echarts.init(lineChart1.value);
-  lineChartInstance1.setOption(getLineChartOption(dates, [32, 68, 65, 29, 81, 91, 96], '#5c9bff'));
+  lineChartInstance1.setOption(getLineChartOption(dates, packingData.value.weekPackedQtyList, '#5c9bff'));
 
   // 送仓数折线图
   lineChartInstance2 = echarts.init(lineChart2.value);
-  lineChartInstance2.setOption(getLineChartOption(dates, [32, 68, 65, 29, 81, 91, 96], '#6bc9ff'));
+  lineChartInstance2.setOption(getLineChartOption(dates, packingData.value.weekInboundQtyList, '#6bc9ff'));
 
   // 接收数折线图
   lineChartInstance3 = echarts.init(lineChart3.value);
-  lineChartInstance3.setOption(getLineChartOption(dates, [32, 68, 65, 29, 81, 77, 81], '#a0a0ff'));
+  lineChartInstance3.setOption(getLineChartOption(dates, packingData.value.weekReceivedQtyList, '#a0a0ff'));
 
   // 退回数折线图
   lineChartInstance4 = echarts.init(lineChart4.value);
-  lineChartInstance4.setOption(getLineChartOption(dates, [0, 0, 0, 0, 0, 0, 1], '#ff6b6b'));
+  lineChartInstance4.setOption(getLineChartOption(dates, packingData.value.weekRejectedQtyList, '#ff6b6b'));
+
+  // 退回数折线图
+  lineChartInstance5 = echarts.init(lineChart5.value);
+  lineChartInstance5.setOption(getLineChartOption(dates, packingData.value.weekReceivedFailedQtyList, '#9a4a4a'));
 };
 
 // 获取折线图配置（带填充效果，优化暗色模式）
@@ -404,43 +631,42 @@ const getLineChartOption = (xData, yData, color) => {
   };
 };
 
-// 时间范围切换 (优化暗色模式)
+// 时间范围切换
 const dateChange = (value) => {
   let xData = [];
-  let packedData = [];
-  let sentData = [];
-  let receivedData = [];
+  const packedData = [];
+  const receivedData = [];
 
   if (value === 'week') {
-    // 本周数据
+    // 近一周数据
     for (let i = 6; i >= 0; i--) {
       const date = moment().subtract(i, 'days');
       xData.push(date.format('MM-DD'));
-      packedData.push(getRandomInt(20, 100));
-      sentData.push(getRandomInt(20, 100));
-      receivedData.push(getRandomInt(20, 90));
+      // packedData.push(getRandomInt(20, 100));
+      // receivedData.push(getRandomInt(20, 90));
     }
+    packedData.push(...(packingData.value.weekPackedQtyList || [0]));
+    receivedData.push(...(packingData.value.weekReceivedQtyList || [0]));
   } else {
     // 本月数据
     const daysInMonth = moment().daysInMonth();
     for (let i = daysInMonth; i > 0; i--) {
       const date = moment().date(i);
       xData.push(date.format('MM-DD'));
-      packedData.push(getRandomInt(20, 100));
-      sentData.push(getRandomInt(20, 100));
-      receivedData.push(getRandomInt(20, 90));
+      // packedData.push(getRandomInt(20, 100));
+      // receivedData.push(getRandomInt(20, 90));
     }
     xData = xData.reverse();
-    packedData = packedData.reverse();
-    sentData = sentData.reverse();
-    receivedData = receivedData.reverse();
+
+    packedData.push(...packingData.value.monthPackedQtyList);
+    receivedData.push(...packingData.value.monthReceivedQtyList);
   }
+  console.log(xData, packedData, receivedData);
 
   // 计算各项平均值
-  const calcAverage = (arr) => (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1);
-  const packedAvg = calcAverage(packedData);
-  const sentAvg = calcAverage(sentData);
-  const receivedAvg = calcAverage(receivedData);
+  // const calcAverage = (arr) => (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1);
+  // const packedAvg = calcAverage(packedData);
+  // const receivedAvg = calcAverage(receivedData);
 
   const option = {
     backgroundColor: 'transparent',
@@ -458,7 +684,7 @@ const dateChange = (value) => {
       textStyle: {
         color: '#e0e0e0'
       },
-      data: ['打包数', '送仓数', '接收数']
+      data: ['打包数', '接收数']
     },
     grid: {
       left: '3%',
@@ -533,49 +759,16 @@ const dateChange = (value) => {
         }
       },
       {
-        name: '送仓数',
-        type: 'bar',
-        data: sentData,
-        itemStyle: {
-          color: '#6bc9ff'
-        },
-        label: {
-          show: true,
-          position: 'top',
-          color: '#6bc9ff',
-          formatter: '{c}'
-        },
-        markLine: {
-          silent: true,
-          symbol: 'none',
-          data: [
-            {
-              type: 'average',
-              name: '送仓平均',
-              label: {
-                position: 'end',
-                formatter: '{c}',
-                color: '#6bc9ff'
-              },
-              lineStyle: {
-                color: '#6bc9ff',
-                type: 'dashed'
-              }
-            }
-          ]
-        }
-      },
-      {
         name: '接收数',
         type: 'bar',
         data: receivedData,
         itemStyle: {
-          color: '#a0a0ff'
+          color: '#4a9a6a'
         },
         label: {
           show: true,
           position: 'top',
-          color: '#a0a0ff',
+          color: '#4a9a6a',
           formatter: '{c}'
         },
         markLine: {
@@ -588,10 +781,10 @@ const dateChange = (value) => {
               label: {
                 position: 'end',
                 formatter: '{c}',
-                color: '#a0a0ff'
+                color: '#4a9a6a'
               },
               lineStyle: {
-                color: '#a0a0ff',
+                color: '#4a9a6a',
                 type: 'dashed'
               }
             }
@@ -617,22 +810,35 @@ const resizeCharts = () => {
   lineChartInstance2?.resize();
   lineChartInstance3?.resize();
   lineChartInstance4?.resize();
+  lineChartInstance5?.resize();
 };
 
 let timer = null;
-
-onMounted(() => {
+let resizeObserver = null;
+onMounted(async () => {
   // 初始化时间并设置定时器
   updateDateTime();
   timer = setInterval(updateDateTime, 1000);
+
+  const userSettingsFormObj = localStorage.getItem('packingScada');
+  if (userSettingsFormObj) {
+    userSettingsForm.value = JSON.parse(userSettingsFormObj);
+  }
+
+  await run();
 
   nextTick(() => {
     initCharts();
     window.addEventListener('resize', resizeCharts);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    // 添加 ResizeObserver 监听容器大小变化
+    if (window.ResizeObserver) {
+      resizeObserver = new ResizeObserver(resizeCharts);
+      if (boardRef.value) {
+        resizeObserver.observe(boardRef.value);
+      }
+    }
   });
 });
 
@@ -645,9 +851,11 @@ onUnmounted(() => {
   // 移除事件监听器
   window.removeEventListener('resize', resizeCharts);
   document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
-  document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-  document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+
+  // 断开 ResizeObserver
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
 
   // 销毁图表实例
   pieChartInstance?.dispose();
@@ -656,19 +864,27 @@ onUnmounted(() => {
   lineChartInstance2?.dispose();
   lineChartInstance3?.dispose();
   lineChartInstance4?.dispose();
+  lineChartInstance5?.dispose();
 });
 </script>
 
-<style scoped>
-/* header样式 */
+<style lang="scss" scoped>
 .app-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
   background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
   padding: 16px;
-  overflow: auto;
+  overflow: hidden;
   box-shadow: 0 0 30px rgba(0, 10, 255, 0.3);
+}
+
+.dashboard-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  gap: 10px;
 }
 
 /* 顶部标题样式 */
@@ -678,11 +894,12 @@ onUnmounted(() => {
   align-items: center;
   height: 70px;
   background: rgba(16, 13, 68, 0.8);
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 0;
-  margin-bottom: 15px;
+  margin-bottom: 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(100, 100, 255, 0.2);
+  flex-shrink: 0;
 }
 
 .header-left {
@@ -721,63 +938,135 @@ onUnmounted(() => {
   -webkit-text-fill-color: transparent;
   text-shadow: 0 2px 10px rgba(0, 100, 255, 0.3);
   letter-spacing: 1px;
-  margin: 0;
   cursor: pointer;
 }
 
 .current-time {
-  font-size: 18px;
-  font-weight: 500;
-  color: #fff;
-  text-shadow: 0 0 5px rgba(100, 150, 255, 0.5);
+  font-size: 28px;
+  font-weight: bold;
+  color: #00f2fe;
+  text-shadow: 0 2px 10px rgba(0, 100, 255, 0.3);
 }
 
 /* 全屏模式优化 */
-.app-container:-webkit-full-screen {
-  padding: 10px;
-}
-
-.app-container:-moz-full-screen {
-  padding: 10px;
-}
-
 .app-container:fullscreen {
   padding: 10px;
-}
-
-.app-container:-webkit-full-screen .dashboard-header {
-  height: 80px;
-}
-
-.app-container:-moz-full-screen .dashboard-header {
-  height: 80px;
 }
 
 .app-container:fullscreen .dashboard-header {
   height: 80px;
 }
 
-.app-container:-webkit-full-screen .logo {
-  height: 50px;
-}
-
-.app-container:-moz-full-screen .logo {
-  height: 50px;
-}
-
 .app-container:fullscreen .logo {
   height: 50px;
+}
+
+/* 使用flex布局的卡片容器 */
+.station-top {
+  flex: 0 0 auto;
+}
+
+.cards-container {
+  display: flex;
+  gap: 12px;
+  margin-top: 5px;
+}
+
+.card-wrapper {
+  flex: 1;
+  min-width: 0; /* 允许卡片收缩 */
 }
 
 .top-item-box {
   height: 160px;
   background: #2a2a4a;
-  margin-bottom: 12px;
-  border-radius: 12px;
+  border-radius: 10px;
   color: #fff;
-  padding: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(100, 120, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.card-title-large {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.card-main {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  align-items: center;
+}
+
+.card-value-wrapper {
+  flex: 0.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  margin: 0 5px;
+  min-width: 0;
+  line-height: 60px;
+}
+
+.card-value {
+  font-size: 26px;
+  font-weight: bold;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-details {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0 5px;
+  gap: 5px;
+}
+
+.detail-row {
+  display: flex;
+  gap: 5px;
+}
+
+.detail-item {
+  flex: 1;
+  display: flex;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail-label {
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 5px;
+  color: #ddd;
+  min-width: 45px;
+}
+
+.detail-value {
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+  font-weight: bold;
+  color: #fff;
 }
 
 .item-box-one {
@@ -789,26 +1078,51 @@ onUnmounted(() => {
 }
 
 .item-box-three {
-  background: linear-gradient(30deg, #4a2a5a, #6a3a7a, #8a4a9a);
+  background: linear-gradient(30deg, #2a5a4a, #3a7a5a, #4a9a6a);
 }
 
 .item-box-four {
   background: linear-gradient(30deg, #5a2a3a, #7a3a4a, #9a4a5a);
 }
 
+.item-box-five {
+  background: linear-gradient(30deg, #5a2a2a, #7a3a3a, #9a4a4a);
+}
+
+.station-middle {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chart-row {
+  height: 100%;
+}
+
+.station-bottom {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
 .box-card {
-  height: 400px;
-  margin-bottom: 12px;
+  height: 100%;
   background-color: rgba(30, 30, 40, 0.7);
   border-color: rgba(100, 100, 200, 0.3);
   color: #fff;
   backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
 }
 
 .box-card :deep(.el-card__body) {
-  height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   background-color: transparent;
   color: #fff;
+  padding: 0;
 }
 
 .card-title {
@@ -817,23 +1131,45 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   color: #fff;
+  padding: 10px 20px 5px;
+  flex-shrink: 0;
 }
 
 .card-title::before {
   content: '';
-  height: 70%;
+  height: 16px;
   width: 5px;
   background: #3671e8;
   margin-right: 8px;
 }
 
-.mt5 {
-  margin-top: 5px;
+.chart-container {
+  flex: 1;
+  padding: 0 15px 15px;
+  min-height: 0;
 }
 
-.station-top,
-.station-middle,
-.station-bottom {
-  padding: 12px;
+.chart {
+  height: 100%;
+  width: 100%;
+}
+
+.line-charts-container {
+  display: flex;
+  gap: 12px;
+  height: 100%;
+}
+
+.chart-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.station-top {
+  padding: 10px 0 5px 0;
+}
+
+.station-middle {
+  padding: 0;
 }
 </style>
