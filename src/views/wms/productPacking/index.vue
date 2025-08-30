@@ -246,8 +246,8 @@ const handlePalletScan = async () => {
     // 校验栈板号是否有效
     const res = await getPalletPacking(formData.value.palletCode);
     if (res.data) {
-      // res.data.status 如果是0 1 2 4 5可以正常绑定
-      if (res.data.status === 0 || res.data.status === 1 || res.data.status === 2 || res.data.status === 4 || res.data.status === 5) {
+      // res.data.status 如果是0 1 4可以正常绑定
+      if (res.data.status === 0 || res.data.status === 1 || res.data.status === 4) {
         proxy.$modal.msgSuccess('栈板号校验通过，可以开始扫描SN码');
         successVoice();
         palletStatusNormal.value = true;

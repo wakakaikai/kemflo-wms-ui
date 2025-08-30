@@ -116,8 +116,8 @@ const handleLogin = () => {
     if (valid) {
       loading.value = true;
       // 勾选了需要记住密码设置在 localStorage 中设置记住用户名和密码
+      localStorage.setItem('tenantId', String(loginForm.value.tenantId));
       if (loginForm.value.rememberMe) {
-        localStorage.setItem('tenantId', String(loginForm.value.tenantId));
         localStorage.setItem('username', String(loginForm.value.username));
         localStorage.setItem('password', String(loginForm.value.password));
         localStorage.setItem('rememberMe', String(loginForm.value.rememberMe));

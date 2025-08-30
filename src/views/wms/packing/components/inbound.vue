@@ -87,8 +87,14 @@
                   {{ $index + 1 }}
                 </template>
               </el-table-column>
-              <el-table-column label="工单号" align="center" prop="workOrderNo" />
-              <el-table-column label="条码" align="center" width="130" prop="sn" />
+              <el-table-column label="工单号" align="center" width="130" prop="workOrderNo">
+                <template #default="scope">
+                  <router-link :to="{ path: '/receiptOrder/packingDetailSn', query: { packingDetailId: scope.row.id } }" class="link-type">
+                    <span>{{ scope.row.workOrderNo }}</span>
+                  </router-link>
+                </template>
+              </el-table-column>
+              <el-table-column label="标签码" align="center" width="130" prop="sn" />
               <el-table-column label="产品料号" align="center" prop="item" />
               <el-table-column label="产品描述" align="left" prop="itemDesc" />
               <el-table-column label="计划数量" align="center" prop="plannedQty" />

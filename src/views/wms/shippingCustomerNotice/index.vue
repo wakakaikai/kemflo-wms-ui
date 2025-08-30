@@ -297,7 +297,7 @@ const handleDelete = async (row?: ShippingCustomerNoticeVO) => {
 /** 跳转MES生产数据导出页面 */
 const handleQueryProductData = async (row?: ShippingCustomerNoticeVO) => {
   proxy.$router.push({
-    path: `/report/mes/mesProductData`,
+    path: `/report/mesProductData`,
     query: {
       shippingCustomerNoticeId: row?.id
     }

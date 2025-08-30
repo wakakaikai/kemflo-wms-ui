@@ -55,7 +55,7 @@
         <el-table-column label="打包编号" align="center" prop="packingCode" width="150" />
         <el-table-column label="栈板编号" align="center" prop="palletCode" />
         <el-table-column label="工单号" align="center" prop="workOrderNo" />
-        <el-table-column label="条码" align="center" width="130" prop="sn" />
+        <el-table-column label="标签码" align="center" width="130" prop="sn" />
         <el-table-column label="料号" align="center" prop="item" />
         <el-table-column label="数量" align="center" prop="packingQty" />
         <el-table-column label="物料凭证号" align="center" prop="materialOrderNo" />
