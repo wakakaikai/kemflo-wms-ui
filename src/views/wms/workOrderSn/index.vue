@@ -167,7 +167,8 @@
                     <div class="info-column">
                       <div class="info-row">
                         <label>入库数量</label>
-                        <span>{{ previewWorkOrderInfo.qty }} {{ previewWorkOrderInfo.unit }}</span>
+                        <span>{{ formattedQty(previewWorkOrderInfo.qty) }} {{ previewWorkOrderInfo.unit }}</span>
+                        <span>{{ previewWorkOrderInfo.remark }}</span>
                       </div>
                       <div class="info-row">
                         <label>生产日期</label>
@@ -205,7 +206,7 @@
                 <div class="qr-info">
                   <p>{{ previewWorkOrderInfo.workOrderNo }}</p>
                   <p>{{ previewWorkOrderInfo.sn }}</p>
-                  <p>{{ previewWorkOrderInfo.qty }} PCS</p>
+                  <p>{{ previewWorkOrderInfo.qty }} {{ previewWorkOrderInfo.unit }}</p>
                 </div>
               </div>
             </div>
@@ -217,7 +218,7 @@
                 <div class="qr-info">
                   <p>{{ previewWorkOrderInfo.workOrderNo }}</p>
                   <p>{{ previewWorkOrderInfo.sn }}</p>
-                  <p>{{ previewWorkOrderInfo.qty }} PCS</p>
+                  <p>{{ previewWorkOrderInfo.qty }} {{ previewWorkOrderInfo.unit }}</p>
                 </div>
               </div>
             </div>
@@ -229,7 +230,7 @@
                 <div class="qr-info">
                   <p>{{ previewWorkOrderInfo.workOrderNo }}</p>
                   <p>{{ previewWorkOrderInfo.sn }}</p>
-                  <p>{{ previewWorkOrderInfo.qty }} PCS</p>
+                  <p>{{ previewWorkOrderInfo.qty }} {{ previewWorkOrderInfo.unit }}</p>
                 </div>
               </div>
             </div>
@@ -356,7 +357,23 @@ const disabledFutureDate = (time: Date) => {
   // 禁止选择当前时间之后的日期
   return time.getTime() > now.getTime();
 };
+const formattedQty = (qty: number | string | null | undefined): string => {
+  if (qty === null || qty === undefined || qty === '') {
+    return '';
+  }
 
+  const num = Number(qty);
+  if (isNaN(num)) {
+    return '';
+  }
+
+  // 使用 Intl.NumberFormat 来格式化数字
+  // 自动去除末尾无用的0
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3 // 根据需要调整最大小数位数
+  }).format(num);
+};
 /** 查询工单条码列表 */
 const getList = async () => {
   loading.value = true;
@@ -473,7 +490,8 @@ const handlePrintDialog = () => {
     productLine: record.productLine || '',
     operator: '',
     inspector: '',
-    version: record.version || 1
+    version: record.version || 1,
+    remark: ''
   };
 
   nextTick(() => {
@@ -624,7 +642,7 @@ const handleBatchPrint = async () => {
         materialDesc: record.itemDesc || '',
         sn: record.sn || '',
         qty: record.qty || 0,
-        unit: 'PCS',
+        unit: '',
         productDate: record.productDate ? proxy?.parseTime(record.productDate, '{y}-{m}-{d}') : '',
         productLine: record.productLine || '',
         operator: '',

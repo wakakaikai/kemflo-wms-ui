@@ -40,6 +40,11 @@ export interface WorkOrderSnVO {
   productDate: string;
 
   /**
+   * 操作人
+   */
+  operator: string;
+
+  /**
    * 状态
    */
   status: number;

@@ -48,7 +48,7 @@
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="公司名称" align="center" prop="companyName" />
         <el-table-column label="工单号" align="center" prop="workOrderNo" />
-        <el-table-column label="条码" align="center" prop="sn" />
+        <el-table-column label="标签码" align="center" prop="sn" />
         <el-table-column label="版本" align="center" prop="version">
           <template #default="scope">
             <el-tag v-if="scope.row.version" type="success">V{{ scope.row.version }}</el-tag>
@@ -89,11 +89,15 @@
         <el-form-item label="工单号" prop="workOrderNo">
           <span>{{ form.workOrderNo }}</span>
         </el-form-item>
-        <el-form-item label="条码" prop="sn">
+        <el-form-item label="标签码" prop="sn">
           <span>{{ form.sn }}</span>
         </el-form-item>
         <el-form-item label="数量" prop="qty">
           <el-input-number v-model="form.qty" :precision="3" :max="form.plannedQty" placeholder="请输入数量" />
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <span>10*6+1*3(10整箱*6PCS 1尾箱*3PCS)</span>
+          <el-input v-model="form.remark" placeholder="请输入备注" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -159,7 +163,8 @@
                     <div class="info-column">
                       <div class="info-row">
                         <label>入库数量</label>
-                        <span>{{ previewWorkOrderInfo.qty }} {{ previewWorkOrderInfo.unit }}</span>
+                        <span>{{ formattedQty(previewWorkOrderInfo.qty) }} {{ previewWorkOrderInfo.unit }}</span>
+                        <span>{{ previewWorkOrderInfo.remark }}</span>
                       </div>
                       <div class="info-row">
                         <label>生产日期</label>
@@ -245,6 +250,7 @@ import { WorkOrderSnVO, WorkOrderSnQuery, WorkOrderSnForm } from '@/api/wms/work
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { nextTick, ref } from 'vue';
+import { getUserProfile } from '@/api/system/user';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_company_name } = toRefs<any>(proxy?.useDict('wms_company_name'));
@@ -298,7 +304,8 @@ const previewWorkOrderInfo = ref({
   productLine: '',
   operator: '',
   inspector: '',
-  version: 1
+  version: 1,
+  remark: ''
 });
 
 // 打印模板选项 - 启用所有模板选项
@@ -355,7 +362,23 @@ const disabledFutureDate = (time: Date) => {
   // 禁止选择当前时间之后的日期
   return time.getTime() > now.getTime();
 };
+const formattedQty = (qty: number | string | null | undefined): string => {
+  if (qty === null || qty === undefined || qty === '') {
+    return '';
+  }
 
+  const num = Number(qty);
+  if (isNaN(num)) {
+    return '';
+  }
+
+  // 使用 Intl.NumberFormat 来格式化数字
+  // 自动去除末尾无用的0
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3 // 根据需要调整最大小数位数
+  }).format(num);
+};
 /** 查询工单条码列表 */
 const getList = async () => {
   loading.value = true;
@@ -473,7 +496,8 @@ const handlePrintDialog = () => {
     productLine: record.productLine || '',
     operator: '',
     inspector: '',
-    version: record.version || 1
+    version: record.version || 1,
+    remark: record.remark || ''
   };
 
   nextTick(() => {
@@ -629,7 +653,8 @@ const handleBatchPrint = async () => {
         productLine: record.productLine || '',
         operator: '',
         inspector: '',
-        version: record.version || 1
+        version: record.version || 1,
+        remark: record.remark || ''
       };
 
       // 重新生成二维码
@@ -699,8 +724,12 @@ watch(selectedRecords, () => {
     });
   }
 });
-
+const getUser = async () => {
+  const res = await getUserProfile();
+  previewWorkOrderInfo.value.operator = res.data.user.nickName;
+};
 onMounted(() => {
+  getUser();
   getList();
 });
 </script>

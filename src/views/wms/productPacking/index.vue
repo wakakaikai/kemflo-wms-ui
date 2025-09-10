@@ -28,8 +28,8 @@
         <template #header>
           <div class="card-header">
             <span>SN码扫描 ({{ totalSnCount }})</span>
-            <el-button v-if="formData.id" v-hasPermi="['wms:item:edit']" type="success" plain icon="Edit" :disabled="!canGenerateEntries" @click="generateStorageDialog()">修改入库单</el-button>
-            <el-button v-else v-hasPermi="['wms:item:add']" type="primary" plain icon="Plus" :disabled="!canGenerateEntries" @click="generateStorageDialog">生成入库单</el-button>
+            <el-button v-if="formData.id" v-hasPermi="['wms:packing:edit']" type="success" plain icon="Edit" :disabled="!canGenerateEntries" @click="generateStorageDialog()">修改入库单</el-button>
+            <el-button v-else v-hasPermi="['wms:packing:add']" type="primary" plain icon="Plus" :disabled="!canGenerateEntries" @click="generateStorageDialog">生成入库单</el-button>
           </div>
         </template>
         <el-input ref="snInput" v-model="currentSn" placeholder="请扫描SN码" clearable @keydown.tab.prevent="handleSnScan" @keydown.enter.prevent="handleSnScan" />

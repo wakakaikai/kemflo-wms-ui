@@ -30,7 +30,6 @@ export const listDeptDataPackingDetail = (query?: PackingQuery): AxiosPromise<Pa
   });
 };
 
-
 /**
  * 查询打包及明细记录列表
  * @param query
@@ -75,6 +74,17 @@ export const addPacking = (data: PackingForm) => {
 export const updatePacking = (data: PackingForm) => {
   return request({
     url: '/wms/packing',
+    method: 'put',
+    data: data
+  });
+};
+/**
+ * 生成打包后工单标签
+ * @param data
+ */
+export const generatePackingDetailSn = (data: PackingForm) => {
+  return request({
+    url: '/wms/packing/generatePackingDetailSn',
     method: 'put',
     data: data
   });

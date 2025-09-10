@@ -53,7 +53,7 @@
               <el-input v-model="workOrderInfo.materialDesc" placeholder="请输入产品描述" />
             </el-form-item>-->
             <el-form-item label="入库数量" prop="qty">
-              <el-input-number v-model="workOrderInfo.qty" :precision="3" :max="workOrderInfo.plannedQty" style="width: 100%" />
+              <el-input-number ref="qtyInputRef" v-model="workOrderInfo.qty" :precision="3" style="width: 100%" />
             </el-form-item>
             <el-form-item label="条码内容" prop="sfcContent">
               <el-input v-model="workOrderInfo.sfcContent" placeholder="请输入条码内容" />
@@ -72,6 +72,10 @@
             <el-form-item label="生产线体" prop="productLine">
               <el-input v-model="workOrderInfo.productLine" placeholder="请输入生产线体" />
             </el-form-item>
+            <el-form-item label="备注:10*6+1*3(10整箱*6PCS 1尾箱*3PCS)" prop="remark">
+              <el-input v-model="workOrderInfo.remark" placeholder="请输入备注信息" />
+            </el-form-item>
+
             <!--            <el-form-item label="操作员">
               <el-input v-model="workOrderInfo.operator" placeholder="请输入操作员" />
             </el-form-item>
@@ -82,7 +86,7 @@
         </div>
 
         <div class="action-buttons">
-          <el-button type="primary" @click="handlePrint" class="print-btn">
+          <el-button type="primary" @click="immediatelyPrint" class="print-btn">
             <el-icon><Printer /></el-icon>
             立即打印
           </el-button>
@@ -142,6 +146,7 @@
                       <div class="info-row">
                         <label>入库数量</label>
                         <span>{{ workOrderInfo.qty }} {{ workOrderInfo.unit }}</span>
+                        <span>{{ workOrderInfo.remark }}</span>
                       </div>
                       <div class="info-row">
                         <label>生产日期</label>
@@ -196,7 +201,7 @@
                   </div>
                   <div class="info-row">
                     <label>入库数量</label>
-                    <span>{{ workOrderInfo.qty }} PCS</span>
+                    <span>{{ workOrderInfo.qty }} {{ workOrderInfo.unit }}</span>
                   </div>
                   <div class="info-row">
                     <label>生产日期</label>
@@ -229,7 +234,7 @@
                 <div class="qr-info">
                   <p>{{ workOrderInfo.workOrderNo }}</p>
                   <p>{{ workOrderInfo.material }}</p>
-                  <p>{{ workOrderInfo.qty }} PCS</p>
+                  <p>{{ workOrderInfo.qty }} {{ workOrderInfo.unit }}</p>
                 </div>
               </div>
             </div>
@@ -295,7 +300,6 @@ const data = reactive<PageData<WorkOrderSnForm, WorkOrderSnQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
-
 const activeTab = ref('content');
 const currentTemplate = ref('receiptOrderTemplate'); // 默认选中生产入库单模板
 const selectedExcelTemplate = ref('qrExcel');
@@ -329,11 +333,13 @@ const workOrderInfo = ref({
   productLine: '',
   operator: '',
   inspector: '',
-  version: 1
+  version: 1,
+  remark: ''
 });
 
 /** 查询工单信息列表 */
 const workOrderInputRef = ref<HTMLInputElement | null>(null);
+const qtyInputRef = ref<HTMLInputElement | null>(null);
 const keyDownTab = async () => {
   workOrderInfo.value.workOrderNo = workOrderInfo.value.workOrderNo.trim();
   await nextTick(() => {
@@ -355,6 +361,8 @@ const keyDownTab = async () => {
     workOrderInfo.value.materialDesc = workOrderNoInfo.itemDesc;
     workOrderInfo.value.productLine = workOrderNoInfo.productLine;
     workOrderInfo.value.unit = workOrderNoInfo.unit;
+    qtyInputRef.value.focus();
+    qtyInputRef.value.select();
   } else if ((res.rows || []).length == 0) {
     proxy?.$modal.msgError('工单记录不存在');
   } else if ((res.rows || []).length > 1) {
@@ -461,7 +469,8 @@ const generateSerialNumbers = async () => {
     productDate: workOrderInfo.value.productDate + ' 00:00:00',
     workOrderNo: workOrderInfo.value.workOrderNo,
     qty: workOrderInfo.value.qty,
-    continuousQty: copies.value
+    continuousQty: copies.value,
+    remark: workOrderInfo.value.remark
   });
   return res.data || [];
 };
@@ -584,7 +593,143 @@ const handlePrintCurrent = async () => {
     console.error('打印失败:', error);
   }
 };
+const immediatelyPrint = async () => {
+  if (!printContent.value) return;
+  queryFormRef.value?.validate(async (valid: boolean) => {
+    if (valid) {
+      try {
+        // 生成序列号列表
+        const snList = [workOrderInfo.value.sfcContent];
 
+        let printContentHTML = '';
+
+        // 为每个序列号生成一个打印页面
+        for (let i = 0; i < snList.length; i++) {
+          // 临时更新二维码内容
+          // const originalSfcContent = workOrderInfo.value.sfcContent;
+          workOrderInfo.value.sfcContent = snList[i];
+
+          // 重新生成二维码
+          await nextTick();
+          generateQRCode();
+          await nextTick(); // 确保二维码渲染完成
+
+          // 生成截图
+          const canvas = await html2canvas(printContent.value, {
+            scale: 2,
+            logging: false,
+            useCORS: true,
+            scrollX: 0,
+            scrollY: 0
+          });
+
+          printContentHTML += `        <div style="page-break-after: ${i < snList.length - 1 ? 'always' : 'auto'};">
+          <img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" />
+        </div>
+      `;
+
+          // 恢复原始内容
+          // workOrderInfo.value.sfcContent = originalSfcContent;
+        }
+
+        // 重新生成原始二维码
+        await nextTick();
+        generateQRCode();
+
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          // 根据纸张大小设置打印页面尺寸
+          let printStyles = '';
+          switch (paperSize.value) {
+            case '9784':
+              printStyles = `            @page {
+              size: 97mm 84mm;
+              margin: 0;
+            }
+            body {
+              width: 97mm;
+              height: 84mm;
+              margin: 0;
+              padding: 0;
+            }
+          `;
+              break;
+            case '8060':
+              printStyles = `            @page {
+              size: 80mm 60mm;
+              margin: 0;
+            }
+            body {
+              width: 80mm;
+              height: 60mm;
+              margin: 0;
+              padding: 0;
+            }
+          `;
+              break;
+            case '5060':
+              printStyles = `            @page {
+              size: 50mm 60mm;
+              margin: 0;
+            }
+            body {
+              width: 50mm;
+              height: 60mm;
+              margin: 0;
+              padding: 0;
+            }
+          `;
+              break;
+            case '3040':
+              printStyles = `            @page {
+              size: 30mm 40mm;
+              margin: 0;
+            }
+            body {
+              width: 30mm;
+              height: 40mm;
+              margin: 0;
+              padding: 0;
+            }
+          `;
+              break;
+            default:
+              printStyles = `            @page {
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+            }
+          `;
+          }
+
+          printWindow.document.write(`        <html>
+          <head>
+            <title>批量打印预览</title>
+            <style>
+              ${printStyles}              @media print {
+                img {
+                  width: 100%;
+                  height: 100%;
+                  max-width: 100%;
+                  max-height: 100%;
+                }
+              }
+            </style>
+          </head>
+          <body onload="window.print(); setTimeout(() => window.close(), 500);">
+            ${printContentHTML}          </body>
+        </html>
+      `);
+          printWindow.document.close();
+        }
+      } catch (error) {
+        console.error('打印失败:', error);
+      }
+    }
+  });
+};
 // 打印处理支持连续打印不同二维码
 const handlePrint = async () => {
   if (!printContent.value) return;
@@ -776,6 +921,10 @@ onMounted(() => {
   workOrderInfo.value.productDate = parseTime(new Date(), '{y}-{m}-{d}');
   getUser();
   generateQRCode();
+  const tenantId = localStorage.getItem('tenantId');
+  if (tenantId === '000001') {
+    workOrderInfo.value.companyName = '亿泰精密工业（南京）有限公司';
+  }
 });
 </script>
 

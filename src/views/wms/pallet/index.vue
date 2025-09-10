@@ -109,7 +109,7 @@
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="500px" append-to-body>
       <el-form ref="palletFormRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="栈板编号" prop="palletCode">
-          <el-input v-model="form.palletCode" placeholder="请输入栈板编号" />
+          <el-input ref="palletCodeInputRef" v-model="form.palletCode" placeholder="请输入栈板编号" @keydown.tab.prevent="keyDownTab" @keydown.enter.prevent="keyDownTab" />
         </el-form-item>
         <el-form-item label="栈板描述" prop="description">
           <el-input v-model="form.description" placeholder="请输入栈板描述" />
@@ -119,7 +119,7 @@
             <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.code" :label="`${warehouse.code}-${warehouse.name}`" :value="warehouse.code" />
           </el-select>
         </el-form-item>
-<!--        <el-form-item label="状态" prop="status">
+        <!--        <el-form-item label="状态" prop="status">
           <el-select v-model="form.status" placeholder="请选择状态">
             <el-option v-for="dict in wms_pallet_status" :key="dict.value" :label="dict.label" :value="parseInt(dict.value)"></el-option>
           </el-select>
@@ -142,14 +142,14 @@
 import { addPallet, delPallet, emptyPallet, getPallet, pagePalletInventory, updatePallet } from '@/api/wms/pallet';
 
 import { PalletForm, PalletQuery, PalletVO } from '@/api/wms/pallet/types';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { WarehouseLocationVO } from '@/api/wms/warehouseLocation/types';
 import { listWarehouseLocation } from '@/api/wms/warehouseLocation';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_pallet_status } = toRefs<any>(proxy?.useDict('wms_pallet_status'));
 const { wms_pallet_inventory_status } = toRefs<any>(proxy?.useDict('wms_pallet_inventory_status'));
-
+const palletCodeInputRef = ref<HTMLInputElement | null>(null);
 const palletList = ref<PalletVO[]>([]);
 const buttonLoading = ref(false);
 const loading = ref(true);
@@ -220,6 +220,7 @@ const getList = async () => {
 const cancel = () => {
   reset();
   dialog.visible = false;
+  getList();
 };
 
 /** 表单重置 */
@@ -272,6 +273,26 @@ const handleUpdate = async (row?: PalletVO) => {
   dialog.visible = true;
   dialog.title = '修改栈板信息';
   getWarehouseList();
+};
+
+const keyDownTab = async () => {
+  palletFormRef.value?.validate(async (valid: boolean) => {
+    if (valid) {
+      buttonLoading.value = true;
+      if (form.value.id) {
+        await updatePallet(form.value).finally(() => (buttonLoading.value = false));
+      } else {
+        await addPallet(form.value).finally(() => (buttonLoading.value = false));
+      }
+      proxy?.$modal.msgSuccess('添加成功');
+      await nextTick(() => {
+        if (palletCodeInputRef.value) {
+          palletCodeInputRef.value.focus();
+          palletCodeInputRef.value.select();
+        }
+      });
+    }
+  });
 };
 
 /** 提交按钮 */

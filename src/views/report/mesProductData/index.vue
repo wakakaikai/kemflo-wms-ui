@@ -403,7 +403,7 @@ const handleExport = () => {
     queryParams.value.sfcList = [queryParams.value.sfcStr];
   }
   proxy?.download(
-    'wms/mes/productData/export',
+    '/mes/scada/productData/export',
     {
       ...queryParams.value
     },

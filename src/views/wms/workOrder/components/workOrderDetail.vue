@@ -11,8 +11,8 @@
         <work-order-process :work-order-no="workOrderNo" />
       </el-tab-pane>
 
-      <!-- 工单条码 Tab -->
-      <el-tab-pane label="工单条码" name="barcode">
+      <!-- 工单标签 Tab -->
+      <el-tab-pane label="工单标签" name="barcode">
         <work-order-sn-manage :work-order-no="workOrderNo" />
       </el-tab-pane>
     </el-tabs>

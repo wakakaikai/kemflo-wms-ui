@@ -356,7 +356,7 @@ const resetQuery = () => {
 /** 导出按钮操作 */
 const handleExport = () => {
   proxy?.download(
-    'wms/mes/inspection/export',
+    '/mes/scada/inspection/export',
     {
       ...queryParams.value
     },

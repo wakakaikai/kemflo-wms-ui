@@ -8,7 +8,7 @@ import { MesProductDataForm } from '@/api/report/mesProductData/types';
  */
 export const listMesProductData = (data: MesProductDataForm) => {
   return request({
-    url: '/wms/mes/productData/list',
+    url: '/mes/scada/productData/list',
     method: 'post',
     data: data,
     timeout: 180000
@@ -22,7 +22,7 @@ export const listMesProductData = (data: MesProductDataForm) => {
  */
 export const listMesInspectionData = (data: MesProductDataForm) => {
   return request({
-    url: '/wms/mes/inspection/list',
+    url: '/mes/scada/inspection/list',
     method: 'post',
     data: data,
     timeout: 180000
