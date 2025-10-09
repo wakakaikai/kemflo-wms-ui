@@ -4,14 +4,20 @@
       <div v-show="showSearch" class="mt-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
-            <el-form-item label="打包编号" prop="packingCode">
-              <el-input v-model="queryParams.packingCode" placeholder="请输入打包编号" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="栈板编号" prop="palletCode">
               <el-input v-model="queryParams.palletCode" placeholder="请输入栈板编号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="打包编号" prop="packingCode">
+              <el-input v-model="queryParams.packingCode" placeholder="请输入打包编号" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="目的仓库" prop="warehouseCode">
               <el-input v-model="queryParams.warehouseCode" placeholder="请输入目的仓库" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="工单号" prop="workOrderNo">
+              <el-input v-model="queryParams.workOrderNo" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="标签码" prop="sn">
+              <el-input v-model="queryParams.sn" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="操作时间" prop="dateTimeRange">
               <el-date-picker
@@ -38,7 +44,7 @@
     <el-tabs v-model="tabActiveName" @tab-change="changeTab">
       <el-tab-pane name="pendingInbound">
         <template #label>
-          <el-badge :value="pendingCount" class="item" :offset="[10, 0]" :max="9999999999">
+          <el-badge :value="pendingCount" class="item" color="#e6a23c" :offset="[10, 0]" :max="9999999999">
             <span>待接收</span>
           </el-badge>
         </template>
@@ -110,14 +116,16 @@
             </el-table>
           </template>
         </el-table-column>
-        <el-table-column label="打包编号" align="center" prop="packingCode" />
         <el-table-column label="栈板编号" align="left" prop="palletCode" />
+        <el-table-column label="打包编号" align="center" prop="packingCode" />
         <el-table-column label="目的仓库" align="left" prop="warehouseCode">
           <template #default="scope">
             <span v-if="scope.row.warehouseCode">{{ `${scope.row.warehouseCode} - ${scope.row.warehouseDesc}` }}</span>
             <span v-else></span>
           </template>
         </el-table-column>
+        <el-table-column label="库区" align="left" prop="areaCode" />
+        <el-table-column label="库位" align="left" prop="locationCode" />
         <el-table-column label="状态" align="center" prop="status">
           <template #default="scope">
             <dict-tag :options="wms_packing_status" :value="scope.row.status" />
@@ -167,9 +175,25 @@
           </el-col>
           <el-col :lg="12" :md="12" :sm="24">
             <el-form-item label="目的仓库" prop="warehouseCode">
-              <el-select v-model="form.warehouseCode" placeholder="请选择目的仓库" clearable filterable>
-                <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.code" :label="`${warehouse.code}-${warehouse.name}`" :value="warehouse.code" />
-              </el-select>
+              <el-text> {{ form.warehouseCode }}</el-text>
+            </el-form-item>
+          </el-col>
+          <!--          <el-col :lg="12" :md="12" :sm="24">
+            <el-form-item label="目的库区" prop="areaCode">
+              <el-input v-model="form.areaCode" clearable placeholder="请输入目的库位或点击选择" @keydown.tab.prevent="areaCodeKeyDownTab" @keydown.enter.prevent="areaCodeKeyDownTab">
+                <template #append>
+                  <el-button icon="Search" type="primary" @click="showStorageAreaDialog" />
+                </template>
+              </el-input>
+            </el-form-item>
+          </el-col>-->
+          <el-col :lg="12" :md="12" :sm="24">
+            <el-form-item label="目的库位" prop="locationCode">
+              <el-input v-model="form.locationCode" clearable placeholder="请输入目的库位或点击选择" @keydown.tab.prevent="locationCodeKeyDownTab" @keydown.enter.prevent="locationCodeKeyDownTab">
+                <template #append>
+                  <el-button icon="Search" type="primary" @click="showStorageLocationDialog" />
+                </template>
+              </el-input>
             </el-form-item>
           </el-col>
         </el-row>
@@ -181,21 +205,27 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 库位选择对话框 -->
+    <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
   </div>
 </template>
 
-<script setup name="Packing" lang="ts">
-import { listPackingAndDetail, delPacking, rejectPacking, receivePacking, inBoundPending } from '@/api/wms/packing';
-import { PackingVO, PackingQuery, PackingForm } from '@/api/wms/packing/types';
+<script setup name="Inbound" lang="ts">
+import { listPackingAndDetail, receivePacking, rejectPacking } from '@/api/wms/packing';
+import { PackingForm, PackingQuery, PackingVO } from '@/api/wms/packing/types';
 import PackingDialog from '@/views/wms/packing/components/packingDialog.vue';
+import useDialog from '@/hooks/useDialog';
+import { WarehouseVO } from '@/api/wms/warehouse/types';
+
+import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
+import { getWarehouseByLocationCode } from '@/api/wms/storageLocation';
+import { listWarehouse } from '@/api/wms/warehouse';
 
 const packingRef = ref<InstanceType<typeof PackingDialog>>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_packing_status, wms_work_order_check_enable } = toRefs<any>(proxy?.useDict('wms_packing_status', 'wms_work_order_check_enable'));
-import useDialog from '@/hooks/useDialog';
-import { WarehouseLocationVO } from '@/api/wms/warehouseLocation/types';
-import { listWarehouseLocation } from '@/api/wms/warehouseLocation';
-import { ref } from 'vue';
+const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 
 const tabActiveName = ref('pendingInbound');
 const packingList = ref<PackingVO[]>([]);
@@ -384,6 +414,31 @@ const handleSelectionChange = (selection: PackingVO[]) => {
   multiple.value = !selection.length;
 };
 
+// 显示库位选择对话框
+const showStorageLocationDialog = () => {
+  storageLocationDialogRef.value.openDialog();
+  storageLocationDialogRef.value.handleQuery();
+};
+const storageLocationSelectCallBack = (record: any) => {
+  form.value.warehouseCode = record.warehouseCode;
+  form.value.areaCode = record.areaCode;
+  form.value.locationCode = record.locationCode;
+};
+const locationCodeKeyDownTab = async () => {
+  if (form.value.locationCode) {
+    form.value.locationCode = form.value.locationCode.trim();
+    const res = await getWarehouseByLocationCode({ locationCode: form.value.locationCode });
+    if (res.data) {
+      form.value.warehouseCode = res.data.warehouseCode;
+      form.value.areaCode = res.data.areaCode;
+      form.value.locationCode = res.data.locationCode;
+    } else {
+      ElMessage.error('未找到库位及仓库信息');
+      return;
+    }
+  }
+};
+
 /** 导出按钮操作 */
 const handleExport = () => {
   proxy?.download(
@@ -426,11 +481,9 @@ const { title, visible, openDialog, closeDialog } = useDialog({
 });
 
 /** 查询仓位信息列表 */
-const warehouseLocationList = ref<WarehouseLocationVO[]>([]);
+const warehouseLocationList = ref<WarehouseVO[]>([]);
 const getWarehouseList = async () => {
-  const res = await listWarehouseLocation({
-    parentId: 0
-  });
+  const res = await listWarehouse({});
   warehouseLocationList.value = res.data;
 };
 
@@ -445,6 +498,8 @@ const submitInbound = () => {
             {
               id: form.value.id,
               warehouseCode: form.value.warehouseCode,
+              areaCode: form.value.areaCode,
+              locationCode: form.value.locationCode,
               palletCode: form.value.palletCode,
               packingCode: form.value.packingCode
             }
@@ -465,6 +520,17 @@ onMounted(() => {
 :deep(.el-tabs__nav-wrap) {
   .el-tabs__item {
     margin: 0 10px !important;
+  }
+}
+
+.area-description {
+  :deep(.el-tag) {
+    font-size: 12px;
+    padding: 0 8px;
+    border-radius: 10px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 </style>

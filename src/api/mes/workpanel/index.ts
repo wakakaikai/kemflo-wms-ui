@@ -69,12 +69,38 @@ export const replaceSfcBomComponent = (data: any) => {
 // 查询条码数据采集项目
 export const queryDataCollectionBySfc = (data: any) => {
   return request({
-    url: '/mes/dataCollection/sfc',
+    url: '/mes/dataCollection/dcGroup/sfc',
     method: 'post',
     data
   });
 };
 
+// 查询工单数据采集项目
+export const queryDataCollectionByShopOrder = (data: any) => {
+  return request({
+    url: '/mes/dataCollection/getDataCollectionByShopOrder',
+    method: 'post',
+    data
+  });
+};
+
+// 保存无条码称重
+export const saveShopOrderWeightNoSn = (data: any) => {
+  return request({
+    url: '/mes/dataCollection/saveShopOrderWeightNoSn',
+    method: 'post',
+    data
+  });
+};
+
+// 查询无条码称重
+export const getShopOrderWeightNoSnInfo = (data: any) => {
+  return request({
+    url: '/mes/dataCollection/getShopOrderWeightNoSnInfo',
+    method: 'post',
+    data
+  });
+};
 // 发送消息
 export const sendMesWebSocket = (data: any) => {
   return request({

@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { ShopOrderVO, ShopOrderForm, ShopOrderQuery } from '@/api/mes/shopOrder/types';
+import { ShopOrderVO, ShopOrderForm, ShopOrderQuery, SfcPreviewVO } from '@/api/mes/shopOrder/types';
 
 /**
  * 查询工单档案列表
@@ -38,6 +38,19 @@ export const addShopOrder = (data: ShopOrderForm) => {
     data: data
   });
 };
+
+/**
+ * 工单下达
+ * @param data
+ */
+export const releaseShopOrderSfc = (data: SfcPreviewVO) => {
+  return request({
+    url: '/mes/shopOrder/releaseShopOrderSfc',
+    method: 'post',
+    data: data
+  });
+};
+
 
 /**
  * 修改工单档案

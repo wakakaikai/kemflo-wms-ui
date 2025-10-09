@@ -294,6 +294,30 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         hidden: true
       }
     ]
+  },
+  {
+    path: '/warehouse/warehouseManage',
+    component: Layout,
+    hidden: true,
+    permissions: ['wms:warehouse:list'],
+    children: [
+      {
+        path: 'storageArea',
+        component: () => import('@/views/wms/warehouse/components/storageArea.vue'),
+        name: 'storageArea',
+        permissions: ['wms:storageArea:list'],
+        meta: { title: '库区管理', activeMenu: '/basic/warehouse/warehouse', icon: '' },
+        hidden: true
+      },
+      {
+        path: 'storageLocation',
+        component: () => import('@/views/wms/warehouse/components/storageLocation.vue'),
+        name: 'storageLocation',
+        permissions: ['wms:storageLocation:list'],
+        meta: { title: '库位管理', activeMenu: '/basic/warehouse/storageLocation', icon: '' },
+        hidden: true
+      }
+    ]
   }
 ];
 

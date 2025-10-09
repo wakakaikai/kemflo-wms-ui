@@ -5,8 +5,8 @@
         <el-form-item label="工单" prop="shopOrder">
           <el-input v-model="queryParams.shopOrder" placeholder="请输入工单" clearable @keyup.enter="handleQuery" />
         </el-form-item>
-        <el-form-item label="计划物料" prop="plannedItemBo">
-          <el-input v-model="queryParams.plannedItemBo" placeholder="请输入计划物料" clearable @keyup.enter="handleQuery" />
+        <el-form-item label="计划物料" prop="plannedItem">
+          <el-input v-model="queryParams.plannedItem" placeholder="请输入计划物料" clearable @keyup.enter="handleQuery" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -52,8 +52,15 @@
 </template>
 
 <script setup lang="ts">
-import { listShopOrder, getShopOrder, delShopOrder, addShopOrder, updateShopOrder } from '@/api/mes/shopOrder';
-import { ShopOrderVO, ShopOrderQuery, ShopOrderForm } from '@/api/mes/shopOrder/types';
+import {
+  listShopOrder,
+  getShopOrder,
+  delShopOrder,
+  addShopOrder,
+  updateShopOrder,
+  releaseShopOrderSfc
+} from '@/api/mes/shopOrder';
+import { ShopOrderVO, ShopOrderQuery, ShopOrderForm, SfcPreviewVO } from '@/api/mes/shopOrder/types';
 import useDialog from '@/hooks/useDialog';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -92,18 +99,6 @@ const initFormData: ShopOrderForm = {
   overDeliveryTolerance: undefined,
   considerScrap: undefined,
   remark: undefined,
-  createUserId: undefined,
-  creator: undefined,
-  modifyUserId: undefined,
-  updater: undefined,
-  modifyTime: undefined,
-  deleteFlag: undefined,
-  auditDataVersion: undefined,
-  secBuId: undefined,
-  secUserId: undefined,
-  secOuId: undefined,
-  belongOrgId: undefined,
-  tenantOrgId: undefined,
   dataModifyTime: undefined,
   dataModifyUser: undefined
 };
@@ -152,7 +147,10 @@ const { queryParams, form, rules } = toRefs(data);
 const { title, visible, openDialog, closeDialog } = useDialog({
   title: '选择工单号'
 });
-
+const initShopOrderDialog = async (podConfig: any) => {
+  queryParams.value.resource = podConfig.resource;
+  handleQuery();
+};
 /** 查询工序列表 */
 const getList = async () => {
   loading.value = true;
@@ -199,12 +197,13 @@ const submitForm = () => {
 };
 
 onMounted(async () => {
-  handleQuery();
+
 });
 
 defineExpose({
   openDialog,
-  closeDialog
+  closeDialog,
+  initShopOrderDialog
 });
 </script>
 

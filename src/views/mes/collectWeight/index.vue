@@ -120,12 +120,68 @@
         </el-col>
       </el-row>
     </el-card>
+
+    <el-card shadow="never" style="margin-top: 20px">
+      <template #header>
+        <div class="card-header">
+          <span>历史数据</span>
+          <div>
+            <el-button type="info" size="small" @click="clearHistoryData"> 清空历史 </el-button>
+          </div>
+        </div>
+      </template>
+
+      <el-table :data="paginatedHistoryData" style="width: 100%" size="small" max-height="300">
+        <el-table-column prop="timestamp" label="时间" width="160" />
+        <el-table-column label="类型" width="80">
+          <template #default="scope">
+            <el-tag :type="scope.row.type === 'send' ? 'primary' : 'success'">
+              {{ scope.row.type === 'send' ? '发送' : '接收' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="data" label="数据内容" show-overflow-tooltip />
+        <el-table-column label="上传状态" width="100">
+          <template #default="scope">
+            <el-tag :type="getStatusType(scope.row.status)">
+              {{ getStatusText(scope.row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <el-pagination
+        v-model:current-page="pagination.currentPage"
+        v-model:page-size="pagination.pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        :total="pagination.total"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        style="margin-top: 10px; justify-content: flex-end"
+      />
+    </el-card>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { nextTick, onBeforeUnmount, onMounted, ref, reactive, toRefs } from 'vue';
 import { ElMessage } from 'element-plus';
+// 历史数据表格
+const historyData = ref<
+  Array<{
+    timestamp: string;
+    type: 'send' | 'receive';
+    data: string;
+    status: 'pending' | 'success' | 'failed';
+  }>
+>([]);
+
+// 表格分页
+const pagination = ref({
+  currentPage: 1,
+  pageSize: 10,
+  total: 0
+});
 
 // 定义类型
 interface SerialPortForm {
@@ -215,6 +271,8 @@ let dataBuffer: number[] = [];
 
 // 初始化加载
 onMounted(() => {
+  // 解绑所有的串口连接
+
   disconnect();
 
   // 检查浏览器是否支持Web Serial API
@@ -310,7 +368,7 @@ const connect = async () => {
     form.value.portName = getPortDisplayName(serialPort.value);
 
     // 打开串口连接，设置缓冲区大小
-    const bufferSize = 1024; // 1kB
+    const bufferSize = 2048; // 1kB
     await serialPort.value.open({
       baudRate: form.value.baudRate,
       dataBits: form.value.dataBits as 8 | 7 | 6 | 5,
@@ -351,9 +409,30 @@ const sendToBackend = async (data: string) => {
 
 // 处理数据包
 const processDataPacket = (packet: string) => {
+  // 获取当前时间戳
+  const timestamp = new Date().toLocaleString('zh-CN', {
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+
   // 将完整数据包添加到显示区域（历史数据）
-  receivedText.value += packet;
-  receivedBytes.value += packet.length;
+  receivedText.value = packet;
+  receivedBytes.value = packet.length;
+
+  // 添加到历史数据表格
+  historyData.value.push({
+    timestamp,
+    type: 'receive',
+    data: packet.trim(),
+    status: 'success'
+  });
+  // 更新分页总数
+  pagination.value.total = historyData.value.length;
 
   // 将本次完整数据包发送到后台（不包含历史数据）
   sendToBackend(packet);
@@ -393,12 +472,10 @@ const readSerialData = async () => {
 
         // 更新缓冲区
         buffer = value.buffer;
-
-        // value is a Uint8Array with the new data.
         // 将新数据追加到数据缓冲区
         dataBuffer.push(...value);
 
-        // 检查缓冲区是否以 \r\n 结尾 (0x0D 0x0A)
+        // 检查缓冲区是否以 \r\n 结尾 (0x0d 0x0a)
         if (dataBuffer.length >= 2 && dataBuffer[dataBuffer.length - 2] === 0x0d && dataBuffer[dataBuffer.length - 1] === 0x0a) {
           // 将缓冲区数据转换为字符串
           const textDecoder = new TextDecoder();
@@ -408,6 +485,14 @@ const readSerialData = async () => {
           processDataPacket(packet);
 
           // 清空缓冲区
+          dataBuffer = [];
+        }
+        // 检查缓冲区是否以 }结束的
+        if (dataBuffer.length >= 1 && dataBuffer[dataBuffer.length - 1] === 0x7d) {
+          // 将缓冲区数据转换为字符串
+          const textDecoder = new TextDecoder();
+          const packet = textDecoder.decode(new Uint8Array(dataBuffer));
+          processDataPacket(packet);
           dataBuffer = [];
         }
       } catch (error) {
@@ -435,7 +520,7 @@ const readSerialData = async () => {
   }
 };
 
-// 断开串口连接 - 参考Chrome开发者文档优化
+// 断开串口连接
 const disconnect = async () => {
   keepReading = false;
 
@@ -447,7 +532,14 @@ const disconnect = async () => {
       } catch (e) {
         // 忽略取消错误
       }
-      reader.releaseLock();
+      try {
+        // 再次检查reader是否仍然存在，因为在await reader.cancel()期间可能已经变为null
+        if (reader) {
+          reader.releaseLock();
+        }
+      } catch (e) {
+        // 忽略释放锁时的错误
+      }
       reader = null;
     }
 
@@ -458,7 +550,14 @@ const disconnect = async () => {
       } catch (e) {
         // 忽略关闭错误
       }
-      writer.releaseLock();
+      try {
+        // 同样添加保护性检查
+        if (writer) {
+          writer.releaseLock();
+        }
+      } catch (e) {
+        // 忽略释放锁时的错误
+      }
       writer = null;
     }
 
@@ -517,12 +616,52 @@ const sendData = async () => {
       await writer.write(encoder.encode(dataToSend));
     }
 
+    // 获取当前时间戳
+    const timestamp = new Date().toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+
+    // 添加到历史数据表格
+    historyData.value.push({
+      timestamp,
+      type: 'send',
+      data: sendText.value.trim(),
+      status: 'success'
+    });
+
+    // 更新分页总数
+    pagination.value.total = historyData.value.length;
+
     ElMessage.success('数据发送成功');
 
     if (sendOptions.value.autoClear) {
       sendText.value = '';
     }
   } catch (error: any) {
+    // 添加失败记录到历史数据表格
+    const timestamp = new Date().toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+
+    historyData.value.push({
+      timestamp,
+      type: 'send',
+      data: sendText.value.trim(),
+      status: 'failed'
+    });
+
+    pagination.value.total = historyData.value.length;
+
     ElMessage.error('数据发送失败: ' + (error.message || error));
   }
 };
@@ -551,6 +690,59 @@ const saveReceivedData = () => {
   URL.revokeObjectURL(url);
 
   ElMessage.success('数据保存成功');
+};
+
+// 计算分页后的数据
+const paginatedHistoryData = computed(() => {
+  const start = (pagination.value.currentPage - 1) * pagination.value.pageSize;
+  const end = start + pagination.value.pageSize;
+  return historyData.value.slice().reverse().slice(start, end);
+});
+
+// 获取状态文本
+const getStatusText = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return '待上传';
+    case 'success':
+      return '成功';
+    case 'failed':
+      return '失败';
+    default:
+      return '未知';
+  }
+};
+
+// 获取状态类型
+const getStatusType = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return 'warning';
+    case 'success':
+      return 'success';
+    case 'failed':
+      return 'danger';
+    default:
+      return 'info';
+  }
+};
+
+// 分页大小改变
+const handleSizeChange = (val: number) => {
+  pagination.value.pageSize = val;
+  pagination.value.currentPage = 1;
+};
+
+// 当前页改变
+const handleCurrentChange = (val: number) => {
+  pagination.value.currentPage = val;
+};
+
+// 清空历史数据
+const clearHistoryData = () => {
+  historyData.value = [];
+  pagination.value.total = 0;
+  pagination.value.currentPage = 1;
 };
 </script>
 

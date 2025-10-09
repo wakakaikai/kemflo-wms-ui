@@ -14,19 +14,7 @@ export const pageWarehouseLocation = (query?: WarehouseLocationQuery): AxiosProm
     params: query
   });
 };
-/**
- * 查询仓位信息列表
- * @param query
- * @returns {*}
- */
 
-export const listWarehouseLocation = (query?: any): AxiosPromise<WarehouseLocationVO[]> => {
-  return request({
-    url: '/wms/warehouseLocation/list',
-    method: 'get',
-    params: query
-  });
-};
 
 /**
  * 查询仓位信息详细

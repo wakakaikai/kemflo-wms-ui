@@ -85,7 +85,7 @@
         <el-table-column label="呼叫时间" align="center" prop="sendTime" sortable />
         <el-table-column label="响应确认人" align="center" prop="confirmUserName" />
         <el-table-column label="响应时间" align="center" prop="confirmTime" sortable />
-        <el-table-column label="响应时长（分）" align="center" prop="confirmDurationTime" />
+        <el-table-column label="响应时长（分）" align="center" prop="confirmDurationTime" sortable :sort-method="durationSort" />
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
@@ -327,6 +327,20 @@ const shortcuts = [
     }
   }
 ];
+
+// 响应时长自定义排序
+const durationSort = (a: MessageVO, b: MessageVO) => {
+  const durationA = a.confirmDurationTime !== null && a.confirmDurationTime !== undefined ? parseFloat(String(a.confirmDurationTime)) : -1;
+  const durationB = b.confirmDurationTime !== null && b.confirmDurationTime !== undefined ? parseFloat(String(b.confirmDurationTime)) : -1;
+
+  // 将空值或无效值排在最后
+  if (durationA === -1 && durationB === -1) return 0;
+  if (durationA === -1) return 1;
+  if (durationB === -1) return -1;
+
+  // 数字从大到小排序（降序）
+  return durationB - durationA;
+};
 
 /** 查询消息主表列表 */
 const getList = async () => {

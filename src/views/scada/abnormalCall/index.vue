@@ -368,46 +368,38 @@ const { run, cancel } = useRequest(loadAbnormalCallScadaData, {
 
 const dateShortcuts = [
   {
-    text: '今天早上8点',
+    text: '今天早上0点',
     value: () => {
       const date = new Date();
-      date.setHours(8, 0, 0, 0);
+      date.setHours(0, 0, 0, 0);
       return date;
     }
   },
   {
-    text: '今天晚上20点',
+    text: '今天晚上24点',
     value: () => {
       const now = new Date();
       const target = new Date();
-      target.setHours(20, 0, 0, 0);
+      target.setHours(23, 59, 59, 999);
       // 如果目标时间还没到，则返回当前时间
       return target > now ? now : target;
     }
   },
   {
-    text: '昨天早上8点',
+    text: '昨天早上0点',
     value: () => {
       const date = new Date();
       date.setDate(date.getDate() - 1);
-      date.setHours(8, 0, 0, 0);
+      date.setHours(0, 0, 0, 0);
       return date;
     }
   },
   {
-    text: '昨天晚上20点',
+    text: '昨天晚上24点',
     value: () => {
       const date = new Date();
       date.setDate(date.getDate() - 1);
-      date.setHours(20, 0, 0, 0);
-      return date;
-    }
-  },
-  {
-    text: '1小时前',
-    value: () => {
-      const date = new Date();
-      date.setHours(date.getHours() - 1, 0, 0, 0);
+      date.setHours(23, 59, 59, 999);
       return date;
     }
   },
@@ -568,7 +560,7 @@ onMounted(async () => {
 
   if (!userSettingsForm.value.startTime) {
     const date = new Date();
-    date.setHours(8, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
     userSettingsForm.value.startTime = parseTime(date, '{y}-{m}-{d} {h}:{i}:{s}');
   }
 

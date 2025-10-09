@@ -57,6 +57,26 @@ export interface PackingForm extends BaseEntity {
   warehouseCode?: string;
 
   /**
+   * 库位编码
+   */
+  locationCode?: string;
+
+  /**
+   * 库位ID
+   */
+  locationId?: number;
+
+  /**
+   * 库区ID
+   */
+  areaId?: number;
+
+  /**
+   * 库区编码
+   */
+  areaCode?: string;
+
+  /**
    * 状态
    */
   status?: number;

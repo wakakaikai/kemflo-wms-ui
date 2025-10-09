@@ -70,9 +70,14 @@ export interface ShopOrderVO {
   qtyToBuild: number;
 
   /**
-   * 下达数量
+   * 已下达数量
    */
   qtyReleased: number;
+
+  /**
+   * 下达数量
+   */
+  releaseQty: number;
 
   /**
    * 计划开始时间
@@ -133,77 +138,6 @@ export interface ShopOrderVO {
    * 备注
    */
   remark: string;
-
-  /**
-   * 记录创建者ID
-   */
-  createUserId: string | number;
-
-  /**
-   * 记录创建者
-   */
-  creator: string;
-
-  /**
-   * 记录最后更新者ID
-   */
-  modifyUserId: string | number;
-
-  /**
-   * 记录最后更新者
-   */
-  updater: string;
-
-  /**
-   * 记录最后更新时间
-   */
-  modifyTime: string;
-
-  /**
-   * 删除标记
-   */
-  deleteFlag: number;
-
-  /**
-   * 锁版本
-   */
-  auditDataVersion: number;
-
-  /**
-   * 数据归属组织id
-   */
-  secBuId: string | number;
-
-  /**
-   * 数据归属雇员id
-   */
-  secUserId: string | number;
-
-  /**
-   * 数据归属公司id
-   */
-  secOuId: string | number;
-
-  /**
-   * 所属组织ID
-   */
-  belongOrgId: string | number;
-
-  /**
-   * 租户组织ID
-   */
-  tenantOrgId: string | number;
-
-  /**
-   * 主数据修改时间
-   */
-  dataModifyTime: string;
-
-  /**
-   * 主数据修改用户
-   */
-  dataModifyUser: string;
-
 }
 
 export interface ShopOrderForm extends BaseEntity {
@@ -223,9 +157,19 @@ export interface ShopOrderForm extends BaseEntity {
   shopOrder?: string;
 
   /**
+   * 是否条码样本
+   */
+  sample: boolean;
+
+  /**
    * 状态
    */
   status?: string;
+
+  /**
+   * 状态描述
+   */
+  statusDesc?: string;
 
   /**
    * 工单类型
@@ -279,6 +223,11 @@ export interface ShopOrderForm extends BaseEntity {
 
   /**
    * 下达数量
+   */
+  releaseQty?: number;
+
+  /**
+   * 已下达数量
    */
   qtyReleased?: number;
 
@@ -341,81 +290,9 @@ export interface ShopOrderForm extends BaseEntity {
    * 备注
    */
   remark?: string;
-
-  /**
-   * 记录创建者ID
-   */
-  createUserId?: string | number;
-
-  /**
-   * 记录创建者
-   */
-  creator?: string;
-
-  /**
-   * 记录最后更新者ID
-   */
-  modifyUserId?: string | number;
-
-  /**
-   * 记录最后更新者
-   */
-  updater?: string;
-
-  /**
-   * 记录最后更新时间
-   */
-  modifyTime?: string;
-
-  /**
-   * 删除标记
-   */
-  deleteFlag?: number;
-
-  /**
-   * 锁版本
-   */
-  auditDataVersion?: number;
-
-  /**
-   * 数据归属组织id
-   */
-  secBuId?: string | number;
-
-  /**
-   * 数据归属雇员id
-   */
-  secUserId?: string | number;
-
-  /**
-   * 数据归属公司id
-   */
-  secOuId?: string | number;
-
-  /**
-   * 所属组织ID
-   */
-  belongOrgId?: string | number;
-
-  /**
-   * 租户组织ID
-   */
-  tenantOrgId?: string | number;
-
-  /**
-   * 主数据修改时间
-   */
-  dataModifyTime?: string;
-
-  /**
-   * 主数据修改用户
-   */
-  dataModifyUser?: string;
-
 }
 
 export interface ShopOrderQuery extends PageQuery {
-
   /**
    * 数据行索引
    */
@@ -542,35 +419,32 @@ export interface ShopOrderQuery extends PageQuery {
   considerScrap?: string | number;
 
   /**
-   * 记录创建者ID
+   * 日期范围参数
    */
-  createUserId?: string | number;
-
-  /**
-   * 记录创建者
-   */
-  creator?: string;
-
-  /**
-   * 记录最后更新者ID
-   */
-  modifyUserId?: string | number;
-
-  /**
-   * 记录最后更新者
-   */
-  updater?: string;
-
-  /**
-   * 记录最后更新时间
-   */
-  modifyTime?: string;
-
-    /**
-     * 日期范围参数
-     */
-    params?: any;
+  params?: any;
 }
+export interface SfcPreviewVO {
+  /**
+   * 工单号
+   */
+  shopOrder: string;
 
+  /**
+   * 条码批次数量
+   */
+  qty: number;
 
+  /**
+   * 下达数量
+   */
+  releaseQty: number;
 
+  /**
+   * 条码样例
+   */
+  sfc: string;
+  /**
+   * 是否样例
+   */
+  sample?: boolean;
+}

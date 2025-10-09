@@ -47,6 +47,8 @@
       <el-table v-loading="loading" :data="workOrderSnList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="公司名称" align="center" prop="companyName" />
+        <el-table-column label="栈板号" align="center" prop="palletCode" />
+        <el-table-column label="打包号" align="center" prop="packingCode" />
         <el-table-column label="工单号" align="center" prop="workOrderNo" />
         <el-table-column label="标签码" align="center" prop="sn" />
         <el-table-column label="版本" align="center" prop="version">
@@ -494,7 +496,7 @@ const handlePrintDialog = () => {
     unit: 'PCS',
     productDate: record.productDate ? proxy?.parseTime(record.productDate, '{y}-{m}-{d}') : '',
     productLine: record.productLine || '',
-    operator: '',
+    operator: previewWorkOrderInfo.value.operator || '',
     inspector: '',
     version: record.version || 1,
     remark: record.remark || ''
@@ -651,7 +653,7 @@ const handleBatchPrint = async () => {
         unit: 'PCS',
         productDate: record.productDate ? proxy?.parseTime(record.productDate, '{y}-{m}-{d}') : '',
         productLine: record.productLine || '',
-        operator: '',
+        operator: previewWorkOrderInfo.value.operator || '',
         inspector: '',
         version: record.version || 1,
         remark: record.remark || ''

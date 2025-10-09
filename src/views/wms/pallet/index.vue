@@ -116,7 +116,7 @@
         </el-form-item>
         <el-form-item label="目的仓库" prop="warehouseCode">
           <el-select v-model="form.warehouseCode" placeholder="请选择目的仓库" clearable filterable>
-            <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.code" :label="`${warehouse.code}-${warehouse.name}`" :value="warehouse.code" />
+            <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.warehouseCode" :label="`${warehouse.warehouseCode}-${warehouse.warehouseName}`" :value="warehouse.warehouseCode" />
           </el-select>
         </el-form-item>
         <!--        <el-form-item label="状态" prop="status">
@@ -143,8 +143,8 @@ import { addPallet, delPallet, emptyPallet, getPallet, pagePalletInventory, upda
 
 import { PalletForm, PalletQuery, PalletVO } from '@/api/wms/pallet/types';
 import { nextTick, ref } from 'vue';
-import { WarehouseLocationVO } from '@/api/wms/warehouseLocation/types';
-import { listWarehouseLocation } from '@/api/wms/warehouseLocation';
+import { WarehouseVO } from '@/api/wms/warehouse/types';
+import { listWarehouse } from '@/api/wms/warehouse';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_pallet_status } = toRefs<any>(proxy?.useDict('wms_pallet_status'));
@@ -197,13 +197,10 @@ const data = reactive<PageData<PalletForm, PalletQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
-const warehouseLocationList = ref<WarehouseLocationVO[]>([]);
+const warehouseLocationList = ref<WarehouseVO[]>([]);
 /** 查询仓位信息列表 */
 const getWarehouseList = async () => {
-  const warehouseQueryParams = {
-    parentId: 0
-  };
-  const res = await listWarehouseLocation(warehouseQueryParams);
+  const res = await listWarehouse({});
   warehouseLocationList.value = res.data;
 };
 

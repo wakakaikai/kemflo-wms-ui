@@ -375,14 +375,14 @@ defineExpose({});
           </el-form-item>
         </el-col>
         <el-col :lg="4" :md="4" :sm="4">
-          <el-form-item label="产品料号:" prop="shopOrder">
+          <el-form-item label="产品料号:" prop="item">
             <el-button class="dashed-blue-btn min-w-[120px]" size="small">
               {{ assembleInfo.item || '' }}
             </el-button>
           </el-form-item>
         </el-col>
         <el-col :lg="8" :md="8" :sm="8">
-          <el-form-item label="产品描述:" prop="shopOrder">
+          <el-form-item label="产品描述:" prop="itemDesc">
             <el-button class="dashed-blue-btn min-w-[150px]" size="small">
               {{ assembleInfo.itemDesc || '' }}
             </el-button>

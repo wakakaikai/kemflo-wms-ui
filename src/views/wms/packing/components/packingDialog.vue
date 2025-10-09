@@ -10,7 +10,7 @@
       </el-form-item>
       <el-form-item label="目的仓库" prop="warehouseCode">
         <el-select v-model="form.warehouseCode" placeholder="请选择目的仓库" clearable filterable>
-          <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.code" :label="`${warehouse.code}-${warehouse.name}`" :value="warehouse.code" />
+          <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.warehouseCode" :label="`${warehouse.warehouseCode}-${warehouse.warehouseName}`" :value="warehouse.warehouseCode" />
         </el-select>
       </el-form-item>
       <div class="material-record-container">
@@ -82,8 +82,8 @@
 
 <script setup name="PackingDialog" lang="ts">
 import { onMounted, reactive, ref } from 'vue';
-import { listWarehouseLocation } from '@/api/wms/warehouseLocation';
-import { WarehouseLocationVO } from '@/api/wms/warehouseLocation/types';
+import { listWarehouse } from '@/api/wms/warehouse';
+import { WarehouseVO } from '@/api/wms/warehouse/types';
 import PalletDialog from '@/views/wms/packing/components/palletDialog.vue';
 import WorkOrderDialog from '@/views/wms/packing/components/workOrderDialog.vue';
 import { WorkOrderForm, WorkOrderQuery } from '@/api/wms/workOrder/types';
@@ -277,12 +277,10 @@ const deleteRecord = (index: any) => {
       // 取消操作
     });
 };
-const warehouseLocationList = ref<WarehouseLocationVO[]>([]);
+const warehouseLocationList = ref<WarehouseVO[]>([]);
 /** 查询仓位信息列表 */
 const getWarehouseList = async () => {
-  const res = await listWarehouseLocation({
-    level: 1
-  });
+  const res = await listWarehouse({});
   warehouseLocationList.value = res.data;
 };
 

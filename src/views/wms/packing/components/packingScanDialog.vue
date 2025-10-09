@@ -2,7 +2,7 @@
   <el-dialog v-model="visible" :title="title" width="70%" append-to-body>
     <el-form ref="packingFormRef" :model="form" :rules="rules" label-width="80px">
       <el-form-item label="栈板编号" prop="palletCode">
-        <el-input v-model="form.palletCode" clearable placeholder="请输入栈板编号或点击选择">
+        <el-input v-model="form.palletCode" clearable placeholder="请输入栈板编号或点击选择" @keydown.tab.prevent="palletCodeKeyDownTab" @keydown.enter.prevent="palletCodeKeyDownTab">
           <template #append>
             <el-button icon="Search" type="primary" @click="showPalletDialog" />
           </template>
@@ -10,7 +10,7 @@
       </el-form-item>
       <el-form-item label="目的仓库" prop="warehouseCode">
         <el-select v-model="form.warehouseCode" placeholder="请选择目的仓库" clearable filterable>
-          <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.code" :label="`${warehouse.code}-${warehouse.name}`" :value="warehouse.code" />
+          <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.warehouseCode" :label="`${warehouse.warehouseCode}-${warehouse.warehouseName}`" :value="warehouse.warehouseCode" />
         </el-select>
       </el-form-item>
       <div class="material-record-container">
@@ -110,15 +110,14 @@
 
 <script setup name="PackingDialog" lang="ts">
 import { nextTick, onMounted, reactive, ref } from 'vue';
-import { listWarehouseLocation } from '@/api/wms/warehouseLocation';
-import { WarehouseLocationVO } from '@/api/wms/warehouseLocation/types';
+import { WarehouseVO } from '@/api/wms/warehouse/types';
+import { listWarehouse } from '@/api/wms/warehouse';
 import PalletDialog from '@/views/wms/packing/components/palletDialog.vue';
 import WorkOrderDialog from '@/views/wms/packing/components/workOrderDialog.vue';
 import { WorkOrderForm, WorkOrderQuery } from '@/api/wms/workOrder/types';
 import useDialog from '@/hooks/useDialog';
 
 import { addPacking, getPacking, updatePacking } from '@/api/wms/packing';
-import { getWorkOrderPackedQty } from '@/api/wms/packingDetail';
 import { getSnInfo } from '@/api/wms/workOrderSn';
 import { WorkOrderSnForm } from '@/api/wms/workOrderSn/types';
 
@@ -282,6 +281,18 @@ const submitForm = () => {
   });
 };
 
+const palletCodeKeyDownTab = async () => {
+  if (form.value.palletCode) {
+    form.value.palletCode = form.value.palletCode.trim();
+    await nextTick(() => {
+      if (snInputRef.value) {
+        snInputRef.value.focus();
+        snInputRef.value.select();
+      }
+    });
+  }
+};
+
 const keyDownTab = async () => {
   form.value.sn = form.value.sn.trim();
   await nextTick(() => {
@@ -373,12 +384,10 @@ const deleteRecord = (index: any) => {
       // 取消操作
     });
 };
-const warehouseLocationList = ref<WarehouseLocationVO[]>([]);
+const warehouseLocationList = ref<WarehouseVO[]>([]);
 /** 查询仓位信息列表 */
 const getWarehouseList = async () => {
-  const res = await listWarehouseLocation({
-    level: 1
-  });
+  const res = await listWarehouse();
   warehouseLocationList.value = res.data;
 };
 

@@ -1,74 +1,103 @@
 <template>
   <div>
     <el-dialog v-model="visible" :title="title" width="70%" append-to-body>
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-        <el-form-item label="工单" prop="shopOrder">
-          <el-input v-model="queryParams.shopOrder" placeholder="请输入工单" clearable @keyup.enter="handleQuery" />
-        </el-form-item>
-        <el-form-item label="计划物料" prop="plannedItemBo">
-          <el-input v-model="queryParams.plannedItemBo" placeholder="请输入计划物料" clearable @keyup.enter="handleQuery" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-        </el-form-item>
+      <el-form ref="queryFormRef" :model="queryParams" :rules="rules" label-width="auto">
+        <el-row :gutter="24">
+          <el-col :lg="10" :md="10" :sm="24" :offset="5">
+            <el-form-item label="工单号码" prop="workOrderNo">
+              <el-input ref="workOrderInputRef" v-model="queryParams.shopOrder" placeholder="请输入工单号码">
+                <template #append>
+                  <el-button icon="Search" @click="openShopOrderDialog" />
+                </template>
+              </el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="10" :md="10" :sm="24" :offset="5">
+            <el-form-item label="待下达数量" prop="releaseQty">
+              <el-input-number v-model="queryParams.releaseQty" placeholder="请输入待下达数量" clearable @keyup.enter="handleQuery" controls-position="right" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+
+          <el-col :lg="10" :md="10" :sm="24">
+            <el-form-item label="状态" prop="plannedItemBo">
+              <span>{{ queryParams.statusDesc }}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="12" :md="12" :sm="24">
+            <el-form-item label="计划工艺路线" prop="plannedRouter">
+              <div class="big-content">{{ queryParams.plannedRouter }}/{{ queryParams.plannedRouterVersion }}</div>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="10" :md="10" :sm="24">
+            <el-form-item label="计划数量" prop="qtyToBuild">
+              <span>{{ queryParams.qtyToBuild ? parseFloat(queryParams.qtyToBuild) : '' }}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="14" :md="14" :sm="24">
+            <el-form-item label="可下达数量" prop="qtyCanBeRelease">
+              <div class="big-content" :class="[queryParams.canReleaseQty == 0 ? 'special-tip-color' : 'normal-color']">
+                {{ queryParams.canReleaseQty ? parseFloat(queryParams.canReleaseQty) : '' }}
+              </div>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="10" :md="10" :sm="24">
+            <el-form-item label="计划物料" prop="plannedItem">
+              <span>{{ queryParams.plannedItem }}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="14" :md="14" :sm="24">
+            <el-form-item label="物料描述" prop="itemDesc">
+              <span>{{ queryParams.itemDesc }}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="10" :md="10" :sm="24">
+            <el-form-item label="计划开始" prop="plannedStartDate">
+              <span>{{ queryParams.plannedStartDate }}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="14" :md="14" :sm="24">
+            <el-form-item label="计划结束" prop="plannedCompDate">
+              <span>{{ queryParams.plannedCompDate }}</span>
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
-
-      <el-table :loading="loading" :data="shopOrderList" style="width: 100%" border highlight-current-row @row-click="handleRowClick">
-        <!-- 单选列（通过高亮行实现） -->
-        <el-table-column width="55">
-          <template #default="checkedDataScope">
-            <el-radio v-model="selectedRowData.id" :label="checkedDataScope.row.id" class="ml-[10px]">
-              <span class="el-radio__label"></span>
-            </el-radio>
-          </template>
-        </el-table-column>
-        <el-table-column label="工单" align="center" prop="shopOrder" width="140" />
-        <el-table-column label="计划物料" align="center" prop="plannedItem" width="180" />
-        <el-table-column label="产品描述" align="center" prop="itemDesc" />
-        <!--        <el-table-column label="工单类型" align="center" prop="shopOrderTypeDesc" />-->
-        <!--        <el-table-column label="计划工作中心" align="center" prop="plannedWorkCenter" width="120" />-->
-        <el-table-column label="计划开始时间" align="center" prop="plannedStartDate" width="120">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.plannedStartDate, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="计划完成时间" align="center" prop="plannedCompDate" width="120">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.plannedCompDate, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="计划生产数量" align="center" prop="qtyToBuild" />
-        <el-table-column label="完成数量" align="center" prop="qtyDone" />
-      </el-table>
-      <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
-
       <template #footer>
         <el-button @click="visible = false">取 消</el-button>
         <el-button type="primary" @click="submitForm">确 定</el-button>
       </template>
     </el-dialog>
+
+    <ShopOrderDialog ref="shopOrderDialogRef" @shop-order-call-back="shopOrderCallBack" />
+    <ShopOrderSfcPreviewDialog ref="shopOrderSfcPreviewDialogRef" @sfc-preview-call-back="sfcPreviewCallBack" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { listShopOrder, getShopOrder, delShopOrder, addShopOrder, updateShopOrder } from '@/api/mes/shopOrder';
-import { ShopOrderVO, ShopOrderQuery, ShopOrderForm } from '@/api/mes/shopOrder/types';
+import { listShopOrder, releaseShopOrderSfc } from '@/api/mes/shopOrder';
+import { ShopOrderVO, ShopOrderQuery, ShopOrderForm, SfcPreviewVO } from '@/api/mes/shopOrder/types';
 import useDialog from '@/hooks/useDialog';
 
+import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
+import ShopOrderSfcPreviewDialog from '@/views/mes/workpanel/components/shopOrderSfcPreviewDialog.vue';
+
+const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
+const shopOrderSfcPreviewDialogRef = ref<InstanceType<typeof ShopOrderSfcPreviewDialog>>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const shopOrderList = ref<ShopOrderVO[]>([]);
 const loading = ref(true);
+const sfcPreviewConfirm = ref(false);
 const total = ref(0);
 const queryFormRef = ref<ElFormInstance>();
 const operationFormRef = ref<ElFormInstance>();
-
+const podConfig = ref<{ [key: string]: any }>({});
 const initFormData: ShopOrderForm = {
   id: undefined,
   handle: undefined,
   shopOrder: undefined,
   status: undefined,
+  statusDesc: undefined,
   shopOrderType: undefined,
   priority: undefined,
   plannedWorkCenterBo: undefined,
@@ -78,6 +107,7 @@ const initFormData: ShopOrderForm = {
   itemBo: undefined,
   bomBo: undefined,
   routerBo: undefined,
+  releaseQty: undefined,
   qtyToBuild: undefined,
   qtyReleased: undefined,
   plannedStartDate: undefined,
@@ -91,21 +121,7 @@ const initFormData: ShopOrderForm = {
   customerOrder: undefined,
   overDeliveryTolerance: undefined,
   considerScrap: undefined,
-  remark: undefined,
-  createUserId: undefined,
-  creator: undefined,
-  modifyUserId: undefined,
-  updater: undefined,
-  modifyTime: undefined,
-  deleteFlag: undefined,
-  auditDataVersion: undefined,
-  secBuId: undefined,
-  secUserId: undefined,
-  secOuId: undefined,
-  belongOrgId: undefined,
-  tenantOrgId: undefined,
-  dataModifyTime: undefined,
-  dataModifyUser: undefined
+  remark: undefined
 };
 const data = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
   form: { ...initFormData },
@@ -137,14 +153,11 @@ const data = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
     customerOrder: undefined,
     overDeliveryTolerance: undefined,
     considerScrap: undefined,
-    createUserId: undefined,
-    creator: undefined,
-    modifyUserId: undefined,
-    updater: undefined,
-    modifyTime: undefined,
     params: {}
   },
-  rules: {}
+  rules: {
+    releaseQty: [{ required: true, message: '待下达数量不能为空', trigger: 'blur' }]
+  }
 });
 
 const { queryParams, form, rules } = toRefs(data);
@@ -192,10 +205,44 @@ const resetQuery = () => {
 const submitForm = () => {
   queryFormRef.value.validate((valid) => {
     if (valid) {
-      proxy.$emit('shopOrderCallBack', selectedRowData.value);
-      closeDialog();
+      if (sfcPreviewConfirm.value) {
+        proxy.$emit('shopOrderCallBack', selectedRowData.value);
+        const parmas: SfcPreviewVO = {
+          shopOrder: queryParams.value.shopOrder,
+          releaseQty: queryParams.value.releaseQty
+        };
+        const res: any = releaseShopOrderSfc(parmas).finally(() => (loading.value = false));
+        if (res.data?.sfcVoList) {
+          queryParams.value = { ...queryParams.value, ...res?.data?.sfcVoList[0] };
+        }
+        closeDialog();
+        sfcPreviewConfirm.value = false;
+      } else {
+        openShopOrderSfcPreviewDialog();
+      }
     }
   });
+};
+
+// 工单对话框
+const openShopOrderDialog = () => {
+  shopOrderDialogRef.value.openDialog();
+};
+
+const shopOrderCallBack = (data: any) => {
+  podConfig.value.shopOrder = data.shopOrder;
+  podConfig.value.shopOrderDesc = data.itemDesc;
+  queryParams.value = data;
+};
+
+// 工单条码预览
+const openShopOrderSfcPreviewDialog = () => {
+  shopOrderSfcPreviewDialogRef.value.openDialog();
+  shopOrderSfcPreviewDialogRef.value.initSfcPreviewDialog(queryParams.value.shopOrder);
+};
+
+const sfcPreviewCallBack = (confirmFlag: boolean) => {
+  sfcPreviewConfirm.value = confirmFlag;
 };
 
 onMounted(async () => {
@@ -214,5 +261,14 @@ defineExpose({
 }
 .radio-no-label :deep(.el-radio) {
   margin-left: 10px;
+}
+
+.special-tip-color {
+  color: #d9363e;
+  font-weight: 700;
+}
+.normal-color {
+  color: green;
+  font-weight: 700;
 }
 </style>

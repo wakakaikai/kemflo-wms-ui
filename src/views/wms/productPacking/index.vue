@@ -7,7 +7,7 @@
           <el-form :model="formData" label-width="auto">
             <el-form-item label="栈板号" required>
               <el-input
-                ref="palletInput"
+                ref="palletInputRef"
                 v-model="formData.palletCode"
                 clearable
                 placeholder="请输入栈板编号或点击选择"
@@ -78,7 +78,7 @@
           </el-form-item>
           <el-form-item label="目的仓库" prop="warehouseCode">
             <el-select v-model="formData.warehouseCode" placeholder="请选择目的仓库" clearable filterable>
-              <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.code" :label="`${warehouse.code}-${warehouse.name}`" :value="warehouse.code" />
+              <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.warehouseCode" :label="`${warehouse.warehouseCode}-${warehouse.warehouseName}`" :value="warehouse.warehouseCode" />
             </el-select>
           </el-form-item>
         </el-form>
@@ -110,24 +110,26 @@
 
 <script lang="ts" setup>
 import { Delete } from '@element-plus/icons-vue';
-
-const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-import { ref, reactive, computed, nextTick } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { computed, nextTick, reactive, ref } from 'vue';
 import type { FormInstance } from 'element-plus';
+import { ElMessageBox } from 'element-plus';
 import { getBoxOrPalletSn } from '@/api/mes/sfc';
-import { SfcVO, SfcQuery, SfcForm } from '@/api/mes/sfc/types';
+import { SfcForm, SfcQuery } from '@/api/mes/sfc/types';
 import PalletDialog from '@/views/wms/packing/components/palletDialog.vue';
-import { WarehouseLocationVO } from '@/api/wms/warehouseLocation/types';
-import { listWarehouseLocation } from '@/api/wms/warehouseLocation';
+
+import { WarehouseVO } from '@/api/wms/warehouse/types';
+import { listWarehouse } from '@/api/wms/warehouse';
 import { addPacking, updatePacking } from '@/api/wms/packing';
 import { getPalletPacking } from '@/api/wms/pallet';
 import warningsMp3 from '@/assets/MP3/warnings.mp3';
 import successMp3 from '@/assets/MP3/success.mp3';
 import { HttpStatus } from '@/enums/RespEnum';
 
-const warehouseLocationList = ref<WarehouseLocationVO[]>([]);
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+
+const warehouseLocationList = ref<WarehouseVO[]>([]);
 const palletDialogRef = ref<InstanceType<typeof PalletDialog>>();
+
 const buttonLoading = ref(false);
 const palletStatusNormal = ref(false);
 const initFormData: SfcForm = {
@@ -189,7 +191,7 @@ const confirmDialogVisible = ref(false);
 const confirmData = ref<StorageEntry[]>([]);
 
 // 表单引用
-const palletInput = ref<FormInstance>();
+const palletInputRef = ref<FormInstance>();
 const snInput = ref<FormInstance>();
 
 // 计算工单总数量方法
@@ -213,9 +215,7 @@ const canGenerateEntries = computed(() => {
 
 /** 查询仓位信息列表 */
 const getWarehouseList = async () => {
-  const res = await listWarehouseLocation({
-    level: 1
-  });
+  const res = await listWarehouse({});
   warehouseLocationList.value = res.data;
 };
 
@@ -231,6 +231,7 @@ const palletSelectCallBack = (record) => {
     successVoice();
   }
 };
+
 /** 栈板号扫码 */
 const handlePalletScan = async () => {
   if (!formData.value.palletCode) {
@@ -252,7 +253,8 @@ const handlePalletScan = async () => {
         successVoice();
         palletStatusNormal.value = true;
         nextTick(() => {
-          snInput.value?.focus();
+          snInput.value.select();
+          snInput.value.focus();
         });
       } else {
         proxy.$modal.msgError(`栈板号${formData.value.palletCode}状态为${res.data.statusDesc}，请重新选择栈板`);
@@ -317,6 +319,8 @@ const handlePalletScan = async () => {
     }
   } catch (error) {
     proxy.$modal.msgError('栈板号校验失败');
+    palletInputRef.value?.select();
+    palletInputRef.value?.focus();
     warnVoice();
   }
 };
@@ -335,6 +339,8 @@ const handleSnScan = async () => {
     if (!success || !data?.sfcVoList?.length) {
       proxy.$modal.msgError(msg || `条码${currentSn.value}在MES中不存在`);
       warnVoice();
+      snInput.value.select();
+      snInput.value.focus();
       currentSn.value = '';
       return;
     } else if (data.sfcVoList.length > 0) {
@@ -344,6 +350,8 @@ const handleSnScan = async () => {
         .join('\n');
       if (errorMsg) {
         proxy.$modal.msgError(errorMsg);
+        snInput.value.select();
+        snInput.value.focus();
         warnVoice();
         return;
       }
@@ -397,6 +405,8 @@ const handleSnScan = async () => {
     // 显示处理结果反馈
     if (duplicateSns.length > 0) {
       proxy.$modal.msgWarning(`以下SN码已存在: ${duplicateSns.join(', ')}`);
+      snInput.value.select();
+      snInput.value.focus();
       warnVoice();
       return;
     }
@@ -413,6 +423,8 @@ const handleSnScan = async () => {
   } catch (error) {
     proxy.$modal.msgError('SN码查询失败，请稍后重试');
     warnVoice();
+    snInput.value.select();
+    snInput.value.focus();
     currentSn.value = '';
   }
 };
@@ -499,10 +511,12 @@ const confirmStorage = async () => {
       id: formData.value.id,
       palletCode: formData.value.palletCode,
       warehouseCode: formData.value.warehouseCode,
+      locationId: formData.value.locationId,
       packingCode: formData.value.packingCode,
       packingType: 2,
       packingDetailBoList: packingDetailBoList
     };
+    console.log(submitData);
     if (formData.value.id) {
       confirmData.value.map((item: any) => {
         item.palletCode = form.value.palletCode;
@@ -528,7 +542,8 @@ const confirmStorage = async () => {
     resetFormData();
 
     nextTick(() => {
-      palletInput.value?.focus();
+      palletInputRef.value?.select();
+      palletInputRef.value?.focus();
     });
     buttonLoading.value = false;
   } catch (error) {

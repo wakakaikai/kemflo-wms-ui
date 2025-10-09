@@ -45,6 +45,20 @@ export const listPackingAndDetail = (query?: PackingQuery): AxiosPromise<Packing
 };
 
 /**
+ * 查询打包及明细记录列表
+ * @param query
+ * @returns {*}
+ */
+export const listScadaPackingAndDetail = (query?: PackingQuery): AxiosPromise<PackingVO[]> => {
+  return request({
+    url: '/wms/scada/packingDetail/list',
+    method: 'get',
+    params: query
+  });
+};
+
+
+/**
  * 查询打包记录详细
  * @param id
  */

@@ -43,15 +43,7 @@
                   <el-button icon="Search" @click="showWorkOrderDialog" />
                 </template>
               </el-input>
-              <!--              <el-input v-model="workOrderInfo.workOrderNo" placeholder="请输入工单号码" />-->
             </el-form-item>
-
-            <!--            <el-form-item label="产品品号">
-              <el-input v-model="workOrderInfo.material" placeholder="请输入产品品号" />
-            </el-form-item>
-            <el-form-item label="产品描述">
-              <el-input v-model="workOrderInfo.materialDesc" placeholder="请输入产品描述" />
-            </el-form-item>-->
             <el-form-item label="入库数量" prop="qty">
               <el-input-number ref="qtyInputRef" v-model="workOrderInfo.qty" :precision="3" style="width: 100%" />
             </el-form-item>
@@ -382,6 +374,7 @@ const workOrderCallBack = (workOrderNoInfo: string) => {
   workOrderInfo.value.productLine = workOrderNoInfo.productLine;
   workOrderInfo.value.unit = workOrderNoInfo.unit;
   workOrderInfo.value.plannedQty = workOrderNoInfo.plannedQty;
+  workOrderInfo.value.remark = '';
 };
 
 // 禁用未来的时间

@@ -4,17 +4,20 @@
       <div v-show="showSearch" class="mt-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
-            <el-form-item label="打包编号" prop="packingCode">
-              <el-input v-model="queryParams.packingCode" placeholder="请输入打包编号" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="栈板编号" prop="palletCode">
               <el-input v-model="queryParams.palletCode" placeholder="请输入栈板编号" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="打包编号" prop="packingCode">
+              <el-input v-model="queryParams.packingCode" placeholder="请输入打包编号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="目的仓库" prop="warehouseCode">
               <el-input v-model="queryParams.warehouseCode" placeholder="请输入目的仓库" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="工单号" prop="workOrderNo">
               <el-input v-model="queryParams.workOrderNo" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="标签码" prop="sn">
+              <el-input v-model="queryParams.sn" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="操作时间" prop="dateTimeRange">
               <el-date-picker
@@ -150,14 +153,16 @@
             </el-table>
           </template>
         </el-table-column>
-        <el-table-column label="打包编号" align="left" prop="packingCode" />
         <el-table-column label="栈板编号" align="left" prop="palletCode" />
+        <el-table-column label="打包编号" align="left" prop="packingCode" />
         <el-table-column label="目的仓库" align="left" prop="warehouseCode">
           <template #default="scope">
             <span v-if="scope.row.warehouseCode">{{ `${scope.row.warehouseCode} - ${scope.row.warehouseDesc}` }}</span>
             <span v-else></span>
           </template>
         </el-table-column>
+        <el-table-column label="库区" align="left" prop="areaCode" />
+        <el-table-column label="库位" align="left" prop="locationCode" />
         <el-table-column label="状态" align="center" prop="status">
           <template #default="scope">
             <dict-tag :options="wms_packing_status" :value="scope.row.status" />
@@ -223,7 +228,12 @@
           <el-col :lg="12" :md="12" :sm="24">
             <el-form-item label="目的仓库" prop="warehouseCode">
               <el-select v-model="form.warehouseCode" placeholder="请选择目的仓库" clearable filterable>
-                <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.code" :label="`${warehouse.code}-${warehouse.name}`" :value="warehouse.code" />
+                <el-option
+                  v-for="warehouse in warehouseLocationList"
+                  :key="warehouse.warehouseCode"
+                  :label="`${warehouse.warehouseCode}-${warehouse.warehouseName}`"
+                  :value="warehouse.warehouseCode"
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -374,20 +384,20 @@
 </template>
 
 <script setup name="Packing" lang="ts">
-import { listDeptDataPackingDetail, delPacking, inBoundPending, generatePackingDetailSn } from '@/api/wms/packing';
-import { PackingVO, PackingQuery, PackingForm } from '@/api/wms/packing/types';
+import { delPacking, generatePackingDetailSn, inBoundPending, listDeptDataPackingDetail } from '@/api/wms/packing';
+import { PackingForm, PackingQuery, PackingVO } from '@/api/wms/packing/types';
 import PackingDialog from '@/views/wms/packing/components/packingDialog.vue';
 import PackingScanDialog from '@/views/wms/packing/components/packingScanDialog.vue';
 import { nextTick, onMounted, ref, watch } from 'vue';
-import { Picture, Printer } from '@element-plus/icons-vue';
+import { Printer } from '@element-plus/icons-vue';
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
-import { ElMessage } from 'element-plus';
-import { WarehouseLocationVO } from '@/api/wms/warehouseLocation/types';
-import { listWarehouseLocation } from '@/api/wms/warehouseLocation';
+import { WarehouseVO } from '@/api/wms/warehouse/types';
+import { listWarehouse } from '@/api/wms/warehouse';
 import useDialog from '@/hooks/useDialog';
 import { WorkOrderSnVO } from '@/api/wms/workOrderSn/types';
 import { getUserProfile } from '@/api/system/user';
+
 const packingRef = ref<InstanceType<typeof PackingDialog>>();
 const packingScanRef = ref<InstanceType<typeof PackingScanDialog>>();
 
@@ -673,12 +683,10 @@ const handlePendingInbound = async (row?: PackingVO) => {
 const { title, visible, openDialog, closeDialog } = useDialog({
   title: '送仓'
 });
-const warehouseLocationList = ref<WarehouseLocationVO[]>([]);
+const warehouseLocationList = ref<WarehouseVO[]>([]);
 /** 查询仓位信息列表 */
 const getWarehouseList = async () => {
-  const res = await listWarehouseLocation({
-    parentId: 0
-  });
+  const res = await listWarehouse({});
   warehouseLocationList.value = res.data;
 };
 const submitInbound = () => {

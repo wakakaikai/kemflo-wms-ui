@@ -42,13 +42,13 @@
             </el-popover>
           </div>
         </el-tooltip>
-<!--        <el-tooltip content="Github" effect="dark" placement="bottom">-->
-<!--          <ruo-yi-git id="ruoyi-git" class="right-menu-item hover-effect" />-->
-<!--        </el-tooltip>-->
+        <!--        <el-tooltip content="Github" effect="dark" placement="bottom">-->
+        <!--          <ruo-yi-git id="ruoyi-git" class="right-menu-item hover-effect" />-->
+        <!--        </el-tooltip>-->
 
-<!--        <el-tooltip :content="proxy.$t('navbar.document')" effect="dark" placement="bottom">-->
-<!--          <ruo-yi-doc id="ruoyi-doc" class="right-menu-item hover-effect" />-->
-<!--        </el-tooltip>-->
+        <!--        <el-tooltip :content="proxy.$t('navbar.document')" effect="dark" placement="bottom">-->
+        <!--          <ruo-yi-doc id="ruoyi-doc" class="right-menu-item hover-effect" />-->
+        <!--        </el-tooltip>-->
 
         <el-tooltip :content="proxy.$t('navbar.full')" effect="dark" placement="bottom">
           <screenfull id="screenfull" class="right-menu-item hover-effect" />
@@ -66,6 +66,7 @@
         <el-dropdown class="right-menu-item hover-effect" trigger="click" @command="handleCommand">
           <div class="avatar-wrapper">
             <img :src="userStore.avatar" class="user-avatar" />
+            <span class="user-nickname"> {{ nickName }} </span>
             <el-icon><caret-bottom /></el-icon>
           </div>
           <template #dropdown>
@@ -109,6 +110,7 @@ const newNotice = ref(<number>0);
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const userId = ref(userStore.userId);
+const nickName = ref(userStore.nickname);
 const companyName = ref(undefined);
 const tenantList = ref<TenantVO[]>([]);
 // 是否切换了租户
@@ -280,25 +282,37 @@ watch(
     }
 
     .avatar-container {
-      margin-right: 40px;
+      display: flex;
+      align-items: center;
+      height: 100%;
+      margin-left: -15px;
 
       .avatar-wrapper {
-        margin-top: 5px;
+        display: flex;
+        align-items: center;
+        height: 100%;
         position: relative;
 
         .user-avatar {
           cursor: pointer;
           width: 40px;
           height: 40px;
-          border-radius: 10px;
-          margin-top: 10px;
+          border-radius: 50%;
+          margin: 0 8px 0 0;
+        }
+
+        .user-nickname {
+          font-size: 14px;
+          font-weight: bold;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 120px;
         }
 
         i {
           cursor: pointer;
-          position: absolute;
-          right: -20px;
-          top: 25px;
+          margin: 0 8px;
           font-size: 12px;
         }
       }

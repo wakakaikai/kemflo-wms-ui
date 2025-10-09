@@ -102,7 +102,7 @@ import WorkCenterDialog from '@/views/mes/workpanel/components/workCenterDialog.
 import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
 import ReleaseShopOrderDialog from '@/views/mes/workpanel/components/releaseShopOrderDialog.vue';
 import AssembleComponent from '@/views/mes/workpanel/assemble/components/assembleComponents.vue';
-import AssembleDialog from '@/views/mes/workpanel/assemble/components/assembleDialog.vue';
+
 import ContactUs from '@/views/mes/workpanel/components/contact-us.vue';
 
 const operationDialogRef = ref<InstanceType<typeof OperationDialog>>();
@@ -110,7 +110,7 @@ const resourceDialogRef = ref<InstanceType<typeof ResourceDialog>>();
 const workCenterDialogRef = ref<InstanceType<typeof WorkCenterDialog>>();
 const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
 const releaseShopOrderDialogRef = ref<InstanceType<typeof ReleaseShopOrderDialog>>();
-const assembleDialogRef = ref<InstanceType<typeof AssembleDialog>>();
+
 
 const podConfig = ref<{ [key: string]: any }>({});
 
