@@ -4,11 +4,17 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-            <el-form-item label="物料编码/设备编号" prop="itemCode">
-              <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码/设备编号" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="栈板编号" prop="palletCode">
+              <el-input v-model="queryParams.palletCode" placeholder="请输入栈板编号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="产品物料名称/设备名称" prop="itemName">
-              <el-input v-model="queryParams.itemName" placeholder="请输入产品物料名称/设备名称" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="工单号" prop="workOrderNo">
+              <el-input v-model="queryParams.workOrderNo" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="物料标识卡条码" prop="materialSn">
+              <el-input v-model="queryParams.materialSn" placeholder="请输入物料标识卡条码" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="批次号" prop="batchCode">
+              <el-input v-model="queryParams.batchCode" placeholder="请输入批次号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="数量-非限制" prop="availableQuantity">
               <el-input v-model="queryParams.availableQuantity" placeholder="请输入数量-非限制" clearable @keyup.enter="handleQuery" />
@@ -25,6 +31,12 @@
             <el-form-item label="单位" prop="unit">
               <el-input v-model="queryParams.unit" placeholder="请输入单位" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="料号" prop="itemCode">
+              <el-input v-model="queryParams.itemCode" placeholder="请输入料号" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="产品物料名称/设备名称" prop="itemName">
+              <el-input v-model="queryParams.itemName" placeholder="请输入产品物料名称/设备名称" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP" prop="inventoryType">
               <el-select v-model="queryParams.inventoryType" placeholder="请选择库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP" clearable >
                 <el-option v-for="dict in wms_inventory_type" :key="dict.value" :label="dict.label" :value="dict.value"/>
@@ -40,23 +52,30 @@
                 <el-option v-for="dict in wms_stock_in_status" :key="dict.value" :label="dict.label" :value="dict.value"/>
               </el-select>
             </el-form-item>
-            <el-form-item label="仓库编码" prop="warehouseCode">
-              <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="凭证年度" prop="materialDocYear">
+              <el-input v-model="queryParams.materialDocYear" placeholder="请输入凭证年度" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="仓库名称" prop="warehouseName">
-              <el-input v-model="queryParams.warehouseName" placeholder="请输入仓库名称" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="物料凭证号" prop="materialOrderNo">
+              <el-input v-model="queryParams.materialOrderNo" placeholder="请输入物料凭证号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="库区编码" prop="areaCode">
-              <el-input v-model="queryParams.areaCode" placeholder="请输入库区编码" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="物料文件项次" prop="materialItem">
+              <el-input v-model="queryParams.materialItem" placeholder="请输入物料文件项次" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="库区名称" prop="areaName">
-              <el-input v-model="queryParams.areaName" placeholder="请输入库区名称" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="生产日期" prop="productDate">
+              <el-date-picker clearable
+                v-model="queryParams.productDate"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="请选择生产日期"
+              />
             </el-form-item>
-            <el-form-item label="库位编码" prop="locationCode">
-              <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="库位名称" prop="locationName">
-              <el-input v-model="queryParams.locationName" placeholder="请输入库位名称" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="失效日期" prop="expireDate">
+              <el-date-picker clearable
+                v-model="queryParams.expireDate"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="请选择失效日期"
+              />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -71,32 +90,35 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['wms:inventory:add']">新增</el-button>
+            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['wms:palletInventory:add']">新增</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['wms:inventory:edit']">修改</el-button>
+            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['wms:palletInventory:edit']">修改</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['wms:inventory:remove']">删除</el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['wms:palletInventory:remove']">删除</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:inventory:export']">导出</el-button>
+            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:palletInventory:export']">导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
         </el-row>
       </template>
 
-      <el-table v-loading="loading" :data="inventoryList" @selection-change="handleSelectionChange">
+      <el-table v-loading="loading" :data="palletInventoryList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />
-        <el-table-column label="材料类型: 1-物料, 2-设备" align="center" prop="itemType" />
-        <el-table-column label="物料编码/设备编号" align="center" prop="itemCode" />
-        <el-table-column label="产品物料名称/设备名称" align="center" prop="itemName" />
+        <el-table-column label="栈板编号" align="center" prop="palletCode" />
+        <el-table-column label="工单号" align="center" prop="workOrderNo" />
+        <el-table-column label="物料标识卡条码" align="center" prop="materialSn" />
+        <el-table-column label="批次号" align="center" prop="batchCode" />
         <el-table-column label="数量-非限制" align="center" prop="availableQuantity" />
         <el-table-column label="数量-质检" align="center" prop="inspectionQuantity" />
         <el-table-column label="数量-冻结" align="center" prop="blockedQuantity" />
         <el-table-column label="数量-报废" align="center" prop="scrappedQuantity" />
         <el-table-column label="单位" align="center" prop="unit" />
+        <el-table-column label="料号" align="center" prop="itemCode" />
+        <el-table-column label="产品物料名称/设备名称" align="center" prop="itemName" />
         <el-table-column label="库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP" align="center" prop="inventoryType">
           <template #default="scope">
             <dict-tag :options="wms_inventory_type" :value="scope.row.inventoryType"/>
@@ -112,20 +134,27 @@
             <dict-tag :options="wms_stock_in_status" :value="scope.row.stockInStatus"/>
           </template>
         </el-table-column>
-        <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
-        <el-table-column label="仓库名称" align="center" prop="warehouseName" />
-        <el-table-column label="库区编码" align="center" prop="areaCode" />
-        <el-table-column label="库区名称" align="center" prop="areaName" />
-        <el-table-column label="库位编码" align="center" prop="locationCode" />
-        <el-table-column label="库位名称" align="center" prop="locationName" />
+        <el-table-column label="凭证年度" align="center" prop="materialDocYear" />
+        <el-table-column label="物料凭证号" align="center" prop="materialOrderNo" />
+        <el-table-column label="物料文件项次" align="center" prop="materialItem" />
+        <el-table-column label="生产日期" align="center" prop="productDate" width="180">
+          <template #default="scope">
+            <span>{{ parseTime(scope.row.productDate, '{y}-{m}-{d}') }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="失效日期" align="center" prop="expireDate" width="180">
+          <template #default="scope">
+            <span>{{ parseTime(scope.row.expireDate, '{y}-{m}-{d}') }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
-              <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:inventory:edit']"></el-button>
+              <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:palletInventory:edit']"></el-button>
             </el-tooltip>
             <el-tooltip content="删除" placement="top">
-              <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:inventory:remove']"></el-button>
+              <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:palletInventory:remove']"></el-button>
             </el-tooltip>
           </template>
         </el-table-column>
@@ -133,14 +162,20 @@
 
       <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
     </el-card>
-    <!-- 添加或修改库存记录对话框 -->
+    <!-- 添加或修改栈板库存明细对话框 -->
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" append-to-body>
-      <el-form ref="inventoryFormRef" :model="form" :rules="rules" label-width="80px">
-        <el-form-item label="物料编码/设备编号" prop="itemCode">
-          <el-input v-model="form.itemCode" placeholder="请输入物料编码/设备编号" />
+      <el-form ref="palletInventoryFormRef" :model="form" :rules="rules" label-width="80px">
+        <el-form-item label="栈板编号" prop="palletCode">
+          <el-input v-model="form.palletCode" placeholder="请输入栈板编号" />
         </el-form-item>
-        <el-form-item label="产品物料名称/设备名称" prop="itemName">
-          <el-input v-model="form.itemName" placeholder="请输入产品物料名称/设备名称" />
+        <el-form-item label="工单号" prop="workOrderNo">
+          <el-input v-model="form.workOrderNo" placeholder="请输入工单号" />
+        </el-form-item>
+        <el-form-item label="物料标识卡条码" prop="materialSn">
+          <el-input v-model="form.materialSn" placeholder="请输入物料标识卡条码" />
+        </el-form-item>
+        <el-form-item label="批次号" prop="batchCode">
+          <el-input v-model="form.batchCode" placeholder="请输入批次号" />
         </el-form-item>
         <el-form-item label="数量-非限制" prop="availableQuantity">
           <el-input v-model="form.availableQuantity" placeholder="请输入数量-非限制" />
@@ -157,13 +192,19 @@
         <el-form-item label="单位" prop="unit">
           <el-input v-model="form.unit" placeholder="请输入单位" />
         </el-form-item>
+        <el-form-item label="料号" prop="itemCode">
+          <el-input v-model="form.itemCode" placeholder="请输入料号" />
+        </el-form-item>
+        <el-form-item label="产品物料名称/设备名称" prop="itemName">
+          <el-input v-model="form.itemName" placeholder="请输入产品物料名称/设备名称" />
+        </el-form-item>
         <el-form-item label="库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP" prop="inventoryType">
           <el-select v-model="form.inventoryType" placeholder="请选择库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP">
             <el-option
                 v-for="dict in wms_inventory_type"
                 :key="dict.value"
                 :label="dict.label"
-                :value="parseInt(dict.value)"
+                :value="dict.value"
             ></el-option>
           </el-select>
         </el-form-item>
@@ -187,23 +228,30 @@
             ></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="仓库编码" prop="warehouseCode">
-          <el-input v-model="form.warehouseCode" placeholder="请输入仓库编码" />
+        <el-form-item label="凭证年度" prop="materialDocYear">
+          <el-input v-model="form.materialDocYear" placeholder="请输入凭证年度" />
         </el-form-item>
-        <el-form-item label="仓库名称" prop="warehouseName">
-          <el-input v-model="form.warehouseName" placeholder="请输入仓库名称" />
+        <el-form-item label="物料凭证号" prop="materialOrderNo">
+          <el-input v-model="form.materialOrderNo" placeholder="请输入物料凭证号" />
         </el-form-item>
-        <el-form-item label="库区编码" prop="areaCode">
-          <el-input v-model="form.areaCode" placeholder="请输入库区编码" />
+        <el-form-item label="物料文件项次" prop="materialItem">
+          <el-input v-model="form.materialItem" placeholder="请输入物料文件项次" />
         </el-form-item>
-        <el-form-item label="库区名称" prop="areaName">
-          <el-input v-model="form.areaName" placeholder="请输入库区名称" />
+        <el-form-item label="生产日期" prop="productDate">
+          <el-date-picker clearable
+            v-model="form.productDate"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="请选择生产日期">
+          </el-date-picker>
         </el-form-item>
-        <el-form-item label="库位编码" prop="locationCode">
-          <el-input v-model="form.locationCode" placeholder="请输入库位编码" />
-        </el-form-item>
-        <el-form-item label="库位名称" prop="locationName">
-          <el-input v-model="form.locationName" placeholder="请输入库位名称" />
+        <el-form-item label="失效日期" prop="expireDate">
+          <el-date-picker clearable
+            v-model="form.expireDate"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="请选择失效日期">
+          </el-date-picker>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" placeholder="请输入备注" />
@@ -219,14 +267,14 @@
   </div>
 </template>
 
-<script setup name="Inventory" lang="ts">
-import { listInventory, getInventory, delInventory, addInventory, updateInventory } from '@/api/wms/inventory';
-import { InventoryVO, InventoryQuery, InventoryForm } from '@/api/wms/inventory/types';
+<script setup name="PalletInventory" lang="ts">
+import { listPalletInventory, getPalletInventory, delPalletInventory, addPalletInventory, updatePalletInventory } from '@/api/wms/palletInventory';
+import { PalletInventoryVO, PalletInventoryQuery, PalletInventoryForm } from '@/api/wms/palletInventory/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_status, wms_stock_in_status, wms_inventory_type } = toRefs<any>(proxy?.useDict('wms_inventory_status', 'wms_stock_in_status', 'wms_inventory_type'));
 
-const inventoryList = ref<InventoryVO[]>([]);
+const palletInventoryList = ref<PalletInventoryVO[]>([]);
 const buttonLoading = ref(false);
 const loading = ref(true);
 const showSearch = ref(true);
@@ -236,56 +284,60 @@ const multiple = ref(true);
 const total = ref(0);
 
 const queryFormRef = ref<ElFormInstance>();
-const inventoryFormRef = ref<ElFormInstance>();
+const palletInventoryFormRef = ref<ElFormInstance>();
 
 const dialog = reactive<DialogOption>({
   visible: false,
   title: ''
 });
 
-const initFormData: InventoryForm = {
+const initFormData: PalletInventoryForm = {
   id: undefined,
-  itemType: undefined,
-  itemCode: undefined,
-  itemName: undefined,
+  palletCode: undefined,
+  workOrderNo: undefined,
+  materialSn: undefined,
+  batchCode: undefined,
   availableQuantity: undefined,
   inspectionQuantity: undefined,
   blockedQuantity: undefined,
   scrappedQuantity: undefined,
   unit: undefined,
+  itemCode: undefined,
+  itemName: undefined,
   inventoryType: undefined,
   inventoryStatus: undefined,
   stockInStatus: undefined,
-  warehouseCode: undefined,
-  warehouseName: undefined,
-  areaCode: undefined,
-  areaName: undefined,
-  locationCode: undefined,
-  locationName: undefined,
-  remark: undefined,
+  materialDocYear: undefined,
+  materialOrderNo: undefined,
+  materialItem: undefined,
+  productDate: undefined,
+  expireDate: undefined,
+  remark: undefined
 }
-const data = reactive<PageData<InventoryForm, InventoryQuery>>({
+const data = reactive<PageData<PalletInventoryForm, PalletInventoryQuery>>({
   form: {...initFormData},
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    itemType: undefined,
-    itemCode: undefined,
-    itemName: undefined,
+    palletCode: undefined,
+    workOrderNo: undefined,
+    materialSn: undefined,
+    batchCode: undefined,
     availableQuantity: undefined,
     inspectionQuantity: undefined,
     blockedQuantity: undefined,
     scrappedQuantity: undefined,
     unit: undefined,
+    itemCode: undefined,
+    itemName: undefined,
     inventoryType: undefined,
     inventoryStatus: undefined,
     stockInStatus: undefined,
-    warehouseCode: undefined,
-    warehouseName: undefined,
-    areaCode: undefined,
-    areaName: undefined,
-    locationCode: undefined,
-    locationName: undefined,
+    materialDocYear: undefined,
+    materialOrderNo: undefined,
+    materialItem: undefined,
+    productDate: undefined,
+    expireDate: undefined,
     params: {
     }
   },
@@ -293,14 +345,17 @@ const data = reactive<PageData<InventoryForm, InventoryQuery>>({
     id: [
       { required: true, message: "唯一ID不能为空", trigger: "blur" }
     ],
-    itemType: [
-      { required: true, message: "材料类型: 1-物料, 2-设备不能为空", trigger: "change" }
+    palletCode: [
+      { required: true, message: "栈板编号不能为空", trigger: "blur" }
     ],
-    itemCode: [
-      { required: true, message: "物料编码/设备编号不能为空", trigger: "blur" }
+    workOrderNo: [
+      { required: true, message: "工单号不能为空", trigger: "blur" }
     ],
-    itemName: [
-      { required: true, message: "产品物料名称/设备名称不能为空", trigger: "blur" }
+    materialSn: [
+      { required: true, message: "物料标识卡条码不能为空", trigger: "blur" }
+    ],
+    batchCode: [
+      { required: true, message: "批次号不能为空", trigger: "blur" }
     ],
     availableQuantity: [
       { required: true, message: "数量-非限制不能为空", trigger: "blur" }
@@ -317,6 +372,12 @@ const data = reactive<PageData<InventoryForm, InventoryQuery>>({
     unit: [
       { required: true, message: "单位不能为空", trigger: "blur" }
     ],
+    itemCode: [
+      { required: true, message: "料号不能为空", trigger: "blur" }
+    ],
+    itemName: [
+      { required: true, message: "产品物料名称/设备名称不能为空", trigger: "blur" }
+    ],
     inventoryType: [
       { required: true, message: "库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP不能为空", trigger: "change" }
     ],
@@ -326,37 +387,34 @@ const data = reactive<PageData<InventoryForm, InventoryQuery>>({
     stockInStatus: [
       { required: true, message: "入库状态不能为空", trigger: "change" }
     ],
-    warehouseCode: [
-      { required: true, message: "仓库编码不能为空", trigger: "blur" }
+    materialDocYear: [
+      { required: true, message: "凭证年度不能为空", trigger: "blur" }
     ],
-    warehouseName: [
-      { required: true, message: "仓库名称不能为空", trigger: "blur" }
+    materialOrderNo: [
+      { required: true, message: "物料凭证号不能为空", trigger: "blur" }
     ],
-    areaCode: [
-      { required: true, message: "库区编码不能为空", trigger: "blur" }
+    materialItem: [
+      { required: true, message: "物料文件项次不能为空", trigger: "blur" }
     ],
-    areaName: [
-      { required: true, message: "库区名称不能为空", trigger: "blur" }
+    productDate: [
+      { required: true, message: "生产日期不能为空", trigger: "blur" }
     ],
-    locationCode: [
-      { required: true, message: "库位编码不能为空", trigger: "blur" }
-    ],
-    locationName: [
-      { required: true, message: "库位名称不能为空", trigger: "blur" }
+    expireDate: [
+      { required: true, message: "失效日期不能为空", trigger: "blur" }
     ],
     remark: [
       { required: true, message: "备注不能为空", trigger: "blur" }
-    ],
+    ]
   }
 });
 
 const { queryParams, form, rules } = toRefs(data);
 
-/** 查询库存记录列表 */
+/** 查询栈板库存明细列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await listInventory(queryParams.value);
-  inventoryList.value = res.rows;
+  const res = await listPalletInventory(queryParams.value);
+  palletInventoryList.value = res.rows;
   total.value = res.total;
   loading.value = false;
 }
@@ -370,7 +428,7 @@ const cancel = () => {
 /** 表单重置 */
 const reset = () => {
   form.value = {...initFormData};
-  inventoryFormRef.value?.resetFields();
+  palletInventoryFormRef.value?.resetFields();
 }
 
 /** 搜索按钮操作 */
@@ -386,7 +444,7 @@ const resetQuery = () => {
 }
 
 /** 多选框选中数据 */
-const handleSelectionChange = (selection: InventoryVO[]) => {
+const handleSelectionChange = (selection: PalletInventoryVO[]) => {
   ids.value = selection.map(item => item.id);
   single.value = selection.length != 1;
   multiple.value = !selection.length;
@@ -396,28 +454,28 @@ const handleSelectionChange = (selection: InventoryVO[]) => {
 const handleAdd = () => {
   reset();
   dialog.visible = true;
-  dialog.title = "添加库存记录";
+  dialog.title = "添加栈板库存明细";
 }
 
 /** 修改按钮操作 */
-const handleUpdate = async (row?: InventoryVO) => {
+const handleUpdate = async (row?: PalletInventoryVO) => {
   reset();
   const _id = row?.id || ids.value[0]
-  const res = await getInventory(_id);
+  const res = await getPalletInventory(_id);
   Object.assign(form.value, res.data);
   dialog.visible = true;
-  dialog.title = "修改库存记录";
+  dialog.title = "修改栈板库存明细";
 }
 
 /** 提交按钮 */
 const submitForm = () => {
-  inventoryFormRef.value?.validate(async (valid: boolean) => {
+  palletInventoryFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
       buttonLoading.value = true;
       if (form.value.id) {
-        await updateInventory(form.value).finally(() =>  buttonLoading.value = false);
+        await updatePalletInventory(form.value).finally(() =>  buttonLoading.value = false);
       } else {
-        await addInventory(form.value).finally(() =>  buttonLoading.value = false);
+        await addPalletInventory(form.value).finally(() =>  buttonLoading.value = false);
       }
       proxy?.$modal.msgSuccess("操作成功");
       dialog.visible = false;
@@ -427,19 +485,19 @@ const submitForm = () => {
 }
 
 /** 删除按钮操作 */
-const handleDelete = async (row?: InventoryVO) => {
+const handleDelete = async (row?: PalletInventoryVO) => {
   const _ids = row?.id || ids.value;
-  await proxy?.$modal.confirm('是否确认删除库存记录编号为"' + _ids + '"的数据项？').finally(() => loading.value = false);
-  await delInventory(_ids);
+  await proxy?.$modal.confirm('是否确认删除栈板库存明细编号为"' + _ids + '"的数据项？').finally(() => loading.value = false);
+  await delPalletInventory(_ids);
   proxy?.$modal.msgSuccess("删除成功");
   await getList();
 }
 
 /** 导出按钮操作 */
 const handleExport = () => {
-  proxy?.download('wms/inventory/export', {
+  proxy?.download('wms/palletInventory/export', {
     ...queryParams.value
-  }, `inventory_${new Date().getTime()}.xlsx`)
+  }, `palletInventory_${new Date().getTime()}.xlsx`)
 }
 
 onMounted(() => {

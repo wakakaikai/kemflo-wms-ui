@@ -61,6 +61,7 @@
             {{ isConnected ? `已连接` : '未连接' }}
           </el-tag>
           <div class="dc-btn-group">
+            <div class="serial-debugger" tabindex="0" @keydown.enter="submitForm"></div>
             <el-button :type="isConnected ? 'success' : 'info'" size="small" @click="handleConnect" :loading="connecting">
               {{ isConnected ? '关闭串口' : '打开串口' }}
             </el-button>
@@ -83,64 +84,64 @@
           </el-col>
           <el-col :lg="5" :md="5" :sm="24">
             <el-form-item label="产品料号:" prop="plannedItem">
-              <el-button class="dashed-blue-btn w-[100%]" size="small">
+              <el-button class="dashed-blue-btn w-[100%]">
                 {{ workOrderQueryParams.plannedItem || '' }}
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="11" :md="11" :sm="24">
             <el-form-item label="产品描述:" prop="itemDesc">
-              <el-button class="dashed-blue-btn w-[100%] text-ellipsis" size="small">
+              <el-button class="dashed-blue-btn w-[100%] text-ellipsis">
                 {{ workOrderQueryParams.itemDesc || '' }}
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="8" :md="8" :sm="24">
             <el-form-item label="数据收集组:" prop="dcGroup">
-              <el-button class="dashed-blue-btn w-[100%]" size="small">
+              <el-button class="dashed-blue-btn w-[100%]">
                 {{ workOrderQueryParams.dcGroup || '' }}
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="5" :md="5" :sm="24">
             <el-form-item label="产品总数:" prop="qtyToBuild">
-              <el-button class="dashed-blue-btn w-[100%]" size="small">
+              <el-button class="dashed-blue-btn w-[100%]">
                 {{ workOrderQueryParams.qtyToBuild ? parseFloat(workOrderQueryParams.qtyToBuild) : '' }}
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="5" :md="5" :sm="24" :offset="0">
             <el-form-item label="已称重产品数:" prop="doneWeightQty">
-              <el-button class="dashed-blue-btn w-[100%]" size="small">
+              <el-button class="dashed-blue-btn w-[100%]">
                 {{ workOrderQueryParams.doneWeightQty || '' }}
               </el-button>
             </el-form-item>
           </el-col>
-          <el-col :lg="5" :md="5" :sm="24">
+          <el-col :lg="5" :md="5" :sm="24" :offset="1">
             <el-form-item label="已称重箱数:" prop="doneBoxQty">
-              <el-button class="dashed-blue-btn w-[100%]" size="small">
+              <el-button class="dashed-blue-btn w-[100%]">
                 {{ workOrderQueryParams.doneBoxQty || '' }}
               </el-button>
             </el-form-item>
           </el-col>
-          <el-col :lg="4" :md="4" :sm="24">
+          <el-col :lg="8" :md="8" :sm="24">
             <el-form-item label="重量:" prop="actualWeight">
-              <el-button class="dashed-blue-btn w-[100%]" size="small">
-                {{ `${workOrderQueryParams.actualWeight || ''} ${workOrderQueryParams.weightUnit || ''}` }}
+              <el-button class="dashed-blue-btn w-[100%]">
+                <strong> {{ `${workOrderQueryParams.actualWeight || ''} ${workOrderQueryParams.weightUnit || ''}` }}</strong>
               </el-button>
             </el-form-item>
           </el-col>
-          <el-col :lg="4" :md="4" :sm="24">
+          <el-col :lg="5" :md="5" :sm="24">
             <el-form-item label="下限:" prop="itemDesc">
-              <el-button class="dashed-blue-btn w-[100%]" size="small">
-                {{ workOrderQueryParams.lowLimit || '' }}
+              <el-button class="dashed-blue-btn w-[100%]">
+                {{ workOrderQueryParams.lowLimit ? parseFloat(workOrderQueryParams.lowLimit) : '' }}
               </el-button>
             </el-form-item>
           </el-col>
-          <el-col :lg="4" :md="4" :sm="24">
+          <el-col :lg="5" :md="5" :sm="24">
             <el-form-item label="上限:" prop="itemDesc">
-              <el-button class="dashed-blue-btn w-[100%]" size="small">
-                {{ workOrderQueryParams.hightLimit || '' }}
+              <el-button class="dashed-blue-btn w-[100%]">
+                {{ workOrderQueryParams.hightLimit ? parseFloat(workOrderQueryParams.hightLimit) : '' }}
               </el-button>
             </el-form-item>
           </el-col>
@@ -151,13 +152,15 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <!--          <el-col :lg="5" :md="5" :sm="24">
-            <el-form-item label="参数:" prop="dcParameter">
-              <el-button class="dashed-blue-btn w-[100%]" size="small">
-                {{ workOrderQueryParams.dcParameter || '' }}
-              </el-button>
-            </el-form-item>
-          </el-col>-->
+          <el-col :lg="24" :md="24" :sm="24">
+            <div v-if="resultMessage">
+              <el-alert show-icon center :title="resultMessage" :type="resultStatus ? 'success' : 'error'" :closable="false">
+                <template #icon>
+                  <Bell />
+                </template>
+              </el-alert>
+            </div>
+          </el-col>
         </el-row>
       </el-form>
     </el-card>
@@ -204,9 +207,12 @@
     </el-card>
 
     <!-- 弹框 -->
-    <ShopOrderDialog ref="shopOrderDialogRef" @shop-order-call-back="shopOrderCallBack" />
+    <ShopOrderDialog ref="shopOrderDialogRef" :podConfig="podConfig" @shop-order-call-back="shopOrderCallBack" />
     <OperationDialog ref="operationDialogRef" @operation-call-back="operationCallBack" />
     <ResourceDialog ref="resourceDialogRef" @resource-call-back="resourceCallBack" />
+
+    <audio id="warningAudio" :src="warningsMp3" hidden="hidden" />
+    <audio id="successAudio" :src="successMp3" hidden="hidden" />
   </div>
 </template>
 
@@ -229,6 +235,12 @@ const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const operationDialogRef = ref<InstanceType<typeof OperationDialog>>();
 const resourceDialogRef = ref<InstanceType<typeof ResourceDialog>>();
 const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
+import { Bell } from '@element-plus/icons-vue';
+import warningsMp3 from '@/assets/mp3/warnings.mp3';
+import successMp3 from '@/assets/mp3/success.mp3';
+const resultMessage = ref('');
+const resultStatus = ref(false);
+
 // 历史数据表格
 const historyData = ref<
   Array<{
@@ -345,9 +357,6 @@ const shopOrderData = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
 const { workOrderQueryParams, workOrderForm, workOrderRules } = toRefs(shopOrderData);
 // 工单对话框
 const openShopOrderDialog = () => {
-  shopOrderDialogRef.value.initShopOrderDialog({
-    resource: podConfig.value.resource
-  });
   shopOrderDialogRef.value.openDialog();
 };
 const getDataCollectionByShopOrder = () => {
@@ -362,7 +371,6 @@ const getDataCollectionByShopOrder = () => {
 
       if (res.data.dcGroupVoList && res.data.dcGroupVoList.length > 0) {
         const dataCollectionList = res.data.dcGroupVoList[0].dcParameterVoList;
-
         dataCollectionList.forEach((detail) => {
           if (detail.extFieldsVoList) {
             const quantityField = detail.extFieldsVoList.find((field) => field.attribute === 'QUANTITY');
@@ -582,6 +590,14 @@ let keepReading = false;
 // 数据缓冲区
 let dataBuffer: number[] = [];
 
+// 全局键盘事件处理函数
+const handleGlobalKeyDown = (event: KeyboardEvent) => {
+  // 检查是否按下了 Enter 和 Tab 键
+  if (event.key === 'Enter' || event.key === 'Tab') {
+    event.preventDefault();
+    submitForm();
+  }
+};
 // 初始化加载
 onMounted(() => {
   const routerPath = currentRoute.value.fullPath;
@@ -615,6 +631,9 @@ onMounted(() => {
   // 监听连接状态变化
   navigator.serial?.addEventListener('connect', handleSerialConnect);
   navigator.serial?.addEventListener('disconnect', handleSerialDisconnect);
+
+  // 添加全局键盘事件监听
+  window.addEventListener('keydown', handleGlobalKeyDown);
 });
 
 // 组件卸载前关闭连接并撤销权限
@@ -633,6 +652,8 @@ onBeforeUnmount(async () => {
       console.error('撤销串行端口权限时出错:', error);
     }
   }
+
+  window.removeEventListener('keydown', handleGlobalKeyDown);
 });
 
 // 处理串口连接事件
@@ -731,24 +752,36 @@ const connect = async () => {
 // 发送数据到后台
 const submitForm = async () => {
   try {
+    resultStatus.value = true;
+    resultMessage.value = '';
     if (!podConfig.value.operation) {
-      proxy?.$modal.msgError('请选择对应的工序');
+      resultMessage.value = '请选择对应的工序';
+      resultStatus.value = false;
+      warnVoice();
       return;
     }
     if (!podConfig.value.resource) {
-      proxy?.$modal.msgError('请选择对应的资源');
+      resultMessage.value = '请选择对应的资源';
+      resultStatus.value = false;
+      warnVoice();
       return;
     }
     if (!workOrderQueryParams.value.shopOrder) {
-      proxy?.$modal.msgError('请选择需要采集数据的工单号');
+      resultMessage.value = '请选择需要采集数据的工单号';
+      resultStatus.value = false;
+      warnVoice();
       return;
     }
     if ((boxQtyOptions.value || []).length == 0) {
-      proxy?.$modal.msgError('未获取到数据收集组，请联系QE维护资料');
+      resultMessage.value = '未获取到数据收集组，请联系QE维护资料';
+      resultStatus.value = false;
+      warnVoice();
       return;
     }
     if (!workOrderQueryParams.value.actualWeight) {
-      proxy?.$modal.msgError('未获取到重量数据，请检查上传是否正常');
+      resultMessage.value = '未获取到重量数据，请检查上传是否正常';
+      resultStatus.value = false;
+      warnVoice();
       return;
     }
 
@@ -759,7 +792,9 @@ const submitForm = async () => {
 
     if (!isNaN(actualWeight) && !isNaN(lowLimit) && !isNaN(highLimit)) {
       if (actualWeight < lowLimit || actualWeight > highLimit) {
-        proxy?.$modal.msgWarning(`重量${actualWeight}超出范围[${lowLimit}~${highLimit}]`);
+        resultMessage.value = `重量${actualWeight}超出范围[${lowLimit}~${highLimit}]`;
+        resultStatus.value = false;
+        warnVoice();
         return;
       }
     }
@@ -782,7 +817,9 @@ const submitForm = async () => {
       ]
     }).then((res: any) => {
       if (res.code === 200) {
-        proxy?.$modal.msgSuccess('数据上传成功');
+        resultStatus.value = true;
+        resultMessage.value = '数据上传成功';
+        successVoice();
         // 更新historyData.value中uuid为curUUId的status为success
         historyData.value = historyData.value.map((item: any) => {
           if (item.uuid === curUUId) {
@@ -801,7 +838,7 @@ const submitForm = async () => {
           }
         });
       } else {
-        proxy?.$modal.msgError(res.msg);
+        resultMessage.value = res.msg;
       }
       loading.value = false;
     });
@@ -1073,6 +1110,18 @@ const clearHistoryData = () => {
   historyData.value = [];
   pagination.value.total = 0;
   pagination.value.currentPage = 1;
+};
+
+/**预警声音播放*/
+const warnVoice = () => {
+  // 预警声音播放
+  document.getElementById('warningAudio').play();
+};
+
+/**成功声音播放*/
+const successVoice = () => {
+  // 成功声音播放
+  document.getElementById('successAudio').play();
 };
 </script>
 

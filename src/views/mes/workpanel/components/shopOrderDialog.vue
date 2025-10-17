@@ -1,6 +1,6 @@
 <template>
   <div>
-    <el-dialog v-model="visible" :title="title" width="70%" append-to-body>
+    <el-dialog v-model="visible" :title="title" width="70%" append-to-body @opened="handleOpenDialog">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
         <el-form-item label="工单" prop="shopOrder">
           <el-input v-model="queryParams.shopOrder" placeholder="请输入工单" clearable @keyup.enter="handleQuery" />
@@ -52,14 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  listShopOrder,
-  getShopOrder,
-  delShopOrder,
-  addShopOrder,
-  updateShopOrder,
-  releaseShopOrderSfc
-} from '@/api/mes/shopOrder';
+import { listShopOrder, getShopOrder, delShopOrder, addShopOrder, updateShopOrder, releaseShopOrderSfc } from '@/api/mes/shopOrder';
 import { ShopOrderVO, ShopOrderQuery, ShopOrderForm, SfcPreviewVO } from '@/api/mes/shopOrder/types';
 import useDialog from '@/hooks/useDialog';
 
@@ -70,7 +63,9 @@ const loading = ref(true);
 const total = ref(0);
 const queryFormRef = ref<ElFormInstance>();
 const operationFormRef = ref<ElFormInstance>();
-
+const props = defineProps<{
+  podConfig: Record<string, any>;
+}>();
 const initFormData: ShopOrderForm = {
   id: undefined,
   handle: undefined,
@@ -147,10 +142,7 @@ const { queryParams, form, rules } = toRefs(data);
 const { title, visible, openDialog, closeDialog } = useDialog({
   title: '选择工单号'
 });
-const initShopOrderDialog = async (podConfig: any) => {
-  queryParams.value.resource = podConfig.resource;
-  handleQuery();
-};
+
 /** 查询工序列表 */
 const getList = async () => {
   loading.value = true;
@@ -183,7 +175,6 @@ const handleQuery = () => {
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   selectedRowData.value.id = '';
-  handleQuery();
 };
 
 /** 提交表单 */
@@ -195,15 +186,16 @@ const submitForm = () => {
     }
   });
 };
-
-onMounted(async () => {
-
-});
+const handleOpenDialog = () => {
+  resetQuery();
+  queryParams.value.resource = props?.podConfig.resource;
+  handleQuery();
+};
+onMounted(async () => {});
 
 defineExpose({
   openDialog,
-  closeDialog,
-  initShopOrderDialog
+  closeDialog
 });
 </script>
 

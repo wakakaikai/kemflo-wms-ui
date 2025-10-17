@@ -103,3 +103,15 @@ export const queryAbnormalCallScada = (query?: any) => {
     params: query
   });
 };
+
+/**
+ * 新增消息主表
+ * @param data
+ */
+export const saveEquipmentAbnormalCall = (data: MessageForm) => {
+  return request({
+    url: '/mes/message/equipmentAbnormalCall',
+    method: 'post',
+    data: data
+  });
+};

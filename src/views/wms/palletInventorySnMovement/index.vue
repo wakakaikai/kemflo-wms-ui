@@ -4,6 +4,9 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+            <el-form-item label="产品条码" prop="productSn">
+              <el-input v-model="queryParams.productSn" placeholder="请输入产品条码" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="物料编码" prop="itemCode">
               <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -91,25 +94,26 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['wms:inventoryMovement:add']">新增</el-button>
+            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['wms:palletInventorySnMovement:add']">新增</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['wms:inventoryMovement:edit']">修改</el-button>
+            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['wms:palletInventorySnMovement:edit']">修改</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['wms:inventoryMovement:remove']">删除</el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['wms:palletInventorySnMovement:remove']">删除</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:inventoryMovement:export']">导出</el-button>
+            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:palletInventorySnMovement:export']">导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
         </el-row>
       </template>
 
-      <el-table v-loading="loading" :data="inventoryMovementList" @selection-change="handleSelectionChange">
+      <el-table v-loading="loading" :data="palletInventorySnMovementList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="移动记录ID" align="center" prop="id" v-if="true" />
         <el-table-column label="移动类型" align="center" prop="moveType" />
+        <el-table-column label="产品条码" align="center" prop="productSn" />
         <el-table-column label="物料编码" align="center" prop="itemCode" />
         <el-table-column label="产品物料名称" align="center" prop="itemName" />
         <el-table-column label="批次号" align="center" prop="batchNo" />
@@ -142,10 +146,10 @@
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
-              <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:inventoryMovement:edit']"></el-button>
+              <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:palletInventorySnMovement:edit']"></el-button>
             </el-tooltip>
             <el-tooltip content="删除" placement="top">
-              <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:inventoryMovement:remove']"></el-button>
+              <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:palletInventorySnMovement:remove']"></el-button>
             </el-tooltip>
           </template>
         </el-table-column>
@@ -153,9 +157,12 @@
 
       <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
     </el-card>
-    <!-- 添加或修改库存移动记录对话框 -->
+    <!-- 添加或修改栈板SN库存移动记录对话框 -->
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" append-to-body>
-      <el-form ref="inventoryMovementFormRef" :model="form" :rules="rules" label-width="80px">
+      <el-form ref="palletInventorySnMovementFormRef" :model="form" :rules="rules" label-width="80px">
+        <el-form-item label="产品条码" prop="productSn">
+          <el-input v-model="form.productSn" placeholder="请输入产品条码" />
+        </el-form-item>
         <el-form-item label="物料编码" prop="itemCode">
           <el-input v-model="form.itemCode" placeholder="请输入物料编码" />
         </el-form-item>
@@ -244,13 +251,13 @@
   </div>
 </template>
 
-<script setup name="InventoryMovement" lang="ts">
-import { listInventoryMovement, getInventoryMovement, delInventoryMovement, addInventoryMovement, updateInventoryMovement } from '@/api/wms/inventoryMovement';
-import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } from '@/api/wms/inventoryMovement/types';
+<script setup name="PalletInventorySnMovement" lang="ts">
+import { listPalletInventorySnMovement, getPalletInventorySnMovement, delPalletInventorySnMovement, addPalletInventorySnMovement, updatePalletInventorySnMovement } from '@/api/wms/palletInventorySnMovement';
+import { PalletInventorySnMovementVO, PalletInventorySnMovementQuery, PalletInventorySnMovementForm } from '@/api/wms/palletInventorySnMovement/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
-const inventoryMovementList = ref<InventoryMovementVO[]>([]);
+const palletInventorySnMovementList = ref<PalletInventorySnMovementVO[]>([]);
 const buttonLoading = ref(false);
 const loading = ref(true);
 const showSearch = ref(true);
@@ -260,16 +267,17 @@ const multiple = ref(true);
 const total = ref(0);
 
 const queryFormRef = ref<ElFormInstance>();
-const inventoryMovementFormRef = ref<ElFormInstance>();
+const palletInventorySnMovementFormRef = ref<ElFormInstance>();
 
 const dialog = reactive<DialogOption>({
   visible: false,
   title: ''
 });
 
-const initFormData: InventoryMovementForm = {
+const initFormData: PalletInventorySnMovementForm = {
   id: undefined,
   moveType: undefined,
+  productSn: undefined,
   itemCode: undefined,
   itemName: undefined,
   batchNo: undefined,
@@ -296,12 +304,13 @@ const initFormData: InventoryMovementForm = {
   sapMaterialItem: undefined,
   remark: undefined,
 }
-const data = reactive<PageData<InventoryMovementForm, InventoryMovementQuery>>({
+const data = reactive<PageData<PalletInventorySnMovementForm, PalletInventorySnMovementQuery>>({
   form: {...initFormData},
   queryParams: {
     pageNum: 1,
     pageSize: 10,
     moveType: undefined,
+    productSn: undefined,
     itemCode: undefined,
     itemName: undefined,
     batchNo: undefined,
@@ -335,6 +344,9 @@ const data = reactive<PageData<InventoryMovementForm, InventoryMovementQuery>>({
     ],
     moveType: [
       { required: true, message: "移动类型不能为空", trigger: "change" }
+    ],
+    productSn: [
+      { required: true, message: "产品条码不能为空", trigger: "blur" }
     ],
     itemCode: [
       { required: true, message: "物料编码不能为空", trigger: "blur" }
@@ -416,11 +428,11 @@ const data = reactive<PageData<InventoryMovementForm, InventoryMovementQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 
-/** 查询库存移动记录列表 */
+/** 查询栈板SN库存移动记录列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await listInventoryMovement(queryParams.value);
-  inventoryMovementList.value = res.rows;
+  const res = await listPalletInventorySnMovement(queryParams.value);
+  palletInventorySnMovementList.value = res.rows;
   total.value = res.total;
   loading.value = false;
 }
@@ -434,7 +446,7 @@ const cancel = () => {
 /** 表单重置 */
 const reset = () => {
   form.value = {...initFormData};
-  inventoryMovementFormRef.value?.resetFields();
+  palletInventorySnMovementFormRef.value?.resetFields();
 }
 
 /** 搜索按钮操作 */
@@ -450,7 +462,7 @@ const resetQuery = () => {
 }
 
 /** 多选框选中数据 */
-const handleSelectionChange = (selection: InventoryMovementVO[]) => {
+const handleSelectionChange = (selection: PalletInventorySnMovementVO[]) => {
   ids.value = selection.map(item => item.id);
   single.value = selection.length != 1;
   multiple.value = !selection.length;
@@ -460,28 +472,28 @@ const handleSelectionChange = (selection: InventoryMovementVO[]) => {
 const handleAdd = () => {
   reset();
   dialog.visible = true;
-  dialog.title = "添加库存移动记录";
+  dialog.title = "添加栈板SN库存移动记录";
 }
 
 /** 修改按钮操作 */
-const handleUpdate = async (row?: InventoryMovementVO) => {
+const handleUpdate = async (row?: PalletInventorySnMovementVO) => {
   reset();
   const _id = row?.id || ids.value[0]
-  const res = await getInventoryMovement(_id);
+  const res = await getPalletInventorySnMovement(_id);
   Object.assign(form.value, res.data);
   dialog.visible = true;
-  dialog.title = "修改库存移动记录";
+  dialog.title = "修改栈板SN库存移动记录";
 }
 
 /** 提交按钮 */
 const submitForm = () => {
-  inventoryMovementFormRef.value?.validate(async (valid: boolean) => {
+  palletInventorySnMovementFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
       buttonLoading.value = true;
       if (form.value.id) {
-        await updateInventoryMovement(form.value).finally(() =>  buttonLoading.value = false);
+        await updatePalletInventorySnMovement(form.value).finally(() =>  buttonLoading.value = false);
       } else {
-        await addInventoryMovement(form.value).finally(() =>  buttonLoading.value = false);
+        await addPalletInventorySnMovement(form.value).finally(() =>  buttonLoading.value = false);
       }
       proxy?.$modal.msgSuccess("操作成功");
       dialog.visible = false;
@@ -491,19 +503,19 @@ const submitForm = () => {
 }
 
 /** 删除按钮操作 */
-const handleDelete = async (row?: InventoryMovementVO) => {
+const handleDelete = async (row?: PalletInventorySnMovementVO) => {
   const _ids = row?.id || ids.value;
-  await proxy?.$modal.confirm('是否确认删除库存移动记录编号为"' + _ids + '"的数据项？').finally(() => loading.value = false);
-  await delInventoryMovement(_ids);
+  await proxy?.$modal.confirm('是否确认删除栈板SN库存移动记录编号为"' + _ids + '"的数据项？').finally(() => loading.value = false);
+  await delPalletInventorySnMovement(_ids);
   proxy?.$modal.msgSuccess("删除成功");
   await getList();
 }
 
 /** 导出按钮操作 */
 const handleExport = () => {
-  proxy?.download('wms/inventoryMovement/export', {
+  proxy?.download('wms/palletInventorySnMovement/export', {
     ...queryParams.value
-  }, `inventoryMovement_${new Date().getTime()}.xlsx`)
+  }, `palletInventorySnMovement_${new Date().getTime()}.xlsx`)
 }
 
 onMounted(() => {

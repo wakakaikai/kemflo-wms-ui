@@ -45,12 +45,11 @@ export const addShopOrder = (data: ShopOrderForm) => {
  */
 export const releaseShopOrderSfc = (data: SfcPreviewVO) => {
   return request({
-    url: '/mes/shopOrder/releaseShopOrderSfc',
+    url: '/mes/shopOrder/release',
     method: 'post',
     data: data
   });
 };
-
 
 /**
  * 修改工单档案

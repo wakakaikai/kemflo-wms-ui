@@ -1,23 +1,28 @@
-export interface InventoryVO {
+export interface PalletInventoryVO {
   /**
    * 唯一ID
    */
   id: string | number;
 
   /**
-   * 材料类型: 1-物料, 2-设备
+   * 栈板编号
    */
-  itemType: number;
+  palletCode: string;
 
   /**
-   * 物料编码/设备编号
+   * 工单号
    */
-  itemCode: string;
+  workOrderNo: string;
 
   /**
-   * 产品物料名称/设备名称
+   * 物料标识卡条码
    */
-  itemName: string;
+  materialSn: string;
+
+  /**
+   * 批次号
+   */
+  batchCode: string;
 
   /**
    * 数量-非限制
@@ -45,9 +50,19 @@ export interface InventoryVO {
   unit: string;
 
   /**
+   * 料号
+   */
+  itemCode: string;
+
+  /**
+   * 产品物料名称/设备名称
+   */
+  itemName: string;
+
+  /**
    * 库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP
    */
-  inventoryType: number;
+  inventoryType: string;
 
   /**
    * 库存状态（0:非限制, 1:质检 2-冻结 3-已报废）
@@ -60,34 +75,29 @@ export interface InventoryVO {
   stockInStatus: number;
 
   /**
-   * 仓库编码
+   * 凭证年度
    */
-  warehouseCode: string;
+  materialDocYear: number;
 
   /**
-   * 仓库名称
+   * 物料凭证号
    */
-  warehouseName: string;
+  materialOrderNo: string;
 
   /**
-   * 库区编码
+   * 物料文件项次
    */
-  areaCode: string;
+  materialItem: string;
 
   /**
-   * 库区名称
+   * 生产日期
    */
-  areaName: string;
+  productDate: string;
 
   /**
-   * 库位编码
+   * 失效日期
    */
-  locationCode: string;
-
-  /**
-   * 库位名称
-   */
-  locationName: string;
+  expireDate: string;
 
   /**
    * 备注
@@ -96,26 +106,31 @@ export interface InventoryVO {
 
 }
 
-export interface InventoryForm extends BaseEntity {
+export interface PalletInventoryForm extends BaseEntity {
   /**
    * 唯一ID
    */
   id?: string | number;
 
   /**
-   * 材料类型: 1-物料, 2-设备
+   * 栈板编号
    */
-  itemType?: number;
+  palletCode?: string;
 
   /**
-   * 物料编码/设备编号
+   * 工单号
    */
-  itemCode?: string;
+  workOrderNo?: string;
 
   /**
-   * 产品物料名称/设备名称
+   * 物料标识卡条码
    */
-  itemName?: string;
+  materialSn?: string;
+
+  /**
+   * 批次号
+   */
+  batchCode?: string;
 
   /**
    * 数量-非限制
@@ -143,9 +158,19 @@ export interface InventoryForm extends BaseEntity {
   unit?: string;
 
   /**
+   * 料号
+   */
+  itemCode?: string;
+
+  /**
+   * 产品物料名称/设备名称
+   */
+  itemName?: string;
+
+  /**
    * 库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP
    */
-  inventoryType?: number;
+  inventoryType?: string;
 
   /**
    * 库存状态（0:非限制, 1:质检 2-冻结 3-已报废）
@@ -158,34 +183,29 @@ export interface InventoryForm extends BaseEntity {
   stockInStatus?: number;
 
   /**
-   * 仓库编码
+   * 凭证年度
    */
-  warehouseCode?: string;
+  materialDocYear?: number;
 
   /**
-   * 仓库名称
+   * 物料凭证号
    */
-  warehouseName?: string;
+  materialOrderNo?: string;
 
   /**
-   * 库区编码
+   * 物料文件项次
    */
-  areaCode?: string;
+  materialItem?: string;
 
   /**
-   * 库区名称
+   * 生产日期
    */
-  areaName?: string;
+  productDate?: string;
 
   /**
-   * 库位编码
+   * 失效日期
    */
-  locationCode?: string;
-
-  /**
-   * 库位名称
-   */
-  locationName?: string;
+  expireDate?: string;
 
   /**
    * 备注
@@ -194,22 +214,27 @@ export interface InventoryForm extends BaseEntity {
 
 }
 
-export interface InventoryQuery extends PageQuery {
+export interface PalletInventoryQuery extends PageQuery {
 
   /**
-   * 材料类型: 1-物料, 2-设备
+   * 栈板编号
    */
-  itemType?: number;
+  palletCode?: string;
 
   /**
-   * 物料编码/设备编号
+   * 工单号
    */
-  itemCode?: string;
+  workOrderNo?: string;
 
   /**
-   * 产品物料名称/设备名称
+   * 物料标识卡条码
    */
-  itemName?: string;
+  materialSn?: string;
+
+  /**
+   * 批次号
+   */
+  batchCode?: string;
 
   /**
    * 数量-非限制
@@ -237,9 +262,19 @@ export interface InventoryQuery extends PageQuery {
   unit?: string;
 
   /**
+   * 料号
+   */
+  itemCode?: string;
+
+  /**
+   * 产品物料名称/设备名称
+   */
+  itemName?: string;
+
+  /**
    * 库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP
    */
-  inventoryType?: number;
+  inventoryType?: string;
 
   /**
    * 库存状态（0:非限制, 1:质检 2-冻结 3-已报废）
@@ -252,34 +287,29 @@ export interface InventoryQuery extends PageQuery {
   stockInStatus?: number;
 
   /**
-   * 仓库编码
+   * 凭证年度
    */
-  warehouseCode?: string;
+  materialDocYear?: number;
 
   /**
-   * 仓库名称
+   * 物料凭证号
    */
-  warehouseName?: string;
+  materialOrderNo?: string;
 
   /**
-   * 库区编码
+   * 物料文件项次
    */
-  areaCode?: string;
+  materialItem?: string;
 
   /**
-   * 库区名称
+   * 生产日期
    */
-  areaName?: string;
+  productDate?: string;
 
   /**
-   * 库位编码
+   * 失效日期
    */
-  locationCode?: string;
-
-  /**
-   * 库位名称
-   */
-  locationName?: string;
+  expireDate?: string;
 
     /**
      * 日期范围参数

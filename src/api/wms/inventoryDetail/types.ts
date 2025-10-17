@@ -1,4 +1,4 @@
-export interface InventoryVO {
+export interface InventoryDetailVO {
   /**
    * 唯一ID
    */
@@ -18,6 +18,11 @@ export interface InventoryVO {
    * 产品物料名称/设备名称
    */
   itemName: string;
+
+  /**
+   * 批次号
+   */
+  batchCode: string;
 
   /**
    * 数量-非限制
@@ -47,7 +52,7 @@ export interface InventoryVO {
   /**
    * 库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP
    */
-  inventoryType: number;
+  inventoryType: string;
 
   /**
    * 库存状态（0:非限制, 1:质检 2-冻结 3-已报废）
@@ -90,13 +95,48 @@ export interface InventoryVO {
   locationName: string;
 
   /**
+   * 栈板编号
+   */
+  palletCode: string;
+
+  /**
+   * 业务伙伴
+   */
+  businessCode: string;
+
+  /**
+   * 业务伙伴名称
+   */
+  businessName: string;
+
+  /**
+   * 接收日期
+   */
+  receiptDate: string;
+
+  /**
+   * SAP凭证年度
+   */
+  sapMaterialDocYear: number;
+
+  /**
+   * SAP物料凭证号
+   */
+  sapMaterialOrderNo: string;
+
+  /**
+   * SAP物料文件项次
+   */
+  sapMaterialItem: string;
+
+  /**
    * 备注
    */
   remark: string;
 
 }
 
-export interface InventoryForm extends BaseEntity {
+export interface InventoryDetailForm extends BaseEntity {
   /**
    * 唯一ID
    */
@@ -118,6 +158,11 @@ export interface InventoryForm extends BaseEntity {
   itemName?: string;
 
   /**
+   * 批次号
+   */
+  batchCode?: string;
+
+  /**
    * 数量-非限制
    */
   availableQuantity?: number;
@@ -145,7 +190,7 @@ export interface InventoryForm extends BaseEntity {
   /**
    * 库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP
    */
-  inventoryType?: number;
+  inventoryType?: string;
 
   /**
    * 库存状态（0:非限制, 1:质检 2-冻结 3-已报废）
@@ -188,13 +233,48 @@ export interface InventoryForm extends BaseEntity {
   locationName?: string;
 
   /**
+   * 栈板编号
+   */
+  palletCode?: string;
+
+  /**
+   * 业务伙伴
+   */
+  businessCode?: string;
+
+  /**
+   * 业务伙伴名称
+   */
+  businessName?: string;
+
+  /**
+   * 接收日期
+   */
+  receiptDate?: string;
+
+  /**
+   * SAP凭证年度
+   */
+  sapMaterialDocYear?: number;
+
+  /**
+   * SAP物料凭证号
+   */
+  sapMaterialOrderNo?: string;
+
+  /**
+   * SAP物料文件项次
+   */
+  sapMaterialItem?: string;
+
+  /**
    * 备注
    */
   remark?: string;
 
 }
 
-export interface InventoryQuery extends PageQuery {
+export interface InventoryDetailQuery extends PageQuery {
 
   /**
    * 材料类型: 1-物料, 2-设备
@@ -212,6 +292,11 @@ export interface InventoryQuery extends PageQuery {
   itemName?: string;
 
   /**
+   * 批次号
+   */
+  batchCode?: string;
+
+  /**
    * 数量-非限制
    */
   availableQuantity?: number;
@@ -239,7 +324,7 @@ export interface InventoryQuery extends PageQuery {
   /**
    * 库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP
    */
-  inventoryType?: number;
+  inventoryType?: string;
 
   /**
    * 库存状态（0:非限制, 1:质检 2-冻结 3-已报废）
@@ -280,6 +365,41 @@ export interface InventoryQuery extends PageQuery {
    * 库位名称
    */
   locationName?: string;
+
+  /**
+   * 栈板编号
+   */
+  palletCode?: string;
+
+  /**
+   * 业务伙伴
+   */
+  businessCode?: string;
+
+  /**
+   * 业务伙伴名称
+   */
+  businessName?: string;
+
+  /**
+   * 接收日期
+   */
+  receiptDate?: string;
+
+  /**
+   * SAP凭证年度
+   */
+  sapMaterialDocYear?: number;
+
+  /**
+   * SAP物料凭证号
+   */
+  sapMaterialOrderNo?: string;
+
+  /**
+   * SAP物料文件项次
+   */
+  sapMaterialItem?: string;
 
     /**
      * 日期范围参数

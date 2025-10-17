@@ -1,6 +1,6 @@
 <template>
   <div>
-    <el-dialog v-model="visible" :title="title" width="70%" append-to-body>
+    <el-dialog v-model="visible" :title="title" width="70%" append-to-body @opened="handleOpenDialog">
       <el-form ref="queryFormRef" :model="queryParams" :rules="rules" label-width="auto">
         <el-row :gutter="24">
           <el-col :lg="10" :md="10" :sm="24" :offset="5">
@@ -19,7 +19,7 @@
           </el-col>
 
           <el-col :lg="10" :md="10" :sm="24">
-            <el-form-item label="状态" prop="plannedItemBo">
+            <el-form-item label="状态" prop="statusDesc">
               <span>{{ queryParams.statusDesc }}</span>
             </el-form-item>
           </el-col>
@@ -68,13 +68,13 @@
       </template>
     </el-dialog>
 
-    <ShopOrderDialog ref="shopOrderDialogRef" @shop-order-call-back="shopOrderCallBack" />
+    <ShopOrderDialog ref="shopOrderDialogRef" :podConfig="outPodConfig" @shop-order-call-back="shopOrderCallBack" />
     <ShopOrderSfcPreviewDialog ref="shopOrderSfcPreviewDialogRef" @sfc-preview-call-back="sfcPreviewCallBack" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { listShopOrder, releaseShopOrderSfc } from '@/api/mes/shopOrder';
+import { listShopOrder } from '@/api/mes/shopOrder';
 import { ShopOrderVO, ShopOrderQuery, ShopOrderForm, SfcPreviewVO } from '@/api/mes/shopOrder/types';
 import useDialog from '@/hooks/useDialog';
 
@@ -91,7 +91,7 @@ const sfcPreviewConfirm = ref(false);
 const total = ref(0);
 const queryFormRef = ref<ElFormInstance>();
 const operationFormRef = ref<ElFormInstance>();
-const podConfig = ref<{ [key: string]: any }>({});
+const outPodConfig = ref<{ [key: string]: any }>({});
 const initFormData: ShopOrderForm = {
   id: undefined,
   handle: undefined,
@@ -161,9 +161,11 @@ const data = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
-
+const props = defineProps<{
+  podConfig: Record<string, any>;
+}>();
 const { title, visible, openDialog, closeDialog } = useDialog({
-  title: '选择工单号'
+  title: '工单下达'
 });
 
 /** 查询工序列表 */
@@ -198,7 +200,7 @@ const handleQuery = () => {
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   selectedRowData.value.id = '';
-  handleQuery();
+  queryParams.value.plannedRouterVersion = '';
 };
 
 /** 提交表单 */
@@ -211,10 +213,9 @@ const submitForm = () => {
           shopOrder: queryParams.value.shopOrder,
           releaseQty: queryParams.value.releaseQty
         };
-        const res: any = releaseShopOrderSfc(parmas).finally(() => (loading.value = false));
-        if (res.data?.sfcVoList) {
-          queryParams.value = { ...queryParams.value, ...res?.data?.sfcVoList[0] };
-        }
+        proxy?.download('/mes/shopOrder/releaseAndDownload', parmas, `shopOrderSfc_${new Date().getTime()}.xlsx`).finally(() => {
+          loading.value = false;
+        });
         closeDialog();
         sfcPreviewConfirm.value = false;
       } else {
@@ -230,8 +231,9 @@ const openShopOrderDialog = () => {
 };
 
 const shopOrderCallBack = (data: any) => {
-  podConfig.value.shopOrder = data.shopOrder;
-  podConfig.value.shopOrderDesc = data.itemDesc;
+  resetQuery();
+  outPodConfig.value.shopOrder = data.shopOrder;
+  outPodConfig.value.shopOrderDesc = data.itemDesc;
   queryParams.value = data;
 };
 
@@ -244,10 +246,21 @@ const openShopOrderSfcPreviewDialog = () => {
 const sfcPreviewCallBack = (confirmFlag: boolean) => {
   sfcPreviewConfirm.value = confirmFlag;
 };
-
-onMounted(async () => {
-  handleQuery();
-});
+const handleOpenDialog = () => {
+  resetQuery();
+  outPodConfig.value = props.podConfig;
+  queryParams.value.shopOrder = props.podConfig.shopOrder;
+  if (queryParams.value.shopOrder) {
+    listShopOrder({
+      pageNum: 0,
+      pageSize: 10,
+      shopOrder: queryParams.value.shopOrder
+    }).then((res) => {
+      queryParams.value = res.rows[0];
+    });
+  }
+};
+onMounted(async () => {});
 
 defineExpose({
   openDialog,

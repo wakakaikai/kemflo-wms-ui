@@ -36,16 +36,17 @@
           <el-col :span="1.5">
             <el-button v-hasPermi="['wms:pallet:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">删除</el-button>
           </el-col>
-
-          <el-button v-hasPermi="['wms:pallet:edit']" color="#722ED1" plain :disabled="multiple" @click="handleEmpty()" class="empty-btn">
+          <el-button v-hasPermi="['wms:pallet:edit']" color="#ff4d4f" plain @click="handleEmpty()" class="empty-btn">
             <template #icon>
               <svg-icon icon-class="empty" class="icon-empty" />
             </template>
             清空
           </el-button>
-
           <el-col :span="1.5">
             <el-button v-hasPermi="['wms:pallet:export']" type="warning" plain icon="Download" @click="handleExport">导出</el-button>
+          </el-col>
+          <el-col :span="1.5">
+            <el-button v-hasPermi="['wms:pallet:release']" type="warning" plain icon="Download" @click="handleReleaseExport" color="#1890ff" class="release-btn"> 下达 </el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @query-table="getList"></right-toolbar>
         </el-row>
@@ -135,6 +136,21 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 添加下达栈板信息对话框 -->
+    <el-dialog v-model="releaseDialog.visible" :title="releaseDialog.title" width="500px" append-to-body>
+      <el-form ref="palletFormRef" :model="queryParams" :rules="rules" label-width="auto">
+        <el-form-item label="下达数量" prop="releaseQty">
+          <el-input-number v-model="queryParams.releaseQty" placeholder="请输入下达数量" style="width: 50%" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="cancelRelease">取 消</el-button>
+          <el-button :loading="buttonLoading" type="primary" @click="releasePallet">确 定</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -167,7 +183,7 @@ const dialog = reactive<DialogOption>({
   visible: false,
   title: ''
 });
-const inventoryDialog = reactive<DialogOption>({
+const releaseDialog = reactive<DialogOption>({
   visible: false,
   title: ''
 });
@@ -192,7 +208,8 @@ const data = reactive<PageData<PalletForm, PalletQuery>>({
   },
   rules: {
     id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
-    palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'blur' }]
+    palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'blur' }],
+    releaseQty: [{ required: true, message: '下达数量不能为空', trigger: 'blur' }]
   }
 });
 
@@ -339,6 +356,39 @@ const handleExport = () => {
     `pallet_${new Date().getTime()}.xlsx`
   );
 };
+/** 确认下达按钮操作 */
+const releasePallet = async (row?: PalletVO) => {
+  palletFormRef.value?.validate(async (valid: boolean) => {
+    if (valid) {
+      proxy
+        ?.download(
+          'wms/pallet/release',
+          {
+            ...queryParams.value
+          },
+          `pallet_${new Date().getTime()}.xlsx`
+        )
+        .then((res) => {
+          reset();
+          proxy?.$modal.msgSuccess('下达成功');
+          releaseDialog.visible = false;
+          getList();
+        });
+    }
+  });
+};
+/** 下取消达按钮操作 */
+const cancelRelease = () => {
+  reset();
+  releaseDialog.visible = false;
+};
+
+/** 下达按钮操作 */
+const handleReleaseExport = () => {
+  reset();
+  releaseDialog.visible = true;
+  releaseDialog.title = '下达栈板';
+};
 
 onMounted(() => {
   getList();
@@ -348,6 +398,25 @@ onMounted(() => {
 <style scoped>
 .icon-path {
   fill: currentColor;
+}
+.release-btn {
+  color: #1890ff !important;
+  border-color: rgba(24, 144, 255, 0.3) !important;
+}
+
+.release-btn:not(.is-disabled):hover {
+  background-color: #1890ff !important;
+  color: white !important;
+}
+
+.empty-btn {
+  color: #ff4d4f !important;
+  border-color: rgba(255, 77, 79, 0.3) !important;
+}
+
+.empty-btn:not(.is-disabled):hover {
+  background-color: #ff4d4f !important;
+  color: white !important;
 }
 
 /* 悬停、激活、聚焦状态 - 白色 */

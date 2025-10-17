@@ -175,8 +175,8 @@
     <OperationDialog ref="operationDialogRef" @operation-call-back="operationCallBack" />
     <ResourceDialog ref="resourceDialogRef" @resource-call-back="resourceCallBack" />
     <WorkCenterDialog ref="workCenterDialogRef" @work-center-call-back="workCenterCallBack" />
-    <ShopOrderDialog ref="shopOrderDialogRef" @shop-order-call-back="shopOrderCallBack" />
-    <ReleaseShopOrderDialog ref="releaseShopOrderDialogRef" @release-shop-order-call-back="releaseShopOrderCallBack" />
+    <ShopOrderDialog ref="shopOrderDialogRef" :podConfig="podConfig" @shop-order-call-back="shopOrderCallBack" />
+    <ReleaseShopOrderDialog ref="releaseShopOrderDialogRef" :podConfig="podConfig" @release-shop-order-call-back="releaseShopOrderCallBack" />
 
     <!-- 固定在右侧的呼叫按钮组 -->
     <AbnormalCall @material-call="handleMaterialCall" @equipment-call="handleEquipmentCall" @quality-call="handleQualityCall" @other-call="handleOtherCall" @cancel="handleCancel"></AbnormalCall>

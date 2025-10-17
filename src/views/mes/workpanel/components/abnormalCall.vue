@@ -10,7 +10,7 @@
         <div class="indicator-bar"></div>
       </el-button>
 
-      <!-- 设备呼叫 (橙色) -->
+      <!--  (橙色) -->
       <el-button type="warning" class="call-btn equipment-call relative" @click="handleEquipmentCall">
         <el-icon class="mr-1">
           <Setting />
