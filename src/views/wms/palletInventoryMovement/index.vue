@@ -3,12 +3,12 @@
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="物料编码" prop="itemCode">
               <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="产品物料名称" prop="itemName">
-              <el-input v-model="queryParams.itemName" placeholder="请输入产品物料名称" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="物料名称" prop="itemName">
+              <el-input v-model="queryParams.itemName" placeholder="请输入物料名称" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="批次号" prop="batchNo">
               <el-input v-model="queryParams.batchNo" placeholder="请输入批次号" clearable @keyup.enter="handleQuery" />
@@ -19,66 +19,37 @@
             <el-form-item label="关联的移动ID" prop="relatedMoveId">
               <el-input v-model="queryParams.relatedMoveId" placeholder="请输入关联的移动ID" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="数量" prop="quantity">
-              <el-input v-model="queryParams.quantity" placeholder="请输入数量" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="基本单位" prop="unit">
-              <el-input v-model="queryParams.unit" placeholder="请输入基本单位" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="单据编号" prop="sourceDocCode">
               <el-input v-model="queryParams.sourceDocCode" placeholder="请输入单据编号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="仓库编码" prop="warehouseCode">
               <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="仓库名称" prop="warehouseName">
-              <el-input v-model="queryParams.warehouseName" placeholder="请输入仓库名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="库区编码" prop="areaCode">
               <el-input v-model="queryParams.areaCode" placeholder="请输入库区编码" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="库区名称" prop="areaName">
-              <el-input v-model="queryParams.areaName" placeholder="请输入库区名称" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="库位编码" prop="locationCode">
               <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="库位名称" prop="locationName">
-              <el-input v-model="queryParams.locationName" placeholder="请输入库位名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="栈板编号" prop="palletCode">
               <el-input v-model="queryParams.palletCode" placeholder="请输入栈板编号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="打包编号" prop="packingCode">
-              <el-input v-model="queryParams.packingCode" placeholder="请输入打包编号" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
-              <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" clearable >
-                <el-option v-for="dict in wms_inventory_type" :key="dict.value" :label="dict.label" :value="dict.value"/>
+              <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" clearable>
+                <el-option v-for="dict in wms_inventory_type" :key="dict.value" :label="dict.label" :value="dict.value" />
               </el-select>
             </el-form-item>
             <el-form-item label="移动时间" prop="moveDate">
-              <el-date-picker clearable
-                v-model="queryParams.moveDate"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择移动时间"
-              />
+              <el-date-picker clearable v-model="queryParams.moveDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择移动时间" />
             </el-form-item>
             <el-form-item label="业务伙伴" prop="businessCode">
               <el-input v-model="queryParams.businessCode" placeholder="请输入业务伙伴" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="业务伙伴名称" prop="businessName">
-              <el-input v-model="queryParams.businessName" placeholder="请输入业务伙伴名称" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="SAP凭证年度" prop="sapMaterialDocYear">
               <el-input v-model="queryParams.sapMaterialDocYear" placeholder="请输入SAP凭证年度" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="SAP物料凭证号" prop="sapMaterialOrderNo">
               <el-input v-model="queryParams.sapMaterialOrderNo" placeholder="请输入SAP物料凭证号" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="SAP物料文件项次" prop="sapMaterialItem">
-              <el-input v-model="queryParams.sapMaterialItem" placeholder="请输入SAP物料文件项次" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -113,7 +84,7 @@
         <el-table-column label="移动记录ID" align="center" prop="id" v-if="true" />
         <el-table-column label="移动类型" align="center" prop="moveType" />
         <el-table-column label="物料编码" align="center" prop="itemCode" />
-        <el-table-column label="产品物料名称" align="center" prop="itemName" />
+        <el-table-column label="物料名称" align="center" prop="itemName" />
         <el-table-column label="批次号" align="center" prop="batchNo" />
         <el-table-column label="库存方向" align="center" prop="inventoryDirection" />
         <el-table-column label="关联的移动ID" align="center" prop="relatedMoveId" />
@@ -131,7 +102,7 @@
         <el-table-column label="打包编号" align="center" prop="packingCode" />
         <el-table-column label="特殊库存标识" align="center" prop="specialInventoryFlag">
           <template #default="scope">
-            <dict-tag :options="wms_inventory_type" :value="scope.row.specialInventoryFlag"/>
+            <dict-tag :options="wms_inventory_type" :value="scope.row.specialInventoryFlag" />
           </template>
         </el-table-column>
         <el-table-column label="移动时间" align="center" prop="moveDate" width="180">
@@ -165,8 +136,8 @@
         <el-form-item label="物料编码" prop="itemCode">
           <el-input v-model="form.itemCode" placeholder="请输入物料编码" />
         </el-form-item>
-        <el-form-item label="产品物料名称" prop="itemName">
-          <el-input v-model="form.itemName" placeholder="请输入产品物料名称" />
+        <el-form-item label="物料名称" prop="itemName">
+          <el-input v-model="form.itemName" placeholder="请输入物料名称" />
         </el-form-item>
         <el-form-item label="批次号" prop="batchNo">
           <el-input v-model="form.batchNo" placeholder="请输入批次号" />
@@ -212,21 +183,11 @@
         </el-form-item>
         <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
           <el-select v-model="form.specialInventoryFlag" placeholder="请选择特殊库存标识">
-            <el-option
-                v-for="dict in wms_inventory_type"
-                :key="dict.value"
-                :label="dict.label"
-                :value="dict.value"
-            ></el-option>
+            <el-option v-for="dict in wms_inventory_type" :key="dict.value" :label="dict.label" :value="dict.value"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="移动时间" prop="moveDate">
-          <el-date-picker clearable
-            v-model="form.moveDate"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="请选择移动时间">
-          </el-date-picker>
+          <el-date-picker clearable v-model="form.moveDate" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择移动时间"> </el-date-picker>
         </el-form-item>
         <el-form-item label="业务伙伴" prop="businessCode">
           <el-input v-model="form.businessCode" placeholder="请输入业务伙伴" />
@@ -260,6 +221,7 @@
 <script setup name="PalletInventoryMovement" lang="ts">
 import { listPalletInventoryMovement, getPalletInventoryMovement, delPalletInventoryMovement, addPalletInventoryMovement, updatePalletInventoryMovement } from '@/api/wms/palletInventoryMovement';
 import { PalletInventoryMovementVO, PalletInventoryMovementQuery, PalletInventoryMovementForm } from '@/api/wms/palletInventoryMovement/types';
+import { dayjs } from 'element-plus';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_type } = toRefs<any>(proxy?.useDict('wms_inventory_type'));
@@ -308,10 +270,10 @@ const initFormData: PalletInventoryMovementForm = {
   sapMaterialDocYear: undefined,
   sapMaterialOrderNo: undefined,
   sapMaterialItem: undefined,
-  remark: undefined,
-}
+  remark: undefined
+};
 const data = reactive<PageData<PalletInventoryMovementForm, PalletInventoryMovementQuery>>({
-  form: {...initFormData},
+  form: { ...initFormData },
   queryParams: {
     pageNum: 1,
     pageSize: 10,
@@ -340,91 +302,36 @@ const data = reactive<PageData<PalletInventoryMovementForm, PalletInventoryMovem
     sapMaterialDocYear: undefined,
     sapMaterialOrderNo: undefined,
     sapMaterialItem: undefined,
-    params: {
-    }
+    params: {}
   },
   rules: {
-    id: [
-      { required: true, message: "移动记录ID不能为空", trigger: "blur" }
-    ],
-    moveType: [
-      { required: true, message: "移动类型不能为空", trigger: "change" }
-    ],
-    itemCode: [
-      { required: true, message: "物料编码不能为空", trigger: "blur" }
-    ],
-    itemName: [
-      { required: true, message: "产品物料名称不能为空", trigger: "blur" }
-    ],
-    batchNo: [
-      { required: true, message: "批次号不能为空", trigger: "blur" }
-    ],
-    inventoryDirection: [
-      { required: true, message: "库存方向不能为空", trigger: "blur" }
-    ],
-    relatedMoveId: [
-      { required: true, message: "关联的移动ID不能为空", trigger: "blur" }
-    ],
-    quantity: [
-      { required: true, message: "数量不能为空", trigger: "blur" }
-    ],
-    unit: [
-      { required: true, message: "基本单位不能为空", trigger: "blur" }
-    ],
-    sourceDocType: [
-      { required: true, message: "单据类型不能为空", trigger: "change" }
-    ],
-    sourceDocCode: [
-      { required: true, message: "单据编号不能为空", trigger: "blur" }
-    ],
-    warehouseCode: [
-      { required: true, message: "仓库编码不能为空", trigger: "blur" }
-    ],
-    warehouseName: [
-      { required: true, message: "仓库名称不能为空", trigger: "blur" }
-    ],
-    areaCode: [
-      { required: true, message: "库区编码不能为空", trigger: "blur" }
-    ],
-    areaName: [
-      { required: true, message: "库区名称不能为空", trigger: "blur" }
-    ],
-    locationCode: [
-      { required: true, message: "库位编码不能为空", trigger: "blur" }
-    ],
-    locationName: [
-      { required: true, message: "库位名称不能为空", trigger: "blur" }
-    ],
-    palletCode: [
-      { required: true, message: "栈板编号不能为空", trigger: "blur" }
-    ],
-    packingCode: [
-      { required: true, message: "打包编号不能为空", trigger: "blur" }
-    ],
-    specialInventoryFlag: [
-      { required: true, message: "特殊库存标识不能为空", trigger: "change" }
-    ],
-    moveDate: [
-      { required: true, message: "移动时间不能为空", trigger: "blur" }
-    ],
-    businessCode: [
-      { required: true, message: "业务伙伴不能为空", trigger: "blur" }
-    ],
-    businessName: [
-      { required: true, message: "业务伙伴名称不能为空", trigger: "blur" }
-    ],
-    sapMaterialDocYear: [
-      { required: true, message: "SAP凭证年度不能为空", trigger: "blur" }
-    ],
-    sapMaterialOrderNo: [
-      { required: true, message: "SAP物料凭证号不能为空", trigger: "blur" }
-    ],
-    sapMaterialItem: [
-      { required: true, message: "SAP物料文件项次不能为空", trigger: "blur" }
-    ],
-    remark: [
-      { required: true, message: "备注不能为空", trigger: "blur" }
-    ],
+    id: [{ required: true, message: '移动记录ID不能为空', trigger: 'blur' }],
+    moveType: [{ required: true, message: '移动类型不能为空', trigger: 'change' }],
+    itemCode: [{ required: true, message: '物料编码不能为空', trigger: 'blur' }],
+    itemName: [{ required: true, message: '物料名称不能为空', trigger: 'blur' }],
+    batchNo: [{ required: true, message: '批次号不能为空', trigger: 'blur' }],
+    inventoryDirection: [{ required: true, message: '库存方向不能为空', trigger: 'blur' }],
+    relatedMoveId: [{ required: true, message: '关联的移动ID不能为空', trigger: 'blur' }],
+    quantity: [{ required: true, message: '数量不能为空', trigger: 'blur' }],
+    unit: [{ required: true, message: '基本单位不能为空', trigger: 'blur' }],
+    sourceDocType: [{ required: true, message: '单据类型不能为空', trigger: 'change' }],
+    sourceDocCode: [{ required: true, message: '单据编号不能为空', trigger: 'blur' }],
+    warehouseCode: [{ required: true, message: '仓库编码不能为空', trigger: 'blur' }],
+    warehouseName: [{ required: true, message: '仓库名称不能为空', trigger: 'blur' }],
+    areaCode: [{ required: true, message: '库区编码不能为空', trigger: 'blur' }],
+    areaName: [{ required: true, message: '库区名称不能为空', trigger: 'blur' }],
+    locationCode: [{ required: true, message: '库位编码不能为空', trigger: 'blur' }],
+    locationName: [{ required: true, message: '库位名称不能为空', trigger: 'blur' }],
+    palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'blur' }],
+    packingCode: [{ required: true, message: '打包编号不能为空', trigger: 'blur' }],
+    specialInventoryFlag: [{ required: true, message: '特殊库存标识不能为空', trigger: 'change' }],
+    moveDate: [{ required: true, message: '移动时间不能为空', trigger: 'blur' }],
+    businessCode: [{ required: true, message: '业务伙伴不能为空', trigger: 'blur' }],
+    businessName: [{ required: true, message: '业务伙伴名称不能为空', trigger: 'blur' }],
+    sapMaterialDocYear: [{ required: true, message: 'SAP凭证年度不能为空', trigger: 'blur' }],
+    sapMaterialOrderNo: [{ required: true, message: 'SAP物料凭证号不能为空', trigger: 'blur' }],
+    sapMaterialItem: [{ required: true, message: 'SAP物料文件项次不能为空', trigger: 'blur' }],
+    remark: [{ required: true, message: '备注不能为空', trigger: 'blur' }]
   }
 });
 
@@ -433,59 +340,62 @@ const { queryParams, form, rules } = toRefs(data);
 /** 查询栈板库存移动记录列表 */
 const getList = async () => {
   loading.value = true;
+  if (queryParams.value.moveDate) {
+    queryParams.value.moveDate = dayjs(queryParams.value.moveDate).format('YYYY-MM-DD HH:mm:ss');
+  }
   const res = await listPalletInventoryMovement(queryParams.value);
   palletInventoryMovementList.value = res.rows;
   total.value = res.total;
   loading.value = false;
-}
+};
 
 /** 取消按钮 */
 const cancel = () => {
   reset();
   dialog.visible = false;
-}
+};
 
 /** 表单重置 */
 const reset = () => {
-  form.value = {...initFormData};
+  form.value = { ...initFormData };
   palletInventoryMovementFormRef.value?.resetFields();
-}
+};
 
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
   getList();
-}
+};
 
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   handleQuery();
-}
+};
 
 /** 多选框选中数据 */
 const handleSelectionChange = (selection: PalletInventoryMovementVO[]) => {
-  ids.value = selection.map(item => item.id);
+  ids.value = selection.map((item) => item.id);
   single.value = selection.length != 1;
   multiple.value = !selection.length;
-}
+};
 
 /** 新增按钮操作 */
 const handleAdd = () => {
   reset();
   dialog.visible = true;
-  dialog.title = "添加栈板库存移动记录";
-}
+  dialog.title = '添加栈板库存移动记录';
+};
 
 /** 修改按钮操作 */
 const handleUpdate = async (row?: PalletInventoryMovementVO) => {
   reset();
-  const _id = row?.id || ids.value[0]
+  const _id = row?.id || ids.value[0];
   const res = await getPalletInventoryMovement(_id);
   Object.assign(form.value, res.data);
   dialog.visible = true;
-  dialog.title = "修改栈板库存移动记录";
-}
+  dialog.title = '修改栈板库存移动记录';
+};
 
 /** 提交按钮 */
 const submitForm = () => {
@@ -493,32 +403,36 @@ const submitForm = () => {
     if (valid) {
       buttonLoading.value = true;
       if (form.value.id) {
-        await updatePalletInventoryMovement(form.value).finally(() =>  buttonLoading.value = false);
+        await updatePalletInventoryMovement(form.value).finally(() => (buttonLoading.value = false));
       } else {
-        await addPalletInventoryMovement(form.value).finally(() =>  buttonLoading.value = false);
+        await addPalletInventoryMovement(form.value).finally(() => (buttonLoading.value = false));
       }
-      proxy?.$modal.msgSuccess("操作成功");
+      proxy?.$modal.msgSuccess('操作成功');
       dialog.visible = false;
       await getList();
     }
   });
-}
+};
 
 /** 删除按钮操作 */
 const handleDelete = async (row?: PalletInventoryMovementVO) => {
   const _ids = row?.id || ids.value;
-  await proxy?.$modal.confirm('是否确认删除栈板库存移动记录编号为"' + _ids + '"的数据项？').finally(() => loading.value = false);
+  await proxy?.$modal.confirm('是否确认删除栈板库存移动记录编号为"' + _ids + '"的数据项？').finally(() => (loading.value = false));
   await delPalletInventoryMovement(_ids);
-  proxy?.$modal.msgSuccess("删除成功");
+  proxy?.$modal.msgSuccess('删除成功');
   await getList();
-}
+};
 
 /** 导出按钮操作 */
 const handleExport = () => {
-  proxy?.download('wms/palletInventoryMovement/export', {
-    ...queryParams.value
-  }, `palletInventoryMovement_${new Date().getTime()}.xlsx`)
-}
+  proxy?.download(
+    'wms/palletInventoryMovement/export',
+    {
+      ...queryParams.value
+    },
+    `palletInventoryMovement_${new Date().getTime()}.xlsx`
+  );
+};
 
 onMounted(() => {
   getList();

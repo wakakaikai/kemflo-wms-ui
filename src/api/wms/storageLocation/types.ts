@@ -20,6 +20,16 @@ export interface StorageLocationVO {
   areaId: string | number;
 
   /**
+   * 库区编码
+   */
+  areaCode: string;
+
+  /**
+   * 仓库编码
+   */
+  warehouseCode: string;
+
+  /**
    * 面积
    */
   area: number;
@@ -77,6 +87,16 @@ export interface StorageLocationForm extends BaseEntity {
   areaId?: string | number;
 
   /**
+   * 库区编码
+   */
+  areaCode: string;
+
+  /**
+   * 仓库编码
+   */
+  warehouseCode: string;
+
+  /**
    * 面积
    */
   area?: number;
@@ -127,6 +147,16 @@ export interface StorageLocationQuery extends PageQuery {
    * 库区ID
    */
   areaId?: string | number;
+
+  /**
+   * 库区编码
+   */
+  areaCode: string;
+
+  /**
+   * 仓库编码
+   */
+  warehouseCode: string;
 
   /**
    * 面积

@@ -3,18 +3,9 @@
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="物料编码" prop="itemCode">
               <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="产品物料名称" prop="itemName">
-              <el-input v-model="queryParams.itemName" placeholder="请输入产品物料名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数量" prop="quantity">
-              <el-input v-model="queryParams.quantity" placeholder="请输入数量" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="单位" prop="unit">
-              <el-input v-model="queryParams.unit" placeholder="请输入单位" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="供应商批次号" prop="supplierBatchNo">
               <el-input v-model="queryParams.supplierBatchNo" placeholder="请输入供应商批次号" clearable @keyup.enter="handleQuery" />
@@ -25,9 +16,6 @@
             <el-form-item label="根批次号" prop="rootBatchCode">
               <el-input v-model="queryParams.rootBatchCode" placeholder="请输入根批次号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="序号" prop="sequence">
-              <el-input v-model="queryParams.sequence" placeholder="请输入序号" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="接收日期" prop="receivedDate">
               <el-date-picker clearable v-model="queryParams.receivedDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
             </el-form-item>
@@ -37,29 +25,17 @@
             <el-form-item label="业务伙伴" prop="businessCode">
               <el-input v-model="queryParams.businessCode" placeholder="请输入业务伙伴" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="业务伙伴名称" prop="businessName">
-              <el-input v-model="queryParams.businessName" placeholder="请输入业务伙伴名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="来源单号" prop="orderNo">
               <el-input v-model="queryParams.orderNo" placeholder="请输入来源单号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="仓库编码" prop="warehouseCode">
               <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="仓库名称" prop="warehouseName">
-              <el-input v-model="queryParams.warehouseName" placeholder="请输入仓库名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="库区编码" prop="areaCode">
               <el-input v-model="queryParams.areaCode" placeholder="请输入库区编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="库区名称" prop="areaName">
-              <el-input v-model="queryParams.areaName" placeholder="请输入库区名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="库位编码" prop="locationCode">
               <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="库位名称" prop="locationName">
-              <el-input v-model="queryParams.locationName" placeholder="请输入库位名称" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -91,9 +67,9 @@
 
       <el-table v-loading="loading" :data="batchList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />
+<!--        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />-->
         <el-table-column label="物料编码" align="center" prop="itemCode" />
-        <el-table-column label="产品物料名称" align="center" prop="itemName" />
+        <el-table-column label="物料名称" align="center" prop="itemName"  />
         <el-table-column label="数量" align="center" prop="quantity" />
         <el-table-column label="单位" align="center" prop="unit" />
         <el-table-column label="供应商批次号" align="center" prop="supplierBatchNo" />
@@ -142,8 +118,8 @@
         <el-form-item label="物料编码" prop="itemCode">
           <el-input v-model="form.itemCode" placeholder="请输入物料编码" />
         </el-form-item>
-        <el-form-item label="产品物料名称" prop="itemName">
-          <el-input v-model="form.itemName" placeholder="请输入产品物料名称" />
+        <el-form-item label="物料名称" prop="itemName">
+          <el-input v-model="form.itemName" placeholder="请输入物料名称" />
         </el-form-item>
         <el-form-item label="数量" prop="quantity">
           <el-input v-model="form.quantity" placeholder="请输入数量" />
@@ -213,6 +189,7 @@
 <script setup name="Batch" lang="ts">
 import { listBatch, getBatch, delBatch, addBatch, updateBatch } from '@/api/wms/batch';
 import { BatchVO, BatchQuery, BatchForm } from '@/api/wms/batch/types';
+import { dayjs } from 'element-plus';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
@@ -289,7 +266,7 @@ const data = reactive<PageData<BatchForm, BatchQuery>>({
   rules: {
     id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
     itemCode: [{ required: true, message: '物料编码不能为空', trigger: 'blur' }],
-    itemName: [{ required: true, message: '产品物料名称不能为空', trigger: 'blur' }],
+    itemName: [{ required: true, message: '物料名称不能为空', trigger: 'blur' }],
     quantity: [{ required: true, message: '数量不能为空', trigger: 'blur' }],
     unit: [{ required: true, message: '单位不能为空', trigger: 'blur' }],
     supplierBatchNo: [{ required: true, message: '供应商批次号不能为空', trigger: 'blur' }],
@@ -317,6 +294,12 @@ const { queryParams, form, rules } = toRefs(data);
 /** 查询批次列表 */
 const getList = async () => {
   loading.value = true;
+  if (queryParams.value.receivedDate) {
+    queryParams.value.receivedDate = dayjs(queryParams.value.receivedDate).format('YYYY-MM-DD HH:mm:ss');
+  }
+  if (queryParams.value.expirationDate) {
+    queryParams.value.expirationDate = dayjs(queryParams.value.expirationDate).format('YYYY-MM-DD HH:mm:ss');
+  }
   const res = await listBatch(queryParams.value);
   batchList.value = res.rows;
   total.value = res.total;

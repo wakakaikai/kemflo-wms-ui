@@ -149,3 +149,15 @@ export const receivePacking = (data: PackingExtVO) => {
     data: data
   });
 };
+
+/**
+ * 保存栈板退料记录
+ * @param data
+ */
+export const returnPacking = (data: PackingExtVO) => {
+  return request({
+    url: '/wms/packing/return',
+    method: 'put',
+    data: data
+  });
+};

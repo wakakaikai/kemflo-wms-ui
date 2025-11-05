@@ -7,9 +7,9 @@
             <el-form-item label="物料编码" prop="itemCode">
               <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <!--            <el-form-item label="物料名称" prop="itemName">
+            <el-form-item label="物料名称" prop="itemName">
               <el-input v-model="queryParams.itemName" placeholder="请输入物料名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>-->
+            </el-form-item>
             <el-form-item label="批次号" prop="batchCode">
               <el-input v-model="queryParams.batchCode" placeholder="请输入批次号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -21,6 +21,9 @@
             </el-form-item>
             <el-form-item label="库位编码" prop="locationCode">
               <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="接收日期" prop="receiptDate">
+              <el-date-picker clearable v-model="queryParams.receiptDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -35,16 +38,16 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['wms:inventoryDetail:add']"> 新增 </el-button>
-          </el-col>
-<!--          <el-col :span="1.5">
-            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['wms:inventoryDetail:edit']">修改 </el-button>
+            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['wms:inventoryDetail:add']">新增</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['wms:inventoryDetail:remove']">删除 </el-button>
-          </el-col>-->
+            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['wms:inventoryDetail:edit']">修改</el-button>
+          </el-col>
           <el-col :span="1.5">
-            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:inventoryDetail:export']">导出 </el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['wms:inventoryDetail:remove']">删除</el-button>
+          </el-col>
+          <el-col :span="1.5">
+            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:inventoryDetail:export']">导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
         </el-row>
@@ -59,26 +62,18 @@
         <el-table-column label="质检数量" align="center" prop="inspectionQuantity" />
         <el-table-column label="冻结数量" align="center" prop="blockedQuantity" />
         <el-table-column label="单位" align="center" prop="unit" />
-        <el-table-column label="特殊库存标识" align="center" prop="specialInventoryFlag">
-          <template #default="scope">
-            <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
-          </template>
-        </el-table-column>
         <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
         <el-table-column label="库区编码" align="center" prop="areaCode" />
         <el-table-column label="库位编码" align="center" prop="locationCode" />
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
-<!--            <el-tooltip content="修改" placement="top">
-              <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:inventoryDetail:edit']">修改 </el-button>
-            </el-tooltip>-->
-<!--            <el-tooltip content="删除" placement="top">
-              <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:inventoryDetail:remove']">删除 </el-button>
-            </el-tooltip>-->
-            <!--            <el-tooltip content="移库" placement="top">
-              <el-button link type="primary" icon="Position" @click="handleTransfer(scope.row)" v-hasPermi="['wms:inventoryDetail:transfer']">移库</el-button>
-            </el-tooltip>-->
+            <el-tooltip content="修改" placement="top">
+              <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:inventoryDetail:edit']"></el-button>
+            </el-tooltip>
+            <el-tooltip content="删除" placement="top">
+              <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:inventoryDetail:remove']"></el-button>
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>
@@ -89,33 +84,43 @@
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" append-to-body>
       <el-form ref="inventoryDetailFormRef" :model="form" :rules="rules" label-width="auto">
         <el-form-item label="物料编码" prop="itemCode">
-          <el-input v-model="form.itemCode" placeholder="请输入物料编码" clearable>
-            <template #append>
-              <el-button icon="Search" @click="showItemDialog()"></el-button>
-            </template>
-          </el-input>
+          <el-input v-model="form.itemCode" placeholder="请输入物料编码" />
         </el-form-item>
-        <el-form-item label="库存类型" prop="inventoryType">
-          <el-select v-model="form.inventoryType" placeholder="请选择库存类型" style="width: 100%">
-            <el-option label="非限制库存" value="N"></el-option>
-            <el-option label="质检库存" value="X"></el-option>
-            <el-option label="冻结库存" value="S"></el-option>
-          </el-select>
+        <el-form-item label="物料名称" prop="itemName">
+          <el-input v-model="form.itemName" placeholder="请输入物料名称" />
         </el-form-item>
-        <el-form-item label="数量" prop="quantity">
-          <el-input-number v-model="form.quantity" placeholder="请输入非限制数量" style="width: 100%" />
+        <el-form-item label="批次号" prop="batchCode">
+          <el-input v-model="form.batchCode" placeholder="请输入批次号" />
+        </el-form-item>
+        <el-form-item label="非限制数量" prop="availableQuantity">
+          <el-input v-model="form.availableQuantity" placeholder="请输入非限制数量" />
+        </el-form-item>
+        <el-form-item label="质检数量" prop="inspectionQuantity">
+          <el-input v-model="form.inspectionQuantity" placeholder="请输入质检数量" />
+        </el-form-item>
+        <el-form-item label="冻结数量" prop="blockedQuantity">
+          <el-input v-model="form.blockedQuantity" placeholder="请输入冻结数量" />
+        </el-form-item>
+        <el-form-item label="单位" prop="unit">
+          <el-input v-model="form.unit" placeholder="请输入单位" />
+        </el-form-item>
+        <el-form-item label="仓库编码" prop="warehouseCode">
+          <el-input v-model="form.warehouseCode" placeholder="请输入仓库编码" />
+        </el-form-item>
+        <el-form-item label="仓库名称" prop="warehouseName">
+          <el-input v-model="form.warehouseName" placeholder="请输入仓库名称" />
+        </el-form-item>
+        <el-form-item label="库区编码" prop="areaCode">
+          <el-input v-model="form.areaCode" placeholder="请输入库区编码" />
+        </el-form-item>
+        <el-form-item label="库区名称" prop="areaName">
+          <el-input v-model="form.areaName" placeholder="请输入库区名称" />
         </el-form-item>
         <el-form-item label="库位编码" prop="locationCode">
-          <el-input v-model="form.locationCode" placeholder="请输入库位编码" clearable>
-            <template #append>
-              <el-button icon="Search" @click="showStorageLocationDialog()"></el-button>
-            </template>
-          </el-input>
+          <el-input v-model="form.locationCode" placeholder="请输入库位编码" />
         </el-form-item>
-        <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
-          <el-select v-model="form.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable>
-            <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
-          </el-select>
+        <el-form-item label="库位名称" prop="locationName">
+          <el-input v-model="form.locationName" placeholder="请输入库位名称" />
         </el-form-item>
         <el-form-item label="业务伙伴" prop="businessCode">
           <el-input v-model="form.businessCode" placeholder="请输入业务伙伴" />
@@ -124,7 +129,7 @@
           <el-input v-model="form.businessName" placeholder="请输入业务伙伴名称" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" />
+          <el-input v-model="form.remark" placeholder="请输入备注" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -134,22 +139,15 @@
         </div>
       </template>
     </el-dialog>
-
-    <!-- 库位选择对话框 -->
-    <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
-    <ItemDialog ref="itemDialogRef" @item-select-call-back="itemSelectCallBack" />
   </div>
 </template>
 
 <script setup name="InventoryDetail" lang="ts">
-import { addInventoryDetail, delInventoryDetail, getInventoryDetail, listInventoryDetail, updateInventoryDetail } from '@/api/wms/inventoryDetail';
-import { InventoryDetailForm, InventoryDetailQuery, InventoryDetailVO } from '@/api/wms/inventoryDetail/types';
-import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
-import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
-import { ref } from 'vue';
+import { listInventoryDetail, getInventoryDetail, delInventoryDetail, addInventoryDetail, updateInventoryDetail } from '@/api/wms/inventoryDetail';
+import { InventoryDetailVO, InventoryDetailQuery, InventoryDetailForm } from '@/api/wms/inventoryDetail/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_inventory_special_flag, wms_inventory_type } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag', 'wms_inventory_type'));
+const { wms_inventory_status, wms_stock_in_status, wms_inventory_type } = toRefs<any>(proxy?.useDict('wms_inventory_status', 'wms_stock_in_status', 'wms_inventory_type'));
 
 const inventoryDetailList = ref<InventoryDetailVO[]>([]);
 const buttonLoading = ref(false);
@@ -162,18 +160,10 @@ const total = ref(0);
 
 const queryFormRef = ref<ElFormInstance>();
 const inventoryDetailFormRef = ref<ElFormInstance>();
-const transferFormRef = ref<ElFormInstance>();
-const itemDialogRef = ref<InstanceType<typeof ItemDialog>>();
-const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 
 const dialog = reactive<DialogOption>({
   visible: false,
   title: ''
-});
-
-// 单个移库对话框状态
-const transferDialog = reactive({
-  visible: false
 });
 
 const initFormData: InventoryDetailForm = {
@@ -185,8 +175,9 @@ const initFormData: InventoryDetailForm = {
   availableQuantity: undefined,
   inspectionQuantity: undefined,
   blockedQuantity: undefined,
+  scrappedQuantity: undefined,
   unit: undefined,
-  inventoryType: 'N',
+  inventoryType: undefined,
   inventoryStatus: undefined,
   stockInStatus: undefined,
   warehouseCode: undefined,
@@ -216,8 +207,11 @@ const data = reactive<PageData<InventoryDetailForm, InventoryDetailQuery>>({
     availableQuantity: undefined,
     inspectionQuantity: undefined,
     blockedQuantity: undefined,
+    scrappedQuantity: undefined,
     unit: undefined,
     inventoryType: undefined,
+    inventoryStatus: undefined,
+    stockInStatus: undefined,
     warehouseCode: undefined,
     warehouseName: undefined,
     areaCode: undefined,
@@ -236,10 +230,7 @@ const data = reactive<PageData<InventoryDetailForm, InventoryDetailQuery>>({
   rules: {
     id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
     itemCode: [{ required: true, message: '物料编码/设备编号不能为空', trigger: 'blur' }],
-    itemName: [{ required: true, message: '物料名称/设备名称不能为空', trigger: 'blur' }],
-    locationCode: [{ required: true, message: '请输入库位编码', trigger: 'blur' }],
-    inventoryType: [{ required: true, message: '请选择库存类型', trigger: 'blur' }],
-    quantity: [{ required: true, message: '请输入库存数量', trigger: 'blur' }]
+    itemName: [{ required: true, message: '物料名称/设备名称不能为空', trigger: 'blur' }]
   }
 });
 
@@ -289,7 +280,7 @@ const handleSelectionChange = (selection: InventoryDetailVO[]) => {
 const handleAdd = () => {
   reset();
   dialog.visible = true;
-  dialog.title = '添加库存记录';
+  dialog.title = '添加库存明细记录';
 };
 
 /** 修改按钮操作 */
@@ -304,22 +295,9 @@ const handleUpdate = async (row?: InventoryDetailVO) => {
 
 /** 提交按钮 */
 const submitForm = () => {
-  switch (form.value.inventoryType) {
-    case 'N':
-      form.value.availableQuantity = form.value.quantity || null;
-      break;
-    case 'X':
-      form.value.inspectionQuantity = form.value.quantity || null;
-      break;
-    case 'S':
-      form.value.blockedQuantity = form.value.quantity || null;
-      break;
-    default:
-  }
   inventoryDetailFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
       buttonLoading.value = true;
-      form.value.itemType = 1;
       if (form.value.id) {
         await updateInventoryDetail(form.value).finally(() => (buttonLoading.value = false));
       } else {
@@ -350,31 +328,6 @@ const handleExport = () => {
     },
     `inventoryDetail_${new Date().getTime()}.xlsx`
   );
-};
-/** 显示物料选择对话框 */
-const showItemDialog = () => {
-  itemDialogRef.value.openDialog();
-  itemDialogRef.value.handleQuery();
-  // currenIndex.value = index;
-};
-
-const itemSelectCallBack = (record: any) => {
-  form.value.itemCode = record.item;
-  form.value.itemName = record.itemDesc;
-  form.value.unit = record.unit;
-};
-
-/** 显示库位选择对话框 */
-const showStorageLocationDialog = () => {
-  storageLocationDialogRef.value.openDialog();
-  storageLocationDialogRef.value.handleQuery();
-};
-
-/** 库位选择回调 */
-const storageLocationSelectCallBack = (record: any) => {
-  form.value.warehouseCode = record.warehouseCode;
-  form.value.areaCode = record.areaCode;
-  form.value.locationCode = record.locationCode;
 };
 
 onMounted(() => {

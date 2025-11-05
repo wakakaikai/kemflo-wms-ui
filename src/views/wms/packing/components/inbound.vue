@@ -88,6 +88,7 @@
         <el-table-column type="expand">
           <template #default="scope">
             <el-table :data="scope.row.packingDetailVoList" style="width: calc(100% - 110px); float: right; margin: 10px 0" empty-text="暂无数据">
+              <el-table-column type="selection" width="55" align="center" />
               <el-table-column label="序号" align="center" width="60">
                 <template #default="{ $index }">
                   {{ $index + 1 }}
@@ -144,10 +145,13 @@
         <el-table-column label="操作" align="center" class-name="small-padding " fixed="right" width="160">
           <template #default="scope">
             <el-tooltip v-if="tabActiveName == 'pendingInbound' || tabActiveName == 'warehouseFailed'" content="退回" placement="top">
-              <el-button v-hasPermi="['wms:packing:edit']" link type="danger" icon="RefreshLeft" @click="handleRejectPacking(scope.row)">退回 </el-button>
+              <el-button v-hasPermi="['wms:packing:edit']" link type="danger" icon="RefreshLeft" @click="handleRejectPacking(scope.row)">退回</el-button>
             </el-tooltip>
             <el-tooltip content="入库" placement="top" v-if="tabActiveName == 'pendingInbound' || tabActiveName == 'warehouseFailed'">
-              <el-button v-hasPermi="['wms:packing:edit']" link type="success" icon="CircleCheck" @click="handleReceivePacking(scope.row)">接收 </el-button>
+              <el-button v-hasPermi="['wms:packing:edit']" link type="success" icon="CircleCheck" @click="handleReceivePacking(scope.row)">接收</el-button>
+            </el-tooltip>
+            <el-tooltip content="出库" placement="top" v-if="tabActiveName == 'warehouseReceive'">
+              <el-button v-hasPermi="['wms:packing:edit']" link type="danger" icon="CircleCheck" @click="handleReturnPacking(scope.row)">退料</el-button>
             </el-tooltip>
           </template>
         </el-table-column>
@@ -206,13 +210,63 @@
       </template>
     </el-dialog>
 
+    <!-- 退料确认对话框 -->
+    <el-dialog v-model="returnVisible" :title="returnTitle" width="60%" append-to-body>
+      <el-form ref="returnFormRef" :model="returnForm" label-width="120px">
+        <el-row>
+          <el-col :lg="12" :md="12" :sm="24">
+            <el-form-item label="打包编号">
+              <el-text>{{ returnForm.packingCode }}</el-text>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="12" :md="12" :sm="24">
+            <el-form-item label="栈板编号">
+              <el-text>{{ returnForm.palletCode }}</el-text>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="12" :md="12" :sm="24">
+            <el-form-item label="目的仓库">
+              <el-text>{{ returnForm.warehouseCode }} - {{ returnForm.warehouseDesc }}</el-text>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="12" :md="12" :sm="24">
+            <el-form-item label="库区">
+              <el-text>{{ returnForm.areaCode }}</el-text>
+            </el-form-item>
+          </el-col>
+          <el-col :lg="12" :md="12" :sm="24">
+            <el-form-item label="库位">
+              <el-text>{{ returnForm.locationCode }}</el-text>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <!-- 明细列表 -->
+        <el-table :data="returnForm.packingDetailVoList" style="width: 100%; margin-top: 20px">
+          <el-table-column label="工单号" align="center" prop="workOrderNo" />
+          <el-table-column label="标签码" align="center" prop="sn" />
+          <el-table-column label="产品料号" align="center" prop="item" />
+          <el-table-column label="产品描述" align="left" prop="itemDesc" />
+          <el-table-column label="计划数量" align="center" prop="plannedQty" />
+          <el-table-column label="打包数量" align="center" prop="packingQty" />
+          <el-table-column label="物料凭证号" prop="materialOrderNo" align="center" />
+        </el-table>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="returnVisible = false">取 消</el-button>
+          <el-button :loading="buttonLoading" type="primary" @click="submitReturn">确 定</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
     <!-- 库位选择对话框 -->
     <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
   </div>
 </template>
 
 <script setup name="Inbound" lang="ts">
-import { listPackingAndDetail, receivePacking, rejectPacking } from '@/api/wms/packing';
+import { listPackingAndDetail, receivePacking, rejectPacking,returnPacking } from '@/api/wms/packing';
 import { PackingForm, PackingQuery, PackingVO } from '@/api/wms/packing/types';
 import PackingDialog from '@/views/wms/packing/components/packingDialog.vue';
 import useDialog from '@/hooks/useDialog';
@@ -353,6 +407,12 @@ const data = reactive<PageData<PackingForm, PackingQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const returnVisible = ref(false);
+const returnTitle = ref('退料确认');
+const returnFormRef = ref<ElFormInstance>();
+const returnForm = ref<PackingForm>({ ...initFormData });
+
 /** 查询打包记录列表 */
 const getList = async () => {
   loading.value = true;
@@ -512,6 +572,55 @@ const submitInbound = () => {
     }
   });
 };
+
+/** 退料按钮操作 */
+const handleReturnPacking = (row?: PackingVO) => {
+  const currentRow = row || checkedPackingList.value[0]; // 如果没有传入row，则使用选中的第一项
+  if (!currentRow) {
+    proxy?.$modal.msgWarning('请先选择要退料的数据');
+    return;
+  }
+
+  // 设置退料表单数据
+  returnForm.value = { ...currentRow };
+  returnVisible.value = true;
+};
+
+/** 提交退料 */
+const submitReturn = async () => {
+  try {
+    buttonLoading.value = true;
+    await proxy?.$modal.confirm('确认要退料这些明细吗？');
+
+    // 调用退料API
+    const res = await returnPacking({
+      packingBoList: [
+        {
+          id: form.value.id,
+          warehouseCode: form.value.warehouseCode,
+          areaCode: form.value.areaCode,
+          locationCode: form.value.locationCode,
+          palletCode: form.value.palletCode,
+          packingCode: form.value.packingCode
+        }
+      ]
+    });
+
+    if (res.code === 200) {
+      proxy?.$modal.msgSuccess('退料成功');
+      returnVisible.value = false;
+      await getList(); // 刷新列表
+    } else {
+      proxy?.$modal.msgError(res.msg || '退料失败');
+    }
+  } catch (error) {
+    console.error('退料失败:', error);
+    proxy?.$modal.msgError('退料操作失败');
+  } finally {
+    buttonLoading.value = false;
+  }
+};
+
 onMounted(() => {
   getList();
 });

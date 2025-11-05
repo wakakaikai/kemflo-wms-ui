@@ -16,6 +16,19 @@
             <el-form-item label="物料组" prop="itemGroup">
               <el-input v-model="queryParams.itemGroup" placeholder="请输入物料组" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="物料类型" prop="itemType">
+              <el-select v-model="queryParams.itemType" placeholder="请选择物料类型" clearable>
+                <el-option v-for="dict in wms_item_type" :key="dict.value" :label="dict.label" :value="dict.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="采购类型" prop="purchaseType">
+              <el-select v-model="queryParams.purchaseType" placeholder="请选择采购类型" clearable>
+                <el-option v-for="dict in wms_purchase_type" :key="dict.value" :label="dict.label" :value="dict.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="特殊采购" prop="specialPurchase">
+              <el-input v-model="queryParams.specialPurchase" placeholder="请输入特殊采购" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="条码正则" prop="sfcRegular">
               <el-input v-model="queryParams.sfcRegular" placeholder="请输入条码正则" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -56,8 +69,28 @@
         <el-table-column label="描述" align="center" prop="itemDesc" />
         <el-table-column label="旧料号" align="center" prop="oldItem" />
         <el-table-column label="物料组" align="center" prop="itemGroup" />
+        <el-table-column label="物料类型" align="center" prop="itemType">
+          <template #default="scope">
+            <dict-tag :options="wms_item_type" :value="scope.row.itemType" />
+          </template>
+        </el-table-column>
+        <el-table-column label="采购类型" align="center" prop="purchaseType">
+          <template #default="scope">
+            <dict-tag :options="wms_purchase_type" :value="scope.row.purchaseType" />
+          </template>
+        </el-table-column>
+        <el-table-column label="特殊采购" align="center" prop="specialPurchase">
+          <template #default="scope">
+            <dict-tag :options="wms_special_purchase" :value="scope.row.specialPurchase" />
+          </template>
+        </el-table-column>
         <el-table-column label="计量单位" align="center" prop="unit" />
         <el-table-column label="条码正则" align="center" prop="sfcRegular" />
+        <el-table-column label="质检标识" align="center" prop="inspectionFlag">
+          <template #default="scope">
+            <dict-tag :options="sys_yes_no" :value="scope.row.inspectionFlag" />
+          </template>
+        </el-table-column>
         <el-table-column label="质检检查" align="center" prop="checkEnable">
           <template #default="scope">
             <dict-tag :options="sys_normal_disable" :value="scope.row.checkEnable" />
@@ -124,6 +157,7 @@ import { ItemVO, ItemQuery, ItemForm } from '@/api/wms/item/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { sys_normal_disable } = toRefs<any>(proxy?.useDict('sys_normal_disable'));
+const { wms_purchase_type, wms_item_type, wms_special_purchase,sys_yes_no } = toRefs<any>(proxy?.useDict('wms_purchase_type', 'wms_item_type', 'wms_special_purchase','sys_yes_no'));
 
 const itemList = ref<ItemVO[]>([]);
 const buttonLoading = ref(false);

@@ -4,6 +4,12 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
+            <el-form-item label="仓库编码" prop="warehouseCode">
+              <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="库区编码" prop="areaCode">
+              <el-input v-model="queryParams.areaCode" placeholder="请输入库区编码" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="库位编码" prop="locationCode">
               <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -40,6 +46,8 @@
 
       <el-table v-loading="loading" :data="storageLocationList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
+        <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
+        <el-table-column label="库区编码" align="center" prop="areaCode" />
         <el-table-column label="库位编码" align="center" prop="locationCode" />
         <el-table-column label="库位名称" align="center" prop="locationName" />
         <el-table-column label="库位位置X" align="center" prop="positionX" />

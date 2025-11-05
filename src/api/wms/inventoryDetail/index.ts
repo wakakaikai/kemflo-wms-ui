@@ -61,3 +61,15 @@ export const delInventoryDetail = (id: string | number | Array<string | number>)
     method: 'delete'
   });
 };
+
+/**
+ * 库存移转记录
+ * @param data
+ */
+export const transferInventory = (data: any) => {
+  return request({
+    url: '/wms/inventoryDetail/transfer',
+    method: 'post',
+    data: data
+  });
+};
