@@ -32,12 +32,6 @@
         <el-table-column label="旧料号" align="center" prop="oldItem" />
         <el-table-column label="物料组" align="center" prop="itemGroup" />
         <el-table-column label="计量单位" align="center" prop="unit" />
-        <el-table-column label="条码正则" align="center" prop="sfcRegular" />
-        <el-table-column label="质检检查" align="center" prop="checkEnable">
-          <template #default="scope">
-            <dict-tag :options="sys_normal_disable" :value="scope.row.checkEnable" />
-          </template>
-        </el-table-column>
       </el-table>
 
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
@@ -127,7 +121,7 @@ const getList = async () => {
 /** 取消按钮 */
 const cancel = () => {
   reset();
-  dialog.visible = false;
+  closeDialog();
 };
 
 /** 表单重置 */

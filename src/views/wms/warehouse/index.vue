@@ -40,7 +40,7 @@
 
       <el-table v-loading="loading" :data="warehouseList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="仓库编码" align="center" prop="warehouseCode">
+        <el-table-column label="仓库编码" prop="warehouseCode">
           <template #default="scope">
             <router-link
               :to="{
@@ -56,7 +56,7 @@
             </router-link>
           </template>
         </el-table-column>
-        <el-table-column label="仓库名称" align="center" prop="warehouseName" />
+        <el-table-column label="仓库名称" prop="warehouseName" />
         <el-table-column label="是否启用" align="center" prop="enableFlag">
           <template #default="scope">
             <dict-tag :options="sys_yes_no" :value="scope.row.enableFlag" />
@@ -95,8 +95,8 @@
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</el-button>
           <el-button @click="cancel">取 消</el-button>
+          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</el-button>
         </div>
       </template>
     </el-dialog>
@@ -149,7 +149,7 @@ const data = reactive<PageData<WarehouseForm, WarehouseQuery>>({
   rules: {
     id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
     warehouseCode: [{ required: true, message: '仓库编码不能为空', trigger: 'blur' }],
-    warehouseName: [{ required: true, message: '仓库名称不能为空', trigger: 'blur' }],
+    warehouseName: [{ required: true, message: '仓库名称不能为空', trigger: 'blur' }]
   }
 });
 

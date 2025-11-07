@@ -46,10 +46,10 @@
 
       <el-table v-loading="loading" :data="storageLocationList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
-        <el-table-column label="库区编码" align="center" prop="areaCode" />
-        <el-table-column label="库位编码" align="center" prop="locationCode" />
-        <el-table-column label="库位名称" align="center" prop="locationName" />
+        <el-table-column label="仓库编码" prop="warehouseCode" />
+        <el-table-column label="库区编码" prop="areaCode" />
+        <el-table-column label="库位编码" prop="locationCode" />
+        <el-table-column label="库位名称" prop="locationName" />
         <el-table-column label="库位位置X" align="center" prop="positionX" />
         <el-table-column label="库位位置Y" align="center" prop="positionY" />
         <el-table-column label="库位位置Z" align="center" prop="positionZ" />
@@ -100,8 +100,8 @@
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</el-button>
           <el-button @click="cancel">取 消</el-button>
+          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</el-button>
         </div>
       </template>
     </el-dialog>

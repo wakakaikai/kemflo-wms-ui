@@ -4,6 +4,9 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
+            <el-form-item label="移动类型" prop="moveType">
+              <el-input v-model="queryParams.moveType" placeholder="请输入移动类型" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="物料编码" prop="itemCode">
               <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>

@@ -40,7 +40,7 @@
 
       <el-table v-loading="loading" :data="storageAreaList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="库区编码" align="center" prop="areaCode">
+        <el-table-column label="库区编码" prop="areaCode">
           <template #default="scope">
             <router-link
               :to="{
@@ -56,7 +56,7 @@
             </router-link>
           </template>
         </el-table-column>
-        <el-table-column label="库区名称" align="center" prop="areaName" />
+        <el-table-column label="库区名称" prop="areaName" />
         <el-table-column label="是否启用" align="center" prop="enableFlag">
           <template #default="scope">
             <dict-tag :options="sys_yes_no" :value="scope.row.enableFlag" />
@@ -95,8 +95,8 @@
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</el-button>
           <el-button @click="cancel">取 消</el-button>
+          <el-button :loading="buttonLoading" type="primary" @click="submitForm">确 定</el-button>
         </div>
       </template>
     </el-dialog>
