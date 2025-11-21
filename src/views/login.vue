@@ -181,7 +181,7 @@ const initTenantList = async () => {
   tenantEnabled.value = data.tenantEnabled === undefined ? true : data.tenantEnabled;
   if (tenantEnabled.value) {
     tenantList.value = data.voList;
-    if (tenantList.value != null && tenantList.value.length !== 0) {
+    if (tenantList.value != null && tenantList.value.length !== 0 && !loginForm.value.tenantId) {
       loginForm.value.tenantId = tenantList.value[0].tenantId;
     }
   }
@@ -206,7 +206,7 @@ onMounted(() => {
   getCode();
   initTenantList();
   getLoginData();
-
+  loginForm.value.tenantId = localStorage.getItem('tenantId');
   // 定义允许的源列表
   const allowedOrigins = ['http://127.0.0.1:3000', 'https://mesqas.yakimagroup.com:8998', 'https://mes.yakimagroup.com:8999'];
 

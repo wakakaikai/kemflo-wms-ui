@@ -73,7 +73,7 @@
 
       <el-table v-loading="loading" :data="inventoryMovementList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="移动记录ID" align="center" prop="id" v-if="true" />
+<!--        <el-table-column label="移动记录ID" align="center" prop="id" v-if="true" />-->
         <el-table-column label="移动类型" align="center" prop="moveType" />
         <el-table-column label="物料编码" align="center" prop="itemCode" />
         <el-table-column label="物料名称" align="center" prop="itemName" :show-overflow-tooltip="true" />

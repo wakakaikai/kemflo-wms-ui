@@ -5,7 +5,7 @@
       <el-form :model="form" :inline="true">
         <el-row :gutter="10">
           <el-col :span="2.5">
-            <el-form-item label="用户昵称" prop="nickName">
+            <el-form-item label="姓名" prop="nickName">
               <el-input v-model="form.nickName" disabled />
             </el-form-item>
           </el-col>

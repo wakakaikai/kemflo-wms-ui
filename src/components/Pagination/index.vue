@@ -22,7 +22,7 @@ const props = defineProps({
   total: propTypes.number,
   page: propTypes.number.def(1),
   limit: propTypes.number.def(20),
-  pageSizes: { type: Array<number>, default: () => [10, 20, 30, 50] },
+  pageSizes: { type: Array<number>, default: () => [10, 20, 30, 50, 100, 500, 1000] },
   // 移动端页码按钮的数量端默认值5
   pagerCount: propTypes.number.def(document.body.clientWidth < 992 ? 5 : 7),
   layout: propTypes.string.def('total, sizes, prev, pager, next, jumper'),

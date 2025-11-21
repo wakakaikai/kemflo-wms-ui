@@ -7,8 +7,8 @@
             <el-form-item label="登录地址" prop="ipaddr">
               <el-input v-model="queryParams.ipaddr" placeholder="请输入登录地址" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="用户名称" prop="userName">
-              <el-input v-model="queryParams.userName" placeholder="请输入用户名称" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="账号" prop="userName">
+              <el-input v-model="queryParams.userName" placeholder="请输入账号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="状态" prop="status">
               <el-select v-model="queryParams.status" placeholder="登录状态" clearable>
@@ -70,7 +70,7 @@
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="访问编号" align="center" prop="infoId" />
         <el-table-column
-          label="用户名称"
+          label="账号"
           align="center"
           prop="userName"
           :show-overflow-tooltip="true"

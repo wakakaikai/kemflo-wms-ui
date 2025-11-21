@@ -24,11 +24,11 @@
           <div v-show="showSearch" class="mb-[10px]">
             <el-card shadow="hover">
               <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-                <el-form-item label="用户名称" prop="userName">
-                  <el-input v-model="queryParams.userName" placeholder="请输入用户名称" clearable @keyup.enter="handleQuery" />
+                <el-form-item label="账号" prop="userName">
+                  <el-input v-model="queryParams.userName" placeholder="请输入账号" clearable @keyup.enter="handleQuery" />
                 </el-form-item>
-                <el-form-item label="用户昵称" prop="nickName">
-                  <el-input v-model="queryParams.nickName" placeholder="请输入用户昵称" clearable @keyup.enter="handleQuery" />
+                <el-form-item label="姓名" prop="nickName">
+                  <el-input v-model="queryParams.nickName" placeholder="请输入姓名" clearable @keyup.enter="handleQuery" />
                 </el-form-item>
                 <el-form-item label="手机号码" prop="phonenumber">
                   <el-input v-model="queryParams.phonenumber" placeholder="请输入手机号码" clearable @keyup.enter="handleQuery" />
@@ -98,8 +98,8 @@
           <el-table v-loading="loading" border :data="userList" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column v-if="columns[0].visible" key="userId" label="用户编号" align="center" prop="userId" />
-            <el-table-column v-if="columns[1].visible" key="userName" label="用户名称" align="center" prop="userName" :show-overflow-tooltip="true" />
-            <el-table-column v-if="columns[2].visible" key="nickName" label="用户昵称" align="center" prop="nickName" :show-overflow-tooltip="true" />
+            <el-table-column v-if="columns[1].visible" key="userName" label="账号" align="center" prop="userName" :show-overflow-tooltip="true" />
+            <el-table-column v-if="columns[2].visible" key="nickName" label="姓名" align="center" prop="nickName" :show-overflow-tooltip="true" />
             <el-table-column v-if="columns[3].visible" key="deptName" label="部门" align="center" prop="deptName" :show-overflow-tooltip="true" />
             <el-table-column v-if="columns[4].visible" key="phonenumber" label="手机号码" align="center" prop="phonenumber" width="120" />
             <el-table-column v-if="columns[5].visible" key="status" label="状态" align="center">
@@ -150,8 +150,8 @@
       <el-form ref="userFormRef" :model="form" :rules="rules" label-width="80px">
         <el-row>
           <el-col :span="12">
-            <el-form-item label="用户昵称" prop="nickName">
-              <el-input v-model="form.nickName" placeholder="请输入用户昵称" maxlength="30" />
+            <el-form-item label="姓名" prop="nickName">
+              <el-input v-model="form.nickName" placeholder="请输入姓名" maxlength="30" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -182,19 +182,19 @@
         </el-row>
         <el-row>
           <el-col :span="12">
-            <el-form-item v-if="form.userId == undefined" label="用户名称" prop="userName">
-              <el-input v-model="form.userName" placeholder="请输入用户名称" maxlength="30" />
+            <el-form-item v-if="form.userId == undefined" label="账号" prop="userName">
+              <el-input v-model="form.userName" placeholder="请输入账号" maxlength="30" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item v-if="form.userId == undefined" label="用户密码" prop="password">
-              <el-input v-model="form.password" placeholder="请输入用户密码" type="password" maxlength="20" show-password />
+            <el-form-item v-if="form.userId == undefined" label="密码" prop="password">
+              <el-input v-model="form.password" placeholder="请输入密码" type="password" maxlength="20" show-password />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row>
           <el-col :span="12">
-            <el-form-item label="用户性别">
+            <el-form-item label="性别">
               <el-select v-model="form.sex" placeholder="请选择">
                 <el-option v-for="dict in sys_user_sex" :key="dict.value" :label="dict.label" :value="dict.value"></el-option>
               </el-select>
@@ -336,8 +336,8 @@ const upload = reactive<ImportOption>({
 // 列显隐信息
 const columns = ref<FieldOption[]>([
   { key: 0, label: `用户编号`, visible: false, children: [] },
-  { key: 1, label: `用户名称`, visible: true, children: [] },
-  { key: 2, label: `用户昵称`, visible: true, children: [] },
+  { key: 1, label: `账号`, visible: true, children: [] },
+  { key: 2, label: `姓名`, visible: true, children: [] },
   { key: 3, label: `部门`, visible: true, children: [] },
   { key: 4, label: `手机号码`, visible: true, children: [] },
   { key: 5, label: `状态`, visible: true, children: [] },
@@ -383,21 +383,21 @@ const initData: PageData<UserForm, UserQuery> = {
   },
   rules: {
     userName: [
-      { required: true, message: '用户名称不能为空', trigger: 'blur' },
+      { required: true, message: '账号不能为空', trigger: 'blur' },
       {
         min: 2,
         max: 20,
-        message: '用户名称长度必须介于 2 和 20 之间',
+        message: '账号长度必须介于 2 和 20 之间',
         trigger: 'blur'
       }
     ],
-    nickName: [{ required: true, message: '用户昵称不能为空', trigger: 'blur' }],
+    nickName: [{ required: true, message: '姓名不能为空', trigger: 'blur' }],
     password: [
-      { required: true, message: '用户密码不能为空', trigger: 'blur' },
+      { required: true, message: '密码不能为空', trigger: 'blur' },
       {
         min: 5,
         max: 20,
-        message: '用户密码长度必须介于 5 和 20 之间',
+        message: '密码长度必须介于 5 和 20 之间',
         trigger: 'blur'
       },
       { pattern: /^[^<>"'|\\]+$/, message: '不能包含非法字符：< > " \' \\ |', trigger: 'blur' }
@@ -524,7 +524,7 @@ const handleResetPwd = async (row: UserVO) => {
       cancelButtonText: '取消',
       closeOnClickModal: false,
       inputPattern: /^.{5,20}$/,
-      inputErrorMessage: '用户密码长度必须介于 5 和 20 之间',
+      inputErrorMessage: '密码长度必须介于 5 和 20 之间',
       inputValidator: (value) => {
         if (/<|>|"|'|\||\\/.test(value)) {
           return '不能包含非法字符：< > " \' \\ |';

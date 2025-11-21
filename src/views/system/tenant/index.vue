@@ -102,8 +102,8 @@
         <el-form-item v-if="!form.id" label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="请输入系统用户名" maxlength="30" />
         </el-form-item>
-        <el-form-item v-if="!form.id" label="用户密码" prop="password">
-          <el-input v-model="form.password" type="password" placeholder="请输入系统用户密码" maxlength="20" />
+        <el-form-item v-if="!form.id" label="密码" prop="password">
+          <el-input v-model="form.password" type="password" placeholder="请输入系统密码" maxlength="20" />
         </el-form-item>
         <el-form-item label="租户套餐" prop="packageId">
           <el-select v-model="form.packageId" :disabled="!!form.tenantId" placeholder="请选择租户套餐" clearable style="width: 100%">
@@ -217,11 +217,11 @@ const data = reactive<PageData<TenantForm, TenantQuery>>({
     companyName: [{ required: true, message: '企业名称不能为空', trigger: 'blur' }],
     username: [
       { required: true, message: '用户名不能为空', trigger: 'blur' },
-      { min: 2, max: 20, message: '用户名称长度必须介于 2 和 20 之间', trigger: 'blur' }
+      { min: 2, max: 20, message: '账号长度必须介于 2 和 20 之间', trigger: 'blur' }
     ],
     password: [
       { required: true, message: '密码不能为空', trigger: 'blur' },
-      { min: 5, max: 20, message: '用户密码长度必须介于 5 和 20 之间', trigger: 'blur' }
+      { min: 5, max: 20, message: '密码长度必须介于 5 和 20 之间', trigger: 'blur' }
     ]
   }
 });

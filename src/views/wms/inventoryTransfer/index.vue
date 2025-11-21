@@ -54,21 +54,24 @@
             <div class="search-result">
               <el-table ref="inventoryTableRef" :data="inventoryDetailList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="55" align="center" />
-                <el-table-column label="物料编码" prop="itemCode" show-overflow-tooltip />
-                <el-table-column label="物料名称" prop="itemName" show-overflow-tooltip />
-                <el-table-column label="批次号" prop="batchCode" show-overflow-tooltip />
-                <el-table-column label="非限制数量" prop="availableQuantity" align="center" />
-                <el-table-column label="质检数量" prop="inspectionQuantity" align="center" />
-                <el-table-column label="冻结数量" prop="blockedQuantity" align="center" />
-                <el-table-column label="单位" prop="unit" align="center" />
-                <el-table-column label="特殊库存标识" align="center" prop="specialInventoryFlag">
+                <el-table-column label="物料编码" align="left" prop="itemCode" fixed="left" min-width="160" />
+                <el-table-column label="物料名称" align="left" prop="itemName" max-width="150" fixed="left" show-overflow-tooltip />
+                <el-table-column label="批次号" align="center" prop="batchCode" min-width="110" fixed="left" />
+                <el-table-column label="非限制数量" align="center" prop="availableQuantity" fixed="left" min-width="90" />
+                <el-table-column label="质检数量" align="center" prop="inspectionQuantity" fixed="left" />
+                <el-table-column label="冻结数量" align="center" prop="blockedQuantity" fixed="left" />
+                <el-table-column label="在途数量" align="center" prop="transitQuantity" fixed="left" />
+                <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag">
                   <template #default="scope">
                     <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
                   </template>
                 </el-table-column>
-                <el-table-column label="仓库" prop="warehouseCode" show-overflow-tooltip />
-                <el-table-column label="库区" prop="areaCode" show-overflow-tooltip />
-                <el-table-column label="库位" prop="locationCode" show-overflow-tooltip />
+                <el-table-column label="业务伙伴" align="center" prop="businessCode" />
+                <el-table-column label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
+                <el-table-column label="单位" align="center" prop="unit" />
+                <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
+                <el-table-column label="库区编码" align="center" prop="areaCode" />
+                <el-table-column label="库位编码" align="center" prop="locationCode" fixed="right" />
               </el-table>
 
               <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
@@ -106,9 +109,6 @@
                     </template>
                   </el-input>
                 </el-form-item>
-                <!--                <el-form-item label="备注">
-                  <el-input v-model="fixedTransferForm.remark" placeholder="请输入备注" style="width: 200px" />
-                </el-form-item>-->
               </el-form>
             </div>
             <div v-if="resultMessage" class="m-y-2">
@@ -118,9 +118,6 @@
                 </template>
               </el-alert>
             </div>
-
-            <!--            <el-alert v-if="transferMode === 'fixed'" title="提示：所有记录将移转到同一目标库位" type="info" show-icon style="margin-bottom: 15px" />-->
-            <!--            <el-alert v-else title="提示：您可以为每个源库位设置不同的目标库位" type="info" show-icon style="margin-bottom: 15px" />-->
 
             <el-table :data="transferList" border style="width: 100%" v-loading="tableLoading" max-height="400">
               <el-table-column type="index" width="50" align="center" />
@@ -181,6 +178,7 @@
                     v-model="scope.row.transferQuantity"
                     :min="0"
                     :max="scope.row.currentQuantity ? parseFloat(scope.row.currentQuantity) : scope.row.currentQuantity"
+                    :precision="3"
                     controls-position="right"
                     style="width: 100%"
                   />
@@ -494,7 +492,7 @@ const submitTransfer = async () => {
       specialInventoryFlag: item.specialInventoryFlag,
       remark: item.remark
     }));
-    debugger;
+
     const res: any = await transferInventory({
       inventoryTransferBoList: transferRequests
     });

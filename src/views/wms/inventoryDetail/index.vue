@@ -37,7 +37,7 @@
           <el-col :span="1.5">
             <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['wms:inventoryDetail:add']"> 新增 </el-button>
           </el-col>
-<!--          <el-col :span="1.5">
+          <!--          <el-col :span="1.5">
             <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['wms:inventoryDetail:edit']">修改 </el-button>
           </el-col>
           <el-col :span="1.5">
@@ -55,28 +55,30 @@
 
       <el-table v-loading="loading" :data="inventoryDetailList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="物料编码" align="center" prop="itemCode" />
-        <el-table-column label="物料名称" align="center" prop="itemName" />
-        <el-table-column label="批次号" align="center" prop="batchCode" />
-        <el-table-column label="非限制数量" align="center" prop="availableQuantity" />
-        <el-table-column label="质检数量" align="center" prop="inspectionQuantity" />
-        <el-table-column label="冻结数量" align="center" prop="blockedQuantity" />
-        <el-table-column label="单位" align="center" prop="unit" />
-        <el-table-column label="特殊库存标识" align="center" prop="specialInventoryFlag">
+        <el-table-column label="物料编码" align="left" prop="itemCode" fixed="left" min-width="160" />
+        <el-table-column label="物料名称" align="left" prop="itemName" max-width="150" fixed="left" show-overflow-tooltip />
+        <el-table-column label="批次号" align="center" prop="batchCode" min-width="110" fixed="left" />
+        <el-table-column label="非限制数量" align="center" prop="availableQuantity" fixed="left" min-width="90" />
+        <el-table-column label="质检数量" align="center" prop="inspectionQuantity" fixed="left" />
+        <el-table-column label="冻结数量" align="center" prop="blockedQuantity" fixed="left" />
+        <el-table-column label="在途数量" align="center" prop="transitQuantity" fixed="left" />
+        <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag">
           <template #default="scope">
             <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
           </template>
         </el-table-column>
+        <el-table-column label="业务伙伴" align="center" prop="businessCode" />
+        <el-table-column label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
+        <el-table-column label="单位" align="center" prop="unit" />
         <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
         <el-table-column label="库区编码" align="center" prop="areaCode" />
         <el-table-column label="库位编码" align="center" prop="locationCode" />
-        <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
-<!--            <el-tooltip content="修改" placement="top">
+            <!--            <el-tooltip content="修改" placement="top">
               <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:inventoryDetail:edit']">修改 </el-button>
             </el-tooltip>-->
-<!--            <el-tooltip content="删除" placement="top">
+            <!--            <el-tooltip content="删除" placement="top">
               <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:inventoryDetail:remove']">删除 </el-button>
             </el-tooltip>-->
             <!--            <el-tooltip content="移库" placement="top">
@@ -119,6 +121,9 @@
           <el-select v-model="form.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable>
             <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="批次码" prop="batchCode">
+          <el-input v-model="form.batchCode" placeholder="请输入批次码" />
         </el-form-item>
         <el-form-item label="业务伙伴" prop="businessCode">
           <el-input v-model="form.businessCode" placeholder="请输入业务伙伴" />

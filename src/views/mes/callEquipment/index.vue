@@ -7,8 +7,8 @@
             <el-form-item label="设备编码" prop="equipmentId">
               <el-input v-model="queryParams.equipmentId" placeholder="请输入设备编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="用户名称" prop="userName">
-              <el-input v-model="queryParams.userName" placeholder="请输入用户名称" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="账号" prop="userName">
+              <el-input v-model="queryParams.userName" placeholder="请输入账号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="工作岗位" prop="workStation">
               <el-input v-model="queryParams.workStation" placeholder="请输入工作岗位" clearable @keyup.enter="handleQuery" />
@@ -48,7 +48,7 @@
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />
         <el-table-column label="设备编码" align="center" prop="equipmentId" />
-        <el-table-column label="用户名称" align="center" prop="userName" />
+        <el-table-column label="账号" align="center" prop="userName" />
         <el-table-column label="工作岗位" align="center" prop="workStation" />
         <el-table-column label="工作中心" align="center" prop="workCenter" />
         <el-table-column label="备注" align="center" prop="remark" />
@@ -72,8 +72,8 @@
         <el-form-item label="设备编码" prop="equipmentId">
           <el-input v-model="form.equipmentId" placeholder="请输入设备编码" />
         </el-form-item>
-        <el-form-item label="用户名称" prop="userName">
-          <el-input v-model="form.userName" placeholder="请输入用户名称" />
+        <el-form-item label="账号" prop="userName">
+          <el-input v-model="form.userName" placeholder="请输入账号" />
         </el-form-item>
         <el-form-item label="工作岗位" prop="workStation">
           <el-input v-model="form.workStation" placeholder="请输入工作岗位" />
@@ -146,7 +146,7 @@ const data = reactive<PageData<CallEquipmentForm, CallEquipmentQuery>>({
       { required: true, message: "设备编码不能为空", trigger: "blur" }
     ],
     userName: [
-      { required: true, message: "用户名称不能为空", trigger: "blur" }
+      { required: true, message: "账号不能为空", trigger: "blur" }
     ],
     workStation: [
       { required: true, message: "工作岗位不能为空", trigger: "blur" }

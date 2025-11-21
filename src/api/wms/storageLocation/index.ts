@@ -8,7 +8,7 @@ import { StorageLocationVO, StorageLocationForm, StorageLocationQuery } from '@/
  * @returns {*}
  */
 
-export const listStorageLocation = (query?: StorageLocationQuery): AxiosPromise<StorageLocationVO[]> => {
+export const listStorageLocation = (query?: any): AxiosPromise<any> => {
   return request({
     url: '/wms/storageLocation/list',
     method: 'get',
