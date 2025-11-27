@@ -16,6 +16,9 @@
             <el-form-item label="供应商代码" prop="supplierCode">
               <el-input v-model="queryParams.supplierCode" placeholder="请输入供应商代码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="同步SAP" prop="enableSapSync">
+              <el-switch v-model="queryParams.enableSapSync" />
+            </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
               <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -148,6 +151,7 @@ const data = reactive<PageData<PurchaseOrderForm, PurchaseOrderQuery>>({
     purchasingOrg: undefined,
     supplierCode: undefined,
     supplierName: undefined,
+    enableSapSync: true,
     params: {}
   },
   rules: {

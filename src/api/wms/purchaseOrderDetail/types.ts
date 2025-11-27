@@ -83,6 +83,10 @@ export interface PurchaseOrderDetailVO {
    * 备注
    */
   remark: string;
+  /**
+   * 是否同步SAP
+   */
+  enableSapSync: boolean;
 }
 
 export interface PurchaseOrderDetailForm extends BaseEntity {

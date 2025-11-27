@@ -8,12 +8,12 @@
           <el-tabs v-model="activeTab" class="print-tabs">
             <el-tab-pane label="内容打印" name="content">
               <el-radio-group v-model="currentTemplate" class="template-list">
-                <el-radio value="designA4">工业设计+A4/A5纸</el-radio>
                 <el-radio value="receiptOrderTemplate">生产入库单模板打印(97×84mm)</el-radio>
-                <!--                <el-radio label="receiptOrderTemplate2">生产入库单模板打印-1(97×84mm)</el-radio>-->
-                <el-radio value="qr8060">工业二维码(80×60mm)</el-radio>
-                <el-radio value="qr5060">工业二维码(50×60mm)</el-radio>
-                <el-radio value="qr3040">工业二维码(30×40mm)</el-radio>
+                <el-radio label="receiptOrderTemplate2">生产入库单模板打印(97×84mm)</el-radio>
+                <!--                <el-radio value="designA4">工业设计+A4/A5纸</el-radio>-->
+                <!--                <el-radio value="qr8060">工业二维码(80×60mm)</el-radio>-->
+                <!--                <el-radio value="qr5060">工业二维码(50×60mm)</el-radio>-->
+                <!--                <el-radio value="qr3040">工业二维码(30×40mm)</el-radio>-->
               </el-radio-group>
             </el-tab-pane>
             <!--            <el-tab-pane label="Excel模板打印" name="excel">
@@ -105,7 +105,7 @@
           </div>
 
           <div class="preview-content">
-            <!-- 生产入库单模板 -->
+            <!-- 生产入库单模板97*84 -->
             <div v-if="currentTemplate === 'receiptOrderTemplate'" :class="['production-receipt', getPaperSizeClass()]" ref="printContent">
               <div class="receipt-header">
                 <div class="company-name-container">
@@ -169,54 +169,157 @@
               <hr class="bottom-hr" />
             </div>
 
-            <!-- 生产入库单模板2 -->
-            <div v-if="currentTemplate === 'receiptOrderTemplate2'" :class="['production-receipt', getPaperSizeClass()]" ref="printContent">
+            <!-- 生产入库单模板97*84-2 -->
+            <div v-if="currentTemplate === 'receiptOrderTemplate2'" :class="['production-receipt', 'size9784-2']" ref="printContent">
               <div class="receipt-header">
                 <div class="company-name-container">
                   <span class="company-name">{{ workOrderInfo.companyName }}</span>
+                  <span>第{{ workOrderInfo.version }}张/共{{ workOrderInfo.version }}张</span>
                 </div>
               </div>
               <hr class="top-hr" />
               <div class="receipt-body">
                 <div class="content-section">
+                  <!-- 工单号码占一行 -->
                   <div class="info-row">
                     <label>工单号码</label>
-                    <span>{{ workOrderInfo.workOrderNo }}</span>
+                    <span class="work-order-content">
+                      <span>{{ workOrderInfo.workOrderNo }}</span>
+                      <span style="margin-left: 20px">{{ workOrderInfo.sfcContent }}</span>
+                      <span class="version-text">V{{ workOrderInfo.version }}</span>
+                    </span>
                   </div>
-                  <div class="info-row">
-                    <label>产品品号</label>
-                    <span>{{ workOrderInfo.material }}</span>
+                  <div class="info-with-qr">
+                    <div class="info-column">
+                      <!-- 客户订单占一行 -->
+                      <div class="info-row">
+                        <label>客户订单</label>
+                        <span class="work-order-content">
+                          <span>{{ workOrderInfo.salesOrderNo }}</span>
+                        </span>
+                      </div>
+                      <!-- 订单交货日期占一行 -->
+                      <div class="info-row">
+                        <label>交&nbsp;&nbsp;货&nbsp;&nbsp;日</label>
+                        <span class="work-order-content">
+                          <span>{{ workOrderInfo.salesOrderDeliveryDate }}</span>
+                        </span>
+                      </div>
+                      <!-- 需求总数量占一行 -->
+                      <div class="info-row">
+                        <label>需求数量</label>
+                        <span class="work-order-content">
+                          <span>{{ workOrderInfo.salesOrderQty }}&nbsp;{{ workOrderInfo.salesOrderUnit }}</span>
+                        </span>
+                      </div>
+                      <!-- 产品品号占一行 -->
+                      <div class="info-row">
+                        <label>产品品号</label>
+                        <span>{{ workOrderInfo.material }}</span>
+                      </div>
+                    </div>
+                    <div class="info-column">
+                      <div class="qr-section horizontal-qr">
+                        <canvas ref="qrcodeCanvas" v-if="workOrderInfo.sfcContent"></canvas>
+                        <div v-else style="width: 80px"></div>
+                        <!-- 本卡数量等信息 -->
+                        <div class="qr-info border-qty">
+                          <div style="display: flex; flex-direction: column; justify-content: center; height: 100%">
+                            <p style="margin: 0; padding: 0">本卡数量</p>
+                            <p style="margin: 20px 0 0 0; padding: 0">{{ workOrderInfo.qty }} {{ workOrderInfo.unit }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   <div class="info-row product-description">
                     <label>产品描述</label>
                     <span>{{ workOrderInfo.materialDesc }}</span>
                   </div>
-                  <div class="info-row">
-                    <label>入库数量</label>
-                    <span>{{ workOrderInfo.qty }} {{ workOrderInfo.unit }}</span>
+                  <hr class="split-line" />
+                  <!-- 其他字段与二维码同行 -->
+                  <div class="info-with-qr">
+                    <div class="info-column">
+                      <div class="info-row">
+                        <label>当前制程</label>
+                        <span>{{ workOrderInfo.curProcess }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>生产线别</label>
+                        <span>{{ workOrderInfo.productLine }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>预计开工</label>
+                        <span>{{ workOrderInfo.planStartTime }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>预计完工</label>
+                        <span>{{ workOrderInfo.planEndTime }}</span>
+                      </div>
+                    </div>
+                    <div class="info-column">
+                      <div class="info-row">
+                        <label>标准产能</label>
+                        <span>{{ workOrderInfo.standardCapacity }} </span>
+                      </div>
+                      <div class="info-row">
+                        <label>实际产能</label>
+                        <span>{{ workOrderInfo.actualCapacity }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>实际开工</label>
+                        <span>{{ workOrderInfo.actualStartTime }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>实际完工</label>
+                        <span>{{ workOrderInfo.actualEndTime }}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="info-row">
-                    <label>生产日期</label>
-                    <span>{{ workOrderInfo.productDate }}</span>
+                  <hr class="split-line" />
+                  <!-- 其他字段与二维码同行 -->
+                  <div class="info-with-qr">
+                    <div class="info-column">
+                      <div class="info-row">
+                        <label>前一制程</label>
+                        <span>{{ workOrderInfo.prevProcess }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>下一制程</label>
+                        <span>{{ workOrderInfo.nextProcess }}</span>
+                      </div>
+                    </div>
+                    <div class="info-column">
+                      <div class="info-row">
+                        <label>完工时间</label>
+                        <span>{{ workOrderInfo.completeTime }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>预计开工</label>
+                        <span>{{ workOrderInfo.nextPlanStartTime }}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="info-row">
-                    <label>生产线别</label>
-                    <span>{{ workOrderInfo.productLine }}</span>
-                  </div>
-                  <div class="info-row">
-                    <label>操&nbsp;&nbsp;作 员</label>
-                    <span>{{ workOrderInfo.operator }}</span>
-                  </div>
-                  <div class="info-row">
-                    <label>检&nbsp;&nbsp;验 员</label>
-                    <span>{{ workOrderInfo.inspector }}</span>
-                  </div>
-                </div>
-                <div class="qr-section">
-                  <canvas ref="qrcodeCanvas"></canvas>
                 </div>
               </div>
               <hr class="bottom-hr" />
+              <!-- 卡片底部内容 -->
+              <div class="receipt-bottom">
+                <div class="bottom-info-row">
+                  <div class="bottom-item operator-item">
+                    <span class="bottom-label">操作员</span>
+                    <span class="bottom-value">{{ workOrderInfo.operator }}</span>
+                  </div>
+                  <div class="bottom-item inspector-item">
+                    <span class="bottom-label">检验员</span>
+                    <span class="bottom-value">{{ workOrderInfo.inspector }}</span>
+                  </div>
+                  <div class="bottom-item date-item">
+                    <span class="bottom-label">制表日期</span>
+                    <span class="bottom-value">{{ workOrderInfo.productDate }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- 工业二维码(80×60mm)模板 -->
@@ -293,7 +396,7 @@ const data = reactive<PageData<WorkOrderSnForm, WorkOrderSnQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 const activeTab = ref('content');
-const currentTemplate = ref('receiptOrderTemplate'); // 默认选中生产入库单模板
+const currentTemplate = ref('receiptOrderTemplate2'); // 默认选中生产入库单模板
 const selectedExcelTemplate = ref('qrExcel');
 
 const paperSize = ref('9784'); // 默认纸张大小设置为97×84mm
@@ -303,18 +406,33 @@ const copies = ref(1);
 const serialNumbers = ref<string[]>([]);
 const isBatchPrinting = ref(false);
 const printTemplates = ref([
-  { value: 'A4', label: 'A4 (210×297mm)' },
-  { value: 'A5', label: 'A5 (148×210mm)' },
-  { value: '3040', label: '30×40mm' },
-  { value: '5060', label: '50×60mm' },
-  { value: '8060', label: '80×60mm' },
-  { value: '9784', label: '97×84mm' } // 默认选中项
+  // { value: 'A4', label: 'A4 (210×297mm)' },
+  // { value: 'A5', label: 'A5 (148×210mm)' },
+  // { value: '3040', label: '30×40mm' },
+  // { value: '5060', label: '50×60mm' },
+  // { value: '8060', label: '80×60mm' },
+  { value: '9784', label: '97×84mm' }
 ]);
 
 // 工单信息
 const workOrderInfo = ref({
   companyName: '溢泰（南京）环保科技有限公司',
-  workOrderNo: '',
+  workOrderNo: '000110000080',
+  salesOrderNo: '000140000080',
+  salesOrderDeliveryDate: '2025-11-20',
+  salesOrderQty: 3000,
+  salesOrderUnit: 'PCS',
+  curProcess: 'BSHVAL 总装',
+  planStartTime: '2025-11-20 11:30:30',
+  planEndTime: '2025-11-25 11:30:30',
+  prevProcess: '170000312-0030 YZ-JS',
+  nextProcess: '',
+  standardCapacity: '25PCS/H 8人',
+  actualCapacity: '14PCS/H 8人',
+  actualStartTime: '2025-11-21 11:30:30',
+  actualEndTime: '2025-11-26 11:30:30',
+  completeTime: '2025-11-26 11:30:30',
+  nextPlanStartTime: '2025-11-27 11:30:30',
   sfcContent: '',
   material: '',
   materialDesc: '',
@@ -429,6 +547,7 @@ const generateQRCode = () => {
     if (paperSize.value === '5060') qrSize = 150;
     if (paperSize.value === '8060') qrSize = 180;
     if (paperSize.value === '9784') qrSize = 80;
+    if (paperSize.value === '9784-2') qrSize = 80;
     if (currentTemplate.value === 'receiptOrderTemplate' && paperSize.value === '9784') qrSize = 100;
 
     QRCode.toCanvas(qrcodeCanvas.value, content, {
@@ -498,6 +617,7 @@ const handlePrintCurrent = async () => {
       // 根据纸张大小设置打印页面尺寸
       let printStyles = '';
       switch (paperSize.value) {
+        case '9784-2':
         case '9784':
           printStyles = `            @page {
               size: 97mm 84mm;
@@ -634,6 +754,7 @@ const immediatelyPrint = async () => {
           // 根据纸张大小设置打印页面尺寸
           let printStyles = '';
           switch (paperSize.value) {
+            case '9784-2':
             case '9784':
               printStyles = `            @page {
               size: 97mm 84mm;
@@ -772,6 +893,7 @@ const handlePrint = async () => {
           // 根据纸张大小设置打印页面尺寸
           let printStyles = '';
           switch (paperSize.value) {
+            case '9784-2':
             case '9784':
               printStyles = `            @page {
               size: 97mm 84mm;
@@ -974,7 +1096,6 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .preview-header {
@@ -1023,8 +1144,6 @@ onMounted(() => {
   background-color: #fff;
   display: flex;
   flex-direction: column;
-  /* 添加以下属性来隐藏多余部分 */
-  overflow: hidden;
   /* 添加以下样式使内容居中 */
   justify-content: center;
 }
@@ -1072,6 +1191,7 @@ onMounted(() => {
   overflow: hidden;
   box-sizing: border-box;
 }
+
 /* 适配97×84mm尺寸的内容样式 */
 .size9784 .receipt-header {
   margin: 0 3mm;
@@ -1087,7 +1207,6 @@ onMounted(() => {
 }
 
 .size9784 .info-row label {
-  /*  width: 22mm;*/
   font-size: 13px;
   margin-right: 1mm;
 }
@@ -1284,6 +1403,151 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   gap: 12px;
+}
+
+/* 适配97×84-2mm尺寸的内容样式 */
+.size9784-2 {
+  width: 97mm;
+  /*  height: 150mm;*/
+  font-size: 13px;
+  /* 添加以下属性来确保内容不会超出容器 */
+  overflow: hidden;
+  box-sizing: border-box;
+  .top-hr,
+  .bottom-hr {
+    margin: 2px 0;
+    border: none;
+    height: 2px;
+    background-color: #000;
+    width: 100%;
+  }
+
+  .split-line {
+    border: none;
+    height: 1px;
+    background-color: #000;
+    width: 100%;
+  }
+  .receipt-header {
+    margin: 0 1.5mm;
+  }
+
+  .receipt-body {
+    margin: 0 1.5mm;
+  }
+
+  .receipt-bottom {
+    margin: 0 1.5mm;
+    .bottom-info-row {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+
+    .bottom-item {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .operator-item {
+      flex: 2;
+    }
+
+    .inspector-item {
+      flex: 2;
+    }
+
+    .date-item {
+      flex: 2.2;
+    }
+
+    .bottom-label {
+      font-weight: bold;
+      margin-right: 5px;
+      white-space: nowrap;
+    }
+
+    .bottom-value {
+      flex: 1;
+      text-align: center;
+    }
+  }
+  .company-name-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .company-name {
+    font-size: 17px; /* 增大公司名称字体 */
+    font-weight: bold;
+  }
+  .info-row {
+    line-height: 18px;
+  }
+  .info-row label {
+    width: 13mm; /* 增加标签宽度 */
+    font-weight: bold;
+    flex-shrink: 0;
+    font-size: 12px; /* 增大标签字体 */
+    margin-right: 1mm; /* 增加标签与内容的间距 */
+  }
+
+  .info-row span {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .qr-section canvas {
+    max-width: 90%;
+    max-height: 90%;
+  }
+
+  .horizontal-qr {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    min-height: 80px;
+  }
+
+  .horizontal-qr .qr-info {
+    margin-bottom: 0;
+    margin-left: 10px;
+  }
+
+  .qr-info-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .qr-section-placeholder {
+    flex: 1;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .border-qty {
+    border: 1px solid #000;
+    height: 80px;
+    width: 80px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  .info-row {
+    display: flex;
+    margin-bottom: 1px;
+  }
 }
 
 /* 响应式调整 */

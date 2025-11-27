@@ -181,6 +181,7 @@ const data = reactive<PageData<PurchaseOrderDetailForm, PurchaseOrderDetailQuery
     openQuantity: undefined,
     itemDeleteFlag: undefined,
     completedFlag: undefined,
+    enableSapSync: true,
     params: {}
   },
   rules: {
@@ -219,10 +220,10 @@ const getList = async () => {
   // 初始化收货数量为未清数量
   purchaseOrderDetailList.value = res.rows.map((item) => ({
     ...item,
-    receivePoQuantity: Number(item.openQuantity) || 0,
+    receivePoQuantity: 0,
     storageLocation: '',
     conversionRatio: Number(item.conversionRatio) || 1, // 确保有换算比例，默认为1
-    inventoryQuantity: (Number(item.openQuantity) || 0) * (Number(item.conversionRatio) || 1) // 初始库存数量 = 收货数量 * 换算比例
+    inventoryQuantity: 0 // 初始库存数量 = 收货数量 * 换算比例
   }));
   total.value = res.total;
   loading.value = false;

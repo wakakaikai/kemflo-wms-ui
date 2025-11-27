@@ -73,6 +73,7 @@
         <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
         <el-table-column label="库区编码" align="center" prop="areaCode" />
         <el-table-column label="库位编码" align="center" prop="locationCode" />
+        <el-table-column label="检验批号" align="center" prop="inspectionNo" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <!--            <el-tooltip content="修改" placement="top">
