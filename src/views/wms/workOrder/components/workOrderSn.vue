@@ -675,7 +675,6 @@ const handlePrintDialog = () => {
   // 使用第一条记录作为预览数据
   const record = selectedRecords.value[0];
   workOrderInfo.value = { ...record.wmsWorkOrderVo, ...record };
-  workOrderInfo.value.sn = record.sn;
   workOrderInfo.value.sfcContent = record.sn;
   workOrderInfo.value.material = record.item;
   workOrderInfo.value.materialDesc = record.itemDesc;
@@ -832,21 +831,26 @@ const handleBatchPrint = async () => {
       const record = selectedRecords.value[i];
 
       // 构建当前记录的打印数据
-      workOrderInfo.value = {
-        companyName: record.companyName || '溢泰（南京）环保科技有限公司',
-        workOrderNo: record.workOrderNo || '',
-        material: record.item || '',
-        materialDesc: record.itemDesc || '',
-        sn: record.sn || '',
-        qty: record.qty || 0,
-        unit: 'PCS',
-        productDate: record.productDate ? proxy?.parseTime(record.productDate, '{y}-{m}-{d}') : '',
-        productLine: record.productLine || '',
-        operator: workOrderInfo.value.operator || '',
-        inspector: '',
-        version: record.version || 1,
-        remark: record.remark || ''
-      };
+      workOrderInfo.value = { ...record.wmsWorkOrderVo, ...record };
+      workOrderInfo.value.sfcContent = record.sn;
+      workOrderInfo.value.material = record.item;
+      workOrderInfo.value.materialDesc = record.itemDesc;
+      workOrderInfo.value.productDate = record.productDate ? proxy?.parseTime(record.productDate, '{y}-{m}-{d}') : '';
+      workOrderInfo.value.operator = operator.value;
+      // workOrderInfo.value = {
+      //   companyName: record.companyName || '溢泰（南京）环保科技有限公司',
+      //   workOrderNo: record.workOrderNo || '',
+      //   material: record.item || '',
+      //   materialDesc: record.itemDesc || '',
+      //   sn: record.sn || '',
+      //   qty: record.qty || 0,
+      //   unit: '',
+      //   productDate: record.productDate ? proxy?.parseTime(record.productDate, '{y}-{m}-{d}') : '',
+      //   productLine: record.productLine || '',
+      //   operator: '',
+      //   inspector: '',
+      //   version: record.version || 1
+      // };
 
       // 重新生成二维码
       await nextTick();

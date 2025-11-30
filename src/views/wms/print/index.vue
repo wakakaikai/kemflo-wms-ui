@@ -1569,8 +1569,8 @@ onMounted(() => {
     line-height: 1.5;
   }
   .qr-section canvas {
-    max-width: 90%;
-    max-height: 90%;
+    max-width: 100%;
+    max-height: 100%;
   }
 
   .horizontal-qr {
@@ -1633,12 +1633,12 @@ onMounted(() => {
 
   .work-order-no {
     font-weight: normal;
-    flex: 2.2;
+    flex: 1;
   }
 
   .sfc-content {
     font-weight: normal;
-    flex: 5;
+    flex: 2;
   }
 
   .version-text {
