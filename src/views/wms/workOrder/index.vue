@@ -48,21 +48,24 @@
           <el-col :span="1.5">
             <el-button v-hasPermi="['wms:workOrder:export']" type="warning" plain icon="Download" @click="handleExport">导出</el-button>
           </el-col>
+          <el-col :span="1.5">
+            <el-button v-hasPermi="['wms:workOrder:print']" color="#626aef" plain icon="Printer" @click="handlePrintWorkOrderCard" :disabled="single">打印工单卡</el-button>
+          </el-col>
           <right-toolbar v-model:showSearch="showSearch" @query-table="getList"></right-toolbar>
         </el-row>
       </template>
 
       <el-table v-loading="loading" :data="workOrderList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="工单号" align="center" prop="workOrderNo">
+        <el-table-column label="工单号" align="left" prop="workOrderNo" fixed="left" min-width="130">
           <template #default="scope">
             <router-link :to="'/warehouse/workOrder/detail/' + scope.row.workOrderNo" class="link-type">
               <span>{{ scope.row.workOrderNo }}</span>
             </router-link>
           </template>
         </el-table-column>
-        <el-table-column label="产品料号" align="center" prop="item" />
-        <el-table-column label="产品描述" align="center" prop="itemDesc" />
+        <el-table-column label="产品料号" align="left" prop="item" fixed="left" min-width="150" />
+        <el-table-column label="产品描述" align="left" prop="itemDesc" show-overflow-tooltip fixed="left" min-width="300" />
         <el-table-column label="入库检" align="center" prop="checkEnable">
           <template #default="scope">
             <dict-tag :options="wms_work_order_check_enable" :value="scope.row.checkEnable" />
@@ -79,8 +82,12 @@
           </template>
         </el-table-column>
         <el-table-column label="计划数量" align="center" prop="plannedQty" />
-        <el-table-column label="已交货数量" align="center" prop="deliveredQty" />
+        <el-table-column label="已交货数量" align="center" prop="deliveredQty" min-width="100" />
         <el-table-column label="单位" align="center" prop="unit" />
+        <el-table-column label="创建时间" align="center" prop="createTime" />
+        <el-table-column label="创建者" align="center" prop="createByName" />
+        <el-table-column label="更新时间" align="center" prop="updateTime" />
+        <el-table-column label="更新者" align="center" prop="updateByName" />
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
@@ -136,6 +143,224 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 打印预览对话框 -->
+    <el-dialog title="工单卡打印预览" v-model="printDialog.visible" width="800px" append-to-body>
+      <!-- 打印模式选择 -->
+      <div class="print-mode-selection">
+        <el-form label-width="auto">
+          <el-form-item label="打印模式">
+            <el-select v-model="currentPrintMode" placeholder="请选择打印模式">
+              <el-option v-for="mode in printModes" :key="mode.value" :label="mode.label" :value="mode.value" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+      </div>
+      <div class="print-preview-container">
+        <!-- 模板A -->
+        <div class="kanban-template kanban-template-1" v-if="currentTemplate === 'kanbanTemplate1'">
+          <div class="kanban-card">
+            <!-- 标题区域 -->
+            <div class="kanban-header">
+              <div class="title">生产看板卡</div>
+              <div class="qr-code-container">
+                <canvas ref="qrcodeCanvas" v-if="workOrderInfo.workOrderNo"></canvas>
+              </div>
+              <div class="info-container">
+                <div class="date-info">制表日期 {{ workOrderInfo.makeDate }}</div>
+                <div class="page-info">第 {{ workOrderInfo.page || 1 }} 张 / 共 {{ workOrderInfo.totalPages || 1 }} 张</div>
+              </div>
+            </div>
+
+            <!-- 主要信息区域 -->
+            <div class="kanban-body">
+              <div class="info-row-multiple-column">
+                <div class="info-column">
+                  <label>工单号码</label>
+                  <span>{{ workOrderInfo.workOrderNo }}</span>
+                </div>
+                <div class="info-column">
+                  <label>客户订单</label>
+                  <span>{{ workOrderInfo.salesOrderNo }}</span>
+                </div>
+              </div>
+
+              <div class="info-row-multiple-column">
+                <div class="info-column">
+                  <label>工单数量</label>
+                  <span>{{ Number(workOrderInfo.plannedQty) }}&nbsp;{{ workOrderInfo.unit }}</span>
+                </div>
+                <div class="info-column">
+                  <label>交货日期</label>
+                  <span>{{ parseTime(workOrderInfo.soDeliveryDate, '{y}-{m}-{d}') }}</span>
+                </div>
+              </div>
+
+              <div class="info-row-multiple-column">
+                <div class="info-column">
+                  <label>产品品号</label>
+                  <span>{{ workOrderInfo.item }}</span>
+                </div>
+                <div class="info-column">
+                  <label>看板数量</label>
+                  <span>{{ workOrderInfo.kanbanQty }}</span>
+                </div>
+              </div>
+
+              <div class="info-row">
+                <label class="label">产品描述</label>
+                <span class="value">{{ workOrderInfo.itemDesc }}</span>
+              </div>
+
+              <div class="split-line"></div>
+
+              <div class="info-row-multiple-column">
+                <div class="info-column">
+                  <label>前一工单</label>
+                  <span>{{ formatPreviousOrderNo(workOrderInfo.previousOrderNo) }} {{ workOrderInfo.previousWorkCenter }}</span>
+                </div>
+                <div class="info-column">
+                  <label>完工时间</label>
+                  <span>{{ workOrderInfo.previousEndDate }}</span>
+                </div>
+              </div>
+
+              <div class="info-row-multiple-column">
+                <div class="info-column">
+                  <label>下一工单</label>
+                  <span>{{ formatPreviousOrderNo(workOrderInfo.nextOrderNo) }} {{ workOrderInfo.nextWorkCenter }}</span>
+                </div>
+                <div class="info-column">
+                  <label>预计开工</label>
+                  <span>{{ parseTime(workOrderInfo.nextPlannedStartDate, '{y}-{m}-{d}') }}</span>
+                </div>
+              </div>
+              <div class="split-line" />
+            </div>
+
+            <!-- 工序表格 -->
+            <div class="process-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>工序</th>
+                    <th colspan="4">标准时产能</th>
+                    <th>预计开工</th>
+                    <th>预计完工</th>
+                    <th>操作员</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{{ workOrderProcessInfo.process }}</td>
+                    <td>{{ workOrderProcessInfo.standardCapacity ? Number(workOrderProcessInfo.standardCapacity) : '' }}</td>
+                    <td>PCS/H</td>
+                    <td>{{ workOrderProcessInfo.personNumber ? Number(workOrderProcessInfo.personNumber) : '' }}</td>
+                    <td>人</td>
+                    <td>{{ formatDateToMonthDay(workOrderInfo.plannedStartDate) }}</td>
+                    <td>{{ formatDateToMonthDay(workOrderInfo.plannedEndDate) }}</td>
+                    <td rowspan="3"></td>
+                  </tr>
+                  <tr>
+                    <td>{{ workOrderProcessInfo.workCenter }}</td>
+                    <td colspan="4">数量</td>
+                    <td>实际开工</td>
+                    <td>实际完工</td>
+                  </tr>
+                  <tr>
+                    <td class="desc-hidden">{{ workOrderProcessInfo.processShortDesc }}</td>
+                    <td colspan="4">{{ Number(workOrderProcessInfo.baseQty) }}</td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 模板B -->
+        <div class="kanban-template kanban-template-2" v-if="currentTemplate === 'kanbanTemplate2'">
+          <div class="kanban-card">
+            <!-- 标题区域 -->
+            <div class="kanban-header">
+              <div class="title">生产看板卡</div>
+              <div class="qr-code-container">
+                <canvas ref="qrcodeCanvas" v-if="workOrderInfo.workOrderNo"></canvas>
+              </div>
+              <div class="info-container">
+                <div class="date-info">制表日期 {{ workOrderInfo.makeDate }}</div>
+                <div class="page-info">第 {{ workOrderInfo.page || 1 }} 张 / 共 {{ workOrderInfo.totalPages || 1 }} 张</div>
+              </div>
+            </div>
+
+            <!-- 主要信息区域 -->
+            <div class="kanban-body">
+              <div class="info-row-multiple-column">
+                <div class="info-column">
+                  <label>工单号码</label>
+                  <span>{{ workOrderInfo.workOrderNo }}</span>
+                </div>
+                <div class="info-column">
+                  <label>看板数量</label>
+                  <span>{{ Number(workOrderInfo.plannedQty) }} PCS</span>
+                </div>
+              </div>
+              <div class="split-line" />
+
+              <!-- 工序表格 -->
+              <div class="process-table">
+                <table>
+                  <!-- 循环生成表头和数据 -->
+                  <template v-for="(process, index) in oneCycleWorkOrderProcessList" :key="index">
+                    <thead>
+                      <tr>
+                        <th>工序</th>
+                        <th colspan="4">标准时产能</th>
+                        <th>预计开工</th>
+                        <th>预计完工</th>
+                        <th>操作员</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>{{ process.process }}</td>
+                        <td>{{ Number(process.standardCapacity) }}</td>
+                        <td>PCS/H</td>
+                        <td>{{ process.personNumber ? Number(process.personNumber) : '' }}</td>
+                        <td>人</td>
+                        <td>{{ formatDateToMonthDay(workOrderInfo.plannedStartDate) }}</td>
+                        <td>{{ formatDateToMonthDay(workOrderInfo.plannedEndDate) }}</td>
+                        <td rowspan="3"></td>
+                      </tr>
+                      <tr>
+                        <td>{{ process.workCenter }}</td>
+                        <td colspan="4">数量</td>
+                        <td>实际开工</td>
+                        <td>实际完工</td>
+                      </tr>
+                      <tr>
+                        <td class="desc-hidden">{{ process.processShortDesc }}</td>
+                        <td colspan="4">{{ Number(process.baseQty) }}</td>
+                        <td></td>
+                        <td></td>
+                      </tr>
+                    </tbody>
+                  </template>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="cancelPrint">取 消</el-button>
+          <el-button :loading="printLoading" type="primary" @click="handleBatchPrint">确定打印</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -145,6 +370,12 @@ import { WorkOrderVO, WorkOrderQuery, WorkOrderForm } from '@/api/wms/workOrder/
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_work_order_check_enable } = toRefs<any>(proxy?.useDict('wms_work_order_check_enable'));
+import QRCode from 'qrcode';
+import html2canvas from 'html2canvas';
+import { nextTick, ref } from 'vue';
+import { parseTime } from '@/utils/ruoyi';
+import { WorkOrderProcessVO } from '@/api/wms/workOrderProcess/types';
+import { listWorkOrderProcess } from '@/api/wms/workOrderProcess';
 
 const workOrderList = ref<WorkOrderVO[]>([]);
 const buttonLoading = ref(false);
@@ -158,7 +389,17 @@ const total = ref(0);
 const queryFormRef = ref<ElFormInstance>();
 const workOrderFormRef = ref<ElFormInstance>();
 
+// 添加打印相关变量
+const printLoading = ref(false);
+const selectedRecords = ref<WorkOrderVO[]>([]);
+const qrcodeCanvas = ref(null);
+
 const dialog = reactive<DialogOption>({
+  visible: false,
+  title: ''
+});
+
+const printDialog = reactive<DialogOption>({
   visible: false,
   title: ''
 });
@@ -206,6 +447,13 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 
+// 工单信息
+const workOrderInfo = ref({});
+const workOrderProcessInfo = ref({});
+
+const workOrderProcessList = ref<WorkOrderProcessVO[]>([]);
+const oneCycleWorkOrderProcessList = ref<WorkOrderProcessVO[]>([]);
+
 /** 查询工单信息列表 */
 const getList = async () => {
   loading.value = true;
@@ -224,7 +472,9 @@ const cancel = () => {
 /** 表单重置 */
 const reset = () => {
   form.value = { ...initFormData };
-  workOrderFormRef.value?.resetFields();
+  nextTick(() => {
+    workOrderFormRef.value?.resetFields();
+  });
 };
 
 /** 搜索按钮操作 */
@@ -242,6 +492,7 @@ const resetQuery = () => {
 /** 多选框选中数据 */
 const handleSelectionChange = (selection: WorkOrderVO[]) => {
   ids.value = selection.map((item) => item.id);
+  selectedRecords.value = selection;
   single.value = selection.length != 1;
   multiple.value = !selection.length;
 };
@@ -300,7 +551,684 @@ const handleExport = () => {
   );
 };
 
+// 格式化前一工序单号，如果前三位是"000"则去掉
+const formatPreviousOrderNo = (orderNo) => {
+  if (orderNo && orderNo.length >= 3 && orderNo.substring(0, 3) === '000') {
+    return orderNo.substring(3);
+  }
+  return orderNo;
+};
+
+// 格式化日期为月日和时间格式
+const formatDateToMonthDay = (dateString: string | Date | null | undefined): string => {
+  if (!dateString) return '';
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return ''; // 无效日期
+
+  // const year = date.getFullYear().toString().slice(-2); // 取年份后两位
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+
+  // return `${year}-${month}-${day} ${hours}:${minutes}`;
+  return `${month}-${day} ${hours}:${minutes}`;
+};
+
+const generateQRCode = () => {
+  if (selectedRecords.value.length === 0) return;
+
+  const content = selectedRecords.value[0]?.workOrderNo || '';
+  if (!content) return;
+  const qrSize = 35;
+
+  if (qrcodeCanvas.value) {
+    QRCode.toCanvas(qrcodeCanvas.value, content, {
+      width: qrSize,
+      margin: 1,
+      color: { dark: '#000000', light: '#ffffff' }
+    });
+  }
+};
+
+/** 查询工单工序列表 */
+const getWorkOrderProcessList = async () => {
+  loading.value = true;
+  queryParams.value.workOrderNo = selectedRecords.value[0]?.workOrderNo;
+  const res = await listWorkOrderProcess(queryParams.value);
+
+  // 过滤controlCode以PP或ZP开头的工序
+  workOrderProcessList.value = res.rows.filter(process =>
+    process.controlCode && (process.controlCode.startsWith('PP') || process.controlCode.startsWith('ZP'))
+  ) || [];
+
+  // 如果有工序数据，则计算标准产能
+  if (workOrderProcessList.value.length > 0) {
+    workOrderProcessInfo.value = workOrderProcessList.value[0];
+
+    // 为每个工序计算标准产能: 基础数量 / (排程时间 / 60)
+    workOrderProcessList.value.forEach(process => {
+      if (process.baseQty != null && process.schedulingTime != null && process.schedulingTime > 0) {
+        // 标准产能 = 基础数量 * 60 / 排程时间
+        process.standardCapacity = Math.floor((process.baseQty * 60) / process.schedulingTime);
+      }
+    });
+  }
+
+  total.value = res.total;
+  loading.value = false;
+};
+// 打印模式选项
+const printModes = ref([
+  { value: 'mode1', label: '模式A：首工序使用模板A' },
+  { value: 'mode2', label: '模式B：末工序使用模板A' },
+  { value: 'mode3', label: '模式C：首工序使用模板A，其余工序使用模板B' }
+]);
+
+// 当前打印模式
+const currentTemplate = ref('kanbanTemplate1');
+const currentPrintMode = ref('mode1');
+// 监听打印模式变化，更新预览内容
+watch(currentPrintMode, (newMode) => {
+  updatePreviewTemplate();
+});
+// 更新预览模板
+const updatePreviewTemplate = () => {
+  // 根据打印模式和工序数量决定使用哪个模板
+  if (workOrderProcessList.value.length > 0) {
+    switch (currentPrintMode.value) {
+      case 'mode1':
+        // 模式A：所有工序使用模板A（只打印一张）
+        currentTemplate.value = 'kanbanTemplate1';
+        break;
+      case 'mode2':
+        // 模式B：末工序使用模板A（只打印一张）
+        currentTemplate.value = 'kanbanTemplate1';
+        // 显示末工序信息 - 只考虑controlCode以PP或ZP开头的工序
+        if (workOrderProcessList.value.length > 0) {
+          // 过滤出controlCode以PP或ZP开头的工序
+          const filteredProcesses = workOrderProcessList.value.filter(process =>
+            process.controlCode && (process.controlCode.startsWith('PP') || process.controlCode.startsWith('ZP'))
+          );
+
+          // 如果有过滤结果，取最后一道工序；否则取全部工序中的最后一道
+          if (filteredProcesses.length > 0) {
+            workOrderProcessInfo.value = filteredProcesses[filteredProcesses.length - 1];
+          } else {
+            workOrderProcessInfo.value = workOrderProcessList.value[workOrderProcessList.value.length - 1];
+          }
+        }
+        break;
+      case 'mode3':
+        // 模式C：首工序使用模板A，其余工序使用模板B
+        currentTemplate.value = 'kanbanTemplate1';
+        // 默认显示首工序
+        if (workOrderProcessList.value.length > 0) {
+          workOrderProcessInfo.value = workOrderProcessList.value[0];
+        }
+        break;
+      default:
+        currentTemplate.value = 'kanbanTemplate1';
+    }
+  } else {
+    currentTemplate.value = 'kanbanTemplate1';
+  }
+};
+// 打印方法
+const handlePrintWorkOrderCard = () => {
+  if (selectedRecords.value.length === 0) {
+    proxy?.$modal.msgWarning('请至少选择一条记录进行打印');
+    return;
+  }
+  getWorkOrderProcessList();
+
+  // 默认使用模式A
+  currentPrintMode.value = 'mode1';
+
+  printDialog.visible = true;
+
+  // 构建看板卡数据
+  workOrderInfo.value = selectedRecords.value[0];
+  workOrderInfo.value.productDate = parseTime(new Date(), '{y}-{m}-{d}');
+  workOrderInfo.value.makeDate = parseTime(new Date(), '{y}-{m}-{d}');
+
+  nextTick(() => {
+    generateQRCode();
+  });
+};
+// 关闭打印工单卡弹框
+const cancelPrint = () => {
+  printDialog.visible = false;
+  printLoading.value = false; // 同时重置加载状态
+};
+
+// 批量打印处理
+const handleBatchPrint = async () => {
+  if (selectedRecords.value.length === 0) {
+    proxy?.$modal.msgWarning('没有可打印的记录');
+    return;
+  }
+
+  printLoading.value = true;
+  try {
+    let printContentHTML = '';
+
+    // 为每个选中的记录生成打印页面
+    for (let i = 0; i < selectedRecords.value.length; i++) {
+      const record = selectedRecords.value[i];
+
+      // 构建当前记录的打印数据
+      workOrderInfo.value = record;
+      workOrderInfo.value.productDate = parseTime(new Date(), '{y}-{m}-{d}');
+      workOrderInfo.value.makeDate = parseTime(new Date(), '{y}-{m}-{d}');
+
+      // 获取工序列表
+      await getWorkOrderProcessList();
+
+      // 计算总页数
+      let totalPages = 1;
+      if (currentPrintMode.value === 'mode3' && workOrderProcessList.value.length > 1) {
+        // 模式C: 首工序1页 + 其余工序每2道工序1页
+        totalPages = 1 + Math.ceil((workOrderProcessList.value.length - 1) / 2);
+      }
+
+      // 根据不同打印模式处理
+      switch (currentPrintMode.value) {
+        case 'mode1':
+          // 模式A：所有工序使用模板A（只打印一张）
+          currentTemplate.value = 'kanbanTemplate1';
+          workOrderProcessInfo.value = workOrderProcessList.value[0]; // 使用首工序信息
+
+          // 设置页码信息
+          workOrderInfo.value.page = 1;
+          workOrderInfo.value.totalPages = 1;
+
+          // 重新生成二维码
+          await nextTick();
+          generateQRCode();
+          await nextTick();
+
+          // 生成截图
+          const canvas1 = await html2canvas(document.querySelector('.print-preview-container'), {
+            scale: 2,
+            logging: false,
+            useCORS: true,
+            scrollX: 0,
+            scrollY: 0
+          });
+
+          printContentHTML += `<div style="page-break-after: ${i < selectedRecords.value.length - 1 ? 'always' : 'auto'};">
+            <img src="${canvas1.toDataURL('image/png')}" style="width:100%; height:100%;" />
+          </div>`;
+          break;
+
+        case 'mode2':
+          // 模式B：末工序使用模板A（只打印一张）
+          currentTemplate.value = 'kanbanTemplate1';
+          // 使用末工序信息
+          if (workOrderProcessList.value.length > 0) {
+            workOrderProcessInfo.value = workOrderProcessList.value[workOrderProcessList.value.length - 1];
+          }
+
+          // 设置页码信息
+          workOrderInfo.value.page = 1;
+          workOrderInfo.value.totalPages = 1;
+
+          // 重新生成二维码
+          await nextTick();
+          generateQRCode();
+          await nextTick();
+
+          // 生成截图
+          const canvas2 = await html2canvas(document.querySelector('.print-preview-container'), {
+            scale: 2,
+            logging: false,
+            useCORS: true,
+            scrollX: 0,
+            scrollY: 0
+          });
+
+          printContentHTML += `<div style="page-break-after: ${i < selectedRecords.value.length - 1 ? 'always' : 'auto'};">
+            <img src="${canvas2.toDataURL('image/png')}" style="width:100%; height:100%;" />
+          </div>`;
+          break;
+
+        case 'mode3':
+          // 模式C：首工序使用模板A，其余工序使用模板B
+          // 首工序使用A模板打印一张 其他工序，每两道使用模板B打印一张
+          let currentPage = 1;
+
+          for (let j = 0; j < workOrderProcessList.value.length; j++) {
+            if (j === 0) {
+              // 首工序使用模板A
+              currentTemplate.value = 'kanbanTemplate1';
+              workOrderProcessInfo.value = workOrderProcessList.value[j];
+
+              // 设置页码信息
+              workOrderInfo.value.page = currentPage++;
+              workOrderInfo.value.totalPages = totalPages;
+
+              // 重新生成二维码
+              await nextTick();
+              generateQRCode();
+              await nextTick();
+
+              // 生成截图
+              const canvas3 = await html2canvas(document.querySelector('.print-preview-container'), {
+                scale: 2,
+                logging: false,
+                useCORS: true,
+                scrollX: 0,
+                scrollY: 0
+              });
+
+              printContentHTML += `<div style="page-break-after: ${workOrderProcessList.value.length > 1 ? 'always' : i < selectedRecords.value.length - 1 ? 'always' : 'auto'};">
+                <img src="${canvas3.toDataURL('image/png')}" style="width:100%; height:100%;" />
+              </div>`;
+            } else {
+              // 其余工序使用模板B，每两张工序打印一张
+              if ((j - 1) % 2 === 0) {
+                // 收集最多两个工序用于模板B显示
+                const processesForPage = [];
+                processesForPage.push(workOrderProcessList.value[j]); // 当前工序
+
+                // 如果还有下一个工序，则也加入
+                if (j + 1 < workOrderProcessList.value.length) {
+                  processesForPage.push(workOrderProcessList.value[j + 1]);
+                }
+
+                // 设置模板B并更新数据
+                currentTemplate.value = 'kanbanTemplate2';
+                // 重要：更新模板B中使用的工序列表
+                oneCycleWorkOrderProcessList.value = processesForPage;
+
+                // 设置页码信息
+                workOrderInfo.value.page = currentPage++;
+                workOrderInfo.value.totalPages = totalPages;
+
+                // 重新生成二维码
+                await nextTick();
+                generateQRCode();
+                await nextTick();
+
+                // 生成截图
+                const canvas3 = await html2canvas(document.querySelector('.print-preview-container'), {
+                  scale: 2,
+                  logging: false,
+                  useCORS: true,
+                  scrollX: 0,
+                  scrollY: 0
+                });
+
+                printContentHTML += `<div style="page-break-after: ${j + 2 < workOrderProcessList.value.length || i < selectedRecords.value.length - 1 ? 'always' : 'auto'};">
+                  <img src="${canvas3.toDataURL('image/png')}" style="width:100%; height:100%;" />
+                </div>`;
+              }
+            }
+          }
+          // 恢复完整的工序列表，以便处理下一条记录
+          await getWorkOrderProcessList();
+          break;
+      }
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>工单卡打印预览</title>
+            <style>              @page {
+                size: 97mm 84mm;
+                margin: 0;
+              }
+              body {
+                width: 97mm;
+                height: 84mm;
+                margin: 0;
+                padding: 0;
+              }
+              img {
+                width: 100%;
+                height: 100%;
+                max-width: 100%;
+                max-height: 100%;
+              }
+            </style>
+          </head>
+          <body onload="window.print(); setTimeout(() => window.close(), 500);">
+            ${printContentHTML}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  } catch (error) {
+    console.error('打印失败:', error);
+    proxy?.$modal.msgError('打印失败，请重试');
+  } finally {
+    printLoading.value = false;
+    printDialog.visible = false;
+  }
+};
+
 onMounted(() => {
   getList();
 });
 </script>
+<style lang="scss" scoped>
+/* 打印模式选择区域 */
+.print-mode-selection {
+  padding: 10px;
+  border-radius: 4px;
+}
+
+/* 打印预览容器 */
+.print-preview-container {
+  width: 97mm;
+  height: 84mm;
+  font-size: 14px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+}
+
+/* 模板A样式 */
+.kanban-template-1 {
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  .kanban-card {
+    background-color: white;
+    margin-bottom: 10px;
+  }
+
+  /* 确保所有卡片使用相同的样式 */
+  .kanban-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #000;
+    height: 10mm;
+    margin-bottom: 3px;
+  }
+
+  .title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #000;
+    flex: 1;
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  .qr-code-container {
+    width: 35px;
+    height: 35px;
+    margin: 0 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .info-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex-shrink: 0;
+  }
+
+  .date-info,
+  .page-info {
+    font-size: 12px;
+    color: #000;
+    margin-bottom: 5px;
+    text-align: left;
+  }
+
+  .kanban-body {
+    padding: 0;
+    color: #000;
+  }
+
+  .info-row-multiple-column {
+    display: flex;
+    flex-direction: row;
+    color: #000;
+    line-height: 15px;
+  }
+
+  .info-column {
+    flex: 2;
+    label {
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    span {
+      flex: 1;
+      word-break: break-all;
+      font-size: 12px;
+      line-height: 15px;
+      margin-left: 2px;
+    }
+  }
+
+  .info-row {
+    display: flex;
+    line-height: 15px;
+    label {
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    span {
+      flex: 1;
+      word-break: break-all;
+      margin-left: 2px;
+    }
+  }
+
+  .split-line {
+    border: none;
+    height: 1px;
+    background-color: #000;
+    width: 100%;
+    margin: 5px 0;
+  }
+
+  .process-table {
+    padding: 0;
+  }
+
+  .process-table table {
+    width: 100%;
+    border-collapse: collapse; /* 合并边框 */
+    font-size: 12px;
+    border: 1px solid #000;
+  }
+
+  .process-table th,
+  .process-table td {
+    border: 1px solid #000;
+    padding: 2px 2px;
+    text-align: center;
+  }
+
+  .process-table th:first-child,
+  .process-table td:first-child {
+    width: 55px;
+    line-height: 20px;
+  }
+
+  .process-table th:nth-child(6),
+  .process-table td:nth-child(6) {
+    width: 60px;
+  }
+
+  .process-table th:nth-child(7),
+  .process-table td:nth-child(7) {
+    width: 60px;
+  }
+
+  .process-table th:last-child,
+  .process-table td:last-child {
+    width: 55px;
+  }
+  .desc-hidden {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* 限制行数 */
+    -webkit-box-orient: vertical;
+    line-height: 15px !important;
+    text-align: left;
+    font-size: 12px;
+  }
+
+  /* 确保表格单元格有足够的高度 */
+  .process-table td {
+    min-height: 25px;
+  }
+}
+
+/* 模板B样式 */
+.kanban-template-2 {
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  font-size: 14px;
+
+  .kanban-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #000;
+    height: 10mm;
+    padding-bottom: 5px;
+  }
+
+  .title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #000;
+    flex: 1;
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  .qr-code-container {
+    width: 40px;
+    height: 40px;
+    margin: 0 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .info-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex-shrink: 0;
+  }
+
+  .date-info,
+  .page-info {
+    font-size: 12px;
+    color: #000;
+    margin-bottom: 2px;
+    text-align: left;
+  }
+
+  .kanban-body {
+    padding: 0;
+    color: #000;
+  }
+
+  .info-row-multiple-column {
+    display: flex;
+    flex-direction: row;
+    color: #000;
+    line-height: 15px;
+  }
+
+  .info-column {
+    flex: 2;
+    label {
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    span {
+      flex: 1;
+      word-break: break-all;
+      font-size: 12px;
+      line-height: 15px;
+      margin-left: 2px;
+    }
+  }
+
+  .split-line {
+    border: none;
+    height: 1px;
+    background-color: #000;
+    width: 100%;
+    margin: 5px 0;
+  }
+
+  .process-table {
+    padding: 0;
+  }
+
+  .process-table table {
+    width: 100%;
+    border-collapse: collapse; /* 合并边框 */
+    font-size: 12px;
+    border: 1px solid #000;
+    line-height: 15px;
+  }
+
+  .process-table th,
+  .process-table td {
+    border: 1px solid #000;
+    text-align: center;
+  }
+
+  .process-table th:first-child,
+  .process-table td:first-child {
+    width: 55px;
+  }
+
+  .process-table th:nth-child(6),
+  .process-table td:nth-child(6) {
+    width: 60px;
+  }
+
+  .process-table th:nth-child(7),
+  .process-table td:nth-child(7) {
+    width: 60px;
+  }
+
+  .process-table th:last-child,
+  .process-table td:last-child {
+    width: 55px;
+  }
+
+  .desc-hidden {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* 限制行数 */
+    -webkit-box-orient: vertical;
+    line-height: 15px !important;
+    text-align: left;
+    font-size: 12px;
+  }
+
+  /* 确保表格单元格有足够的高度 */
+  .process-table td {
+    min-height: 25px;
+  }
+}
+</style>

@@ -97,5 +97,12 @@ defineExpose({
 .sn-content {
   color: #f00;
   font-size: 20px;
+  direction: ltr;
+  text-align: left;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+  font-family: inherit;
+  line-height: 1.5;
 }
 </style>

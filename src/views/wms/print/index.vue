@@ -8,8 +8,9 @@
           <el-tabs v-model="activeTab" class="print-tabs">
             <el-tab-pane label="内容打印" name="content">
               <el-radio-group v-model="currentTemplate" class="template-list">
-                <el-radio value="receiptOrderTemplate">生产入库单模板打印(97×84mm)</el-radio>
-                <el-radio label="receiptOrderTemplate2">生产入库单模板打印(97×84mm)</el-radio>
+                <el-radio value="receiptOrderTemplate">生产入库单模板1(97×84mm)</el-radio>
+                <el-radio label="receiptOrderTemplate2">生产入库单模板2(97×84mm)</el-radio>
+<!--                <el-radio label="receiptOrderTemplate3">生产入库单模板3(97×84mm)</el-radio>-->
                 <!--                <el-radio value="designA4">工业设计+A4/A5纸</el-radio>-->
                 <!--                <el-radio value="qr8060">工业二维码(80×60mm)</el-radio>-->
                 <!--                <el-radio value="qr5060">工业二维码(50×60mm)</el-radio>-->
@@ -102,7 +103,7 @@
         <div class="action-buttons">
           <el-button type="primary" @click="immediatelyPrint" class="print-btn">
             <el-icon><Printer /></el-icon>
-            立即打印
+            测试打印
           </el-button>
           <el-button @click="handleExportImage" class="export-btn">
             <el-icon><Picture /></el-icon>
@@ -196,8 +197,7 @@
               <div class="receipt-header">
                 <div class="company-name-container">
                   <span class="company-name">{{ workOrderInfo.companyName }}</span>
-                  <!--                  <span>第{{ workOrderInfo.printPageNum }}张/共{{ workOrderInfo.printTotal }}张</span>-->
-                  <span>第1张/共1张</span>
+                  <span>第{{ workOrderInfo.sequence || 1 }}张/共{{ workOrderInfo.printTotal || 1 }}张</span>
                 </div>
               </div>
               <hr class="top-hr" />
@@ -219,23 +219,17 @@
                       <!-- 客户订单-->
                       <div class="info-row">
                         <label>客户订单</label>
-                        <span class="work-order-content">
-                          <span>{{ workOrderInfo.salesOrderNo }}</span>
-                        </span>
+                        <span>{{ workOrderInfo.salesOrderNo }}</span>
                       </div>
                       <!-- 订单交货日期-->
                       <div class="info-row">
                         <label>交&nbsp;货&nbsp;日</label>
-                        <span class="work-order-content">
-                          <span>{{ parseTime(workOrderInfo.soDeliveryDate, '{y}-{m}-{d}') }}</span>
-                        </span>
+                        <span>{{ parseTime(workOrderInfo.soDeliveryDate, '{y}-{m}-{d}') }}</span>
                       </div>
                       <!-- 工单数量-->
                       <div class="info-row">
                         <label>工单数量</label>
-                        <span class="work-order-content">
-                          <span>{{ Number(workOrderInfo.plannedQty) }}&nbsp;{{ workOrderInfo.unit }}</span>
-                        </span>
+                        <span>{{ Number(workOrderInfo.plannedQty) }}&nbsp;{{ workOrderInfo.unit }}</span>
                       </div>
                       <!-- 产品品号 -->
                       <div class="info-row">
@@ -287,7 +281,10 @@
                     <div class="info-column">
                       <div class="info-row">
                         <label>标准产能</label>
-                        <span>{{ Number(workOrderInfo.standardCapacity) }}PCS/H&nbsp;{{ Number(workOrderInfo.standardPersonNumber) }}人 </span>
+                        <span class="standard-capacity-main">
+                          <span class="standard-capacity">{{ workOrderInfo.standardPersonCapacity ? Number(workOrderInfo.standardPersonCapacity) : '' }}PCS/H</span>
+                          <span class="standard-person">{{ workOrderInfo.standardPersonNumber ? Number(workOrderInfo.standardPersonNumber) : '' }}人</span>
+                        </span>
                       </div>
                       <div class="info-row">
                         <label>实际产能</label>
@@ -349,6 +346,117 @@
               </div>
             </div>
 
+            <!-- 生产入库单模板97*84-3 -->
+            <div v-if="currentTemplate === 'receiptOrderTemplate3'" :class="['size9784-3']" ref="printContent">
+              <div class="receipt-header">
+                <div class="company-name-container">
+                  <span class="company-name">{{ workOrderInfo.companyName }}</span>
+                </div>
+              </div>
+              <hr class="top-hr" />
+              <div class="receipt-body">
+                <div class="content-section">
+                  <!-- 工单号码占一行 -->
+                  <div class="info-row full-row">
+                    <label>工单号码</label>
+                    <span class="work-order-content">
+                      <span>{{ workOrderInfo.workOrderNo }}</span>
+                      <span class="version-text">V{{ workOrderInfo.version }}</span>
+                    </span>
+                  </div>
+                  <!-- 客户订单-->
+                  <div class="info-row">
+                    <label>客户订单</label>
+                    <span>{{ workOrderInfo.salesOrderNo }}</span>
+                  </div>
+                  <!-- 订单交货日期-->
+                  <div class="info-row">
+                    <label>交&nbsp;货&nbsp;日</label>
+                    <span>{{ parseTime(workOrderInfo.soDeliveryDate, '{y}-{m}-{d}') }}</span>
+                  </div>
+                  <!-- 产品品号占一行 -->
+                  <div class="info-row full-row">
+                    <label>产品品号</label>
+                    <span>{{ workOrderInfo.material }}</span>
+                  </div>
+                  <div class="info-row product-description">
+                    <label>产品描述</label>
+                    <span>{{ workOrderInfo.materialDesc }}</span>
+                  </div>
+                  <!-- 其他字段与二维码同行 -->
+                  <div class="info-with-qr">
+                    <div class="info-column">
+                      <!-- 工单数量-->
+                      <div class="info-row">
+                        <label>工单数量</label>
+                        <span>{{ Number(workOrderInfo.plannedQty) }}&nbsp;{{ workOrderInfo.unit }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>入库数量</label>
+                        <span>{{ workOrderInfo.qty }} {{ workOrderInfo.unit }}</span>
+                        <span>{{ workOrderInfo.remark }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>生产日期</label>
+                        <span>{{ workOrderInfo.productDate }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>生产线别</label>
+                        <span>{{ workOrderInfo.productLine }}</span>
+                      </div>
+                      <div class="info-row">
+                        <label>批次号码</label>
+                        <span></span>
+                      </div>
+                    </div>
+                    <div class="qr-section">
+                      <div class="qr-info">
+                        <span>{{ workOrderInfo.sfcContent }}</span>
+                      </div>
+                      <canvas ref="qrcodeCanvas" v-if="workOrderInfo.sfcContent"></canvas>
+                      <div v-else style="width: 80px"></div>
+                    </div>
+                  </div>
+                  <hr class="split-line" />
+
+                  <!-- 制程信息 -->
+                  <div class="info-with-qr">
+                    <div class="info-column">
+                      <div class="info-row">
+                        <label>下一制程</label>
+                        <span>{{ formatPreviousOrderNo(workOrderInfo.nextOrderNo) }} {{ workOrderInfo.nextWorkCenter }}</span>
+                      </div>
+                    </div>
+                    <div class="info-column">
+                      <div class="info-row">
+                        <label>预计开工</label>
+                        <span>{{ parseTime(workOrderInfo.nextPlannedStartDate, '{y}-{m}-{d}') }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <hr class="bottom-hr" />
+              <!-- 卡片底部内容 -->
+              <div class="receipt-bottom">
+                <div class="bottom-info-row">
+                  <div class="bottom-item operator-item">
+                    <span class="bottom-label">操作员</span>
+                    <span class="bottom-value">{{ workOrderInfo.operator }}</span>
+                  </div>
+                  <div class="bottom-item inspector-item">
+                    <span class="bottom-label">检验员</span>
+                    <span class="bottom-value">{{ workOrderInfo.inspector }}</span>
+                  </div>
+                  <div class="bottom-item date-item">
+                    <span class="bottom-label">制表日期</span>
+                    <span class="bottom-value">{{ workOrderInfo.makeDate }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- 工业二维码(80×60mm)模板 -->
             <div v-else-if="currentTemplate === 'qr8060'" class="qr-template qr8060" ref="printContent">
               <div class="qr-container">
@@ -386,7 +494,7 @@ import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { ElMessage } from 'element-plus';
 import { generateWorkOrderSn } from '@/api/wms/workOrderSn';
-import { addWorkOrder, listWorkOrder, updateWorkOrder } from '@/api/wms/workOrder';
+import { listWorkOrder } from '@/api/wms/workOrder';
 import { WorkOrderSnForm, WorkOrderSnQuery } from '@/api/wms/workOrderSn/types';
 import { getUserProfile } from '@/api/system/user';
 import { parseTime } from '@/utils/ruoyi';
@@ -455,7 +563,7 @@ const workOrderInfo = ref({
   nextOrderNo: '',
   nextWorkCenter: '',
   nextPlannedStartDate: '',
-  standardCapacity: '',
+  standardPersonCapacity: '',
   standardPersonNumber: '',
   actualCapacity: '',
   actualStartTime: '',
@@ -506,8 +614,9 @@ const keyDownTab = async () => {
     workOrderInfo.value.nextOrderNo = workOrderNoInfo.nextOrderNo;
     workOrderInfo.value.nextWorkCenter = workOrderNoInfo.nextWorkCenter;
     workOrderInfo.value.nextPlannedStartDate = workOrderNoInfo.nextPlannedStartDate;
-    qtyInputRef.value.focus();
-    qtyInputRef.value.select();
+    nextTick(() => {
+      qtyInputRef.value?.focus();
+    });
   } else if ((res.rows || []).length == 0) {
     proxy?.$modal.msgError('工单记录不存在');
   } else if ((res.rows || []).length > 1) {
@@ -597,6 +706,7 @@ const generateQRCode = () => {
     if (paperSize.value === '8060') qrSize = 180;
     if (paperSize.value === '9784') qrSize = 80;
     if (paperSize.value === '9784-2') qrSize = 80;
+    if (paperSize.value === '9784-3') qrSize = 80;
     if (currentTemplate.value === 'receiptOrderTemplate' && paperSize.value === '9784') qrSize = 100;
 
     QRCode.toCanvas(qrcodeCanvas.value, content, {
@@ -622,7 +732,7 @@ const generateQRCode = () => {
     });
   }
 };
-// 生成序列号列表（示例方法，根据实际需求调整）
+// 生成序列号列表
 const generateSerialNumbers = async () => {
   const res: any = await generateWorkOrderSn({
     companyName: workOrderInfo.value.companyName,
@@ -667,8 +777,10 @@ const handlePrintCurrent = async () => {
       let printStyles = '';
       switch (paperSize.value) {
         case '9784-2':
+        case '9784-3':
         case '9784':
-          printStyles = `            @page {
+          printStyles = `
+            @page {
               size: 97mm 84mm;
               margin: 0;
             }
@@ -681,7 +793,8 @@ const handlePrintCurrent = async () => {
           `;
           break;
         case '8060':
-          printStyles = `            @page {
+          printStyles = `
+            @page {
               size: 80mm 60mm;
               margin: 0;
             }
@@ -694,7 +807,8 @@ const handlePrintCurrent = async () => {
           `;
           break;
         case '5060':
-          printStyles = `            @page {
+          printStyles = `
+            @page {
               size: 50mm 60mm;
               margin: 0;
             }
@@ -707,7 +821,8 @@ const handlePrintCurrent = async () => {
           `;
           break;
         case '3040':
-          printStyles = `            @page {
+          printStyles = `
+            @page {
               size: 30mm 40mm;
               margin: 0;
             }
@@ -720,7 +835,8 @@ const handlePrintCurrent = async () => {
           `;
           break;
         default:
-          printStyles = `            @page {
+          printStyles = `
+            @page {
               margin: 0;
             }
             body {
@@ -730,11 +846,13 @@ const handlePrintCurrent = async () => {
           `;
       }
 
-      printWindow.document.write(`        <html>
+      printWindow.document.write(`
+        <html>
           <head>
             <title>打印预览</title>
             <style>
-              ${printStyles}              @media print {
+              ${printStyles}
+              @media print {
                 img {
                   width: 100%;
                   height: 100%;
@@ -745,7 +863,7 @@ const handlePrintCurrent = async () => {
             </style>
           </head>
           <body onload="window.print(); setTimeout(() => window.close(), 500);">
-            <img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" />
+            <img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;"  alt=""/>
           </body>
         </html>
       `);
@@ -785,10 +903,7 @@ const immediatelyPrint = async () => {
             scrollY: 0
           });
 
-          printContentHTML += `        <div style="page-break-after: ${i < snList.length - 1 ? 'always' : 'auto'};">
-          <img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" />
-        </div>
-      `;
+          printContentHTML += `        <div style="page-break-after: ${i < snList.length - 1 ? 'always' : 'auto'};"><img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" /></div>`;
 
           // 恢复原始内容
           // workOrderInfo.value.sfcContent = originalSfcContent;
@@ -804,74 +919,82 @@ const immediatelyPrint = async () => {
           let printStyles = '';
           switch (paperSize.value) {
             case '9784-2':
+            case '9784-3':
             case '9784':
-              printStyles = `            @page {
-              size: 97mm 84mm;
-              margin: 0;
-            }
-            body {
-              width: 97mm;
-              height: 84mm;
-              margin: 0;
-              padding: 0;
-            }
-          `;
+              printStyles = `
+              @page {
+                size: 97mm 84mm;
+                margin: 0;
+              }
+              body {
+                width: 97mm;
+                height: 84mm;
+                margin: 0;
+                padding: 0;
+              }
+            `;
               break;
             case '8060':
-              printStyles = `            @page {
-              size: 80mm 60mm;
-              margin: 0;
-            }
-            body {
-              width: 80mm;
-              height: 60mm;
-              margin: 0;
-              padding: 0;
-            }
-          `;
+              printStyles = `
+              @page {
+                size: 80mm 60mm;
+                margin: 0;
+              }
+              body {
+                width: 80mm;
+                height: 60mm;
+                margin: 0;
+                padding: 0;
+              }
+            `;
               break;
             case '5060':
-              printStyles = `            @page {
-              size: 50mm 60mm;
-              margin: 0;
-            }
-            body {
-              width: 50mm;
-              height: 60mm;
-              margin: 0;
-              padding: 0;
-            }
-          `;
+              printStyles = `
+              @page {
+                size: 50mm 60mm;
+                margin: 0;
+              }
+              body {
+                width: 50mm;
+                height: 60mm;
+                margin: 0;
+                padding: 0;
+              }
+            `;
               break;
             case '3040':
-              printStyles = `            @page {
-              size: 30mm 40mm;
-              margin: 0;
-            }
-            body {
-              width: 30mm;
-              height: 40mm;
-              margin: 0;
-              padding: 0;
-            }
-          `;
+              printStyles = `
+              @page {
+                size: 30mm 40mm;
+                margin: 0;
+              }
+              body {
+                width: 30mm;
+                height: 40mm;
+                margin: 0;
+                padding: 0;
+              }
+            `;
               break;
             default:
-              printStyles = `            @page {
-              margin: 0;
-            }
-            body {
-              margin: 0;
-              padding: 0;
-            }
-          `;
+              printStyles = `
+              @page {
+                margin: 0;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            `;
           }
 
-          printWindow.document.write(`        <html>
+          printWindow.document.write(`
+        <html>
           <head>
             <title>批量打印预览</title>
             <style>
-              ${printStyles}              @media print {
+              ${printStyles}
+              @media print {
                 img {
                   width: 100%;
                   height: 100%;
@@ -882,7 +1005,8 @@ const immediatelyPrint = async () => {
             </style>
           </head>
           <body onload="window.print(); setTimeout(() => window.close(), 500);">
-            ${printContentHTML}          </body>
+            ${printContentHTML}
+          </body>
         </html>
       `);
           printWindow.document.close();
@@ -908,7 +1032,9 @@ const handlePrint = async () => {
         for (let i = 0; i < snList.length; i++) {
           // 临时更新二维码内容
           // const originalSfcContent = workOrderInfo.value.sfcContent;
-          workOrderInfo.value.sfcContent = snList[i];
+          workOrderInfo.value.sfcContent = snList[i].sn;
+          workOrderInfo.value.sequence = snList[i].sequence;
+          workOrderInfo.value.printTotal = snList[i].printTotal;
 
           // 重新生成二维码
           await nextTick();
@@ -924,10 +1050,7 @@ const handlePrint = async () => {
             scrollY: 0
           });
 
-          printContentHTML += `        <div style="page-break-after: ${i < snList.length - 1 ? 'always' : 'auto'};">
-          <img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" />
-        </div>
-      `;
+          printContentHTML += `<div style="page-break-after: ${i < snList.length - 1 ? 'always' : 'auto'};"><img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" /></div>`;
 
           // 恢复原始内容
           // workOrderInfo.value.sfcContent = originalSfcContent;
@@ -943,86 +1066,93 @@ const handlePrint = async () => {
           let printStyles = '';
           switch (paperSize.value) {
             case '9784-2':
+            case '9784-3':
             case '9784':
-              printStyles = `            @page {
-              size: 97mm 84mm;
-              margin: 0;
-            }
-            body {
-              width: 97mm;
-              height: 84mm;
-              margin: 0;
-              padding: 0;
-            }
-          `;
+              printStyles = `
+              @page {
+                size: 97mm 84mm;
+                margin: 0;
+              }
+              body {
+                width: 97mm;
+                height: 84mm;
+                margin: 0;
+                padding: 0;
+              }
+            `;
               break;
             case '8060':
-              printStyles = `            @page {
-              size: 80mm 60mm;
-              margin: 0;
-            }
-            body {
-              width: 80mm;
-              height: 60mm;
-              margin: 0;
-              padding: 0;
-            }
-          `;
+              printStyles = `
+              @page {
+                size: 80mm 60mm;
+                margin: 0;
+              }
+              body {
+                width: 80mm;
+                height: 60mm;
+                margin: 0;
+                padding: 0;
+              }
+            `;
               break;
             case '5060':
-              printStyles = `            @page {
-              size: 50mm 60mm;
-              margin: 0;
-            }
-            body {
-              width: 50mm;
-              height: 60mm;
-              margin: 0;
-              padding: 0;
-            }
-          `;
+              printStyles = `
+              @page {
+                size: 50mm 60mm;
+                margin: 0;
+              }
+              body {
+                width: 50mm;
+                height: 60mm;
+                margin: 0;
+                padding: 0;
+              }
+            `;
               break;
             case '3040':
-              printStyles = `            @page {
-              size: 30mm 40mm;
-              margin: 0;
-            }
-            body {
-              width: 30mm;
-              height: 40mm;
-              margin: 0;
-              padding: 0;
-            }
-          `;
+              printStyles = `
+              @page {
+                size: 30mm 40mm;
+                margin: 0;
+              }
+              body {
+                width: 30mm;
+                height: 40mm;
+                margin: 0;
+                padding: 0;
+              }
+            `;
               break;
             default:
-              printStyles = `            @page {
-              margin: 0;
-            }
-            body {
-              margin: 0;
-              padding: 0;
-            }
-          `;
+              printStyles = `
+              @page {
+                margin: 0;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            `;
           }
 
-          printWindow.document.write(`        <html>
-          <head>
-            <title>批量打印预览</title>
-            <style>
-              ${printStyles}              @media print {
-                img {
-                  width: 100%;
-                  height: 100%;
-                  max-width: 100%;
-                  max-height: 100%;
-                }
-              }
-            </style>
-          </head>
-          <body onload="window.print(); setTimeout(() => window.close(), 500);">
-            ${printContentHTML}          </body>
-        </html>
+          printWindow.document.write(`
+            <html>
+              <head>
+                <title>批量打印预览</title>
+                <style>
+                  ${printStyles}              @media print {
+                    img {
+                      width: 100%;
+                      height: 100%;
+                      max-width: 100%;
+                      max-height: 100%;
+                    }
+                  }
+                </style>
+              </head>
+              <body onload="window.print(); setTimeout(() => window.close(), 500);">
+                ${printContentHTML}          </body>
+            </html>
       `);
           printWindow.document.close();
         }
@@ -1246,118 +1376,145 @@ onMounted(() => {
   height: 84mm;
   font-size: 13px;
 }
+
+.size9784-3 {
+  width: 97mm;
+  height: 84mm;
+  font-size: 13px;
+}
+
 /* 适配97×84mm尺寸的内容样式 */
-.size9784 .receipt-header {
-  margin: 0 3mm;
+.size9784 {
+  .receipt-header {
+    margin: 0 3mm;
+  }
+
+  .receipt-body {
+    margin: 0 3mm;
+  }
+
+  .company-name {
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  .info-row label {
+    font-size: 13px;
+    margin-right: 1mm;
+  }
+
+  .info-row span {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .qr-section canvas {
+    max-width: 90%;
+    max-height: 90%;
+  }
+
+  .top-hr,
+  .bottom-hr {
+    margin: 6px 3mm 6px 3mm;
+    height: 2px;
+  }
+
+  .receipt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+  }
+
+  /* 公司名称容器 */
+  .company-name-container {
+    text-align: center;
+    width: 100%;
+  }
+
+  .company-name {
+    font-size: 14px; /* 增大公司名称字体 */
+    font-weight: bold;
+    display: block;
+  }
+
+  .receipt-body {
+    display: flex;
+    flex-direction: row;
+    margin: 0 3mm;
+  }
+
+  .content-section {
+    flex: 3;
+  }
+
+  /* 调整二维码和工单号的整体布局 */
+  .qr-section {
+    flex: 1.3;
+    padding-left: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .qr-section canvas {
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+  }
 }
 
-.size9784 .receipt-body {
-  margin: 0 3mm;
-}
-
-.size9784 .company-name {
-  font-size: 18px;
-  font-weight: bold;
-}
-
-.size9784 .info-row label {
-  font-size: 13px;
-  margin-right: 1mm;
-}
-
-.size9784 .info-row span {
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.size9784 .qr-section canvas {
-  max-width: 90%;
-  max-height: 90%;
-}
-
-.size9784 .top-hr,
-.size9784 .bottom-hr {
-  margin: 6px 3mm 6px 3mm;
-  height: 2px;
-}
-
-.receipt-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-}
-
-/* 公司名称容器 */
-.company-name-container {
-  text-align: center;
-  width: 100%;
-}
-
-.company-name {
-  font-size: 14px; /* 增大公司名称字体 */
-  font-weight: bold;
-  display: block;
-}
-
-.receipt-body {
+.info-with-qr {
   display: flex;
   flex-direction: row;
-  margin: 0 3mm;
 }
 
-.content-section {
-  flex: 3;
+.info-column {
+  flex: 2;
+}
+
+.work-order-content {
+  flex: 1;
+  position: relative;
+  font-size: 12px;
 }
 
 .info-row {
   display: flex;
-  margin-bottom: 5px; /* 增加行间距 */
-}
-
-.info-row label {
-  width: 18mm; /* 增加标签宽度 */
-  font-weight: bold;
-  flex-shrink: 0;
-  font-size: 12px; /* 增大标签字体 */
-  margin-right: 1mm; /* 增加标签与内容的间距 */
-}
-
-.info-row span {
-  flex: 1;
-  word-break: break-all;
-  font-size: 12px; /* 增大内容字体 */
-  line-height: 1.4; /* 增加行高 */
-}
-
-.qr-section .qr-info {
-  text-align: center;
   margin-bottom: 5px;
-  font-size: 12px;
-  font-weight: bold;
-}
+  label {
+    width: 18mm;
+    font-weight: bold;
+    flex-shrink: 0;
+    font-size: 12px;
+    margin-right: 1mm;
+  }
 
-.qr-section .qr-info p {
-  margin: 0;
-  padding: 0;
-  word-break: break-all;
-}
+  span {
+    flex: 1;
+    word-break: break-all;
+    font-size: 12px;
+    line-height: 1.4;
+  }
 
-/* 调整二维码和工单号的整体布局 */
-.qr-section {
-  flex: 1.3;
-  padding-left: 5px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-}
+  .full-row {
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
 
-.qr-section canvas {
-  width: 100%;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
+  .full-row label {
+    width: auto;
+    display: inline-block;
+    margin-right: 20px;
+    flex-shrink: 0;
+  }
+
+  .full-row span {
+    display: inline-block;
+  }
 }
 
 /* 横线样式 */
@@ -1370,53 +1527,13 @@ onMounted(() => {
   width: calc(100% - 6mm);
 }
 
-.top-hr {
-  margin-top: 10px;
-}
-
-.bottom-hr {
-  margin-bottom: 10px;
-}
-
-/* 新增样式 */
-.info-with-qr {
-  display: flex;
-  flex-direction: row;
-}
-
-.info-column {
-  flex: 2;
-}
-
-.info-row.full-row {
-  display: flex;
-  align-items: center;
-  position: relative;
-}
-
-.info-row.full-row label {
-  width: auto;
-  display: inline-block;
-  margin-right: 20px;
-  flex-shrink: 0;
-}
-
-.info-row.full-row span {
-  display: inline-block;
-}
-
-.work-order-content {
-  flex: 1;
-  position: relative;
-  font-size: 12px;
-}
-
 .version-text {
   position: absolute;
   right: 0;
   font-weight: bold;
   white-space: nowrap;
 }
+
 /* 二维码模板样式 - 80×60mm */
 .qr-template.qr8060 {
   width: 80mm;
@@ -1459,11 +1576,12 @@ onMounted(() => {
   gap: 12px;
 }
 
-/* 适配97×84-2mm尺寸的内容样式 */
+/* 适配97×84-2尺寸的内容样式 */
 .size9784-2 {
   width: 97mm;
   height: 84mm;
   font-size: 13px;
+  padding: 10px 5px;
   /* 添加以下属性来确保内容不会超出容器 */
   overflow: hidden;
   box-sizing: border-box;
@@ -1477,22 +1595,23 @@ onMounted(() => {
   }
 
   .split-line {
+    margin: 2px 0;
     border: none;
     height: 1px;
     background-color: #000;
     width: 100%;
   }
   .receipt-header {
-    margin: 0 1.5mm;
+    margin: 0 3mm;
   }
 
   .receipt-body {
-    margin: 0 1.5mm;
+    margin: 0 3mm;
   }
 
   .receipt-bottom {
-    margin: 0 1.5mm;
-    line-height: 18px;
+    margin: 0 3mm;
+    line-height: 15px;
     .bottom-info-row {
       display: flex;
       flex-direction: row;
@@ -1543,19 +1662,19 @@ onMounted(() => {
   }
 
   .company-name {
-    font-size: 17px; /* 增大公司名称字体 */
+    font-size: 17px;
     font-weight: bold;
   }
   .info-row {
-    line-height: 18px;
+    line-height: 15px;
   }
   .info-row label {
-    width: 13mm; /* 增加标签宽度 */
+    width: 13mm;
     text-align-last: justify;
     font-weight: bold;
     flex-shrink: 0;
-    font-size: 12px; /* 增大标签字体 */
-    margin-right: 1mm; /* 增加标签与内容的间距 */
+    font-size: 12px;
+    margin-right: 1mm;
   }
   .span-content-hidden {
     display: -webkit-box;
@@ -1566,7 +1685,7 @@ onMounted(() => {
   }
   .info-row span {
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 15px;
   }
   .qr-section canvas {
     max-width: 100%;
@@ -1587,19 +1706,6 @@ onMounted(() => {
     margin-left: 10px;
   }
 
-  .qr-info-column {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-  }
-
-  .qr-section-placeholder {
-    flex: 1;
-    min-height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
   .border-qty {
     border: 1px solid #000;
     height: 80px;
@@ -1640,11 +1746,168 @@ onMounted(() => {
     font-weight: normal;
     flex: 2;
   }
-
+  .standard-capacity-main {
+    display: flex;
+    gap: 5px;
+  }
+  .standard-capacity {
+    flex: 2;
+  }
+  .standard-person {
+    flex: 1;
+  }
   .version-text {
     font-weight: bold;
     white-space: nowrap;
     flex-shrink: 0;
+  }
+}
+
+/* 适配97×84-3尺寸的内容样式 */
+.size9784-3 {
+  width: 97mm;
+  height: 84mm;
+  font-size: 13px;
+  padding: 10px 5px;
+  .receipt-header {
+    margin: 0 3mm;
+  }
+
+  .receipt-body {
+    margin: 0 3mm;
+    display: flex;
+    flex-direction: row;
+  }
+  .content-section {
+    flex: 3;
+  }
+  .receipt-bottom {
+    margin: 0 3mm;
+    line-height: 15px;
+    .bottom-info-row {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+
+    .bottom-item {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .operator-item {
+      flex: 2;
+    }
+
+    .inspector-item {
+      flex: 2;
+    }
+
+    .date-item {
+      flex: 2.5;
+    }
+
+    .bottom-label {
+      font-weight: bold;
+      margin-right: 5px;
+      white-space: nowrap;
+    }
+
+    .bottom-value {
+      flex: 1;
+      text-align: center;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+  .qr-section canvas {
+    max-width: 90%;
+    max-height: 90%;
+  }
+
+  .top-hr,
+  .bottom-hr {
+    margin: 6px 3mm 6px 3mm;
+    height: 2px;
+  }
+
+  .receipt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+  }
+
+  /* 公司名称容器 */
+  .company-name-container {
+    text-align: center;
+    width: 100%;
+  }
+
+  .company-name {
+    font-size: 14px;
+    font-weight: bold;
+    display: block;
+  }
+
+  /* 调整二维码和工单号的整体布局 */
+  .qr-section {
+    flex: 1.3;
+    padding-left: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .qr-section canvas {
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  .info-row {
+    line-height: 15px;
+    margin-bottom: 2px;
+  }
+
+  .info-row label {
+    width: 13mm;
+    text-align-last: justify;
+    font-weight: bold;
+    flex-shrink: 0;
+    font-size: 12px;
+    margin-right: 1mm;
+  }
+
+  .span-content-hidden {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .info-row span {
+    font-size: 12px;
+    line-height: 15px;
+  }
+  .qr-section canvas {
+    max-width: 100%;
+    max-height: 100%;
+  }
+  .split-line {
+    margin: 5px 0;
+    border: none;
+    height: 1px;
+    background-color: #000;
+    width: 100%;
   }
 }
 

@@ -58,26 +58,35 @@
 
       <el-table v-loading="loading" :data="purchaseOrderDetailList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="采购单" align="center" prop="poNumber" />
+        <el-table-column label="采购单" align="center" prop="poNumber" min-width="120" />
+        <el-table-column label="交货状态" align="center" width="100">
+          <template #default="scope">
+            <el-tooltip :content="getEarlyDeliveryTooltip(scope.row)" placement="top">
+              <el-tag :type="getEarlyDeliveryTagType(scope.row)">
+                {{ getEarlyDeliveryText(scope.row) }}
+              </el-tag>
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column label="项次" align="center" prop="itemNumber" />
         <el-table-column label="排程" align="center" prop="scheduleNumber" />
-        <el-table-column label="物料号" align="center" prop="materialCode" />
-        <el-table-column label="物料描述" align="center" prop="materialDesc" />
+        <el-table-column label="物料号" align="center" prop="materialCode" min-width="140" />
+        <el-table-column label="物料描述" align="left" prop="materialDesc" show-overflow-tooltip min-width="300" />
         <el-table-column label="短文本" align="center" prop="shortText" />
         <el-table-column label="交货日期" align="center" prop="deliveryDate" width="180">
           <template #default="scope">
             <span>{{ parseTime(scope.row.deliveryDate, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="订单数量" align="center" prop="orderQuantity" />
-        <el-table-column label="退货标识" align="center" prop="returnFlag" />
-        <el-table-column label="已收数量" align="center" prop="receivedQuantity" />
-        <el-table-column label="未清数量" align="center" prop="openQuantity" />
+        <el-table-column label="订单数量" align="center" prop="orderQuantity" min-width="100" />
+        <el-table-column label="已收数量" align="center" prop="receivedQuantity" min-width="100" />
+        <el-table-column label="未清数量" align="center" prop="openQuantity" min-width="100" />
         <el-table-column label="订单单位" align="center" prop="orderUnit" />
         <el-table-column label="库存单位" align="center" prop="inventoryUnit" />
         <el-table-column label="换算比例" align="center" prop="conversionRatio" />
         <el-table-column label="删除标识" align="center" prop="itemDeleteFlag" />
-        <el-table-column label="已完成标识" align="center" prop="completedFlag" />
+        <el-table-column label="退货标识" align="center" prop="returnFlag" />
+        <el-table-column label="已完成标识" align="center" prop="completedFlag" min-width="100" />
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
@@ -309,6 +318,51 @@ const shortcuts = [
     }
   }
 ];
+
+// 获取提前交货标识的文本
+const getEarlyDeliveryText = (row) => {
+  if (isEarlyDeliveryForbidden(row)) {
+    return '禁止';
+  }
+  return '允许';
+};
+
+// 获取提前交货标识的类型 (red表示禁止, green表示允许)
+const getEarlyDeliveryTagType = (row) => {
+  if (isEarlyDeliveryForbidden(row)) {
+    return 'danger'; // 红色
+  }
+  return 'success'; // 绿色
+};
+
+// 获取提前交货的提示信息
+const getEarlyDeliveryTooltip = (row) => {
+  if (isEarlyDeliveryForbidden(row)) {
+    return '禁止厂商提前三个工作日交货';
+  }
+  return '允许提前交货';
+};
+
+// 判断是否禁止提前交货
+const isEarlyDeliveryForbidden = (row) => {
+  // 条件1: 供应商 != 'TWZ0'
+  const isSupplierNotTWZ0 = row.supplierCode !== 'TWZ0';
+
+  // 条件2: 项目类别 != '2'
+  const isProjectCategoryNot2 = row.projectCategory !== '2';
+
+  // 条件3: 存在交货日期 && 存在最早交货日期
+  if (!row.deliveryDate || !row.earlyDeliveryDate) {
+    return false;
+  }
+
+  // 条件4: 最早交货日期小于当前时间
+  const earlyDeliveryDate = new Date(row.earlyDeliveryDate);
+  const isPostingTooEarly = earlyDeliveryDate > new Date();
+
+  // 所有条件都满足时，禁止提前交货
+  return isSupplierNotTWZ0 && isProjectCategoryNot2 && isPostingTooEarly;
+};
 
 /** 查询采购订单明细列表 */
 const getList = async () => {

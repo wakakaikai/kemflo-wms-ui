@@ -13,6 +13,15 @@
           <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.warehouseCode" :label="`${warehouse.warehouseCode}-${warehouse.warehouseName}`" :value="warehouse.warehouseCode" />
         </el-select>
       </el-form-item>
+<!--      <el-col :lg="12" :md="12" :sm="24">
+        <el-form-item label="目的库位" prop="locationCode">
+          <el-input v-model="form.locationCode" clearable placeholder="请输入目的库位或点击选择" @keydown.tab.prevent="locationCodeKeyDownTab" @keydown.enter.prevent="locationCodeKeyDownTab">
+            <template #append>
+              <el-button icon="Search" type="primary" @click="showStorageLocationDialog" />
+            </template>
+          </el-input>
+        </el-form-item>
+      </el-col>-->
       <div class="material-record-container">
         <el-row :gutter="24">
           <el-col :lg="12" :md="12" :sm="24">
@@ -75,7 +84,8 @@
 
   <!-- 栈板选择对话框 -->
   <pallet-dialog ref="palletDialogRef" @pallet-select-call-back="palletSelectCallBack" />
-
+  <!-- 库位选择对话框 -->
+  <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
   <!-- 工单选择对话框 -->
   <work-order-dialog ref="workOrderDialogRef" />
 </template>
@@ -91,12 +101,13 @@ import useDialog from '@/hooks/useDialog';
 
 import { addPacking, getPacking, updatePacking } from '@/api/wms/packing';
 import { getWorkOrderPackedQty } from '@/api/wms/packingDetail';
+import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 
 const palletDialogRef = ref<InstanceType<typeof PalletDialog>>();
 const workOrderDialogRef = ref<InstanceType<typeof WorkOrderDialog>>();
+const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-
 const { wms_work_order_check_enable } = toRefs<any>(proxy?.useDict('wms_work_order_check_enable'));
 const packingFormRef = ref<ElFormInstance>();
 const buttonLoading = ref(false);
@@ -140,6 +151,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
   },
   rules: {
     palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'change' }],
+    locationCode: [{ required: true, message: '目的库位不能为空', trigger: 'change' }],
     packingQty: [
       { required: true, message: '请输入工单打包数量', trigger: 'blur' },
       {
@@ -252,6 +264,31 @@ const showWorkOrderDialog = () => {
   workOrderDialogRef.value.openDialog();
   console.log(workOrderToOtherPackingQtyMap);
   workOrderDialogRef.value.initWorkOrderDialog(packingDetailBoList.value, workOrderToOtherPackingQtyMap);
+};
+
+// 显示库位选择对话框
+const showStorageLocationDialog = () => {
+  storageLocationDialogRef.value.openDialog();
+  storageLocationDialogRef.value.handleQuery();
+};
+const storageLocationSelectCallBack = (record: any) => {
+  form.value.warehouseCode = record.warehouseCode;
+  form.value.areaCode = record.areaCode;
+  form.value.locationCode = record.locationCode;
+};
+const locationCodeKeyDownTab = async () => {
+  if (form.value.locationCode) {
+    form.value.locationCode = form.value.locationCode.trim();
+    const res = await getWarehouseByLocationCode({ locationCode: form.value.locationCode });
+    if (res.data) {
+      form.value.warehouseCode = res.data.warehouseCode;
+      form.value.areaCode = res.data.areaCode;
+      form.value.locationCode = res.data.locationCode;
+    } else {
+      ElMessage.error('未找到库位及仓库信息');
+      return;
+    }
+  }
 };
 
 // 重置表单

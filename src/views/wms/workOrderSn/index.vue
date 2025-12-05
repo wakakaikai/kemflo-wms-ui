@@ -293,9 +293,9 @@
                     <div class="info-column">
                       <div class="info-row">
                         <label>标准产能</label>
-                        <span style="display: inline-flex; gap: 10px">
-                          <span>{{ workOrderInfo.standardCapacity ? Number(workOrderInfo.standardCapacity) : '    ' }}PCS/H</span>
-                          <span>{{ workOrderInfo.standardPersonNumber ? Number(workOrderInfo.standardPersonNumber) : '    ' }}人</span>
+                        <span class="standard-capacity-main">
+                          <span class="standard-capacity">{{ workOrderInfo.standardPersonCapacity ? Number(workOrderInfo.standardPersonCapacity) : '' }}PCS/H</span>
+                          <span class="standard-person">{{ workOrderInfo.standardPersonNumber ? Number(workOrderInfo.standardPersonNumber) : '' }}人</span>
                         </span>
                       </div>
                       <div class="info-row">
@@ -465,7 +465,7 @@ const workOrderInfo = ref({
   nextOrderNo: '',
   nextWorkCenter: '',
   nextPlannedStartDate: '',
-  standardCapacity: '',
+  standardPersonCapacity: '',
   standardPersonNumber: '',
   actualCapacity: '',
   actualStartTime: '',
@@ -676,6 +676,7 @@ const handlePrintDialog = () => {
   workOrderInfo.value.material = record.item;
   workOrderInfo.value.materialDesc = record.itemDesc;
   workOrderInfo.value.productDate = record.productDate ? proxy?.parseTime(record.productDate, '{y}-{m}-{d}') : '';
+  workOrderInfo.value.makeDate = parseTime(new Date(), '{y}-{m}-{d}');
   workOrderInfo.value.operator = operator.value;
   // workOrderInfo.value = {
   //   companyName: record.companyName || '溢泰（南京）环保科技有限公司',
@@ -847,6 +848,7 @@ const handleBatchPrint = async () => {
       workOrderInfo.value.material = record.item;
       workOrderInfo.value.materialDesc = record.itemDesc;
       workOrderInfo.value.productDate = record.productDate ? proxy?.parseTime(record.productDate, '{y}-{m}-{d}') : '';
+      workOrderInfo.value.makeDate = parseTime(new Date(), '{y}-{m}-{d}');
       workOrderInfo.value.operator = operator.value;
       // workOrderInfo.value = {
       //   companyName: record.companyName || '溢泰（南京）环保科技有限公司',
@@ -935,6 +937,7 @@ const getUser = async () => {
   operator.value = res.data.user.nickName;
 };
 onMounted(() => {
+  workOrderInfo.value.makeDate = parseTime(new Date(), '{y}-{m}-{d}');
   getUser();
   getList();
 });
@@ -1225,6 +1228,7 @@ onMounted(() => {
   width: 97mm;
   height: 84mm;
   font-size: 13px;
+  padding: 10px 5px;
   /* 添加以下属性来确保内容不会超出容器 */
   overflow: hidden;
   box-sizing: border-box;
@@ -1238,22 +1242,23 @@ onMounted(() => {
   }
 
   .split-line {
+    margin: 2px 0;
     border: none;
     height: 1px;
     background-color: #000;
     width: 100%;
   }
   .receipt-header {
-    margin: 0 1.5mm;
+    margin: 0 3mm;
   }
 
   .receipt-body {
-    margin: 0 1.5mm;
+    margin: 0 3mm;
   }
 
   .receipt-bottom {
-    margin: 0 1.5mm;
-    line-height: 18px;
+    margin: 0 3mm;
+    line-height: 15px;
     .bottom-info-row {
       display: flex;
       flex-direction: row;
@@ -1308,7 +1313,7 @@ onMounted(() => {
     font-weight: bold;
   }
   .info-row {
-    line-height: 18px;
+    line-height: 15px;
   }
   .info-row label {
     width: 13mm; /* 增加标签宽度 */
@@ -1327,7 +1332,7 @@ onMounted(() => {
   }
   .info-row span {
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 15px;
   }
   .qr-section canvas {
     max-width: 90%;
@@ -1402,7 +1407,16 @@ onMounted(() => {
     font-weight: normal;
     flex: 20;
   }
-
+  .standard-capacity-main {
+    display: flex;
+    gap: 5px;
+  }
+  .standard-capacity {
+    flex: 2;
+  }
+  .standard-person {
+    flex: 1;
+  }
   .version-text {
     font-weight: bold;
     white-space: nowrap;

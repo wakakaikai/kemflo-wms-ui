@@ -33,15 +33,39 @@
       </template>
 
       <!-- 固定库位模式下的统一目标库位输入 -->
-      <div v-if="inboundMode === 'fixed'" style="padding: 10px; background-color: #f5f7fa; border-radius: 4px">
-        <el-form :model="fixedInboundForm" ref="fixedTransferFormRef" label-width="100px" :inline="true">
-          <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
-            <el-input v-model="fixedInboundForm.locationCode" placeholder="请输入目标库位编码" clearable @keydown.tab.prevent="locationCodeKeyDownTab" @keydown.enter.prevent="locationCodeKeyDownTab">
-              <template #append>
-                <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
-              </template>
-            </el-input>
-          </el-form-item>
+      <div style="padding: 10px; background-color: #f5f7fa; border-radius: 4px">
+        <el-form :model="fixedInboundForm" ref="fixedInboundFormRef" label-width="auto" :inline="true">
+          <el-row :gutter="20">
+            <el-col :sm="24" :md="6" :lg="6" v-if="inboundMode === 'fixed'">
+              <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
+                <el-input
+                  v-model.trim="fixedInboundForm.locationCode"
+                  placeholder="请输入目标库位编码"
+                  clearable
+                  @keydown.tab.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
+                  @keydown.enter.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
+                >
+                  <template #append>
+                    <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
+                  </template>
+                </el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :sm="24" :md="6" :lg="6">
+              <el-form-item label="接收方">
+                <el-input v-model="fixedInboundForm.targetUserName" placeholder="请输入接收方">
+                  <template #append>
+                    <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
+                  </template>
+                </el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :sm="24" :md="6" :lg="6">
+              <el-form-item label="过账日期" prop="postingDate">
+                <el-date-picker clearable v-model="fixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
+              </el-form-item>
+            </el-col>
+          </el-row>
         </el-form>
       </div>
 
@@ -56,10 +80,19 @@
       <el-table ref="purchaseTableRef" v-loading="loading" :data="purchaseOrderDetailList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column v-if="columns[0].visible" label="采购单" align="left" prop="poNumber" min-width="120" />
+        <el-table-column label="交货状态" align="center" width="100">
+          <template #default="scope">
+            <el-tooltip :content="getEarlyDeliveryTooltip(scope.row)" placement="top">
+              <el-tag :type="getEarlyDeliveryTagType(scope.row)">
+                {{ getEarlyDeliveryText(scope.row) }}
+              </el-tag>
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column v-if="columns[1].visible" label="项次" align="left" prop="itemNumber" min-width="65" />
         <el-table-column v-if="columns[2].visible" label="排程" align="left" prop="scheduleNumber" min-width="60" />
         <el-table-column v-if="columns[3].visible" label="交货日期" align="center" prop="deliveryDate" min-width="100" />
-        <el-table-column v-if="columns[4].visible" label="料号" align="left" prop="materialCode" min-width="130" />
+        <el-table-column v-if="columns[4].visible" label="料号" align="left" prop="materialCode" min-width="135" />
         <el-table-column v-if="columns[5].visible" label="旧料号" align="left" prop="oldMaterialCode" />
         <el-table-column v-if="columns[6].visible" label="物料描述" align="left" prop="materialDesc" show-overflow-tooltip />
         <el-table-column v-if="columns[7].visible" label="订单数量" align="left" prop="orderQuantity" min-width="100" />
@@ -85,7 +118,13 @@
         <!-- 多库位模式下显示独立的目标库位设置 -->
         <el-table-column label="目标库位" width="220" v-if="inboundMode === 'multiple'">
           <template #default="scope">
-            <el-input v-model="scope.row.locationCode" placeholder="请输入目标库位编码" clearable @keydown.enter.prevent>
+            <el-input
+              v-model.trim="scope.row.locationCode"
+              placeholder="请输入目标库位编码"
+              clearable
+              @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.locationCode)"
+              @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.locationCode)"
+            >
               <template #append>
                 <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
               </template>
@@ -99,6 +138,9 @@
         </el-table-column>
         <el-table-column v-if="columns[13].visible" label="库存单位" align="center" prop="inventoryUnit" />
         <el-table-column v-if="columns[14].visible" label="换算比例" align="center" prop="conversionRatio" />
+        <el-table-column v-if="columns[15].visible" label="供应商代码" align="center" prop="supplierCode" min-width="120" />
+        <el-table-column v-if="columns[16].visible" label="供应商名称" align="center" prop="supplierName" show-overflow-tooltip min-width="100" />
+
       </el-table>
 
       <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
@@ -110,6 +152,8 @@
 
     <!-- 库位选择对话框 -->
     <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
+    <!-- 用户收藏 -->
+    <UserCollectionsDialog ref="userCollectionsDialogRef" @user-collections-call-back="userCollectionsSelectCallBack" />
   </div>
 </template>
 
@@ -117,8 +161,10 @@
 import { addPurchaseInbound, listPurchaseOrderDetail } from '@/api/wms/purchaseOrderDetail';
 
 import { PurchaseOrderDetailVO, PurchaseOrderDetailQuery, PurchaseOrderDetailForm } from '@/api/wms/purchaseOrderDetail/types';
-const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
+import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
+const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
+const userCollectionsDialogRef = ref<InstanceType<typeof UserCollectionsDialog>>();
 import { nextTick, ref } from 'vue';
 import { Bell } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
@@ -143,7 +189,9 @@ const inboundMode = ref<'fixed' | 'multiple'>('fixed');
 
 // 固定库位模式下的表单数据
 const fixedInboundForm = ref({
-  locationCode: ''
+  locationCode: '',
+  targetUserName: '',
+  postingDate: null
 });
 
 const queryFormRef = ref<ElFormInstance>();
@@ -169,7 +217,7 @@ const data = reactive<PageData<PurchaseOrderDetailForm, PurchaseOrderDetailQuery
   form: { ...initFormData },
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 100,
     poNumber: undefined,
     itemNumber: undefined,
     materialCode: undefined,
@@ -209,8 +257,67 @@ const columns = ref<FieldOption[]>([
   { key: 11, label: `需质检`, visible: true, children: [] },
   { key: 12, label: `库存数量`, visible: true, children: [] },
   { key: 13, label: `库存单位`, visible: true, children: [] },
-  { key: 14, label: `换算比例`, visible: true, children: [] }
+  { key: 14, label: `换算比例`, visible: true, children: [] },
+  { key: 15, label: `供应商代码`, visible: true, children: [] },
+  { key: 16, label: `供应商名称`, visible: true, children: [] }
 ]);
+
+// 禁用未来的时间
+const disabledFutureDate = (time: Date) => {
+  // 获取当前时间，并将毫秒设为0以确保精确到秒
+  const now = new Date();
+  // 加上指定秒数（默认3秒）
+  now.setSeconds(now.getSeconds() + 3);
+  now.setMilliseconds(0);
+
+  // 禁止选择当前时间之后的日期
+  return time.getTime() > now.getTime();
+};
+
+// 获取提前交货标识的文本
+const getEarlyDeliveryText = (row) => {
+  if (isEarlyDeliveryForbidden(row)) {
+    return '禁止';
+  }
+  return '允许';
+};
+
+// 获取提前交货标识的类型 (red表示禁止, green表示允许)
+const getEarlyDeliveryTagType = (row) => {
+  if (isEarlyDeliveryForbidden(row)) {
+    return 'danger'; // 红色
+  }
+  return 'success'; // 绿色
+};
+
+// 获取提前交货的提示信息
+const getEarlyDeliveryTooltip = (row) => {
+  if (isEarlyDeliveryForbidden(row)) {
+    return '禁止厂商提前三个工作日交货';
+  }
+  return '允许提前交货';
+};
+
+// 判断是否禁止提前交货
+const isEarlyDeliveryForbidden = (row) => {
+  // 条件1: 供应商 != 'TWZ0'
+  const isSupplierNotTWZ0 = row.supplierCode !== 'TWZ0';
+
+  // 条件2: 项目类别 != '2'
+  const isProjectCategoryNot2 = row.projectCategory !== '2';
+
+  // 条件3: 存在交货日期和过账日期
+  if (!row.deliveryDate) {
+    return false;
+  }
+
+  // 条件4: 最早交货日期小于当前时间
+  const earlyDeliveryDate = new Date(row.earlyDeliveryDate);
+  const isPostingTooEarly = earlyDeliveryDate > new Date();
+
+  // 所有条件都满足时，禁止提前交货
+  return isSupplierNotTWZ0 && isProjectCategoryNot2 && isPostingTooEarly;
+};
 
 /** 查询采购订单明细列表 */
 const getList = async () => {
@@ -229,17 +336,16 @@ const getList = async () => {
   loading.value = false;
 };
 
-const locationCodeKeyDownTab = async () => {
-  if (fixedInboundForm.value.locationCode) {
-    fixedInboundForm.value.locationCode = fixedInboundForm.value.locationCode.trim();
+const locationCodeKeyDownTab = async (locationCode: any) => {
+  if (locationCode) {
     const res = await listStorageLocation({
       pageNum: 1,
       pageSize: 10,
-      locationCode: fixedInboundForm.value.locationCode
+      locationCode: locationCode
     });
     resultMessage.value = '';
     if ((res.rows || []).length == 0) {
-      resultMessage.value = `库位${fixedInboundForm.value.locationCode}不存在`;
+      resultMessage.value = `库位${locationCode}不存在`;
       resultStatus.value = false;
     }
   }
@@ -275,6 +381,12 @@ const handleSelectionChange = (selection: PurchaseOrderDetailVO[]) => {
   single.value = selection.length != 1;
   multiple.value = !selection.length;
 };
+/** 显示库位选择对话框 */
+const showStorageLocationDialog = (index: number) => {
+  storageLocationDialogRef.value.openDialog();
+  storageLocationDialogRef.value.handleQuery();
+  currenIndex.value = index;
+};
 
 /** 库位选择回调 */
 const storageLocationSelectCallBack = (record: any) => {
@@ -291,14 +403,29 @@ const storageLocationSelectCallBack = (record: any) => {
   }
 };
 
-/** 显示库位选择对话框 */
-const showStorageLocationDialog = (index: number) => {
-  storageLocationDialogRef.value.openDialog();
-  storageLocationDialogRef.value.handleQuery();
+/** 显示用户收藏选择对话框 */
+const showUserCollectionsDialog = (index: number) => {
+  userCollectionsDialogRef.value.openDialog();
+  userCollectionsDialogRef.value.handleQuery();
   currenIndex.value = index;
 };
 
-/** 提交移转 */
+/** 用户收藏回调 **/
+const userCollectionsSelectCallBack = (record: any) => {
+  console.log(record);
+  if (inboundMode.value === 'fixed') {
+    // 固定库位模式，设置统一的目标用户
+    fixedInboundForm.value.targetUserName = record.nickName;
+  } else {
+    // 多库位模式，设置对应行的目标用户
+    if (currenIndex.value >= 0 && currenIndex.value < transferList.value.length) {
+      const currentItem = transferList.value[currenIndex.value];
+      currentItem.targetUserName = record.nickName;
+    }
+  }
+};
+
+/** 提交采购收货 */
 const submitForm = async () => {
   const validPurchaseInboundList = purchaseOrderDetailList.value.filter((item) => item.receivePoQuantity > 0);
   resultStatus.value = true;
@@ -320,6 +447,8 @@ const submitForm = async () => {
     // 为所有记录设置统一的目标库位
     validPurchaseInboundList.forEach((item) => {
       item.locationCode = fixedInboundForm.value.locationCode || '';
+      item.targetUserName = fixedInboundForm.value.targetUserName || '';
+      item.postingDate = fixedInboundForm.value.postingDate ? fixedInboundForm.value.postingDate + ' 00:00:00' : '';
     });
   } else {
     // 多库位模式验证
@@ -329,6 +458,11 @@ const submitForm = async () => {
       resultStatus.value = false;
       return;
     }
+    // 为所有记录设置统一的接收方、过账日期、备注
+    validPurchaseInboundList.forEach((item) => {
+      item.targetUserName = fixedInboundForm.value.targetUserName || '';
+      item.postingDate = fixedInboundForm.value.postingDate ? fixedInboundForm.value.postingDate + ' 00:00:00' : '';
+    });
   }
 
   // 验证移转数量是否超过当前数量
@@ -361,10 +495,9 @@ const submitForm = async () => {
     resultMessage.value = `采购入库成功${validPurchaseInboundList.length}条记录`;
     resultStatus.value = true;
     purchaseOrderDetailList.value = [];
-    // 清空固定库位表单
-    if (inboundMode.value === 'fixed') {
-      fixedInboundForm.value.locationCode = '';
-    }
+    fixedInboundForm.value.locationCode = '';
+    fixedInboundForm.value.targetUserName = '';
+    fixedInboundForm.value.postingDate = null;
     handleQuery();
   } catch (error) {
     loading.value = false;

@@ -60,7 +60,7 @@
         <el-table-column label="采购组" align="center" prop="purchasingGroup" />
         <el-table-column label="采购组织" align="center" prop="purchasingOrg" />
         <el-table-column label="供应商代码" align="center" prop="supplierCode" />
-        <el-table-column label="供应商名称" align="center" prop="supplierName" />
+        <el-table-column label="供应商名称" align="center" prop="supplierName" show-overflow-tooltip min-width="120" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">

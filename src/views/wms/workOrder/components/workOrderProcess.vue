@@ -21,23 +21,29 @@
 
       <el-table v-loading="loading" :data="workOrderProcessList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="工单号" align="center" prop="workOrderNo" />
+        <el-table-column label="工单号" align="center" prop="workOrderNo" fixed="left" min-width="130" />
+        <el-table-column label="工序" align="center" prop="process" fixed="left" />
+        <el-table-column label="工序描述" align="center" prop="processShortDesc" show-overflow-tooltip fixed="left" min-width="120" />
         <el-table-column label="控制码" align="center" prop="controlCode" />
         <el-table-column label="工艺路线" align="center" prop="router" />
-        <el-table-column label="工序" align="center" prop="process" />
-        <el-table-column label="工序短文本" align="center" prop="processShortDesc" />
         <el-table-column label="工作中心" align="center" prop="workCenter" />
-        <el-table-column label="工序状态" align="center" prop="processStatus" />
-        <el-table-column label="基本数量" align="center" prop="baseQty" />
+        <el-table-column label="工序状态" align="center" prop="processStatus" show-overflow-tooltip />
+        <el-table-column label="基本数量" align="center" prop="baseQty" min-width="100" />
         <el-table-column label="员工人数" align="center" prop="personNumber" />
         <el-table-column label="机器时间" align="center" prop="machineTime" />
-        <el-table-column label="机器时间单位" align="center" prop="machineTimeUnit" />
+        <el-table-column label="单位" align="center" prop="machineTimeUnit" />
         <el-table-column label="人工时间" align="center" prop="personTime" />
-        <el-table-column label="人工时间单位" align="center" prop="personTimeUnit" />
+        <el-table-column label="单位" align="center" prop="personTimeUnit" />
         <el-table-column label="仅排程" align="center" prop="schedulingTime" />
-        <el-table-column label="仅排程单位" align="center" prop="schedulingTimeUnit" />
+        <el-table-column label="单位" align="center" prop="schedulingTimeUnit" />
         <el-table-column label="模取数" align="center" prop="moduleQty" />
-        <el-table-column label="模取数单位" align="center" prop="moduleUnit" />
+        <el-table-column label="单位" align="center" prop="moduleUnit" />
+        <el-table-column label="标准产能" align="center" prop="standardCapacity" />
+        <el-table-column label="标准人数" align="center" prop="personNumber" />
+        <el-table-column label="创建时间" align="center" prop="createTime" />
+        <el-table-column label="创建者" align="center" prop="createByName" />
+        <el-table-column label="更新时间" align="center" prop="updateTime" />
+        <el-table-column label="更新者" align="center" prop="updateByName" />
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
@@ -55,7 +61,7 @@
     </el-card>
     <!-- 添加或修改工单工序对话框 -->
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" append-to-body>
-      <el-form ref="workOrderProcessFormRef" :model="form" :rules="rules" label-width="80px">
+      <el-form ref="workOrderProcessFormRef" :model="form" :rules="rules" label-width="auto">
         <el-form-item label="工单号" prop="workOrderNo">
           <el-input v-model="form.workOrderNo" placeholder="请输入工单号" />
         </el-form-item>
@@ -65,8 +71,8 @@
         <el-form-item label="工序" prop="process">
           <el-input v-model="form.process" placeholder="请输入工序" />
         </el-form-item>
-        <el-form-item label="工序短文本" prop="processShortDesc">
-          <el-input v-model="form.processShortDesc" placeholder="请输入工序短文本" />
+        <el-form-item label="工序描述" prop="processShortDesc">
+          <el-input v-model="form.processShortDesc" placeholder="请输入工序描述" />
         </el-form-item>
         <el-form-item label="工作中心" prop="workCenter">
           <el-input v-model="form.workCenter" placeholder="请输入工作中心" />

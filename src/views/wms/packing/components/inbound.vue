@@ -402,7 +402,8 @@ const data = reactive<PageData<PackingForm, PackingQuery>>({
   },
   rules: {
     id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
-    palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'blur' }]
+    palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'blur' }],
+    locationCode: [{ required: true, message: '目的库位不能为空', trigger: 'change' }],
   }
 });
 

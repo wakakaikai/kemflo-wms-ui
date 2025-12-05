@@ -316,7 +316,7 @@ const data = reactive<PageData<ShippingNoticeForm, ShippingNoticeQuery>>({
   form: { ...initFormData },
   queryParams: {
     pageNum: 1,
-    pageSize: 5000,
+    pageSize: 1000,
     customerCode: undefined,
     customerName: undefined,
     customerNo: undefined,

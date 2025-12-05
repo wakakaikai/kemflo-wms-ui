@@ -34,18 +34,23 @@
           <el-col :span="1.5">
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:workOrderBom:export']">导出</el-button>
           </el-col>
-          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
         </el-row>
       </template>
 
       <el-table v-loading="loading" :data="workOrderBomList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="工单号" align="center" prop="workOrderNo" />
-        <el-table-column label="组件料号" align="center" prop="componentMaterial" />
-        <el-table-column label="组件数量" align="center" prop="componentQty" />
-        <el-table-column label="发料数量" align="center" prop="issuedQty" />
-        <el-table-column label="单位" align="center" prop="unit" />
-        <el-table-column label="备注" align="center" prop="remark" />
+        <el-table-column v-if="columns[0].visible" label="工单号" align="center" prop="workOrderNo" min-width="130" />
+        <el-table-column v-if="columns[1].visible" label="组件料号" align="center" prop="componentMaterial" min-width="150" />
+        <el-table-column v-if="columns[2].visible" label="组件描述" align="left" prop="componentDesc" show-overflow-tooltip min-width="300" />
+        <el-table-column v-if="columns[3].visible" label="组件数量" align="center" prop="componentQty" />
+        <el-table-column v-if="columns[4].visible" label="发料数量" align="center" prop="issuedQty" />
+        <el-table-column v-if="columns[5].visible" label="单位" align="center" prop="unit" />
+        <el-table-column v-if="columns[6].visible" label="创建时间" align="center" prop="createTime" />
+        <el-table-column v-if="columns[7].visible" label="创建者" align="center" prop="createByName" />
+        <el-table-column v-if="columns[8].visible" label="更新时间" align="center" prop="updateTime" />
+        <el-table-column v-if="columns[9].visible" label="更新者" align="center" prop="updateByName" />
+        <el-table-column v-if="columns[10].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -115,7 +120,6 @@ const dialog = reactive<DialogOption>({
   title: ''
 });
 
-
 const props = defineProps({
   workOrderNo: {
     type: String,
@@ -152,6 +156,21 @@ const data = reactive<PageData<WorkOrderBomForm, WorkOrderBomQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+// 列显隐信息
+const columns = ref<FieldOption[]>([
+  { key: 0, label: `工单号`, visible: true, children: [] },
+  { key: 1, label: `组件料号`, visible: true, children: [] },
+  { key: 2, label: `组件描述`, visible: true, children: [] },
+  { key: 3, label: `组件数量`, visible: true, children: [] },
+  { key: 4, label: `发料数量`, visible: true, children: [] },
+  { key: 5, label: `单位`, visible: true, children: [] },
+  { key: 6, label: `创建时间`, visible: false, children: [] },
+  { key: 7, label: `创建者`, visible: false, children: [] },
+  { key: 8, label: `更新时间`, visible: false, children: [] },
+  { key: 9, label: `更新者`, visible: false, children: [] },
+  { key: 10, label: `备注`, visible: false, children: [] }
+]);
 
 /** 查询工单BOM列表 */
 const getList = async () => {
