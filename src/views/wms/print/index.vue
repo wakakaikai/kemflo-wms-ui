@@ -10,7 +10,7 @@
               <el-radio-group v-model="currentTemplate" class="template-list">
                 <el-radio value="receiptOrderTemplate">生产入库单模板1(97×84mm)</el-radio>
                 <el-radio label="receiptOrderTemplate2">生产入库单模板2(97×84mm)</el-radio>
-<!--                <el-radio label="receiptOrderTemplate3">生产入库单模板3(97×84mm)</el-radio>-->
+                <el-radio label="receiptOrderTemplate3">生产入库单模板3(97×84mm)</el-radio>
                 <!--                <el-radio value="designA4">工业设计+A4/A5纸</el-radio>-->
                 <!--                <el-radio value="qr8060">工业二维码(80×60mm)</el-radio>-->
                 <!--                <el-radio value="qr5060">工业二维码(50×60mm)</el-radio>-->
@@ -132,7 +132,8 @@
             <div v-if="currentTemplate === 'receiptOrderTemplate'" :class="['production-receipt', getPaperSizeClass()]" ref="printContent">
               <div class="receipt-header">
                 <div class="company-name-container">
-                  <span class="company-name">{{ workOrderInfo.companyName }}</span>
+                   <!-- <span class="company-name">{{ workOrderInfo.companyName }}</span>-->
+                  <span class="company-name">半成品、成品入库单</span>
                 </div>
               </div>
               <hr class="top-hr" />
@@ -196,7 +197,8 @@
             <div v-if="currentTemplate === 'receiptOrderTemplate2'" :class="['size9784-2']" ref="printContent">
               <div class="receipt-header">
                 <div class="company-name-container">
-                  <span class="company-name">{{ workOrderInfo.companyName }}</span>
+                  <!-- <span class="company-name">{{ workOrderInfo.companyName }}</span>-->
+                  <span class="company-name">半成品、成品入库单</span>
                   <span>第{{ workOrderInfo.sequence || 1 }}张/共{{ workOrderInfo.printTotal || 1 }}张</span>
                 </div>
               </div>
@@ -350,7 +352,8 @@
             <div v-if="currentTemplate === 'receiptOrderTemplate3'" :class="['size9784-3']" ref="printContent">
               <div class="receipt-header">
                 <div class="company-name-container">
-                  <span class="company-name">{{ workOrderInfo.companyName }}</span>
+                  <!-- <span class="company-name">{{ workOrderInfo.companyName }}</span>-->
+                  <span class="company-name">半成品、成品入库单</span>
                 </div>
               </div>
               <hr class="top-hr" />
@@ -1858,7 +1861,7 @@ onMounted(() => {
 
   /* 调整二维码和工单号的整体布局 */
   .qr-section {
-    flex: 1.3;
+    flex: 1.5;
     padding-left: 5px;
     display: flex;
     flex-direction: column;

@@ -154,6 +154,14 @@
               <el-option v-for="mode in printModes" :key="mode.value" :label="mode.label" :value="mode.value" />
             </el-select>
           </el-form-item>
+          <!-- 模式D时显示工序选择列表 -->
+          <el-form-item label="选择工序" v-if="currentPrintMode === 'mode4'">
+            <el-input v-model="selectedProcessInfo" readonly placeholder="请选择工序">
+              <template #append>
+                <el-button icon="Search" @click="openWorkOrderProcessDialog" />
+              </template>
+            </el-input>
+          </el-form-item>
         </el-form>
       </div>
       <div class="print-preview-container">
@@ -203,7 +211,7 @@
                 </div>
                 <div class="info-column">
                   <label>看板数量</label>
-                  <span>{{ workOrderInfo.kanbanQty }}</span>
+                  <span>{{ workOrderInfo.plannedQty }}</span>
                 </div>
               </div>
 
@@ -214,9 +222,10 @@
 
               <div class="split-line"></div>
 
-              <div class="info-row-multiple-column">
+              <div class="info-row-multiple-column" :class="{ 'mode4-small-font': currentPrintMode === 'mode4' }">
                 <div class="info-column">
-                  <label>前一工单</label>
+                  <label v-if="currentPrintMode == 'mode4'">前制程</label>
+                  <label v-else>前一制程</label>
                   <span>{{ formatPreviousOrderNo(workOrderInfo.previousOrderNo) }} {{ workOrderInfo.previousWorkCenter }}</span>
                 </div>
                 <div class="info-column">
@@ -225,9 +234,10 @@
                 </div>
               </div>
 
-              <div class="info-row-multiple-column">
+              <div class="info-row-multiple-column" :class="{ 'mode4-small-font': currentPrintMode === 'mode4' }">
                 <div class="info-column">
-                  <label>下一工单</label>
+                  <label v-if="currentPrintMode == 'mode4'">下制程</label>
+                  <label v-else>下一制程</label>
                   <span>{{ formatPreviousOrderNo(workOrderInfo.nextOrderNo) }} {{ workOrderInfo.nextWorkCenter }}</span>
                 </div>
                 <div class="info-column">
@@ -269,7 +279,8 @@
                   </tr>
                   <tr>
                     <td class="desc-hidden">{{ workOrderProcessInfo.processShortDesc }}</td>
-                    <td colspan="4">{{ Number(workOrderProcessInfo.baseQty) }}</td>
+                    <!--   <td colspan="4">{{ Number(workOrderInfo.plannedQty) }}</td>  -->
+                    <td colspan="4"></td>
                     <td></td>
                     <td></td>
                   </tr>
@@ -341,7 +352,8 @@
                       </tr>
                       <tr>
                         <td class="desc-hidden">{{ process.processShortDesc }}</td>
-                        <td colspan="4">{{ Number(process.baseQty) }}</td>
+                        <!-- <td colspan="4">{{ Number(workOrderInfo.plannedQty) }}</td>  -->
+                        <td colspan="4"></td>
                         <td></td>
                         <td></td>
                       </tr>
@@ -361,10 +373,14 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 工序选择弹窗 -->
+    <work-order-process-dialog ref="workOrderProcessDialogRef" :work-order-no="selectedRecords[0]?.workOrderNo" @workOrderProcessSelectCallBack="workOrderProcessSelectCallBack" />
   </div>
 </template>
 
 <script setup name="WorkOrder" lang="ts">
+import WorkOrderProcessDialog from '@/views/wms/workOrderProcess/components/workOrderProcessDialog.vue';
 import { listWorkOrder, getWorkOrder, delWorkOrder, addWorkOrder, updateWorkOrder } from '@/api/wms/workOrder';
 import { WorkOrderVO, WorkOrderQuery, WorkOrderForm } from '@/api/wms/workOrder/types';
 
@@ -599,16 +615,14 @@ const getWorkOrderProcessList = async () => {
   const res = await listWorkOrderProcess(queryParams.value);
 
   // 过滤controlCode以PP或ZP开头的工序
-  workOrderProcessList.value = res.rows.filter(process =>
-    process.controlCode && (process.controlCode.startsWith('PP') || process.controlCode.startsWith('ZP'))
-  ) || [];
+  workOrderProcessList.value = res.rows.filter((process) => process.controlCode && (process.controlCode.startsWith('PP') || process.controlCode.startsWith('ZP'))) || [];
 
   // 如果有工序数据，则计算标准产能
   if (workOrderProcessList.value.length > 0) {
     workOrderProcessInfo.value = workOrderProcessList.value[0];
 
     // 为每个工序计算标准产能: 基础数量 / (排程时间 / 60)
-    workOrderProcessList.value.forEach(process => {
+    workOrderProcessList.value.forEach((process) => {
       if (process.baseQty != null && process.schedulingTime != null && process.schedulingTime > 0) {
         // 标准产能 = 基础数量 * 60 / 排程时间
         process.standardCapacity = Math.floor((process.baseQty * 60) / process.schedulingTime);
@@ -623,7 +637,8 @@ const getWorkOrderProcessList = async () => {
 const printModes = ref([
   { value: 'mode1', label: '模式A：首工序使用模板A' },
   { value: 'mode2', label: '模式B：末工序使用模板A' },
-  { value: 'mode3', label: '模式C：首工序使用模板A，其余工序使用模板B' }
+  { value: 'mode3', label: '模式C：首工序使用模板A，其余工序使用模板B' },
+  { value: 'mode4', label: '模式D：选中的首道工序使用模板A，其余工序使用模板B' }
 ]);
 
 // 当前打印模式
@@ -648,9 +663,7 @@ const updatePreviewTemplate = () => {
         // 显示末工序信息 - 只考虑controlCode以PP或ZP开头的工序
         if (workOrderProcessList.value.length > 0) {
           // 过滤出controlCode以PP或ZP开头的工序
-          const filteredProcesses = workOrderProcessList.value.filter(process =>
-            process.controlCode && (process.controlCode.startsWith('PP') || process.controlCode.startsWith('ZP'))
-          );
+          const filteredProcesses = workOrderProcessList.value.filter((process) => process.controlCode && (process.controlCode.startsWith('PP') || process.controlCode.startsWith('ZP')));
 
           // 如果有过滤结果，取最后一道工序；否则取全部工序中的最后一道
           if (filteredProcesses.length > 0) {
@@ -666,6 +679,15 @@ const updatePreviewTemplate = () => {
         // 默认显示首工序
         if (workOrderProcessList.value.length > 0) {
           workOrderProcessInfo.value = workOrderProcessList.value[0];
+        }
+        break;
+      case 'mode4':
+        // 模式D：选中的首道工序使用模板A，其余工序使用模板B
+        currentTemplate.value = 'kanbanTemplate1';
+        // 显示选中的工序信息
+        if (selectedProcessList.value.length > 0) {
+          // 如果没有选择工序，默认使用第一个工序
+          workOrderProcessInfo.value = selectedProcessList.value[0];
         }
         break;
       default:
@@ -707,6 +729,12 @@ const cancelPrint = () => {
 const handleBatchPrint = async () => {
   if (selectedRecords.value.length === 0) {
     proxy?.$modal.msgWarning('没有可打印的记录');
+    return;
+  }
+
+  // 检查模式D是否选择了工序
+  if (currentPrintMode.value === 'mode4' && !selectedProcessInfo.value) {
+    proxy?.$modal.msgWarning('请选择要打印的工序');
     return;
   }
 
@@ -870,6 +898,87 @@ const handleBatchPrint = async () => {
           // 恢复完整的工序列表，以便处理下一条记录
           await getWorkOrderProcessList();
           break;
+
+        case 'mode4':
+          // 模式D：选中的首道工序使用模板A，其余工序使用模板B
+          // 首工序使用A模板打印一张 其他工序，每两道使用模板B打印一张
+          let mode4CurrentPage = 1;
+
+          // 计算总页数：首工序1页 + 其余工序每2道工序1页
+          let mode4TotalPages = 1;
+          if (selectedProcessList.value.length > 1) {
+            mode4TotalPages = 1 + Math.ceil((selectedProcessList.value.length - 1) / 2);
+          }
+
+          for (let j = 0; j < selectedProcessList.value.length; j++) {
+            if (j === 0) {
+              // 首工序使用模板A
+              currentTemplate.value = 'kanbanTemplate1';
+              workOrderProcessInfo.value = selectedProcessList.value[j];
+
+              // 设置页码信息
+              workOrderInfo.value.page = mode4CurrentPage++;
+              workOrderInfo.value.totalPages = mode4TotalPages;
+
+              // 重新生成二维码
+              await nextTick();
+              generateQRCode();
+              await nextTick();
+
+              // 生成截图
+              const canvas4 = await html2canvas(document.querySelector('.print-preview-container'), {
+                scale: 2,
+                logging: false,
+                useCORS: true,
+                scrollX: 0,
+                scrollY: 0
+              });
+
+              printContentHTML += `<div style="page-break-after: ${selectedProcessList.value.length > 1 ? 'always' : i < selectedRecords.value.length - 1 ? 'always' : 'auto'};">
+                <img src="${canvas4.toDataURL('image/png')}" style="width:100%; height:100%;" />
+              </div>`;
+            } else {
+              // 其余工序使用模板B，每两张工序打印一张
+              if ((j - 1) % 2 === 0) {
+                // 收集最多两个工序用于模板B显示
+                const processesForPage = [];
+                processesForPage.push(selectedProcessList.value[j]); // 当前工序
+
+                // 如果还有下一个工序，则也加入
+                if (j + 1 < selectedProcessList.value.length) {
+                  processesForPage.push(selectedProcessList.value[j + 1]);
+                }
+
+                // 设置模板B并更新数据
+                currentTemplate.value = 'kanbanTemplate2';
+                // 重要：更新模板B中使用的工序列表
+                oneCycleWorkOrderProcessList.value = processesForPage;
+
+                // 设置页码信息
+                workOrderInfo.value.page = mode4CurrentPage++;
+                workOrderInfo.value.totalPages = mode4TotalPages;
+
+                // 重新生成二维码
+                await nextTick();
+                generateQRCode();
+                await nextTick();
+
+                // 生成截图
+                const canvas4 = await html2canvas(document.querySelector('.print-preview-container'), {
+                  scale: 2,
+                  logging: false,
+                  useCORS: true,
+                  scrollX: 0,
+                  scrollY: 0
+                });
+
+                printContentHTML += `<div style="page-break-after: ${j + 2 < selectedProcessList.value.length || i < selectedRecords.value.length - 1 ? 'always' : 'auto'};">
+                  <img src="${canvas4.toDataURL('image/png')}" style="width:100%; height:100%;" />
+                </div>`;
+              }
+            }
+          }
+          break;
       }
     }
 
@@ -911,6 +1020,42 @@ const handleBatchPrint = async () => {
     printLoading.value = false;
     printDialog.visible = false;
   }
+};
+
+// 工序选择相关
+const workOrderProcessDialogRef = ref(null);
+const selectedProcessList = ref<WorkOrderProcessVO[]>([]);
+const selectedProcessInfo = ref<any>('');
+// 打开工序选择弹窗
+const openWorkOrderProcessDialog = () => {
+  selectedProcessList.value = [];
+  selectedProcessInfo.value = '';
+  if (!selectedRecords.value[0]?.workOrderNo) {
+    proxy?.$modal.msgWarning('请先选择一条工单记录');
+    return;
+  }
+  workOrderProcessDialogRef.value?.openDialog();
+};
+
+// 工序选择回调
+const workOrderProcessSelectCallBack = (data: WorkOrderProcessVO[]) => {
+  // 按照工序号升序排序
+  data.sort((a: any, b: any) => a.process - b.process);
+  selectedProcessList.value = data;
+  selectedProcessInfo.value = selectedProcessList.value.map((item) => `${item.process}`).join(',');
+
+  workOrderInfo.value.previousOrderNo = selectedProcessList.value[0].previousProcessNode;
+  workOrderInfo.value.previousWorkCenter = selectedProcessList.value[0].previousWorkCenter;
+  workOrderInfo.value.previousEndDate = selectedProcessList.value[0].previousEndDate;
+
+
+  const lastIndex = selectedProcessList.value.length - 1;
+  workOrderInfo.value.nextOrderNo = selectedProcessList.value[lastIndex].nextProcessNode;
+  workOrderInfo.value.nextWorkCenter = selectedProcessList.value[lastIndex].nextWorkCenter;
+  workOrderInfo.value.nextPlannedStartDate = selectedProcessList.value[lastIndex].nextPlannedStartDate;
+
+  // 更新预览
+  updatePreviewTemplate();
 };
 
 onMounted(() => {
@@ -999,6 +1144,14 @@ onMounted(() => {
     flex-direction: row;
     color: #000;
     line-height: 15px;
+  }
+
+  .info-row-multiple-column.mode4-small-font {
+    .info-column {
+      span {
+        font-size: 11px;
+      }
+    }
   }
 
   .info-column {

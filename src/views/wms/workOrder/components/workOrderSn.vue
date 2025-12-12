@@ -140,7 +140,8 @@
             <div v-if="currentTemplate === 'receiptOrderTemplate'" :class="['production-receipt', getPaperSizeClass(currentTemplate)]" ref="printPreviewContent">
               <div class="receipt-header">
                 <div class="company-name-container">
-                  <span class="company-name">{{ workOrderInfo.companyName }}</span>
+                  <!-- <span class="company-name">{{ workOrderInfo.companyName }}</span>-->
+                  <span class="company-name">半成品、成品入库单</span>
                 </div>
               </div>
               <hr class="top-hr" />
@@ -205,7 +206,8 @@
             <div v-if="currentTemplate === 'receiptOrderTemplate2'" :class="['size9784-2']" ref="printPreviewContent">
               <div class="receipt-header">
                 <div class="company-name-container">
-                  <span class="company-name">{{ workOrderInfo.companyName }}</span>
+                  <!-- <span class="company-name">{{ workOrderInfo.companyName }}</span>-->
+                  <span class="company-name">半成品、成品入库单</span>
                   <span>第{{ workOrderInfo.sequence }}张/共{{ workOrderInfo.printTotal }}张</span>
                 </div>
               </div>
@@ -363,7 +365,8 @@
             <div v-if="currentTemplate === 'receiptOrderTemplate3'" :class="['size9784-3']" ref="printPreviewContent">
               <div class="receipt-header">
                 <div class="company-name-container">
-                  <span class="company-name">{{ workOrderInfo.companyName }}</span>
+                  <!-- <span class="company-name">{{ workOrderInfo.companyName }}</span>-->
+                  <span class="company-name">半成品、成品入库单</span>
                 </div>
               </div>
               <hr class="top-hr" />
@@ -1650,7 +1653,7 @@ onMounted(() => {
 
   /* 调整二维码和工单号的整体布局 */
   .qr-section {
-    flex: 1.3;
+    flex: 1.5;
     padding-left: 5px;
     display: flex;
     flex-direction: column;
