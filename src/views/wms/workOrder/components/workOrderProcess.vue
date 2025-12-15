@@ -15,36 +15,40 @@
           <el-col :span="1.5">
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:workOrderProcess:export']">导出</el-button>
           </el-col>
-          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+          <right-toolbar v-model:showSearch="showSearch" :columns="columns" @queryTable="getList"></right-toolbar>
         </el-row>
       </template>
 
       <el-table v-loading="loading" :data="workOrderProcessList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="工单号" align="center" prop="workOrderNo" fixed="left" min-width="130" />
-        <el-table-column label="工序" align="center" prop="process" fixed="left" />
-        <el-table-column label="工序描述" align="center" prop="processShortDesc" show-overflow-tooltip fixed="left" min-width="120" />
-        <el-table-column label="控制码" align="center" prop="controlCode" />
-        <el-table-column label="工艺路线" align="center" prop="router" />
-        <el-table-column label="工作中心" align="center" prop="workCenter" />
-        <el-table-column label="工序状态" align="center" prop="processStatus" show-overflow-tooltip />
-        <el-table-column label="基本数量" align="center" prop="baseQty" min-width="100" />
-        <el-table-column label="员工人数" align="center" prop="personNumber" />
-        <el-table-column label="机器时间" align="center" prop="machineTime" />
-        <el-table-column label="单位" align="center" prop="machineTimeUnit" />
-        <el-table-column label="人工时间" align="center" prop="personTime" />
-        <el-table-column label="单位" align="center" prop="personTimeUnit" />
-        <el-table-column label="仅排程" align="center" prop="schedulingTime" />
-        <el-table-column label="单位" align="center" prop="schedulingTimeUnit" />
-        <el-table-column label="模取数" align="center" prop="moduleQty" />
-        <el-table-column label="单位" align="center" prop="moduleUnit" />
-        <el-table-column label="标准产能" align="center" prop="standardCapacity" />
-        <el-table-column label="标准人数" align="center" prop="personNumber" />
-        <el-table-column label="创建时间" align="center" prop="createTime" />
-        <el-table-column label="创建者" align="center" prop="createByName" />
-        <el-table-column label="更新时间" align="center" prop="updateTime" />
-        <el-table-column label="更新者" align="center" prop="updateByName" />
-        <el-table-column label="备注" align="center" prop="remark" />
+        <el-table-column v-if="columns[0].visible" label="工单号" align="center" prop="workOrderNo" fixed="left" min-width="130" />
+        <el-table-column v-if="columns[1].visible" label="工序" align="center" prop="process" fixed="left" />
+        <el-table-column v-if="columns[2].visible" label="工序描述" align="center" prop="processShortDesc" show-overflow-tooltip fixed="left" min-width="120" />
+        <el-table-column v-if="columns[3].visible" label="控制码" align="center" prop="controlCode" />
+        <el-table-column v-if="columns[4].visible" label="工艺路线" align="center" prop="router" />
+        <el-table-column v-if="columns[5].visible" label="工作中心" align="center" prop="workCenter" />
+        <el-table-column v-if="columns[6].visible" label="计划开工日期" align="center" prop="plannedStartDate" width="180" />
+        <el-table-column v-if="columns[7].visible" label="计划完工日期" align="center" prop="plannedEndDate" width="180" />
+        <el-table-column v-if="columns[8].visible" label="实际开工日期" align="center" prop="actualStartDate" width="180" />
+        <el-table-column v-if="columns[9].visible" label="实际完工日期" align="center" prop="actualEndDate" width="180" />
+        <el-table-column v-if="columns[10].visible" label="工序状态" align="center" prop="processStatus" show-overflow-tooltip />
+        <el-table-column v-if="columns[11].visible" label="基本数量" align="center" prop="baseQty" min-width="100" />
+        <el-table-column v-if="columns[12].visible" label="员工人数" align="center" prop="personNumber" />
+        <el-table-column v-if="columns[13].visible" label="机器时间" align="center" prop="machineTime" />
+        <el-table-column v-if="columns[14].visible" label="单位" align="center" prop="machineTimeUnit" />
+        <el-table-column v-if="columns[15].visible" label="人工时间" align="center" prop="personTime" />
+        <el-table-column v-if="columns[16].visible" label="单位" align="center" prop="personTimeUnit" />
+        <el-table-column v-if="columns[17].visible" label="仅排程" align="center" prop="schedulingTime" />
+        <el-table-column v-if="columns[18].visible" label="单位" align="center" prop="schedulingTimeUnit" />
+        <el-table-column v-if="columns[19].visible" label="模取数" align="center" prop="moduleQty" />
+        <el-table-column v-if="columns[20].visible" label="单位" align="center" prop="moduleUnit" />
+        <el-table-column v-if="columns[21].visible" label="标准产能" align="center" prop="standardCapacity" />
+        <el-table-column v-if="columns[22].visible" label="标准人数" align="center" prop="personNumber" />
+        <el-table-column v-if="columns[23].visible" label="创建时间" align="center" prop="createTime" />
+        <el-table-column v-if="columns[24].visible" label="创建者" align="center" prop="createByName" />
+        <el-table-column v-if="columns[25].visible" label="更新时间" align="center" prop="updateTime" />
+        <el-table-column v-if="columns[26].visible" label="更新者" align="center" prop="updateByName" />
+        <el-table-column v-if="columns[27].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -124,6 +128,9 @@
 <script setup name="WorkOrderProcess" lang="ts">
 import { listWorkOrderProcess, getWorkOrderProcess, delWorkOrderProcess, addWorkOrderProcess, updateWorkOrderProcess } from '@/api/wms/workOrderProcess';
 import { WorkOrderProcessVO, WorkOrderProcessQuery, WorkOrderProcessForm } from '@/api/wms/workOrderProcess/types';
+import { parseTime } from '@/utils/ruoyi';
+import { ref } from 'vue';
+import { TableColumns } from '@/api/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
@@ -201,6 +208,37 @@ const data = reactive<PageData<WorkOrderProcessForm, WorkOrderProcessQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const columns = ref<TableColumns[]>([
+  { key: 1, label: '工单号', visible: true },
+  { key: 2, label: '工序', visible: true },
+  { key: 3, label: '工序描述', visible: true },
+  { key: 4, label: '控制码', visible: true },
+  { key: 5, label: '工艺路线', visible: true },
+  { key: 6, label: '工作中心', visible: true },
+  { key: 7, label: '计划开工日期', visible: true },
+  { key: 8, label: '计划完工日期', visible: true },
+  { key: 9, label: '实际开工日期', visible: true },
+  { key: 10, label: '实际完工日期', visible: true },
+  { key: 11, label: '工序状态', visible: false },
+  { key: 12, label: '基本数量', visible: true },
+  { key: 13, label: '员工人数', visible: true },
+  { key: 14, label: '机器时间', visible: true },
+  { key: 15, label: '机器时间单位', visible: false },
+  { key: 16, label: '人工时间', visible: true },
+  { key: 17, label: '人工时间单位', visible: false },
+  { key: 18, label: '仅排程', visible: true },
+  { key: 19, label: '仅排程单位', visible: false },
+  { key: 20, label: '模取数', visible: true },
+  { key: 21, label: '模取数单位', visible: false },
+  { key: 22, label: '标准产能', visible: true },
+  { key: 23, label: '标准人数', visible: true },
+  { key: 24, label: '创建时间', visible: false },
+  { key: 25, label: '创建者', visible: false },
+  { key: 26, label: '更新时间', visible: false },
+  { key: 27, label: '更新者', visible: false },
+  { key: 28, label: '备注', visible: false }
+]);
 
 /** 查询工单工序列表 */
 const getList = async () => {

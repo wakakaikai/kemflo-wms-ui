@@ -8,8 +8,8 @@
           <el-tabs v-model="activeTab" class="print-tabs">
             <el-tab-pane label="内容打印" name="content">
               <el-radio-group v-model="currentTemplate" class="template-list">
-                <el-radio value="receiptOrderTemplate">生产入库单模板1(97×84mm)</el-radio>
-                <el-radio label="receiptOrderTemplate2">生产入库单模板2(97×84mm)</el-radio>
+<!--                <el-radio value="receiptOrderTemplate">生产入库单模板1(97×84mm)</el-radio>-->
+<!--                <el-radio label="receiptOrderTemplate2">生产入库单模板2(97×84mm)</el-radio>-->
                 <el-radio label="receiptOrderTemplate3">生产入库单模板3(97×84mm)</el-radio>
                 <!--                <el-radio value="designA4">工业设计+A4/A5纸</el-radio>-->
                 <!--                <el-radio value="qr8060">工业二维码(80×60mm)</el-radio>-->
@@ -32,12 +32,12 @@
 
           <!-- 工单信息输入 -->
           <el-form label-position="top" ref="queryFormRef" :rules="rules" :model="workOrderInfo">
-            <el-form-item label="公司名称" prop="companyName">
-              <!--              <el-input v-model="workOrderInfo.companyName" placeholder="请输入公司名称" />-->
+<!--            <el-form-item label="公司名称" prop="companyName">
+              &lt;!&ndash;              <el-input v-model="workOrderInfo.companyName" placeholder="请输入公司名称" />&ndash;&gt;
               <el-select v-model="workOrderInfo.companyName" placeholder="请选择公司名称">
                 <el-option v-for="dict in wms_company_name" :key="dict.value" :label="dict.label" :value="dict.value" />
               </el-select>
-            </el-form-item>
+            </el-form-item>-->
             <el-form-item label="工单号码" prop="workOrderNo">
               <el-input ref="workOrderInputRef" v-model="workOrderInfo.workOrderNo" placeholder="请输入工单号码" @keydown.tab.prevent="keyDownTab" @keydown.enter.prevent="keyDownTab">
                 <template #append>
@@ -273,11 +273,11 @@
                       </div>
                       <div class="info-row">
                         <label>预计开工</label>
-                        <span>{{ parseTime(workOrderInfo.plannedStartDate, '{y}-{m}-{d}') }}</span>
+                        <span>{{ parseTime(workOrderInfo.plannedStartDate) }}</span>
                       </div>
                       <div class="info-row">
                         <label>预计完工</label>
-                        <span>{{ parseTime(workOrderInfo.plannedEndDate, '{y}-{m}-{d}') }}</span>
+                        <span>{{ parseTime(workOrderInfo.plannedEndDate) }}</span>
                       </div>
                     </div>
                     <div class="info-column">
@@ -307,22 +307,22 @@
                   <div class="info-with-qr">
                     <div class="info-column">
                       <div class="info-row">
-                        <label>前一制程</label>
+                        <label style="font-size: 12px">前一制程</label>
                         <span>{{ formatPreviousOrderNo(workOrderInfo.previousOrderNo) }} {{ workOrderInfo.previousWorkCenter }}</span>
                       </div>
                       <div class="info-row">
-                        <label>下一制程</label>
+                        <label style="font-size: 12px">下一制程</label>
                         <span>{{ formatPreviousOrderNo(workOrderInfo.nextOrderNo) }} {{ workOrderInfo.nextWorkCenter }}</span>
                       </div>
                     </div>
                     <div class="info-column">
                       <div class="info-row">
-                        <label>完工时间</label>
+                        <label style="font-size: 12px">完工时间</label>
                         <span>{{ workOrderInfo.previousEndDate }}</span>
                       </div>
                       <div class="info-row">
-                        <label>预计开工</label>
-                        <span>{{ parseTime(workOrderInfo.nextPlannedStartDate, '{y}-{m}-{d}') }}</span>
+                        <label style="font-size: 12px">预计开工</label>
+                        <span>{{ parseTime(workOrderInfo.nextPlannedStartDate) }}</span>
                       </div>
                     </div>
                   </div>
@@ -426,14 +426,14 @@
                   <div class="info-with-qr">
                     <div class="info-column">
                       <div class="info-row">
-                        <label>下一制程</label>
-                        <span>{{ formatPreviousOrderNo(workOrderInfo.nextOrderNo) }} {{ workOrderInfo.nextWorkCenter }}</span>
+                        <label style="font-size: 12px">下一制程</label>
+                        <span style="font-size: 12px">{{ formatPreviousOrderNo(workOrderInfo.nextOrderNo) }} {{ workOrderInfo.nextWorkCenter }}</span>
                       </div>
                     </div>
                     <div class="info-column">
                       <div class="info-row">
-                        <label>预计开工</label>
-                        <span>{{ parseTime(workOrderInfo.nextPlannedStartDate, '{y}-{m}-{d}') }}</span>
+                        <label style="font-size: 12px">预计开工</label>
+                        <span style="font-size: 12px">{{ parseTime(workOrderInfo.nextPlannedStartDate) }}</span>
                       </div>
                     </div>
                   </div>
@@ -534,7 +534,7 @@ const data = reactive<PageData<WorkOrderSnForm, WorkOrderSnQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 const activeTab = ref('content');
-const currentTemplate = ref('receiptOrderTemplate2'); // 默认选中生产入库单模板
+const currentTemplate = ref('receiptOrderTemplate3'); // 默认选中生产入库单模板
 const selectedExcelTemplate = ref('qrExcel');
 
 const paperSize = ref('9784'); // 默认纸张大小设置为97×84mm
@@ -1836,7 +1836,7 @@ onMounted(() => {
 
   .top-hr,
   .bottom-hr {
-    margin: 6px 3mm 6px 3mm;
+    margin: 4px 3mm 4px 3mm;
     height: 2px;
   }
 

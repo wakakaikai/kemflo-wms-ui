@@ -13,11 +13,6 @@
             <el-form-item label="产品描述" prop="itemDesc">
               <el-input v-model="queryParams.itemDesc" placeholder="请输入产品描述" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="入库检" prop="checkEnable">
-              <el-select v-model="queryParams.checkEnable" placeholder="请选择入库检" clearable>
-                <el-option v-for="dict in wms_work_order_check_enable" :key="dict.value" :label="dict.label" :value="dict.value" />
-              </el-select>
-            </el-form-item>
             <el-form-item label="计划开工日期" prop="plannedStartDate">
               <el-date-picker v-model="queryParams.plannedStartDate" clearable type="date" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择计划开工日期" />
             </el-form-item>
@@ -51,44 +46,39 @@
           <el-col :span="1.5">
             <el-button v-hasPermi="['wms:workOrder:print']" color="#626aef" plain icon="Printer" @click="handlePrintWorkOrderCard" :disabled="single">打印工单卡</el-button>
           </el-col>
-          <right-toolbar v-model:showSearch="showSearch" @query-table="getList"></right-toolbar>
+          <right-toolbar v-model:showSearch="showSearch" :columns="columns" @query-table="getList"></right-toolbar>
         </el-row>
       </template>
 
       <el-table v-loading="loading" :data="workOrderList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="工单号" align="left" prop="workOrderNo" fixed="left" min-width="130">
+        <el-table-column v-if="columns[0].visible" label="工单号" align="left" prop="workOrderNo" fixed="left" min-width="130">
           <template #default="scope">
             <router-link :to="'/warehouse/workOrder/detail/' + scope.row.workOrderNo" class="link-type">
               <span>{{ scope.row.workOrderNo }}</span>
             </router-link>
           </template>
         </el-table-column>
-        <el-table-column label="产品料号" align="left" prop="item" fixed="left" min-width="150" />
-        <el-table-column label="产品描述" align="left" prop="itemDesc" show-overflow-tooltip fixed="left" min-width="300" />
-        <el-table-column label="入库检" align="center" prop="checkEnable">
+        <el-table-column v-if="columns[1].visible" label="产品料号" align="left" prop="item" fixed="left" min-width="150" />
+        <el-table-column v-if="columns[2].visible" label="产品描述" align="left" prop="itemDesc" show-overflow-tooltip fixed="left" min-width="300" />
+        <el-table-column v-if="columns[3].visible" label="计划开工日期" align="center" prop="plannedStartDate" width="180" />
+        <el-table-column v-if="columns[4].visible" label="计划完工日期" align="center" prop="plannedEndDate" width="180" />
+        <el-table-column v-if="columns[5].visible" label="计划数量" align="center" prop="plannedQty" />
+        <el-table-column v-if="columns[6].visible" label="已交货数量" align="center" prop="deliveredQty" min-width="100" />
+        <el-table-column v-if="columns[7].visible" label="单位" align="center" prop="unit" />
+        <el-table-column v-if="columns[8].visible" label="销售订单号" align="center" prop="salesOrderNo" min-width="120" />
+        <el-table-column v-if="columns[9].visible" label="销售订单项次" align="center" prop="salesOrderItem" min-width="120" />
+        <el-table-column v-if="columns[10].visible" label="溯源工单号" align="center" prop="traceOrderNo" min-width="120" />
+        <el-table-column v-if="columns[11].visible" label="销售订单交货日" align="center" prop="soDeliveryDate" width="180">
           <template #default="scope">
-            <dict-tag :options="wms_work_order_check_enable" :value="scope.row.checkEnable" />
+            <span>{{ parseTime(scope.row.soDeliveryDate, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="计划开工日期" align="center" prop="plannedStartDate" width="180">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.plannedStartDate, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="计划完工日期" align="center" prop="plannedEndDate" width="180">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.plannedEndDate, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="计划数量" align="center" prop="plannedQty" />
-        <el-table-column label="已交货数量" align="center" prop="deliveredQty" min-width="100" />
-        <el-table-column label="单位" align="center" prop="unit" />
-        <el-table-column label="创建时间" align="center" prop="createTime" />
-        <el-table-column label="创建者" align="center" prop="createByName" />
-        <el-table-column label="更新时间" align="center" prop="updateTime" />
-        <el-table-column label="更新者" align="center" prop="updateByName" />
-        <el-table-column label="备注" align="center" prop="remark" />
+        <el-table-column v-if="columns[12].visible" label="创建时间" align="center" prop="createTime" />
+        <el-table-column v-if="columns[13].visible" label="创建者" align="center" prop="createByName" />
+        <el-table-column v-if="columns[14].visible" label="更新时间" align="center" prop="updateTime" />
+        <el-table-column v-if="columns[15].visible" label="更新者" align="center" prop="updateByName" />
+        <el-table-column v-if="columns[16].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -115,7 +105,7 @@
         <el-form-item label="产品描述" prop="itemDesc">
           <el-input v-model="form.itemDesc" placeholder="请输入产品描述" />
         </el-form-item>
-        <el-form-item label="入库检" prop="checkEnable">
+        <el-form-item label="出库检查" prop="checkEnable">
           <el-radio-group v-model="form.checkEnable">
             <el-radio v-for="dict in wms_work_order_check_enable" :key="dict.value" :value="parseInt(dict.value)">{{ dict.label }}</el-radio>
           </el-radio-group>
@@ -150,7 +140,7 @@
       <div class="print-mode-selection">
         <el-form label-width="auto">
           <el-form-item label="打印模式">
-            <el-select v-model="currentPrintMode" placeholder="请选择打印模式">
+            <el-select v-model="currentPrintMode" placeholder="请选择打印模式" @change="changePrintMode">
               <el-option v-for="mode in printModes" :key="mode.value" :label="mode.label" :value="mode.value" />
             </el-select>
           </el-form-item>
@@ -222,27 +212,25 @@
 
               <div class="split-line"></div>
 
-              <div class="info-row-multiple-column" :class="{ 'mode4-small-font': currentPrintMode === 'mode4' }">
+              <div class="info-row-multiple-column mode4-small-font">
                 <div class="info-column">
-                  <label v-if="currentPrintMode == 'mode4'">前制程</label>
-                  <label v-else>前一制程</label>
+                  <label style="font-size: 12px">前制程</label>
                   <span>{{ formatPreviousOrderNo(workOrderInfo.previousOrderNo) }} {{ workOrderInfo.previousWorkCenter }}</span>
                 </div>
                 <div class="info-column">
-                  <label>完工时间</label>
+                  <label style="font-size: 12px">完工时间</label>
                   <span>{{ workOrderInfo.previousEndDate }}</span>
                 </div>
               </div>
 
-              <div class="info-row-multiple-column" :class="{ 'mode4-small-font': currentPrintMode === 'mode4' }">
+              <div class="info-row-multiple-column mode4-small-font">
                 <div class="info-column">
-                  <label v-if="currentPrintMode == 'mode4'">下制程</label>
-                  <label v-else>下一制程</label>
+                  <label style="font-size: 12px">下制程</label>
                   <span>{{ formatPreviousOrderNo(workOrderInfo.nextOrderNo) }} {{ workOrderInfo.nextWorkCenter }}</span>
                 </div>
                 <div class="info-column">
-                  <label>预计开工</label>
-                  <span>{{ parseTime(workOrderInfo.nextPlannedStartDate, '{y}-{m}-{d}') }}</span>
+                  <label style="font-size: 12px">预计开工</label>
+                  <span>{{ parseTime(workOrderInfo.nextPlannedStartDate) }}</span>
                 </div>
               </div>
               <div class="split-line" />
@@ -267,8 +255,8 @@
                     <td>PCS/H</td>
                     <td>{{ workOrderProcessInfo.personNumber ? Number(workOrderProcessInfo.personNumber) : '' }}</td>
                     <td>人</td>
-                    <td>{{ formatDateToMonthDay(workOrderInfo.plannedStartDate) }}</td>
-                    <td>{{ formatDateToMonthDay(workOrderInfo.plannedEndDate) }}</td>
+                    <td>{{ formatDateToMonthDay(workOrderProcessInfo.plannedStartDate) }}</td>
+                    <td>{{ formatDateToMonthDay(workOrderProcessInfo.plannedEndDate) }}</td>
                     <td rowspan="3"></td>
                   </tr>
                   <tr>
@@ -383,9 +371,9 @@
 import WorkOrderProcessDialog from '@/views/wms/workOrderProcess/components/workOrderProcessDialog.vue';
 import { listWorkOrder, getWorkOrder, delWorkOrder, addWorkOrder, updateWorkOrder } from '@/api/wms/workOrder';
 import { WorkOrderVO, WorkOrderQuery, WorkOrderForm } from '@/api/wms/workOrder/types';
-
+import { TableColumns } from '@/api/types';
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_work_order_check_enable } = toRefs<any>(proxy?.useDict('wms_work_order_check_enable'));
+const { sys_yes_no, wms_work_order_check_enable } = toRefs<any>(proxy?.useDict('sys_yes_no', 'wms_work_order_check_enable'));
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { nextTick, ref } from 'vue';
@@ -425,7 +413,7 @@ const initFormData: WorkOrderForm = {
   workOrderNo: undefined,
   item: undefined,
   itemDesc: undefined,
-  checkEnable: undefined,
+  checkEnable: 0,
   plannedStartDate: undefined,
   plannedEndDate: undefined,
   plannedQty: undefined,
@@ -441,7 +429,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
     workOrderNo: undefined,
     item: undefined,
     itemDesc: undefined,
-    checkEnable: undefined,
+    inspectionFlag: undefined,
     plannedStartDate: undefined,
     plannedEndDate: undefined,
     plannedQty: undefined,
@@ -454,7 +442,6 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
     workOrderNo: [{ required: true, message: '工单号不能为空', trigger: 'blur' }],
     item: [{ required: true, message: '产品料号不能为空', trigger: 'blur' }],
     itemDesc: [{ required: true, message: '产品描述不能为空', trigger: 'blur' }],
-    checkEnable: [{ required: true, message: '入库检不能为空', trigger: 'change' }],
     plannedStartDate: [{ required: true, message: '计划开工日期不能为空', trigger: 'blur' }],
     plannedEndDate: [{ required: true, message: '计划完工日期不能为空', trigger: 'blur' }],
     plannedQty: [{ required: true, message: '计划数量不能为空', trigger: 'blur' }]
@@ -462,6 +449,26 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const columns = ref<TableColumns[]>([
+  { key: 1, label: '工单号', visible: true },
+  { key: 2, label: '产品料号', visible: true },
+  { key: 3, label: '产品描述', visible: true },
+  { key: 4, label: '计划开工日期', visible: true },
+  { key: 5, label: '计划完工日期', visible: true },
+  { key: 6, label: '计划数量', visible: true },
+  { key: 7, label: '已交货数量', visible: true },
+  { key: 8, label: '单位', visible: true },
+  { key: 9, label: '销售订单号', visible: true },
+  { key: 10, label: '销售订单项次', visible: true },
+  { key: 11, label: '溯源工单号', visible: true },
+  { key: 12, label: '销售订单交货日', visible: true },
+  { key: 13, label: '创建时间', visible: false },
+  { key: 14, label: '创建者', visible: false },
+  { key: 15, label: '更新时间', visible: false },
+  { key: 16, label: '更新者', visible: false },
+  { key: 17, label: '备注', visible: false }
+]);
 
 // 工单信息
 const workOrderInfo = ref({});
@@ -607,6 +614,10 @@ const generateQRCode = () => {
     });
   }
 };
+/** 修改打印模式 */
+const changePrintMode = () => {
+  getWorkOrderProcessList();
+};
 
 /** 查询工单工序列表 */
 const getWorkOrderProcessList = async () => {
@@ -619,7 +630,46 @@ const getWorkOrderProcessList = async () => {
 
   // 如果有工序数据，则计算标准产能
   if (workOrderProcessList.value.length > 0) {
-    workOrderProcessInfo.value = workOrderProcessList.value[0];
+    const lastIndex = workOrderProcessList.value.length - 1;
+    switch (currentPrintMode.value) {
+      case 'mode1':
+        workOrderInfo.value.previousOrderNo = workOrderProcessList.value[0].previousProcessNode;
+        workOrderInfo.value.previousWorkCenter = workOrderProcessList.value[0].previousWorkCenter;
+        workOrderInfo.value.previousEndDate = workOrderProcessList.value[0].previousEndDate;
+
+        workOrderInfo.value.nextOrderNo = workOrderProcessList.value[0].nextProcessNode;
+        workOrderInfo.value.nextWorkCenter = workOrderProcessList.value[0].nextWorkCenter;
+        workOrderInfo.value.nextPlannedStartDate = workOrderProcessList.value[0].nextPlannedStartDate;
+
+        workOrderProcessInfo.value = workOrderProcessList.value[0];
+        break;
+      case 'mode2':
+        workOrderInfo.value.previousOrderNo = workOrderProcessList.value[lastIndex].previousProcessNode;
+        workOrderInfo.value.previousWorkCenter = workOrderProcessList.value[lastIndex].previousWorkCenter;
+        workOrderInfo.value.previousEndDate = workOrderProcessList.value[lastIndex].previousEndDate;
+
+        workOrderInfo.value.nextOrderNo = workOrderProcessList.value[lastIndex].nextProcessNode;
+        workOrderInfo.value.nextWorkCenter = workOrderProcessList.value[lastIndex].nextWorkCenter;
+        workOrderInfo.value.nextPlannedStartDate = workOrderProcessList.value[lastIndex].nextPlannedStartDate;
+
+        workOrderProcessInfo.value = workOrderProcessList.value[lastIndex];
+        break;
+      case 'mode3':
+        workOrderInfo.value.previousOrderNo = workOrderProcessList.value[0].previousProcessNode;
+        workOrderInfo.value.previousWorkCenter = workOrderProcessList.value[0].previousWorkCenter;
+        workOrderInfo.value.previousEndDate = workOrderProcessList.value[0].previousEndDate;
+
+        workOrderInfo.value.nextOrderNo = workOrderProcessList.value[lastIndex].nextProcessNode;
+        workOrderInfo.value.nextWorkCenter = workOrderProcessList.value[lastIndex].nextWorkCenter;
+        workOrderInfo.value.nextPlannedStartDate = workOrderProcessList.value[lastIndex].nextPlannedStartDate;
+
+        workOrderProcessInfo.value = workOrderProcessList.value[0];
+        break;
+      case 'mode4':
+        break;
+      default:
+        workOrderProcessInfo.value = workOrderProcessList.value[0];
+    }
 
     // 为每个工序计算标准产能: 基础数量 / (排程时间 / 60)
     workOrderProcessList.value.forEach((process) => {
@@ -656,6 +706,10 @@ const updatePreviewTemplate = () => {
       case 'mode1':
         // 模式A：所有工序使用模板A（只打印一张）
         currentTemplate.value = 'kanbanTemplate1';
+        // 默认显示首工序
+        if (workOrderProcessList.value.length > 0) {
+          workOrderProcessInfo.value = workOrderProcessList.value[0];
+        }
         break;
       case 'mode2':
         // 模式B：末工序使用模板A（只打印一张）
@@ -711,6 +765,7 @@ const handlePrintWorkOrderCard = () => {
   printDialog.visible = true;
 
   // 构建看板卡数据
+  selectedProcessInfo.value = '';
   workOrderInfo.value = selectedRecords.value[0];
   workOrderInfo.value.productDate = parseTime(new Date(), '{y}-{m}-{d}');
   workOrderInfo.value.makeDate = parseTime(new Date(), '{y}-{m}-{d}');
@@ -723,6 +778,7 @@ const handlePrintWorkOrderCard = () => {
 const cancelPrint = () => {
   printDialog.visible = false;
   printLoading.value = false; // 同时重置加载状态
+  selectedProcessInfo.value = '';
 };
 
 // 批量打印处理
@@ -1048,11 +1104,18 @@ const workOrderProcessSelectCallBack = (data: WorkOrderProcessVO[]) => {
   workOrderInfo.value.previousWorkCenter = selectedProcessList.value[0].previousWorkCenter;
   workOrderInfo.value.previousEndDate = selectedProcessList.value[0].previousEndDate;
 
-
   const lastIndex = selectedProcessList.value.length - 1;
   workOrderInfo.value.nextOrderNo = selectedProcessList.value[lastIndex].nextProcessNode;
   workOrderInfo.value.nextWorkCenter = selectedProcessList.value[lastIndex].nextWorkCenter;
   workOrderInfo.value.nextPlannedStartDate = selectedProcessList.value[lastIndex].nextPlannedStartDate;
+
+  // 为每个工序计算标准产能: 基础数量 / (排程时间 / 60)
+  selectedProcessList.value.forEach((process) => {
+    if (process.baseQty != null && process.schedulingTime != null && process.schedulingTime > 0) {
+      // 标准产能 = 基础数量 * 60 / 排程时间
+      process.standardCapacity = Math.floor((process.baseQty * 60) / process.schedulingTime);
+    }
+  });
 
   // 更新预览
   updatePreviewTemplate();
@@ -1245,6 +1308,7 @@ onMounted(() => {
     min-height: 25px;
   }
 }
+
 
 /* 模板B样式 */
 .kanban-template-2 {

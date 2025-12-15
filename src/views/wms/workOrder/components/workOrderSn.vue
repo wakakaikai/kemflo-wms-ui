@@ -561,7 +561,7 @@ const props = defineProps({
 const printDialogVisible = ref(false);
 const printLoading = ref(false);
 const selectedRecords = ref<WorkOrderSnVO[]>([]);
-const currentTemplate = ref('receiptOrderTemplate2');
+const currentTemplate = ref('receiptOrderTemplate3');
 const operator = ref('');
 
 const previewQrCodeCanvas = ref<HTMLCanvasElement | null>(null);
@@ -612,9 +612,9 @@ const workOrderInfo = ref({
 
 // 打印模板选项 - 启用所有模板选项
 const printTemplates = ref([
-  { value: 'receiptOrderTemplate', label: '生产入库单模板1(97×84mm)' },
-  { value: 'receiptOrderTemplate2', label: '生产入库单模板2(97×84mm)' },
-  // { value: 'receiptOrderTemplate3', label: '生产入库单模板3(97×84mm)' },
+  // { value: 'receiptOrderTemplate', label: '生产入库单模板1(97×84mm)' },
+  // { value: 'receiptOrderTemplate2', label: '生产入库单模板2(97×84mm)' },
+  { value: 'receiptOrderTemplate3', label: '生产入库单模板3(97×84mm)' },
 ]);
 
 const initFormData: WorkOrderSnForm = {

@@ -25,6 +25,11 @@ export interface WorkOrderVO {
   checkEnable: number;
 
   /**
+   * SAP质检标识
+   */
+  inspectionFlag?: string;
+
+  /**
    * 计划开工日期
    */
   plannedStartDate: string;
@@ -90,6 +95,11 @@ export interface WorkOrderForm extends BaseEntity {
    * 入库检
    */
   checkEnable?: number;
+
+  /**
+   * SAP质检标识
+   */
+  inspectionFlag?: string;
 
   /**
    * 计划开工日期
@@ -176,6 +186,11 @@ export interface WorkOrderQuery extends PageQuery {
    * 入库检
    */
   checkEnable?: number;
+
+  /**
+   * SAP质检标识
+   */
+  inspectionFlag?: string;
 
   /**
    * 计划开工日期
