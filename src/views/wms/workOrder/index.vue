@@ -328,8 +328,8 @@
                         <td>PCS/H</td>
                         <td>{{ process.personNumber ? Number(process.personNumber) : '' }}</td>
                         <td>人</td>
-                        <td>{{ formatDateToMonthDay(workOrderInfo.plannedStartDate) }}</td>
-                        <td>{{ formatDateToMonthDay(workOrderInfo.plannedEndDate) }}</td>
+                        <td>{{ formatDateToMonthDay(process.plannedStartDate) }}</td>
+                        <td>{{ formatDateToMonthDay(process.plannedEndDate) }}</td>
                         <td rowspan="3"></td>
                       </tr>
                       <tr>

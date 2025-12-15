@@ -286,11 +286,11 @@
                       </div>
                       <div class="info-row">
                         <label>预计开工</label>
-                        <span>{{ parseTime(workOrderInfo.plannedStartDate, '{y}-{m}-{d}') }}</span>
+                        <span>{{ parseTime(workOrderInfo.plannedStartDate) }}</span>
                       </div>
                       <div class="info-row">
                         <label>预计完工</label>
-                        <span>{{ parseTime(workOrderInfo.plannedEndDate, '{y}-{m}-{d}') }}</span>
+                        <span>{{ parseTime(workOrderInfo.plannedEndDate) }}</span>
                       </div>
                     </div>
                     <div class="info-column">
@@ -335,7 +335,7 @@
                       </div>
                       <div class="info-row">
                         <label>预计开工</label>
-                        <span>{{ parseTime(workOrderInfo.nextPlannedStartDate, '{y}-{m}-{d}') }}</span>
+                        <span>{{ parseTime(workOrderInfo.nextPlannedStartDate) }}</span>
                       </div>
                     </div>
                   </div>
@@ -445,7 +445,7 @@
                     <div class="info-column">
                       <div class="info-row">
                         <label>预计开工</label>
-                        <span>{{ parseTime(workOrderInfo.nextPlannedStartDate, '{y}-{m}-{d}') }}</span>
+                        <span>{{ parseTime(workOrderInfo.nextPlannedStartDate) }}</span>
                       </div>
                     </div>
                   </div>
