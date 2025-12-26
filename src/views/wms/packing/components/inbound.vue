@@ -553,23 +553,30 @@ const submitInbound = () => {
   packingFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
       buttonLoading.value = true;
-      if (form.value.id) {
-        await receivePacking({
-          packingBoList: [
-            {
-              id: form.value.id,
-              warehouseCode: form.value.warehouseCode,
-              areaCode: form.value.areaCode,
-              locationCode: form.value.locationCode,
-              palletCode: form.value.palletCode,
-              packingCode: form.value.packingCode
-            }
-          ]
-        }).finally(() => (buttonLoading.value = false));
+      try {
+        if (form.value.id) {
+          await receivePacking({
+            packingBoList: [
+              {
+                id: form.value.id,
+                warehouseCode: form.value.warehouseCode,
+                areaCode: form.value.areaCode,
+                locationCode: form.value.locationCode,
+                palletCode: form.value.palletCode,
+                packingCode: form.value.packingCode
+              }
+            ]
+          });
+        }
+        visible.value = false;
+        proxy?.$modal.msgSuccess('送仓成功');
+        await getList();
+      } catch (error) {
+        console.error('送仓失败:', error);
+        proxy?.$modal.msgError('送仓失败，请重试');
+      } finally {
+        buttonLoading.value = false;
       }
-      visible.value = false;
-      proxy?.$modal.msgSuccess('送仓成功');
-      await getList();
     }
   });
 };

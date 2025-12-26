@@ -12,7 +12,17 @@ export interface PurchaseOrderDetailVO {
   /**
    * 行项目号
    */
-  itemNumber: number;
+  itemNumber: string;
+
+  /**
+   * DN单号
+   */
+  dnNumber: string;
+
+  /**
+   * 排程行号
+   */
+  scheduleNumber: string;
 
   /**
    * 物料号
@@ -50,14 +60,14 @@ export interface PurchaseOrderDetailVO {
   returnFlag: string;
 
   /**
-   * 已收货数量
+   * 已收数量
    */
-  receivedQuantity: number | string;
+  receivedQuantity: number;
 
   /**
    * 未清数量
    */
-  openQuantity: number | string;
+  openQuantity: number;
 
   /**
    * 库存单位
@@ -67,7 +77,12 @@ export interface PurchaseOrderDetailVO {
   /**
    * 换算比例
    */
-  conversionRatio: number | string;
+  conversionRatio: number;
+
+  /**
+   * 采购类别
+   */
+  poCategory: string;
 
   /**
    * 删除标识：L-删除
@@ -83,10 +98,21 @@ export interface PurchaseOrderDetailVO {
    * 备注
    */
   remark: string;
+
+  /**
+   * 最早交货日期
+   */
+  earlyDeliveryDate: string;
+
   /**
    * 是否同步SAP
    */
-  enableSapSync: boolean;
+  enableSapSync?: boolean;
+
+  /**
+   * 收货类型
+   */
+  receiveType?: string;
 }
 
 export interface PurchaseOrderDetailForm extends BaseEntity {
@@ -103,7 +129,17 @@ export interface PurchaseOrderDetailForm extends BaseEntity {
   /**
    * 行项目号
    */
-  itemNumber?: number;
+  itemNumber?: string;
+
+  /**
+   * DN单号
+   */
+  dnNumber?: string;
+
+  /**
+   * 排程行号
+   */
+  scheduleNumber?: string;
 
   /**
    * 物料号
@@ -128,7 +164,7 @@ export interface PurchaseOrderDetailForm extends BaseEntity {
   /**
    * 订单数量
    */
-  orderQuantity?: number | string;
+  orderQuantity?: number;
 
   /**
    * 订单单位
@@ -141,14 +177,14 @@ export interface PurchaseOrderDetailForm extends BaseEntity {
   returnFlag?: string;
 
   /**
-   * 已收货数量
+   * 已收数量
    */
-  receivedQuantity?: number | string;
+  receivedQuantity?: number;
 
   /**
    * 未清数量
    */
-  openQuantity?: number | string;
+  openQuantity?: number;
 
   /**
    * 库存单位
@@ -159,6 +195,11 @@ export interface PurchaseOrderDetailForm extends BaseEntity {
    * 换算比例
    */
   conversionRatio?: number;
+
+  /**
+   * 采购类别
+   */
+  poCategory?: string;
 
   /**
    * 删除标识：L-删除
@@ -174,6 +215,21 @@ export interface PurchaseOrderDetailForm extends BaseEntity {
    * 备注
    */
   remark?: string;
+
+  /**
+   * 最早交货日期
+   */
+  earlyDeliveryDate?: string;
+
+  /**
+   * 是否同步SAP
+   */
+  enableSapSync?: any;
+
+  /**
+   * 收货类型
+   */
+  receiveType?: string;
 }
 
 export interface PurchaseOrderDetailQuery extends PageQuery {
@@ -185,7 +241,17 @@ export interface PurchaseOrderDetailQuery extends PageQuery {
   /**
    * 行项目号
    */
-  itemNumber?: number;
+  itemNumber?: string;
+
+  /**
+   * DN单号
+   */
+  dnNumber?: string;
+
+  /**
+   * 排程行号
+   */
+  scheduleNumber?: string;
 
   /**
    * 物料号
@@ -210,7 +276,7 @@ export interface PurchaseOrderDetailQuery extends PageQuery {
   /**
    * 订单数量
    */
-  orderQuantity?: number | string;
+  orderQuantity?: number;
 
   /**
    * 订单单位
@@ -223,14 +289,14 @@ export interface PurchaseOrderDetailQuery extends PageQuery {
   returnFlag?: string;
 
   /**
-   * 已收货数量
+   * 已收数量
    */
-  receivedQuantity?: number | string;
+  receivedQuantity?: number;
 
   /**
    * 未清数量
    */
-  openQuantity?: number | string;
+  openQuantity?: number;
 
   /**
    * 库存单位
@@ -243,6 +309,11 @@ export interface PurchaseOrderDetailQuery extends PageQuery {
   conversionRatio?: number;
 
   /**
+   * 采购类别
+   */
+  poCategory?: string;
+
+  /**
    * 删除标识：L-删除
    */
   itemDeleteFlag?: string;
@@ -251,6 +322,21 @@ export interface PurchaseOrderDetailQuery extends PageQuery {
    * 已完成标识：X-已完成
    */
   completedFlag?: string;
+
+  /**
+   * 最早交货日期
+   */
+  earlyDeliveryDate?: string;
+
+  /**
+   * 是否同步SAP
+   */
+  enableSapSync?: boolean;
+
+  /**
+   * 收货类型
+   */
+  receiveType?: string;
 
   /**
    * 日期范围参数

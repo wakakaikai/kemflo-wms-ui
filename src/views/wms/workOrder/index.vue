@@ -624,62 +624,75 @@ const getWorkOrderProcessList = async () => {
   loading.value = true;
   queryParams.value.workOrderNo = selectedRecords.value[0]?.workOrderNo;
   const res = await listWorkOrderProcess(queryParams.value);
-
   // 过滤controlCode以PP或ZP开头的工序
   workOrderProcessList.value = res.rows.filter((process) => process.controlCode && (process.controlCode.startsWith('PP') || process.controlCode.startsWith('ZP'))) || [];
+  // 当工序列表为空时，清空相关数据
+  if (workOrderProcessList.value.length === 0) {
+    workOrderProcessList.value = [];
+    workOrderProcessInfo.value = {}; // 清空工序信息
+    workOrderInfo.value.previousOrderNo = '';
+    workOrderInfo.value.previousWorkCenter = '';
+    workOrderInfo.value.previousEndDate = '';
+    workOrderInfo.value.nextOrderNo = '';
+    workOrderInfo.value.nextWorkCenter = '';
+    workOrderInfo.value.nextPlannedStartDate = '';
 
+    // 更新预览模板
+    updatePreviewTemplate();
+
+    total.value = res.total;
+    loading.value = false;
+    return;
+  }
   // 如果有工序数据，则计算标准产能
-  if (workOrderProcessList.value.length > 0) {
-    const lastIndex = workOrderProcessList.value.length - 1;
-    switch (currentPrintMode.value) {
-      case 'mode1':
-        workOrderInfo.value.previousOrderNo = workOrderProcessList.value[0].previousProcessNode;
-        workOrderInfo.value.previousWorkCenter = workOrderProcessList.value[0].previousWorkCenter;
-        workOrderInfo.value.previousEndDate = workOrderProcessList.value[0].previousEndDate;
+  const lastIndex = workOrderProcessList.value.length - 1;
+  switch (currentPrintMode.value) {
+    case 'mode1':
+      workOrderInfo.value.previousOrderNo = workOrderProcessList.value[0].previousProcessNode;
+      workOrderInfo.value.previousWorkCenter = workOrderProcessList.value[0].previousWorkCenter;
+      workOrderInfo.value.previousEndDate = workOrderProcessList.value[0].previousEndDate;
 
-        workOrderInfo.value.nextOrderNo = workOrderProcessList.value[0].nextProcessNode;
-        workOrderInfo.value.nextWorkCenter = workOrderProcessList.value[0].nextWorkCenter;
-        workOrderInfo.value.nextPlannedStartDate = workOrderProcessList.value[0].nextPlannedStartDate;
+      workOrderInfo.value.nextOrderNo = workOrderProcessList.value[0].nextProcessNode;
+      workOrderInfo.value.nextWorkCenter = workOrderProcessList.value[0].nextWorkCenter;
+      workOrderInfo.value.nextPlannedStartDate = workOrderProcessList.value[0].nextPlannedStartDate;
 
-        workOrderProcessInfo.value = workOrderProcessList.value[0];
-        break;
-      case 'mode2':
-        workOrderInfo.value.previousOrderNo = workOrderProcessList.value[lastIndex].previousProcessNode;
-        workOrderInfo.value.previousWorkCenter = workOrderProcessList.value[lastIndex].previousWorkCenter;
-        workOrderInfo.value.previousEndDate = workOrderProcessList.value[lastIndex].previousEndDate;
+      workOrderProcessInfo.value = workOrderProcessList.value[0] || {};
+      break;
+    case 'mode2':
+      workOrderInfo.value.previousOrderNo = workOrderProcessList.value[lastIndex].previousProcessNode;
+      workOrderInfo.value.previousWorkCenter = workOrderProcessList.value[lastIndex].previousWorkCenter;
+      workOrderInfo.value.previousEndDate = workOrderProcessList.value[lastIndex].previousEndDate;
 
-        workOrderInfo.value.nextOrderNo = workOrderProcessList.value[lastIndex].nextProcessNode;
-        workOrderInfo.value.nextWorkCenter = workOrderProcessList.value[lastIndex].nextWorkCenter;
-        workOrderInfo.value.nextPlannedStartDate = workOrderProcessList.value[lastIndex].nextPlannedStartDate;
+      workOrderInfo.value.nextOrderNo = workOrderProcessList.value[lastIndex].nextProcessNode;
+      workOrderInfo.value.nextWorkCenter = workOrderProcessList.value[lastIndex].nextWorkCenter;
+      workOrderInfo.value.nextPlannedStartDate = workOrderProcessList.value[lastIndex].nextPlannedStartDate;
 
-        workOrderProcessInfo.value = workOrderProcessList.value[lastIndex];
-        break;
-      case 'mode3':
-        workOrderInfo.value.previousOrderNo = workOrderProcessList.value[0].previousProcessNode;
-        workOrderInfo.value.previousWorkCenter = workOrderProcessList.value[0].previousWorkCenter;
-        workOrderInfo.value.previousEndDate = workOrderProcessList.value[0].previousEndDate;
+      workOrderProcessInfo.value = workOrderProcessList.value[lastIndex];
+      break;
+    case 'mode3':
+      workOrderInfo.value.previousOrderNo = workOrderProcessList.value[0].previousProcessNode;
+      workOrderInfo.value.previousWorkCenter = workOrderProcessList.value[0].previousWorkCenter;
+      workOrderInfo.value.previousEndDate = workOrderProcessList.value[0].previousEndDate;
 
-        workOrderInfo.value.nextOrderNo = workOrderProcessList.value[lastIndex].nextProcessNode;
-        workOrderInfo.value.nextWorkCenter = workOrderProcessList.value[lastIndex].nextWorkCenter;
-        workOrderInfo.value.nextPlannedStartDate = workOrderProcessList.value[lastIndex].nextPlannedStartDate;
+      workOrderInfo.value.nextOrderNo = workOrderProcessList.value[lastIndex].nextProcessNode;
+      workOrderInfo.value.nextWorkCenter = workOrderProcessList.value[lastIndex].nextWorkCenter;
+      workOrderInfo.value.nextPlannedStartDate = workOrderProcessList.value[lastIndex].nextPlannedStartDate;
 
-        workOrderProcessInfo.value = workOrderProcessList.value[0];
-        break;
-      case 'mode4':
-        break;
-      default:
-        workOrderProcessInfo.value = workOrderProcessList.value[0];
-    }
-
-    // 为每个工序计算标准产能: 基础数量 / (排程时间 / 60)
-    workOrderProcessList.value.forEach((process) => {
-      if (process.baseQty != null && process.schedulingTime != null && process.schedulingTime > 0) {
-        // 标准产能 = 基础数量 * 60 / 排程时间
-        process.standardCapacity = Math.floor((process.baseQty * 60) / process.schedulingTime);
-      }
-    });
+      workOrderProcessInfo.value = workOrderProcessList.value[0];
+      break;
+    case 'mode4':
+      break;
+    default:
+      workOrderProcessInfo.value = workOrderProcessList.value[0];
   }
 
+  // 为每个工序计算标准产能: 基础数量 / (排程时间 / 60)
+  workOrderProcessList.value.forEach((process) => {
+    if (process.baseQty != null && process.schedulingTime != null && process.schedulingTime > 0) {
+      // 标准产能 = 基础数量 * 60 / 排程时间
+      process.standardCapacity = Math.floor((process.baseQty * 60) / process.schedulingTime);
+    }
+  });
   total.value = res.total;
   loading.value = false;
 };

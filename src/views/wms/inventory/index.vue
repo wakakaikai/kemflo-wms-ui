@@ -60,7 +60,11 @@
         <el-table-column label="质检数量" align="center" prop="inspectionQuantity" />
         <el-table-column label="冻结数量" align="center" prop="blockedQuantity" />
         <el-table-column label="单位" align="center" prop="unit" />
-        <el-table-column label="特殊库存标识" align="center" prop="specialInventoryFlag" />
+        <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag">
+          <template #default="scope">
+            <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
+          </template>
+        </el-table-column>
         <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
         <el-table-column label="库区编码" align="center" prop="areaCode" />
         <el-table-column label="库位编码" align="center" prop="locationCode" />
@@ -140,8 +144,7 @@ import { listInventory, getInventory, delInventory, addInventory, updateInventor
 import { InventoryVO, InventoryQuery, InventoryForm } from '@/api/wms/inventory/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_inventory_status, wms_stock_in_status, wms_inventory_type } = toRefs<any>(proxy?.useDict('wms_inventory_status', 'wms_stock_in_status', 'wms_inventory_type'));
-
+const { wms_inventory_special_flag, wms_inventory_type } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag', 'wms_inventory_type'));
 const inventoryList = ref<InventoryVO[]>([]);
 const buttonLoading = ref(false);
 const loading = ref(true);

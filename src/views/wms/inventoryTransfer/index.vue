@@ -108,7 +108,7 @@
             <div style="padding: 10px; background-color: #f5f7fa; border-radius: 4px">
               <el-form :model="fixedTransferForm" ref="fixedTransferFormRef" label-width="auto" :inline="true">
                 <el-row :gutter="20">
-                  <el-col :sm="24" :md="6" :lg="6" v-if="transferMode === 'fixed'">
+                  <el-col :sm="24" :md="8" :lg="8" v-if="transferMode === 'fixed'">
                     <el-form-item label="目标库位" prop="targetLocationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
                       <el-input
                         v-model.trim="fixedTransferForm.targetLocationCode"
@@ -123,7 +123,7 @@
                       </el-input>
                     </el-form-item>
                   </el-col>
-                  <el-col :sm="24" :md="6" :lg="6">
+                  <el-col :sm="24" :md="8" :lg="8">
                     <el-form-item label="接收方">
                       <el-input v-model="fixedTransferForm.targetUserName" placeholder="请输入接收方">
                         <template #append>
@@ -132,7 +132,7 @@
                       </el-input>
                     </el-form-item>
                   </el-col>
-                  <el-col :sm="24" :md="6" :lg="6">
+                  <el-col :sm="24" :md="8" :lg="8">
                     <el-form-item label="过账日期" prop="postingDate">
                       <el-date-picker clearable v-model="fixedTransferForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
                     </el-form-item>
@@ -175,12 +175,20 @@
               <!--              <el-table-column label="质检数量" prop="inspectionQuantity" align="center" />-->
               <!--              <el-table-column label="冻结数量" prop="blockedQuantity" align="center" />-->
               <el-table-column label="单位" prop="unit" align="center" />
-              <el-table-column label="特殊库存标识" align="center" prop="specialInventoryFlag" min-width="100">
+              <el-table-column label="库存标识" align="center" prop="specialInventoryFlag" min-width="100">
                 <template #default="scope">
                   <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
                 </template>
               </el-table-column>
-              <el-table-column label="库存类型" prop="inventoryType" min-width="130">
+              <el-table-column label="业务伙伴编码" align="center" min-width="130">
+                <template #default="scope">
+                  <el-input v-model="scope.row.supplierCode" placeholder="供应商寄售编码" v-if="scope.row.specialInventoryFlag == 'K'" />
+                  <el-input v-model="scope.row.customerCode" placeholder="客户寄售编码" v-else-if="scope.row.specialInventoryFlag == 'W'" />
+                  <span v-else />
+                </template>
+              </el-table-column>
+
+              <el-table-column label="库存类型" prop="inventoryType" align="center" min-width="130">
                 <template #default="scope">
                   <el-select v-model="scope.row.inventoryType" placeholder="请选择库存类型" style="width: 100%" @change="handleInventoryTypeChange(scope.$index, scope.row)">
                     <el-option label="非限制库存" value="N"></el-option>
@@ -426,7 +434,7 @@ const addSelectedToTransferList = () => {
     targetLocationCode: '',
     specialInventoryFlag: item.specialInventoryFlag,
     inventoryType: 'N',
-    transferQuantity: item.availableQuantity || 0,
+    transferQuantity: null,
     remark: ''
   }));
 

@@ -111,6 +111,9 @@
         <el-form-item label="数量" prop="quantity">
           <el-input-number v-model="form.quantity" placeholder="请输入非限制数量" style="width: 100%" />
         </el-form-item>
+        <el-form-item label="单位" prop="unit">
+          <el-input v-model="form.unit" placeholder="请输入单位" />
+        </el-form-item>
         <el-form-item label="库位编码" prop="locationCode">
           <el-input v-model="form.locationCode" placeholder="请输入库位编码" clearable>
             <template #append>
@@ -228,7 +231,7 @@ const initFormData: InventoryDetailForm = {
   availableQuantity: undefined,
   inspectionQuantity: undefined,
   blockedQuantity: undefined,
-  unit: undefined,
+  unit: 'PCS',
   inventoryType: 'N',
   inventoryStatus: undefined,
   stockInStatus: undefined,

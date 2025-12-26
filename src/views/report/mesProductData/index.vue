@@ -61,13 +61,7 @@
           </template>
           <el-table v-if="activeName == tableItem.tabName" :key="tableKey" v-loading="loading" :data="getCurrentPageData(tableItem.dataList)" row-key="sfc">
             <el-table-column type="selection" width="55" align="center" />
-            <el-table-column
-              v-for="(item, index) in tableItem.colsList"
-              :key="index"
-              :label="item.label"
-              :prop="item.prop"
-              :min-width="flexColumnWidth(item.label, item.prop, currentPageTable)"
-            >
+            <el-table-column v-for="(item, index) in tableItem.colsList" :key="index" :label="item.label" :prop="item.prop" :min-width="flexColumnWidth(item.label, item.prop, currentPageTable)">
               <template #default="scope">
                 <span>{{ scope.row[item.prop] }}</span>
               </template>
@@ -325,13 +319,13 @@ const submitForm = (ignoreError: number) => {
 /** 处理粘贴内容 */
 const pasteContent = (e) => {
   // 复制过来的内容
-  let source = e.clipboardData.getData('Text');
+  const source = e.clipboardData.getData('Text');
   // 首先对源头进行解析
-  let rows = source.split('\n'); // 拆成很多行
+  const rows = source.split('\n'); // 拆成很多行
   for (let i = 0; i < rows.length; i++) {
     if (rows[i] != '') {
       // 如果某一行不是空，再按列拆分
-      let columns = rows[i].split('\r'); // 已经按列划分
+      const columns = rows[i].split('\r'); // 已经按列划分
       sfcTableData.value.push({ 'sfc': columns[0] });
     }
   }
@@ -399,13 +393,12 @@ const handleExport = () => {
   if (route.query && (route.query.shippingCustomerNoticeId as string)) {
     queryParams.value.shippingCustomerNoticeId = route.query.shippingCustomerNoticeId;
   }
-  if (!queryParams.value.sfcList && queryParams.value.sfcStr) {
-    queryParams.value.sfcList = [queryParams.value.sfcStr];
-  }
+
   proxy?.download(
     '/mes/scada/productData/export',
     {
-      ...queryParams.value
+      ...queryParams.value,
+      sfcList: []
     },
     `MES关键件及检测数据_${new Date().getTime()}.xlsx`
   );

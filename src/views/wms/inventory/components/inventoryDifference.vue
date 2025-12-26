@@ -26,26 +26,26 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="3">
-            <el-button type="warning" plain icon="Download" @click="exportData" v-hasPermi="['wms:inventory:export']">导出</el-button>
+            <el-button type="warning" plain icon="Download" @click="exportData" v-hasPermi="['wms:inventoryDifference:export']">导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
         </el-row>
       </template>
 
       <el-table v-loading="loading" :data="inventoryDiffList" style="width: 100%" border>
-        <el-table-column label="物料编码" align="left" prop="itemCode" width="150" />
-        <el-table-column label="物料名称" align="left" prop="itemName" min-width="150" />
-        <el-table-column label="仓库编码" align="center" prop="warehouseCode" width="100" />
-        <el-table-column label="SAP库存" align="center" prop="sapQuantity" width="120" />
-        <el-table-column label="WMS库存" align="center" prop="totalQuantity" width="120" />
-        <el-table-column label="差异数量" align="center" prop="diffQuantity" width="120" sortable>
+        <el-table-column label="物料编码" align="left" prop="itemCode" min-width="100" />
+        <el-table-column label="物料名称" align="left" prop="itemName" min-width="200" show-overflow-tooltip />
+        <el-table-column label="仓库编码" align="center" prop="warehouseCode" min-width="100" />
+        <el-table-column label="SAP库存" align="center" prop="sapQuantity" min-width="120" />
+        <el-table-column label="WMS库存" align="center" prop="totalQuantity" min-width="120" />
+        <el-table-column label="差异数量" align="center" prop="diffQuantity" min-width="120">
           <template #default="scope">
             <span :class="{ 'text-warn': scope.row.diffQuantity < 0, 'text-green': scope.row.diffQuantity == 0, 'text-red': scope.row.diffQuantity > 0 }">
               {{ scope.row.diffQuantity }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="单位" align="center" prop="unit" width="80" />
+        <el-table-column label="单位" align="center" prop="unit" min-width="80" />
       </el-table>
 
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />

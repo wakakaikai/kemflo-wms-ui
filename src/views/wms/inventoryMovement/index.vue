@@ -16,6 +16,9 @@
             <el-form-item label="批次号" prop="batchNo">
               <el-input v-model="queryParams.batchNo" placeholder="请输入批次号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="单据类型" prop="sourceDocType">
+              <el-input v-model="queryParams.sourceDocType" placeholder="请输入单据类型" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="单据编号" prop="sourceDocCode">
               <el-input v-model="queryParams.sourceDocCode" placeholder="请输入单据编号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -73,7 +76,7 @@
 
       <el-table v-loading="loading" :data="inventoryMovementList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-<!--        <el-table-column label="移动记录ID" align="center" prop="id" v-if="true" />-->
+        <el-table-column label="移动记录ID" align="center" prop="id" v-if="true" />
         <el-table-column label="移动类型" align="center" prop="moveType" />
         <el-table-column label="物料编码" align="center" prop="itemCode" />
         <el-table-column label="物料名称" align="center" prop="itemName" :show-overflow-tooltip="true" />
@@ -92,7 +95,11 @@
         <el-table-column label="库位名称" align="center" prop="locationName" />
         <el-table-column label="栈板编号" align="center" prop="palletCode" />
         <el-table-column label="打包编号" align="center" prop="packingCode" />
-        <el-table-column label="特殊库存标识" align="center" prop="specialInventoryFlag" />
+        <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag">
+          <template #default="scope">
+            <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
+          </template>
+        </el-table-column>
         <el-table-column label="移动时间" align="center" prop="moveDate" width="180">
           <template #default="scope">
             <span>{{ parseTime(scope.row.moveDate, '{y}-{m}-{d}') }}</span>
@@ -210,7 +217,7 @@ import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } fr
 import { dayjs } from 'element-plus';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-
+const { wms_inventory_special_flag, wms_inventory_type } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag', 'wms_inventory_type'));
 const inventoryMovementList = ref<InventoryMovementVO[]>([]);
 const buttonLoading = ref(false);
 const loading = ref(true);
