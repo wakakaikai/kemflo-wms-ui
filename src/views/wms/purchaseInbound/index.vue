@@ -2,7 +2,7 @@
   <div class="p-2">
     <el-card shadow="never">
       <el-tabs v-model="activeTab" type="card" @tab-click="handleTabClick">
-        <el-tab-pane label="采购收货" name="purchase">
+        <el-tab-pane label="采购收货" name="po">
           <el-row :gutter="20">
             <!-- 上方搜索区域 -->
             <el-col :span="24">
@@ -18,14 +18,30 @@
 
                 <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
                   <el-form-item label="采购单" prop="poNumber">
-                    <el-input v-model="queryParams.poNumber" placeholder="请输入采购单" clearable @keyup.enter="handleQuery" />
+                    <!--                    <el-input v-model="queryParams.poNumber" placeholder="请输入采购单" clearable @keyup.enter="handleQuery" />-->
+                    <HistoryInput v-model="queryParams.poNumber" :config="poNumberConfig" placeholder="请输入采购单" @save="handleSave" @select="handleSelect" @keyup.enter="handleQuery" />
                   </el-form-item>
                   <el-form-item label="项次" prop="itemNumber">
                     <el-input v-model="queryParams.itemNumber" placeholder="请输入项次" clearable @keyup.enter="handleQuery" />
                   </el-form-item>
+
+                  <!-- 高级搜索项，默认隐藏 -->
+                  <div v-show="showAdvancedSearch">
+                    <el-form-item label="显示已清数量" prop="showOpenQuantityZero">
+                      <el-switch v-model="queryParams.showOpenQuantityZero" class="drawer-switch" @change="handleQuery" />
+                    </el-form-item>
+                  </div>
+
                   <el-form-item>
                     <el-button type="primary" icon="Search" @click="handleQuery" :loading="loading">搜索</el-button>
                     <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+                    <el-button link type="primary" @click="toggleAdvancedSearch">
+                      {{ showAdvancedSearch ? '收起' : '高级搜索' }}
+                      <el-icon class="el-icon--right">
+                        <ArrowDown v-if="!showAdvancedSearch" />
+                        <ArrowUp v-else />
+                      </el-icon>
+                    </el-button>
                   </el-form-item>
                 </el-form>
 
@@ -93,7 +109,7 @@
                     <el-row :gutter="20">
                       <el-col :sm="24" :md="8" :lg="8" v-if="inboundMode === 'fixed'">
                         <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
-                          <el-input
+                          <!--                          <el-input
                             v-model.trim="fixedInboundForm.locationCode"
                             placeholder="请输入目标库位编码"
                             clearable
@@ -103,16 +119,40 @@
                             <template #append>
                               <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
                             </template>
-                          </el-input>
+                          </el-input>-->
+                          <HistoryInput
+                            v-model="fixedInboundForm.locationCode"
+                            :config="fixedInboundFormLocationCodeConfig"
+                            placeholder="请输入目标库位编码"
+                            @save="handleSave"
+                            @select="handleSelect"
+                            @keydown.tab.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
+                            @keydown.enter.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
+                          >
+                            <template #append>
+                              <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
+                            </template>
+                          </HistoryInput>
                         </el-form-item>
                       </el-col>
                       <el-col :sm="24" :md="8" :lg="8">
                         <el-form-item label="收货人">
-                          <el-input v-model="fixedInboundForm.targetUserName" placeholder="请输入收货人">
+                          <!--                          <el-input v-model="fixedInboundForm.targetUserName" placeholder="请输入收货人">
                             <template #append>
                               <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
                             </template>
-                          </el-input>
+                          </el-input>-->
+                          <HistoryInput
+                            v-model="fixedInboundForm.targetUserName"
+                            :config="targetUserNameConfig"
+                            placeholder="请输入收货人"
+                            @save="handleSave"
+                            @select="handleSelect"
+                          >
+                            <template #append>
+                              <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
+                            </template>
+                          </HistoryInput>
                         </el-form-item>
                       </el-col>
                       <el-col :sm="24" :md="8" :lg="8">
@@ -144,7 +184,7 @@
                   <!-- 多库位模式下显示独立的目标库位设置 -->
                   <el-table-column label="目标库位" width="220" v-if="inboundMode === 'multiple'">
                     <template #default="scope">
-                      <el-input
+                      <!--                      <el-input
                         v-model.trim="scope.row.locationCode"
                         placeholder="请输入目标库位编码"
                         clearable
@@ -154,7 +194,20 @@
                         <template #append>
                           <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
                         </template>
-                      </el-input>
+                      </el-input>-->
+                      <TableHistoryInput
+                        v-model="scope.row.locationCode"
+                        :config="fixedInboundFormLocationCodeConfig"
+                        placeholder="请输入目标库位编码"
+                        @save="handleSave"
+                        @select="handleSelect"
+                        @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.locationCode)"
+                        @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.locationCode)"
+                      >
+                        <template #append>
+                          <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
+                        </template>
+                      </TableHistoryInput>
                     </template>
                   </el-table-column>
 
@@ -191,7 +244,7 @@
           </el-row>
         </el-tab-pane>
 
-        <el-tab-pane label="STO收货开发中暂时不可用" name="sto">
+        <el-tab-pane label="STO收货" name="sto">
           <el-row :gutter="20">
             <!-- STO收货搜索区域 -->
             <el-col :span="24">
@@ -205,15 +258,9 @@
                   </el-row>
                 </template>
 
-                <el-form ref="stoQueryFormRef" :model="stoQueryParams" :inline="true" label-width="auto">
-                  <el-form-item label="DN单号" prop="dnNumber">
-                    <el-input v-model="stoQueryParams.dnNumber" placeholder="请输入DN单号" clearable @keyup.enter="handleStoQuery" />
-                  </el-form-item>
-                  <el-form-item label="采购单" prop="poNumber">
-                    <el-input v-model="stoQueryParams.poNumber" placeholder="请输入采购单" clearable @keyup.enter="handleStoQuery" />
-                  </el-form-item>
-                  <el-form-item label="项次" prop="itemNumber">
-                    <el-input v-model="stoQueryParams.itemNumber" placeholder="请输入项次" clearable @keyup.enter="handleStoQuery" />
+                <el-form ref="stoQueryFormRef" :model="stoQueryParams" :rules="stoRules" :inline="true" label-width="auto">
+                  <el-form-item label="交货单号" prop="deliveryOrderNo">
+                    <el-input v-model="stoQueryParams.deliveryOrderNo" placeholder="请输入交货单号" clearable @keydown.tab.prevent="handleStoQuery" @keydown.enter.prevent="handleStoQuery" />
                   </el-form-item>
                   <el-form-item>
                     <el-button type="primary" icon="Search" @click="handleStoQuery" :loading="stoLoading">搜索</el-button>
@@ -224,10 +271,11 @@
                 <!-- STO搜索结果列表 -->
                 <div class="search-result">
                   <el-table ref="stoTableRef" :data="stoOrderDetailList" height="300" border v-loading="stoLoading" @selection-change="handleStoSelectionChange">
-                    <el-table-column type="selection" width="55" align="center" />
-                    <el-table-column v-if="stoColumns[0].visible" label="DN单号" align="left" prop="dnNumber" fixed="left" min-width="120" />
-                    <el-table-column v-if="stoColumns[1].visible" label="采购订单号" align="left" prop="poNumber" fixed="left" min-width="120" />
-                    <el-table-column v-if="stoColumns[2].visible" label="项次" align="left" prop="itemNumber" fixed="left" min-width="65" />
+                    <!--                    <el-table-column type="selection" width="55" align="center" />-->
+                    <el-table-column v-if="stoColumns[0].visible" label="交货单号" align="left" prop="deliveryOrderNo" fixed="left" min-width="120" />
+                    <el-table-column v-if="stoColumns[1].visible" label="交货单项次" align="left" prop="deliveryItemNo" fixed="left" />
+                    <el-table-column v-if="stoColumns[2].visible" label="采购单号" align="left" prop="purchaseOrderNo" fixed="left" min-width="120" />
+                    <el-table-column v-if="stoColumns[3].visible" label="采购单项次" align="left" prop="purchaseItemNo" fixed="left" min-width="80" />
                     <el-table-column label="交货状态" align="center" width="100" fixed="left">
                       <template #default="scope">
                         <el-tooltip :content="getEarlyDeliveryTooltip(scope.row)" placement="top">
@@ -237,7 +285,6 @@
                         </el-tooltip>
                       </template>
                     </el-table-column>
-                    <el-table-column v-if="stoColumns[3].visible" label="排程" align="left" prop="scheduleNumber" min-width="60" />
                     <el-table-column v-if="stoColumns[4].visible" label="交货日期" align="center" prop="deliveryDate" min-width="100" />
                     <el-table-column v-if="stoColumns[5].visible" label="料号" align="left" prop="materialCode" min-width="135" />
                     <el-table-column v-if="stoColumns[6].visible" label="旧料号" align="left" prop="oldMaterialCode" />
@@ -247,11 +294,10 @@
                     <el-table-column v-if="stoColumns[10].visible" label="未清数量" align="left" prop="openQuantity" min-width="100" />
                     <el-table-column v-if="stoColumns[11].visible" label="订单单位" align="center" prop="orderUnit" />
                     <el-table-column v-if="stoColumns[12].visible" label="需质检" align="center" prop="inspectionFlag" />
-                    <el-table-column v-if="stoColumns[13].visible" label="库存数量" align="center" prop="inventoryQuantity" />
-                    <el-table-column v-if="stoColumns[14].visible" label="库存单位" align="center" prop="inventoryUnit" />
-                    <el-table-column v-if="stoColumns[15].visible" label="换算比例" align="center" prop="conversionRatio" />
-                    <el-table-column v-if="stoColumns[16].visible" label="供应商代码" align="center" prop="supplierCode" min-width="120" />
-                    <el-table-column v-if="stoColumns[17].visible" label="供应商名称" align="center" prop="supplierName" show-overflow-tooltip min-width="120" />
+                    <el-table-column v-if="stoColumns[13].visible" label="库存单位" align="center" prop="inventoryUnit" />
+                    <el-table-column v-if="stoColumns[14].visible" label="换算比例" align="center" prop="conversionRatio" />
+                    <el-table-column v-if="stoColumns[15].visible" label="供应商代码" align="center" prop="supplierCode" min-width="120" />
+                    <el-table-column v-if="stoColumns[16].visible" label="供应商名称" align="center" prop="supplierName" show-overflow-tooltip min-width="120" />
                   </el-table>
 
                   <pagination v-show="stoTotal > 0" :total="stoTotal" v-model:page="stoQueryParams.pageNum" v-model:limit="stoQueryParams.pageSize" @pagination="getStoList" />
@@ -302,11 +348,16 @@
                       </el-col>
                       <el-col :sm="24" :md="8" :lg="8">
                         <el-form-item label="收货人">
-                          <el-input v-model="stoFixedInboundForm.targetUserName" placeholder="请输入收货人">
+                          <!--                          <el-input v-model="stoFixedInboundForm.targetUserName" placeholder="请输入收货人">
                             <template #append>
                               <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
                             </template>
-                          </el-input>
+                          </el-input>-->
+                          <HistoryInput v-model="stoFixedInboundForm.targetUserName" :config="targetUserNameConfig" placeholder="请输入收货人" @save="handleSave" @select="handleSelect">
+                            <template #append>
+                              <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
+                            </template>
+                          </HistoryInput>
                         </el-form-item>
                       </el-col>
                       <el-col :sm="24" :md="8" :lg="8">
@@ -328,13 +379,14 @@
 
                 <el-table :data="stoInboundList" border style="width: 100%" v-loading="stoTableLoading" max-height="400">
                   <el-table-column type="index" width="50" align="center" />
-                  <el-table-column label="DN单号" prop="dnNumber" />
+                  <el-table-column label="交货单号" prop="deliveryOrderNo" />
+                  <el-table-column label="交货单项次" prop="deliveryItemNo" />
                   <el-table-column label="采购订单号" prop="poNumber" />
-                  <el-table-column label="项次" prop="itemNumber" />
+                  <el-table-column label="采购单项次" prop="itemNumber" />
                   <el-table-column label="料号" prop="materialCode" />
                   <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip />
-                  <el-table-column label="订单数量" align="left" prop="orderQuantity" min-width="100" />
-                  <el-table-column label="未清数量" prop="openQuantity" />
+                  <el-table-column label="订单数量" align="center" prop="orderQuantity" min-width="100" />
+                  <el-table-column label="未清数量" prop="openQuantity" align="center" />
 
                   <!-- 多库位模式下显示独立的目标库位设置 -->
                   <el-table-column label="目标库位" width="220" v-if="stoInboundMode === 'multiple'">
@@ -353,23 +405,9 @@
                     </template>
                   </el-table-column>
 
-                  <!-- 可编辑的收货数量 -->
-                  <el-table-column label="收货数量" align="center" width="150">
-                    <template #default="scope">
-                      <el-input-number
-                        v-model="scope.row.receivePoQuantity"
-                        :min="0"
-                        :max="parseFloat(scope.row.openQuantity || 0)"
-                        size="small"
-                        controls-position="right"
-                        :precision="3"
-                        @change="handleStoReceiveQuantityChange(scope.row)"
-                      />
-                    </template>
-                  </el-table-column>
-
-                  <el-table-column label="库存数量" prop="inventoryQuantity" />
-                  <el-table-column label="库存单位" prop="inventoryUnit" />
+                  <el-table-column label="收货数量" prop="receiveQuantity" align="center" />
+                  <el-table-column label="库存数量" prop="inventoryQuantity" align="center" />
+                  <el-table-column label="库存单位" prop="inventoryUnit" align="center" />
 
                   <el-table-column label="操作" width="80" align="center">
                     <template #default="scope">
@@ -397,16 +435,19 @@
 
 <script setup name="PurchaseInbound" lang="ts">
 import { addPurchaseInbound, listPurchaseOrderDetail } from '@/api/wms/purchaseOrderDetail';
-
+import { listDeliveryOrderDetail } from '@/api/wms/deliveryOrderDetail';
 import { PurchaseOrderDetailVO, PurchaseOrderDetailQuery, PurchaseOrderDetailForm } from '@/api/wms/purchaseOrderDetail/types';
+import HistoryInput from '@/components/HistoryInput/index.vue';
+import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 const userCollectionsDialogRef = ref<InstanceType<typeof UserCollectionsDialog>>();
 import { nextTick, ref } from 'vue';
-import { Bell, Switch } from '@element-plus/icons-vue';
+import { ArrowDown, ArrowUp, Bell, Switch } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
+import { HistoryConfig } from '@/types/history';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
@@ -424,8 +465,13 @@ const buttonLoading = ref(false);
 const tableLoading = ref(false);
 const selectedSearchItems = ref<PurchaseOrderDetailVO[]>([]);
 const inboundList = ref<any[]>([]);
+const showAdvancedSearch = ref(false);
+const activeTab = ref('po');
 
-const activeTab = ref('purchase');
+/** 切换高级搜索显示状态 */
+const toggleAdvancedSearch = () => {
+  showAdvancedSearch.value = !showAdvancedSearch.value;
+};
 
 // 入库模式：fixed-固定库位，multiple-多库位
 const inboundMode = ref<'fixed' | 'multiple'>('fixed');
@@ -454,6 +500,7 @@ const initFormData: PurchaseOrderDetailForm = {
   itemDeleteFlag: undefined,
   completedFlag: undefined,
   enableSapSync: true,
+  showOpenQuantityZero: false,
   receiveType: '1',
   remark: undefined
 };
@@ -475,6 +522,7 @@ const data = reactive<PageData<PurchaseOrderDetailForm, PurchaseOrderDetailQuery
     itemDeleteFlag: undefined,
     completedFlag: undefined,
     enableSapSync: true,
+    showOpenQuantityZero: false,
     receiveType: '1',
     params: {}
   },
@@ -482,6 +530,48 @@ const data = reactive<PageData<PurchaseOrderDetailForm, PurchaseOrderDetailQuery
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const poNumberConfig: HistoryConfig = {
+  key: 'purchaseInbound.poNumber',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'purchaseInbound',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const fixedInboundFormLocationCodeConfig: HistoryConfig = {
+  key: 'purchaseInbound.locationCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'purchaseInbound',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const targetUserNameConfig: HistoryConfig = {
+  key: 'purchaseInbound.targetUserName',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'purchaseInbound',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
 
 // 列显隐信息
 const columns = ref<FieldOption[]>([
@@ -503,6 +593,14 @@ const columns = ref<FieldOption[]>([
   { key: 15, label: `供应商代码`, visible: true, children: [] },
   { key: 16, label: `供应商名称`, visible: true, children: [] }
 ]);
+
+const handleSave = (value: string) => {
+  // 执行搜索逻辑
+};
+
+const handleSelect = (item: HistoryItem) => {
+  // 填充到搜索框并执行搜索
+};
 
 // 禁用未来的时间
 const disabledFutureDate = (time: Date) => {
@@ -591,9 +689,7 @@ const locationCodeKeyDownTab = async (locationCode: any) => {
 
 // 添加一个方法用于计算库存数量
 const calculateInventoryQuantity = (row) => {
-  const receiveQty = Number(row.receivePoQuantity) || 0;
-  const conversionRatio = Number(row.conversionRatio) || 1;
-  row.inventoryQuantity = receiveQty * conversionRatio;
+  row.inventoryQuantity = ((row.receivePoQuantity || 0) * (row.conversionRatio || 1)).toFixed(3);
 };
 
 // 监听收货数量变化的处理方法
@@ -637,10 +733,10 @@ const addSelectedToInboundList = () => {
 
   const newItems = selectedSearchItems.value.map((item) => ({
     ...item,
-    receivePoQuantity: null,
+    receivePoQuantity: item.openQuantity,
     storageLocation: '',
-    conversionRatio: Number(item.conversionRatio) || 1, // 确保有换算比例，默认为1
-    inventoryQuantity: 0 // 初始库存数量 = 收货数量 * 换算比例
+    conversionRatio: item.conversionRatio || 1, // 确保有换算比例，默认为1
+    inventoryQuantity: (item.openQuantity * (item.conversionRatio || 1)).toFixed(3) // 初始库存数量 = 收货数量 * 换算比例
   }));
 
   // 添加到入库列表
@@ -675,14 +771,28 @@ const showStorageLocationDialog = (index: number) => {
 /** 库位选择回调 */
 const storageLocationSelectCallBack = (record: any) => {
   resultMessage.value = '';
-  if (inboundMode.value === 'fixed') {
-    // 固定库位模式，设置统一的目标库位
-    fixedInboundForm.value.locationCode = record.locationCode;
-  } else {
-    // 多库位模式，设置对应行的目标库位
-    if (currenIndex.value >= 0 && currenIndex.value < inboundList.value.length) {
-      const currentItem = inboundList.value[currenIndex.value];
-      currentItem.locationCode = record.locationCode;
+  if (activeTab.value === 'po') {
+    if (inboundMode.value === 'fixed') {
+      // 固定库位模式，设置统一的目标库位
+      fixedInboundForm.value.locationCode = record.locationCode;
+    } else if (inboundMode.value === 'multiple') {
+      // 多库位模式，设置对应行的目标库位
+      if (currenIndex.value >= 0 && currenIndex.value < inboundList.value.length) {
+        const currentItem = inboundList.value[currenIndex.value];
+        currentItem.locationCode = record.locationCode;
+      }
+    }
+  }
+  if (activeTab.value === 'sto') {
+    if (stoInboundMode.value === 'fixed') {
+      // sto 固定库位模式，设置统一的目标库位
+      stoFixedInboundForm.value.locationCode = record.locationCode;
+    } else if (stoInboundMode.value === 'multiple') {
+      // sto 多库位模式，设置对应行的目标库位
+      if (currenIndex.value >= 0 && currenIndex.value < stoInboundList.value.length) {
+        const currentItem = stoInboundList.value[currenIndex.value];
+        currentItem.locationCode = record.locationCode;
+      }
     }
   }
 };
@@ -696,14 +806,28 @@ const showUserCollectionsDialog = (index: number) => {
 
 /** 用户收藏回调 **/
 const userCollectionsSelectCallBack = (record: any) => {
-  if (inboundMode.value === 'fixed') {
-    // 固定库位模式，设置统一的目标用户
-    fixedInboundForm.value.targetUserName = record.nickName;
-  } else {
-    // 多库位模式，设置对应行的目标用户
-    if (currenIndex.value >= 0 && currenIndex.value < inboundList.value.length) {
-      const currentItem = inboundList.value[currenIndex.value];
-      currentItem.targetUserName = record.nickName;
+  if (activeTab.value === 'po') {
+    if (inboundMode.value === 'fixed') {
+      // 固定库位模式，设置统一的目标用户
+      fixedInboundForm.value.targetUserName = record.nickName;
+    } else if (inboundMode.value === 'multiple') {
+      // 多库位模式，设置对应行的目标库位
+      if (currenIndex.value >= 0 && currenIndex.value < inboundList.value.length) {
+        const currentItem = inboundList.value[currenIndex.value];
+        currentItem.targetUserName = record.nickName;
+      }
+    }
+  }
+  if (activeTab.value === 'sto') {
+    if (stoInboundMode.value === 'fixed') {
+      // sto 固定库位模式，设置统一的目标用户
+      stoFixedInboundForm.value.targetUserName = record.nickName;
+    } else if (stoInboundMode.value === 'multiple') {
+      // 多库位模式，设置对应行的目标用户
+      if (currenIndex.value >= 0 && currenIndex.value < stoInboundList.value.length) {
+        const currentItem = stoInboundList.value[currenIndex.value];
+        currentItem.targetUserName = record.nickName;
+      }
     }
   }
 };
@@ -828,21 +952,24 @@ const stoTableRef = ref();
 
 const stoQueryParams = ref({
   pageNum: 1,
-  pageSize: 10,
-  dnNumber: undefined,
+  pageSize: 1000,
+  deliveryOrderNo: undefined,
   poNumber: undefined,
   itemNumber: undefined,
   materialCode: undefined,
   enableSapSync: true,
   receiveType: 2
 });
+const stoRules = ref({
+  deliveryOrderNo: [{ required: true, message: '收货单号不能为空', trigger: 'blur' }]
+});
 
 // STO列配置
 const stoColumns = ref([
-  { key: 0, label: `DN单号`, visible: true, children: [] },
-  { key: 1, label: `采购订单号`, visible: true, children: [] },
-  { key: 2, label: `项次`, visible: true, children: [] },
-  { key: 3, label: `排程`, visible: true, children: [] },
+  { key: 0, label: `交货单号`, visible: true, children: [] },
+  { key: 1, label: `交货单项次`, visible: true, children: [] },
+  { key: 2, label: `采购单号`, visible: true, children: [] },
+  { key: 3, label: `采购单项次`, visible: true, children: [] },
   { key: 4, label: `交货日期`, visible: true, children: [] },
   { key: 5, label: `料号`, visible: true, children: [] },
   { key: 6, label: `旧料号`, visible: false, children: [] },
@@ -852,11 +979,10 @@ const stoColumns = ref([
   { key: 10, label: `未清数量`, visible: true, children: [] },
   { key: 11, label: `订单单位`, visible: false, children: [] },
   { key: 12, label: `需质检`, visible: false, children: [] },
-  { key: 13, label: `库存数量`, visible: true, children: [] },
-  { key: 14, label: `库存单位`, visible: true, children: [] },
-  { key: 15, label: `换算比例`, visible: true, children: [] },
-  { key: 16, label: `供应商代码`, visible: true, children: [] },
-  { key: 17, label: `供应商名称`, visible: true, children: [] }
+  { key: 13, label: `库存单位`, visible: false, children: [] },
+  { key: 14, label: `换算比例`, visible: true, children: [] },
+  { key: 15, label: `供应商代码`, visible: true, children: [] },
+  { key: 16, label: `供应商名称`, visible: true, children: [] }
 ]);
 
 const handleTabClick = (tab) => {
@@ -869,15 +995,19 @@ const handleTabClick = (tab) => {
 
 // STO收货相关方法
 const getStoList = async () => {
-  stoLoading.value = true;
-  try {
-    const res = await listPurchaseOrderDetail(stoQueryParams.value);
-    stoOrderDetailList.value = res.rows;
-    total.value = res.total;
-    stoLoading.value = false;
-  } catch (error) {
-    stoLoading.value = false;
-  }
+  stoQueryFormRef.value?.validate(async (valid: boolean) => {
+    if (valid) {
+      stoLoading.value = true;
+      try {
+        const res = await listDeliveryOrderDetail(stoQueryParams.value);
+        stoOrderDetailList.value = res.rows;
+        total.value = res.total;
+        stoLoading.value = false;
+      } catch (error) {
+        stoLoading.value = false;
+      }
+    }
+  });
 };
 
 const handleStoQuery = () => {
@@ -888,7 +1018,6 @@ const handleStoQuery = () => {
 const resetStoQuery = () => {
   stoQueryFormRef.value?.resetFields();
   stoTableRef.value?.clearSelection();
-  handleStoQuery();
 };
 
 const handleStoSelectionChange = (selection) => {
@@ -896,15 +1025,18 @@ const handleStoSelectionChange = (selection) => {
 };
 
 const addSelectedToStoInboundList = () => {
-  if (stoSelectedItems.value.length === 0) {
-    proxy?.$modal.msgWarning('请先选择要添加的STO订单明细');
-    return;
-  }
-
-  const newItems = stoSelectedItems.value.map((item) => ({
+  // if (stoSelectedItems.value.length === 0) {
+  //   proxy?.$modal.msgWarning('请先选择要添加的STO订单明细');
+  //   return;
+  // }
+  stoInboundList.value = [];
+  const newItems = stoOrderDetailList.value.map((item) => ({
     ...item,
-    receiveQuantity: null,
-    inventoryQuantity: 0
+    poNumber: item.purchaseOrderNo,
+    itemNumber: item.purchaseItemNo,
+    receiveQuantity: item.orderQuantity,
+    receiveUnit: item.unit,
+    inventoryQuantity: (item.orderQuantity * (item.conversionRatio || 1)).toFixed(3)
   }));
 
   // 添加到STO入库列表
@@ -925,21 +1057,6 @@ const clearStoInboundList = () => {
   stoFixedInboundForm.value.locationCode = '';
   stoFixedInboundForm.value.targetUserName = '';
   stoFixedInboundForm.value.postingDate = null;
-};
-
-const handleStoReceiveQuantityChange = (row) => {
-  // 处理STO收货数量变化
-  if (row.receivePoQuantity === null || row.receivePoQuantity === undefined || row.receivePoQuantity === '') {
-    row.inventoryQuantity = 0;
-  } else {
-    // 添加一个方法用于计算库存数量
-    const calculateInventoryQuantity = (row) => {
-      const receiveQty = Number(row.receivePoQuantity) || 0;
-      const conversionRatio = Number(row.conversionRatio) || 1;
-      row.inventoryQuantity = receiveQty * conversionRatio;
-    };
-    calculateInventoryQuantity(row);
-  }
 };
 
 const submitStoForm = async () => {
@@ -995,23 +1112,30 @@ const submitStoForm = async () => {
     const stoInboundRequests = validStoInboundList.map((item) => ({
       ...item,
       receiveQuantity: item.receiveQuantity,
-      receiveUnit: item.unit
+      receiveUnit: item.unit,
+      receiveType: '2'
     }));
+    const res: any = await addPurchaseInbound({
+      purchaseOrderInboundBoList: stoInboundRequests
+    });
 
-    // 这里应该调用STO入库的API
-    setTimeout(() => {
-      stoResultMessage.value = `STO入库成功`;
-      stoResultStatus.value = true;
-      stoInboundList.value = [];
-      stoFixedInboundForm.value.locationCode = '';
-      stoFixedInboundForm.value.targetUserName = '';
-      stoFixedInboundForm.value.postingDate = null;
-      getStoList();
-      stoButtonLoading.value = false;
-    }, 1000);
+    if (res.code !== HttpStatus.SUCCESS) {
+      resultMessage.value = res.msg;
+      resultStatus.value = false;
+      return;
+    }
+    stoResultMessage.value = `STO入库成功，物料凭证号${res.msg}`;
+    stoResultStatus.value = true;
+    stoInboundList.value = [];
+    stoFixedInboundForm.value.locationCode = '';
+    stoFixedInboundForm.value.targetUserName = '';
+    stoFixedInboundForm.value.postingDate = null;
+    getStoList();
   } catch (error) {
     stoResultMessage.value = error.message || '入库失败';
     stoResultStatus.value = false;
+    stoButtonLoading.value = false;
+  } finally {
     stoButtonLoading.value = false;
   }
 };

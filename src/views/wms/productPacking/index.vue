@@ -516,7 +516,7 @@ const confirmStorage = async () => {
       packingType: 2,
       packingDetailBoList: packingDetailBoList
     };
-    console.log(submitData);
+
     if (formData.value.id) {
       confirmData.value.map((item: any) => {
         item.palletCode = form.value.palletCode;

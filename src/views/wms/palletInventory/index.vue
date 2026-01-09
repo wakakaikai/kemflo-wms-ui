@@ -10,29 +10,14 @@
             <el-form-item label="工单号" prop="workOrderNo">
               <el-input v-model="queryParams.workOrderNo" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="物料标识卡条码" prop="materialSn">
-              <el-input v-model="queryParams.materialSn" placeholder="请输入物料标识卡条码" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="物料标识卡" prop="materialSn">
+              <el-input v-model="queryParams.materialSn" placeholder="请输入物料标识卡" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="批次号" prop="batchCode">
               <el-input v-model="queryParams.batchCode" placeholder="请输入批次号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="非限制数量" prop="availableQuantity">
-              <el-input v-model="queryParams.availableQuantity" placeholder="请输入非限制数量" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="质检数量" prop="inspectionQuantity">
-              <el-input v-model="queryParams.inspectionQuantity" placeholder="请输入质检数量" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="冻结数量" prop="blockedQuantity">
-              <el-input v-model="queryParams.blockedQuantity" placeholder="请输入冻结数量" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数量-报废" prop="scrappedQuantity">
-              <el-input v-model="queryParams.scrappedQuantity" placeholder="请输入数量-报废" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="单位" prop="unit">
-              <el-input v-model="queryParams.unit" placeholder="请输入单位" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="料号" prop="itemCode">
-              <el-input v-model="queryParams.itemCode" placeholder="请输入料号" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="物料编码" prop="itemCode">
+              <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="物料名称" prop="itemName">
               <el-input v-model="queryParams.itemName" placeholder="请输入物料名称" clearable @keyup.enter="handleQuery" />
@@ -57,12 +42,6 @@
             </el-form-item>
             <el-form-item label="物料凭证号" prop="materialOrderNo">
               <el-input v-model="queryParams.materialOrderNo" placeholder="请输入物料凭证号" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="生产日期" prop="productDate">
-              <el-date-picker clearable v-model="queryParams.productDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择生产日期" />
-            </el-form-item>
-            <el-form-item label="失效日期" prop="expireDate">
-              <el-date-picker clearable v-model="queryParams.expireDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择失效日期" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -94,18 +73,18 @@
 
       <el-table v-loading="loading" :data="palletInventoryList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />
-        <el-table-column label="栈板编号" align="center" prop="palletCode" />
-        <el-table-column label="工单号" align="center" prop="workOrderNo" />
-        <el-table-column label="物料标识卡条码" align="center" prop="materialSn" />
+        <!--        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />-->
+        <el-table-column label="栈板编号" align="center" prop="palletCode" fixed="left" min-width="150" />
+        <el-table-column label="工单号" align="center" prop="workOrderNo" fixed="left" />
+        <el-table-column label="物料标识卡" align="center" prop="materialSn" fixed="left" min-width="120" />
         <el-table-column label="批次号" align="center" prop="batchCode" />
-        <el-table-column label="非限制数量" align="center" prop="availableQuantity" />
+        <el-table-column label="非限制数量" align="center" prop="availableQuantity" min-width="90" />
         <el-table-column label="质检数量" align="center" prop="inspectionQuantity" />
         <el-table-column label="冻结数量" align="center" prop="blockedQuantity" />
-        <el-table-column label="数量-报废" align="center" prop="scrappedQuantity" />
+        <!--        <el-table-column label="数量-报废" align="center" prop="scrappedQuantity" />-->
         <el-table-column label="单位" align="center" prop="unit" />
-        <el-table-column label="料号" align="center" prop="itemCode" />
-        <el-table-column label="物料名称" align="center" prop="itemName" />
+        <el-table-column label="物料编码" align="center" prop="itemCode" min-width="150" />
+        <el-table-column label="物料名称" align="center" prop="itemName" max-width="200" show-overflow-tooltip />
         <el-table-column label="库存类型" align="center" prop="inventoryType">
           <template #default="scope">
             <dict-tag :options="wms_inventory_type" :value="scope.row.inventoryType" />

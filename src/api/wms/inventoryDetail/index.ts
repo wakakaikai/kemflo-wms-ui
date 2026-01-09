@@ -40,6 +40,18 @@ export const addInventoryDetail = (data: InventoryDetailForm) => {
 };
 
 /**
+ * 盘亏库存明细记录
+ * @param data
+ */
+export const subtractInventoryDetail = (data: InventoryDetailForm) => {
+  return request({
+    url: '/wms/inventoryDetail/subtract',
+    method: 'put',
+    data: data
+  });
+};
+
+/**
  * 修改库存明细记录
  * @param data
  */

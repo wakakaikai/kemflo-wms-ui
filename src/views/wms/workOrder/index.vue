@@ -623,6 +623,7 @@ const changePrintMode = () => {
 const getWorkOrderProcessList = async () => {
   loading.value = true;
   queryParams.value.workOrderNo = selectedRecords.value[0]?.workOrderNo;
+  queryParams.value.pageSize = 50;
   const res = await listWorkOrderProcess(queryParams.value);
   // 过滤controlCode以PP或ZP开头的工序
   workOrderProcessList.value = res.rows.filter((process) => process.controlCode && (process.controlCode.startsWith('PP') || process.controlCode.startsWith('ZP'))) || [];

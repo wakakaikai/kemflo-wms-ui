@@ -48,27 +48,31 @@
           <el-col :span="1.5">
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:inventory:export']">导出</el-button>
           </el-col>
-          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+          <right-toolbar v-model:showSearch="showSearch" :columns="columns" @queryTable="getList"></right-toolbar>
         </el-row>
       </template>
 
       <el-table v-loading="loading" :data="inventoryList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="物料编码" align="center" prop="itemCode" />
-        <el-table-column label="物料名称" align="center" prop="itemName" />
-        <el-table-column label="非限制数量" align="center" prop="availableQuantity" />
-        <el-table-column label="质检数量" align="center" prop="inspectionQuantity" />
-        <el-table-column label="冻结数量" align="center" prop="blockedQuantity" />
-        <el-table-column label="单位" align="center" prop="unit" />
-        <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag">
+        <el-table-column v-if="columns[0].visible" label="物料编码" align="center" prop="itemCode" fixed="left" min-width="150" />
+        <el-table-column v-if="columns[1].visible" label="物料名称" align="center" prop="itemName" fixed="left" max-width="200" show-overflow-tooltip />
+        <el-table-column v-if="columns[2].visible" label="非限制数量" align="center" prop="availableQuantity" fixed="left" min-width="90" />
+        <el-table-column v-if="columns[3].visible" label="质检数量" align="center" prop="inspectionQuantity" fixed="left" />
+        <el-table-column v-if="columns[4].visible" label="冻结数量" align="center" prop="blockedQuantity" fixed="left" />
+        <el-table-column v-if="columns[5].visible" label="单位" align="center" prop="unit" />
+        <el-table-column v-if="columns[6].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
           <template #default="scope">
             <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
           </template>
         </el-table-column>
-        <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
-        <el-table-column label="库区编码" align="center" prop="areaCode" />
-        <el-table-column label="库位编码" align="center" prop="locationCode" />
-        <el-table-column label="备注" align="center" prop="remark" />
+        <el-table-column v-if="columns[7].visible" label="仓库编码" align="center" prop="warehouseCode" />
+        <el-table-column v-if="columns[8].visible" label="库区编码" align="center" prop="areaCode" />
+        <el-table-column v-if="columns[9].visible" label="库位编码" align="center" prop="locationCode" />
+        <el-table-column v-if="columns[10].visible" label="创建者" align="center" prop="createByName" />
+        <el-table-column v-if="columns[11].visible" label="创建时间" align="center" prop="createTime" width="180" />
+        <el-table-column v-if="columns[12].visible" label="更新者" align="center" prop="updateByName" />
+        <el-table-column v-if="columns[13].visible" label="更新时间" align="center" prop="updateTime" width="180" />
+        <el-table-column v-if="columns[14].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -224,6 +228,25 @@ const data = reactive<PageData<InventoryForm, InventoryQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+// 列显隐信息
+const columns = ref<FieldOption[]>([
+  { key: 0, label: `物料编码`, visible: true, children: [] },
+  { key: 1, label: `物料名称`, visible: true, children: [] },
+  { key: 2, label: `非限制数量`, visible: true, children: [] },
+  { key: 3, label: `质检数量`, visible: true, children: [] },
+  { key: 4, label: `冻结数量`, visible: true, children: [] },
+  { key: 5, label: `单位`, visible: true, children: [] },
+  { key: 6, label: `特殊库存`, visible: true, children: [] },
+  { key: 7, label: `仓库编码`, visible: false, children: [] },
+  { key: 8, label: `库区编码`, visible: false, children: [] },
+  { key: 9, label: `库位编码`, visible: true, children: [] },
+  { key: 10, label: `创建时间`, visible: false, children: [] },
+  { key: 11, label: `创建者`, visible: false, children: [] },
+  { key: 12, label: `更新时间`, visible: false, children: [] },
+  { key: 13, label: `更新者`, visible: false, children: [] },
+  { key: 14, label: `备注`, visible: false, children: [] }
+]);
 
 /** 查询库存记录列表 */
 const getList = async () => {

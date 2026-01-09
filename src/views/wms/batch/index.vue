@@ -68,13 +68,13 @@
       <el-table v-loading="loading" :data="batchList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
 <!--        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />-->
-        <el-table-column label="物料编码" align="center" prop="itemCode" />
-        <el-table-column label="物料名称" align="center" prop="itemName"  />
+        <el-table-column label="物料编码" align="center" prop="itemCode" fixed="left" min-width="150" />
+        <el-table-column label="物料名称" align="center" prop="itemName" fixed="left" max-width="200" show-overflow-tooltip />
         <el-table-column label="数量" align="center" prop="quantity" />
         <el-table-column label="单位" align="center" prop="unit" />
-        <el-table-column label="供应商批次号" align="center" prop="supplierBatchNo" />
-        <el-table-column label="批次号" align="center" prop="batchCode" />
-        <el-table-column label="根批次号" align="center" prop="rootBatchCode" />
+        <el-table-column label="供应商批次" align="center" prop="supplierBatchNo" min-width="110" />
+        <el-table-column label="批次号" align="center" prop="batchCode" min-width="110" />
+        <el-table-column label="根批次号" align="center" prop="rootBatchCode" min-width="110" />
         <el-table-column label="序号" align="center" prop="sequence" />
         <el-table-column label="批次状态" align="center" prop="batchStatus" />
         <el-table-column label="接收日期" align="center" prop="receivedDate" width="180">
@@ -88,7 +88,7 @@
           </template>
         </el-table-column>
         <el-table-column label="业务伙伴" align="center" prop="businessCode" />
-        <el-table-column label="业务伙伴名称" align="center" prop="businessName" />
+        <el-table-column label="伙伴名称" align="center" prop="businessName" />
         <el-table-column label="单号类型" align="center" prop="orderType" />
         <el-table-column label="来源单号" align="center" prop="orderNo" />
         <el-table-column label="仓库编码" align="center" prop="warehouseCode" />

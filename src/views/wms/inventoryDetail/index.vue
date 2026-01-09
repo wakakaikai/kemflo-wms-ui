@@ -39,49 +39,57 @@
           </el-col>
           <!--          <el-col :span="1.5">
             <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['wms:inventoryDetail:edit']">修改 </el-button>
-          </el-col>
-          <el-col :span="1.5">
-            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['wms:inventoryDetail:remove']">删除 </el-button>
           </el-col>-->
           <el-col :span="1.5">
-            <el-button v-hasPermi="['wms:inventoryDetail:import']" type="info" plain icon="Upload" @click="handleImport">导入</el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['wms:inventoryDetail:remove']">删除 </el-button>
+          </el-col>
+          <el-col :span="1.5">
+            <el-button v-hasPermi="['wms:inventoryDetail:import']" type="info" plain icon="Upload" @click="handleImport">导入 </el-button>
           </el-col>
           <el-col :span="1.5">
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:inventoryDetail:export']">导出 </el-button>
           </el-col>
-          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+          <right-toolbar v-model:showSearch="showSearch" :columns="columns" @queryTable="getList"></right-toolbar>
         </el-row>
       </template>
 
       <el-table v-loading="loading" :data="inventoryDetailList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="物料编码" align="left" prop="itemCode" fixed="left" min-width="160" />
-        <el-table-column label="物料名称" align="left" prop="itemName" max-width="150" fixed="left" show-overflow-tooltip />
-        <el-table-column label="批次号" align="center" prop="batchCode" min-width="110" fixed="left" />
-        <el-table-column label="非限制数量" align="center" prop="availableQuantity" fixed="left" min-width="90" />
-        <el-table-column label="质检数量" align="center" prop="inspectionQuantity" fixed="left" />
-        <el-table-column label="冻结数量" align="center" prop="blockedQuantity" fixed="left" />
-        <el-table-column label="在途数量" align="center" prop="transitQuantity" fixed="left" />
-        <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag">
+        <el-table-column v-if="columns[0].visible" label="物料编码" align="left" prop="itemCode" fixed="left" min-width="150" />
+        <el-table-column v-if="columns[1].visible" label="物料名称" align="left" prop="itemName" fixed="left" max-width="200" show-overflow-tooltip />
+        <el-table-column v-if="columns[2].visible" label="批次号" align="center" prop="batchCode" fixed="left" min-width="110" />
+        <el-table-column v-if="columns[3].visible" label="非限制数量" align="center" prop="availableQuantity" fixed="left" min-width="90" />
+        <el-table-column v-if="columns[4].visible" label="质检数量" align="center" prop="inspectionQuantity" fixed="left" />
+        <el-table-column v-if="columns[5].visible" label="冻结数量" align="center" prop="blockedQuantity" fixed="left" />
+        <el-table-column v-if="columns[6].visible" label="在途数量" align="center" prop="transitQuantity" fixed="left" />
+        <el-table-column v-if="columns[7].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
           <template #default="scope">
             <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
           </template>
         </el-table-column>
-        <el-table-column label="业务伙伴" align="center" prop="businessCode" />
-        <el-table-column label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
-        <el-table-column label="单位" align="center" prop="unit" />
-        <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
-        <el-table-column label="库区编码" align="center" prop="areaCode" />
-        <el-table-column label="库位编码" align="center" prop="locationCode" />
-        <el-table-column label="检验批号" align="center" prop="inspectionNo" />
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <el-table-column v-if="columns[8].visible" label="业务伙伴" align="center" prop="businessCode" />
+        <el-table-column v-if="columns[9].visible" label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
+        <el-table-column v-if="columns[10].visible" label="单位" align="center" prop="unit" />
+        <el-table-column v-if="columns[11].visible" label="仓库编码" align="center" prop="warehouseCode" />
+        <el-table-column v-if="columns[12].visible" label="库区编码" align="center" prop="areaCode" />
+        <el-table-column v-if="columns[13].visible" label="库位编码" align="center" prop="locationCode" />
+        <el-table-column v-if="columns[14].visible" label="检验批号" align="center" prop="inspectionNo" />
+        <el-table-column v-if="columns[15].visible" label="创建者" align="center" prop="createByName" />
+        <el-table-column v-if="columns[16].visible" label="创建时间" align="center" prop="createTime" width="180" />
+        <el-table-column v-if="columns[17].visible" label="更新者" align="center" prop="updateByName" />
+        <el-table-column v-if="columns[18].visible" label="更新时间" align="center" prop="updateTime" width="180" />
+        <el-table-column v-if="columns[19].visible" label="备注" align="center" prop="remark" />
+        <el-table-column label="操作" align="center" class-name="small-padding fixed-width" fixed="right" width="150">
           <template #default="scope">
             <!--            <el-tooltip content="修改" placement="top">
               <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:inventoryDetail:edit']">修改 </el-button>
             </el-tooltip>-->
-            <!--            <el-tooltip content="删除" placement="top">
-              <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:inventoryDetail:remove']">删除 </el-button>
-            </el-tooltip>-->
+            <el-tooltip content="WMS盘亏" placement="top">
+              <el-button link type="primary" icon="Edit" @click="handleSubtract(scope.row)" v-hasPermi="['wms:inventoryDetail:subtract']"> WMS盘亏 </el-button>
+            </el-tooltip>
+            <el-tooltip content="删除" placement="top">
+              <el-button link type="danger" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:inventoryDetail:remove']">删除 </el-button>
+            </el-tooltip>
             <!--            <el-tooltip content="移库" placement="top">
               <el-button link type="primary" icon="Position" @click="handleTransfer(scope.row)" v-hasPermi="['wms:inventoryDetail:transfer']">移库</el-button>
             </el-tooltip>-->
@@ -91,6 +99,7 @@
 
       <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
     </el-card>
+
     <!-- 添加或修改库存明细记录对话框 -->
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" append-to-body>
       <el-form ref="inventoryDetailFormRef" :model="form" :rules="rules" label-width="auto">
@@ -109,7 +118,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="数量" prop="quantity">
-          <el-input-number v-model="form.quantity" placeholder="请输入非限制数量" style="width: 100%" />
+          <el-input-number v-model="form.quantity" placeholder="请输入数量" :precision="3" style="width: 100%" />
         </el-form-item>
         <el-form-item label="单位" prop="unit">
           <el-input v-model="form.unit" placeholder="请输入单位" />
@@ -147,6 +156,71 @@
       </template>
     </el-dialog>
 
+    <!-- 盘亏存明细记录对话框 -->
+    <el-dialog :title="subtractInventoryDialog.title" v-model="subtractInventoryDialog.visible" width="800px" append-to-body>
+      <el-form ref="inventoryDetailFormRef" :model="form" :rules="rules" label-width="auto">
+        <el-form-item label="物料编码">
+          <el-input v-model="form.itemCode" readonly />
+        </el-form-item>
+        <el-form-item label="物料名称">
+          <el-input v-model="form.itemName" readonly />
+        </el-form-item>
+        <el-form-item label="批次码">
+          <el-input v-model="form.batchCode" placeholder="请输入批次码" readonly />
+        </el-form-item>
+        <el-form-item label="库位编码">
+          <el-input v-model="form.locationCode" placeholder="请输入库位编码" readonly />
+        </el-form-item>
+        <el-form-item label="库存数量">
+          <el-row :gutter="20">
+            <el-col :sm="24" :md="8" :lg="8">
+              <el-card class="box-card" shadow="never">
+                <div class="card-content">
+                  <div class="card-label card-value-available">非限制</div>
+                  <div class="card-value">{{ form.availableQuantity || 0 }}</div>
+                </div>
+              </el-card>
+            </el-col>
+            <el-col :sm="24" :md="8" :lg="8">
+              <el-card class="box-card" shadow="never">
+                <div class="card-content">
+                  <div class="card-label card-value-inspection">质检</div>
+                  <div class="card-value">{{ form.inspectionQuantity || 0 }}</div>
+                </div>
+              </el-card>
+            </el-col>
+            <el-col :sm="24" :md="8" :lg="8">
+              <el-card class="box-card" shadow="never">
+                <div class="card-content">
+                  <div class="card-label card-value-blocked">冻结</div>
+                  <div class="card-value">{{ form.blockedQuantity || 0 }}</div>
+                </div>
+              </el-card>
+            </el-col>
+          </el-row>
+        </el-form-item>
+        <el-form-item label="库存类型" prop="inventoryType">
+          <el-select v-model="form.inventoryType" placeholder="请选择库存类型" style="width: 100%">
+            <el-option label="非限制库存" value="N"></el-option>
+            <el-option label="质检库存" value="X"></el-option>
+            <el-option label="冻结库存" value="S"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="盘亏数量" prop="quantity">
+          <el-input-number v-model="form.quantity" placeholder="请输入盘亏数量" :precision="3" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="subtractInventoryDialog.visible = false">取 消</el-button>
+          <el-button :loading="buttonLoading" type="primary" @click="submitSubtractForm">确 定</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
     <!-- 导入对话框 -->
     <el-dialog v-model="upload.open" :title="upload.title" width="400px" append-to-body>
       <el-upload
@@ -168,7 +242,7 @@
         <template #tip>
           <div class="text-center el-upload__tip">
             <span>仅允许导入xls、xlsx格式文件。</span>
-            <el-link type="primary" :underline="false" style="font-size: 12px; vertical-align: baseline" @click="importTemplate">下载模板</el-link>
+            <el-link type="primary" :underline="false" style="font-size: 12px; vertical-align: baseline" @click="importTemplate">下载模板 </el-link>
           </div>
         </template>
       </el-upload>
@@ -187,7 +261,7 @@
 </template>
 
 <script setup name="InventoryDetail" lang="ts">
-import { addInventoryDetail, delInventoryDetail, getInventoryDetail, listInventoryDetail, updateInventoryDetail } from '@/api/wms/inventoryDetail';
+import { addInventoryDetail, delInventoryDetail, getInventoryDetail, listInventoryDetail, subtractInventoryDetail, updateInventoryDetail } from '@/api/wms/inventoryDetail';
 import { InventoryDetailForm, InventoryDetailQuery, InventoryDetailVO } from '@/api/wms/inventoryDetail/types';
 import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
@@ -208,11 +282,39 @@ const total = ref(0);
 
 const queryFormRef = ref<ElFormInstance>();
 const inventoryDetailFormRef = ref<ElFormInstance>();
-const transferFormRef = ref<ElFormInstance>();
 const itemDialogRef = ref<InstanceType<typeof ItemDialog>>();
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 
+// 列显隐信息
+const columns = ref<FieldOption[]>([
+  { key: 0, label: `物料编码`, visible: true, children: [] },
+  { key: 1, label: `物料名称`, visible: true, children: [] },
+  { key: 2, label: `批次号`, visible: true, children: [] },
+  { key: 3, label: `非限制数量`, visible: true, children: [] },
+  { key: 4, label: `质检数量`, visible: true, children: [] },
+  { key: 5, label: `冻结数量`, visible: true, children: [] },
+  { key: 6, label: `在途数量`, visible: false, children: [] },
+  { key: 7, label: `特殊库存`, visible: true, children: [] },
+  { key: 8, label: `业务伙伴`, visible: false, children: [] },
+  { key: 9, label: `伙伴名称`, visible: false, children: [] },
+  { key: 10, label: `单位`, visible: true, children: [] },
+  { key: 11, label: `仓库编码`, visible: false, children: [] },
+  { key: 12, label: `库区编码`, visible: false, children: [] },
+  { key: 13, label: `库位编码`, visible: true, children: [] },
+  { key: 14, label: `检验批号`, visible: false, children: [] },
+  { key: 15, label: `创建时间`, visible: false, children: [] },
+  { key: 16, label: `创建者`, visible: false, children: [] },
+  { key: 17, label: `更新时间`, visible: false, children: [] },
+  { key: 18, label: `更新者`, visible: false, children: [] },
+  { key: 19, label: `备注`, visible: false, children: [] }
+]);
+
 const dialog = reactive<DialogOption>({
+  visible: false,
+  title: ''
+});
+
+const subtractInventoryDialog = reactive<DialogOption>({
   visible: false,
   title: ''
 });
@@ -354,6 +456,16 @@ const handleAdd = () => {
   dialog.title = '添加库存记录';
 };
 
+/** 盘亏按钮操作 */
+const handleSubtract = async (row?: InventoryDetailVO) => {
+  reset();
+  const _id = row?.id || ids.value[0];
+  const res = await getInventoryDetail(_id);
+  Object.assign(form.value, res.data);
+  subtractInventoryDialog.visible = true;
+  subtractInventoryDialog.title = '盘亏WMS库存记录';
+};
+
 /** 修改按钮操作 */
 const handleUpdate = async (row?: InventoryDetailVO) => {
   reset();
@@ -389,6 +501,53 @@ const submitForm = () => {
       }
       proxy?.$modal.msgSuccess('操作成功');
       dialog.visible = false;
+      await getList();
+    }
+  });
+};
+
+/** 盘亏提交按钮 */
+const submitSubtractForm = () => {
+  // 验证盘亏数量不能超过库存数量
+  let currentQuantity = 0;
+  switch (form.value.inventoryType) {
+    case 'N':
+      currentQuantity = form.value.availableQuantity || 0;
+      break;
+    case 'X':
+      currentQuantity = form.value.inspectionQuantity || 0;
+      break;
+    case 'S':
+      currentQuantity = form.value.blockedQuantity || 0;
+      break;
+    default:
+  }
+
+  if (form.value.quantity > currentQuantity) {
+    proxy?.$modal.msgError(`盘亏数量不能超过当前库存数量${currentQuantity}`);
+    return;
+  }
+
+  switch (form.value.inventoryType) {
+    case 'N':
+      form.value.availableQuantity = form.value.quantity || null;
+      break;
+    case 'X':
+      form.value.inspectionQuantity = form.value.quantity || null;
+      break;
+    case 'S':
+      form.value.blockedQuantity = form.value.quantity || null;
+      break;
+    default:
+  }
+  inventoryDetailFormRef.value?.validate(async (valid: boolean) => {
+    if (valid) {
+      buttonLoading.value = true;
+      if (form.value.id) {
+        await subtractInventoryDetail(form.value).finally(() => (buttonLoading.value = false));
+      }
+      proxy?.$modal.msgSuccess('操作成功');
+      subtractInventoryDialog.visible = false;
       await getList();
     }
   });
@@ -472,3 +631,37 @@ onMounted(() => {
   getList();
 });
 </script>
+<style lang="scss" scoped>
+.box-card {
+  height: 100%;
+  width: 100%;
+}
+.card-content {
+  text-align: center;
+  padding: 10px;
+  min-width: 120px;
+}
+
+.card-label {
+  font-size: 18px;
+  color: #909399;
+  margin-bottom: 5px;
+}
+
+.card-value {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.card-value-available {
+  color: #67c23a; /* 绿色 - 非限制库存 */
+}
+
+.card-value-inspection {
+  color: #e6a23c; /* 橙色 - 质检库存 */
+}
+
+.card-value-blocked {
+  color: #f56c6c; /* 红色 - 冻结库存 */
+}
+</style>

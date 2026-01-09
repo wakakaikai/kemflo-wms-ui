@@ -7,11 +7,11 @@
             <el-form-item label="移动类型" prop="moveType">
               <el-input v-model="queryParams.moveType" placeholder="请输入移动类型" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="追踪ID" prop="traceId">
+              <el-input v-model="queryParams.traceId" placeholder="请输入追踪ID" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="物料编码" prop="itemCode">
               <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="物料名称" prop="itemName">
-              <el-input v-model="queryParams.itemName" placeholder="请输入物料名称" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="批次号" prop="batchNo">
               <el-input v-model="queryParams.batchNo" placeholder="请输入批次号" clearable @keyup.enter="handleQuery" />
@@ -70,47 +70,48 @@
           <el-col :span="1.5">
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:inventoryMovement:export']">导出</el-button>
           </el-col>
-          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+          <right-toolbar v-model:showSearch="showSearch" :columns="columns" @queryTable="getList"></right-toolbar>
         </el-row>
       </template>
 
       <el-table v-loading="loading" :data="inventoryMovementList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="移动记录ID" align="center" prop="id" v-if="true" />
-        <el-table-column label="移动类型" align="center" prop="moveType" />
-        <el-table-column label="物料编码" align="center" prop="itemCode" />
-        <el-table-column label="物料名称" align="center" prop="itemName" :show-overflow-tooltip="true" />
-        <el-table-column label="批次号" align="center" prop="batchNo" />
-        <el-table-column label="库存方向" align="center" prop="inventoryDirection" />
-        <el-table-column label="关联的移动ID" align="center" prop="relatedMoveId" />
-        <el-table-column label="数量" align="center" prop="quantity" />
-        <el-table-column label="基本单位" align="center" prop="unit" />
-        <el-table-column label="单据类型" align="center" prop="sourceDocType" />
-        <el-table-column label="单据编号" align="center" prop="sourceDocCode" />
-        <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
-        <el-table-column label="仓库名称" align="center" prop="warehouseName" />
-        <el-table-column label="库区编码" align="center" prop="areaCode" />
-        <el-table-column label="库区名称" align="center" prop="areaName" />
-        <el-table-column label="库位编码" align="center" prop="locationCode" />
-        <el-table-column label="库位名称" align="center" prop="locationName" />
-        <el-table-column label="栈板编号" align="center" prop="palletCode" />
-        <el-table-column label="打包编号" align="center" prop="packingCode" />
-        <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag">
-          <template #default="scope">
-            <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
-          </template>
-        </el-table-column>
-        <el-table-column label="移动时间" align="center" prop="moveDate" width="180">
+        <!--        <el-table-column label="移动记录ID" align="center" prop="id" v-if="true" />-->
+        <el-table-column v-if="columns[0].visible" label="移动类型" align="center" prop="moveType" />
+        <el-table-column v-if="columns[1].visible" label="移动时间" align="center" prop="moveDate" width="180">
           <template #default="scope">
             <span>{{ parseTime(scope.row.moveDate, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="业务伙伴" align="center" prop="businessCode" />
-        <el-table-column label="业务伙伴名称" align="center" prop="businessName" />
-        <el-table-column label="SAP凭证年度" align="center" prop="sapMaterialDocYear" />
-        <el-table-column label="SAP物料凭证号" align="center" prop="sapMaterialOrderNo" />
-        <el-table-column label="SAP物料文件项次" align="center" prop="sapMaterialItem" />
-        <el-table-column label="备注" align="center" prop="remark" />
+        <el-table-column v-if="columns[2].visible" label="追踪ID" align="center" prop="traceId" />
+        <el-table-column v-if="columns[3].visible" label="物料编码" align="center" prop="itemCode" />
+        <el-table-column v-if="columns[4].visible" label="物料名称" align="center" prop="itemName" :show-overflow-tooltip="true" />
+        <el-table-column v-if="columns[5].visible" label="批次号" align="center" prop="batchNo" />
+        <el-table-column v-if="columns[6].visible" label="库存方向" align="center" prop="inventoryDirection" />
+        <el-table-column v-if="columns[7].visible" label="数量" align="center" prop="quantity" />
+        <el-table-column v-if="columns[8].visible" label="基本单位" align="center" prop="unit" />
+        <el-table-column v-if="columns[9].visible" label="单据类型" align="center" prop="sourceDocType" />
+        <el-table-column v-if="columns[10].visible" label="单据编号" align="center" prop="sourceDocCode" />
+        <el-table-column v-if="columns[11].visible" label="仓库编码" align="center" prop="warehouseCode" />
+        <el-table-column v-if="columns[12].visible" label="库区编码" align="center" prop="areaCode" />
+        <el-table-column v-if="columns[13].visible" label="库位编码" align="center" prop="locationCode" />
+        <el-table-column v-if="columns[14].visible" label="栈板编号" align="center" prop="palletCode" />
+        <el-table-column v-if="columns[15].visible" label="打包编号" align="center" prop="packingCode" />
+        <el-table-column v-if="columns[16].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
+          <template #default="scope">
+            <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columns[17].visible" label="业务伙伴" align="center" prop="businessCode" />
+        <el-table-column v-if="columns[18].visible" label="伙伴名称" align="center" prop="businessName" />
+        <el-table-column v-if="columns[19].visible" label="SAP凭证年度" align="center" prop="sapMaterialDocYear" />
+        <el-table-column v-if="columns[20].visible" label="SAP物料凭证号" align="center" prop="sapMaterialOrderNo" />
+        <el-table-column v-if="columns[21].visible" label="SAP物料文件项次" align="center" prop="sapMaterialItem" />
+        <el-table-column v-if="columns[22].visible" label="创建时间" align="center" prop="createTime" width="180" />
+        <el-table-column v-if="columns[23].visible" label="创建者" align="center" prop="createByName" />
+        <el-table-column v-if="columns[24].visible" label="更新时间" align="center" prop="updateTime" width="180" />
+        <el-table-column v-if="columns[25].visible" label="更新者" align="center" prop="updateByName" />
+        <el-table-column v-if="columns[26].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -127,7 +128,7 @@
     </el-card>
     <!-- 添加或修改库存移动记录对话框 -->
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" append-to-body>
-      <el-form ref="inventoryMovementFormRef" :model="form" :rules="rules" label-width="80px">
+      <el-form ref="inventoryMovementFormRef" :model="form" :rules="rules" label-width="auto">
         <el-form-item label="物料编码" prop="itemCode">
           <el-input v-model="form.itemCode" placeholder="请输入物料编码" />
         </el-form-item>
@@ -215,6 +216,7 @@
 import { listInventoryMovement, getInventoryMovement, delInventoryMovement, addInventoryMovement, updateInventoryMovement } from '@/api/wms/inventoryMovement';
 import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } from '@/api/wms/inventoryMovement/types';
 import { dayjs } from 'element-plus';
+import { ref } from 'vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_special_flag, wms_inventory_type } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag', 'wms_inventory_type'));
@@ -297,37 +299,67 @@ const data = reactive<PageData<InventoryMovementForm, InventoryMovementQuery>>({
     params: {}
   },
   rules: {
-    id: [{ required: true, message: '移动记录ID不能为空', trigger: 'blur' }],
-    moveType: [{ required: true, message: '移动类型不能为空', trigger: 'change' }],
-    itemCode: [{ required: true, message: '物料编码不能为空', trigger: 'blur' }],
-    itemName: [{ required: true, message: '物料名称不能为空', trigger: 'blur' }],
-    batchNo: [{ required: true, message: '批次号不能为空', trigger: 'blur' }],
-    inventoryDirection: [{ required: true, message: '库存方向不能为空', trigger: 'blur' }],
-    relatedMoveId: [{ required: true, message: '关联的移动ID不能为空', trigger: 'blur' }],
-    quantity: [{ required: true, message: '数量不能为空', trigger: 'blur' }],
-    unit: [{ required: true, message: '基本单位不能为空', trigger: 'blur' }],
-    sourceDocType: [{ required: true, message: '单据类型不能为空', trigger: 'change' }],
-    sourceDocCode: [{ required: true, message: '单据编号不能为空', trigger: 'blur' }],
-    warehouseCode: [{ required: true, message: '仓库编码不能为空', trigger: 'blur' }],
-    warehouseName: [{ required: true, message: '仓库名称不能为空', trigger: 'blur' }],
-    areaCode: [{ required: true, message: '库区编码不能为空', trigger: 'blur' }],
-    areaName: [{ required: true, message: '库区名称不能为空', trigger: 'blur' }],
-    locationCode: [{ required: true, message: '库位编码不能为空', trigger: 'blur' }],
-    locationName: [{ required: true, message: '库位名称不能为空', trigger: 'blur' }],
-    palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'blur' }],
-    packingCode: [{ required: true, message: '打包编号不能为空', trigger: 'blur' }],
-    specialInventoryFlag: [{ required: true, message: '特殊库存标识不能为空', trigger: 'blur' }],
-    moveDate: [{ required: true, message: '移动时间不能为空', trigger: 'blur' }],
-    businessCode: [{ required: true, message: '业务伙伴不能为空', trigger: 'blur' }],
-    businessName: [{ required: true, message: '业务伙伴名称不能为空', trigger: 'blur' }],
-    sapMaterialDocYear: [{ required: true, message: 'SAP凭证年度不能为空', trigger: 'blur' }],
-    sapMaterialOrderNo: [{ required: true, message: 'SAP物料凭证号不能为空', trigger: 'blur' }],
-    sapMaterialItem: [{ required: true, message: 'SAP物料文件项次不能为空', trigger: 'blur' }],
-    remark: [{ required: true, message: '备注不能为空', trigger: 'blur' }]
+    // id: [{ required: true, message: '移动记录ID不能为空', trigger: 'blur' }],
+    // moveType: [{ required: true, message: '移动类型不能为空', trigger: 'change' }],
+    // itemCode: [{ required: true, message: '物料编码不能为空', trigger: 'blur' }],
+    // itemName: [{ required: true, message: '物料名称不能为空', trigger: 'blur' }],
+    // batchNo: [{ required: true, message: '批次号不能为空', trigger: 'blur' }],
+    // inventoryDirection: [{ required: true, message: '库存方向不能为空', trigger: 'blur' }],
+    // relatedMoveId: [{ required: true, message: '关联的移动ID不能为空', trigger: 'blur' }],
+    // quantity: [{ required: true, message: '数量不能为空', trigger: 'blur' }],
+    // unit: [{ required: true, message: '基本单位不能为空', trigger: 'blur' }],
+    // sourceDocType: [{ required: true, message: '单据类型不能为空', trigger: 'change' }],
+    // sourceDocCode: [{ required: true, message: '单据编号不能为空', trigger: 'blur' }],
+    // warehouseCode: [{ required: true, message: '仓库编码不能为空', trigger: 'blur' }],
+    // warehouseName: [{ required: true, message: '仓库名称不能为空', trigger: 'blur' }],
+    // areaCode: [{ required: true, message: '库区编码不能为空', trigger: 'blur' }],
+    // areaName: [{ required: true, message: '库区名称不能为空', trigger: 'blur' }],
+    // locationCode: [{ required: true, message: '库位编码不能为空', trigger: 'blur' }],
+    // locationName: [{ required: true, message: '库位名称不能为空', trigger: 'blur' }],
+    // palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'blur' }],
+    // packingCode: [{ required: true, message: '打包编号不能为空', trigger: 'blur' }],
+    // specialInventoryFlag: [{ required: true, message: '特殊库存标识不能为空', trigger: 'blur' }],
+    // moveDate: [{ required: true, message: '移动时间不能为空', trigger: 'blur' }],
+    // businessCode: [{ required: true, message: '业务伙伴不能为空', trigger: 'blur' }],
+    // businessName: [{ required: true, message: '业务伙伴名称不能为空', trigger: 'blur' }],
+    // sapMaterialDocYear: [{ required: true, message: 'SAP凭证年度不能为空', trigger: 'blur' }],
+    // sapMaterialOrderNo: [{ required: true, message: 'SAP物料凭证号不能为空', trigger: 'blur' }],
+    // sapMaterialItem: [{ required: true, message: 'SAP物料文件项次不能为空', trigger: 'blur' }],
+    // remark: [{ required: true, message: '备注不能为空', trigger: 'blur' }]
   }
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const columns = ref<FieldOption[]>([
+  { key: 0, label: `移动类型`, visible: true, children: [] },
+  { key: 1, label: `移动时间`, visible: true, children: [] },
+  { key: 2, label: `追踪ID`, visible: true, children: [] },
+  { key: 3, label: `物料编码`, visible: true, children: [] },
+  { key: 4, label: `物料名称`, visible: true, children: [] },
+  { key: 5, label: `批次号`, visible: true, children: [] },
+  { key: 6, label: `库存方向`, visible: true, children: [] },
+  { key: 7, label: `数量`, visible: true, children: [] },
+  { key: 8, label: `基本单位`, visible: false, children: [] },
+  { key: 9, label: `单据类型`, visible: false, children: [] },
+  { key: 10, label: `单据编号`, visible: true, children: [] },
+  { key: 11, label: `仓库编码`, visible: false, children: [] },
+  { key: 12, label: `库区编码`, visible: false, children: [] },
+  { key: 13, label: `库位编码`, visible: true, children: [] },
+  { key: 14, label: `栈板编号`, visible: true, children: [] },
+  { key: 15, label: `打包编号`, visible: true, children: [] },
+  { key: 16, label: `特殊库存`, visible: true, children: [] },
+  { key: 17, label: `业务伙伴`, visible: false, children: [] },
+  { key: 18, label: `伙伴名称`, visible: false, children: [] },
+  { key: 19, label: `SAP凭证年度`, visible: false, children: [] },
+  { key: 20, label: `SAP物料凭证号`, visible: true, children: [] },
+  { key: 21, label: `SAP物料文件项次`, visible: false, children: [] },
+  { key: 22, label: `创建时间`, visible: false, children: [] },
+  { key: 23, label: `创建者`, visible: false, children: [] },
+  { key: 24, label: `更新时间`, visible: false, children: [] },
+  { key: 25, label: `更新者`, visible: false, children: [] },
+  { key: 26, label: `备注`, visible: false, children: [] }
+]);
 
 /** 查询库存移动记录列表 */
 const getList = async () => {

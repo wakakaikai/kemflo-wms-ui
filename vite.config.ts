@@ -25,8 +25,8 @@ export default defineConfig(({ mode, command }) => {
       proxy: {
         [env.VITE_APP_BASE_API]: {
           // target: 'http://localhost:8086',
-          // target: 'http://192.168.20.84:8080/prod-api',
-          target: 'https://wms.kemflo.cn:8777/prod-api',
+          target: 'http://192.168.20.84:8080/prod-api',
+          // target: 'https://wms.kemflo.cn:8777/prod-api',
           changeOrigin: true,
           ws: true,
           rewrite: (path) => path.replace(new RegExp('^' + env.VITE_APP_BASE_API), '')

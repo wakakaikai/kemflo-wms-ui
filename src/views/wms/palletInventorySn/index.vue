@@ -3,7 +3,7 @@
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="栈板编号" prop="palletCode">
               <el-input v-model="queryParams.palletCode" placeholder="请输入栈板编号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -12,20 +12,6 @@
             </el-form-item>
             <el-form-item label="条码" prop="sn">
               <el-input v-model="queryParams.sn" placeholder="请输入条码" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数量" prop="quantity">
-              <el-input v-model="queryParams.quantity" placeholder="请输入数量" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="单位" prop="unit">
-              <el-input v-model="queryParams.unit" placeholder="请输入单位" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="生产日期" prop="productDate">
-              <el-date-picker clearable
-                v-model="queryParams.productDate"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择生产日期"
-              />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -57,7 +43,7 @@
 
       <el-table v-loading="loading" :data="palletInventorySnList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />
+<!--        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />-->
         <el-table-column label="栈板编号" align="center" prop="palletCode" />
         <el-table-column label="工单号" align="center" prop="orderNo" />
         <el-table-column label="条码" align="center" prop="sn" />
