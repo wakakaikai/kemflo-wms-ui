@@ -148,8 +148,8 @@
         <el-form-item label="业务伙伴" prop="businessCode">
           <el-input v-model="form.businessCode" placeholder="请输入业务伙伴" />
         </el-form-item>
-        <el-form-item label="业务伙伴名称" prop="businessName">
-          <el-input v-model="form.businessName" placeholder="请输入业务伙伴名称" />
+        <el-form-item label="伙伴名称" prop="businessName">
+          <el-input v-model="form.businessName" placeholder="请输入伙伴名称" />
         </el-form-item>
         <el-form-item label="来源单号" prop="orderNo">
           <el-input v-model="form.orderNo" placeholder="请输入来源单号" />
@@ -277,7 +277,7 @@ const data = reactive<PageData<BatchForm, BatchQuery>>({
     receivedDate: [{ required: true, message: '接收日期不能为空', trigger: 'blur' }],
     expirationDate: [{ required: true, message: '过期日期不能为空', trigger: 'blur' }],
     businessCode: [{ required: true, message: '业务伙伴不能为空', trigger: 'blur' }],
-    businessName: [{ required: true, message: '业务伙伴名称不能为空', trigger: 'blur' }],
+    businessName: [{ required: true, message: '伙伴名称不能为空', trigger: 'blur' }],
 
     orderNo: [{ required: true, message: '来源单号不能为空', trigger: 'blur' }],
     warehouseCode: [{ required: true, message: '仓库编码不能为空', trigger: 'blur' }],

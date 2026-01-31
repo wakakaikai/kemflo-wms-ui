@@ -22,7 +22,7 @@ export interface InventoryMovementVO {
   /**
    * 批次号
    */
-  batchNo: string;
+  batchCode: string;
 
   /**
    * 库存方向
@@ -195,7 +195,7 @@ export interface InventoryMovementForm extends BaseEntity {
   /**
    * 批次号
    */
-  batchNo?: string;
+  batchCode?: string;
 
   /**
    * 库存方向
@@ -364,7 +364,7 @@ export interface InventoryMovementQuery extends PageQuery {
   /**
    * 批次号
    */
-  batchNo?: string;
+  batchCode?: string;
 
   /**
    * 库存方向

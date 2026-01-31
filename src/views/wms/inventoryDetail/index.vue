@@ -112,9 +112,7 @@
         </el-form-item>
         <el-form-item label="库存类型" prop="inventoryType">
           <el-select v-model="form.inventoryType" placeholder="请选择库存类型" style="width: 100%">
-            <el-option label="非限制库存" value="N"></el-option>
-            <el-option label="质检库存" value="X"></el-option>
-            <el-option label="冻结库存" value="S"></el-option>
+            <el-option v-for="dict in wms_inventory_type" :key="dict.value" :label="dict.label" :value="dict.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="数量" prop="quantity">
@@ -142,7 +140,7 @@
           <el-input v-model="form.businessCode" placeholder="请输入业务伙伴" />
         </el-form-item>
         <el-form-item label="伙伴名称" prop="businessName">
-          <el-input v-model="form.businessName" placeholder="请输入业务伙伴名称" />
+          <el-input v-model="form.businessName" placeholder="请输入伙伴名称" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" />
@@ -201,9 +199,7 @@
         </el-form-item>
         <el-form-item label="库存类型" prop="inventoryType">
           <el-select v-model="form.inventoryType" placeholder="请选择库存类型" style="width: 100%">
-            <el-option label="非限制库存" value="N"></el-option>
-            <el-option label="质检库存" value="X"></el-option>
-            <el-option label="冻结库存" value="S"></el-option>
+            <el-option v-for="dict in wms_inventory_type" :key="dict.value" :label="dict.label" :value="dict.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="盘亏数量" prop="quantity">

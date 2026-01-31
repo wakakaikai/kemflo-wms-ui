@@ -10,6 +10,11 @@ export interface WorkOrderVO {
   workOrderNo: string;
 
   /**
+   * 工单状态
+   */
+  status: string;
+
+  /**
    * 产品料号
    */
   item: string;
@@ -20,14 +25,9 @@ export interface WorkOrderVO {
   itemDesc: string;
 
   /**
-   * 入库检
+   * 是否需要入库检
    */
   checkEnable: number;
-
-  /**
-   * SAP质检标识
-   */
-  inspectionFlag?: string;
 
   /**
    * 计划开工日期
@@ -50,9 +50,34 @@ export interface WorkOrderVO {
   deliveredQty: number;
 
   /**
-   * 待入库数量
+   * 下达数量
    */
-  waitStockQty?: number;
+  issuedQty: number;
+
+  /**
+   * 单位
+   */
+  unit: string;
+
+  /**
+   * 销售订单号
+   */
+  salesOrderNo: string;
+
+  /**
+   * 销售订单项次
+   */
+  salesOrderItem: string;
+
+  /**
+   * 销售订单交货日
+   */
+  soDeliveryDate: string;
+
+  /**
+   * 上阶工单号
+   */
+  previousOrderNo: string;
 
   /**
    * 备注
@@ -60,9 +85,9 @@ export interface WorkOrderVO {
   remark: string;
 
   /**
-   * 是否编辑状态
+   * 工单优先级
    */
-  isEditing?: boolean;
+  priority: number;
 }
 
 export interface WorkOrderForm extends BaseEntity {
@@ -77,9 +102,9 @@ export interface WorkOrderForm extends BaseEntity {
   workOrderNo?: string;
 
   /**
-   * 仓库编号
+   * 工单状态
    */
-  warehouseCode?: string;
+  status?: string;
 
   /**
    * 产品料号
@@ -92,14 +117,9 @@ export interface WorkOrderForm extends BaseEntity {
   itemDesc?: string;
 
   /**
-   * 入库检
+   * 是否需要入库检
    */
   checkEnable?: number;
-
-  /**
-   * SAP质检标识
-   */
-  inspectionFlag?: string;
 
   /**
    * 计划开工日期
@@ -122,48 +142,44 @@ export interface WorkOrderForm extends BaseEntity {
   deliveredQty?: number;
 
   /**
-   * 待入库数量
+   * 下达数量
    */
-  waitStockQty?: number;
+  issuedQty?: number;
 
   /**
-   * 打包数量
+   * 单位
    */
-  packingQty?: number;
+  unit?: string;
 
   /**
-   * 修改前原始打包数量
+   * 销售订单号
    */
-  originPackingQty?: number;
+  salesOrderNo?: string;
 
   /**
-   * 其他打包数量
+   * 销售订单项次
    */
-  otherPackingQty?: number;
+  salesOrderItem?: string;
+
+  /**
+   * 销售订单交货日
+   */
+  soDeliveryDate?: string;
+
+  /**
+   * 上阶工单号
+   */
+  previousOrderNo?: string;
 
   /**
    * 备注
    */
   remark?: string;
-  /**
-   * 最大可入库数量
-   */
-  inboundValue?: number;
 
   /**
-   * 栈板编号
+   * 工单优先级
    */
-  palletCode?: string;
-
-  /**
-   * 打包明细
-   */
-  packingDetailBoList: any[];
-
-  /**
-   * 是否编辑状态
-   */
-  isEditing?: boolean;
+  priority?: number;
 }
 
 export interface WorkOrderQuery extends PageQuery {
@@ -173,6 +189,11 @@ export interface WorkOrderQuery extends PageQuery {
   workOrderNo?: string;
 
   /**
+   * 工单状态
+   */
+  status?: string;
+
+  /**
    * 产品料号
    */
   item?: string;
@@ -183,14 +204,9 @@ export interface WorkOrderQuery extends PageQuery {
   itemDesc?: string;
 
   /**
-   * 入库检
+   * 是否需要入库检
    */
   checkEnable?: number;
-
-  /**
-   * SAP质检标识
-   */
-  inspectionFlag?: string;
 
   /**
    * 计划开工日期
@@ -213,14 +229,39 @@ export interface WorkOrderQuery extends PageQuery {
   deliveredQty?: number;
 
   /**
-   * 待入库数量
+   * 下达数量
    */
-  waitStockQty?: number;
+  issuedQty?: number;
 
   /**
-   * 打包数量
+   * 单位
    */
-  packingQty?: number;
+  unit?: string;
+
+  /**
+   * 销售订单号
+   */
+  salesOrderNo?: string;
+
+  /**
+   * 销售订单项次
+   */
+  salesOrderItem?: string;
+
+  /**
+   * 销售订单交货日
+   */
+  soDeliveryDate?: string;
+
+  /**
+   * 上阶工单号
+   */
+  previousOrderNo?: string;
+
+  /**
+   * 工单优先级
+   */
+  priority?: number;
 
   /**
    * 日期范围参数

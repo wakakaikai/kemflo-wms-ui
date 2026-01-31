@@ -126,7 +126,7 @@
           <el-input v-model="form.businessCode" placeholder="请输入业务伙伴" />
         </el-form-item>
         <el-form-item label="伙伴名称" prop="businessName">
-          <el-input v-model="form.businessName" placeholder="请输入业务伙伴名称" />
+          <el-input v-model="form.businessName" placeholder="请输入伙伴名称" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" placeholder="请输入备注" />

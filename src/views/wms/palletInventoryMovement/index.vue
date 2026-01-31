@@ -111,7 +111,7 @@
           </template>
         </el-table-column>
         <el-table-column label="业务伙伴" align="center" prop="businessCode" />
-        <el-table-column label="业务伙伴名称" align="center" prop="businessName" />
+        <el-table-column label="伙伴名称" align="center" prop="businessName" />
         <el-table-column label="SAP凭证年度" align="center" prop="sapMaterialDocYear" />
         <el-table-column label="SAP物料凭证号" align="center" prop="sapMaterialOrderNo" />
         <el-table-column label="SAP物料文件项次" align="center" prop="sapMaterialItem" />
@@ -192,8 +192,8 @@
         <el-form-item label="业务伙伴" prop="businessCode">
           <el-input v-model="form.businessCode" placeholder="请输入业务伙伴" />
         </el-form-item>
-        <el-form-item label="业务伙伴名称" prop="businessName">
-          <el-input v-model="form.businessName" placeholder="请输入业务伙伴名称" />
+        <el-form-item label="伙伴名称" prop="businessName">
+          <el-input v-model="form.businessName" placeholder="请输入伙伴名称" />
         </el-form-item>
         <el-form-item label="SAP凭证年度" prop="sapMaterialDocYear">
           <el-input v-model="form.sapMaterialDocYear" placeholder="请输入SAP凭证年度" />
@@ -327,7 +327,7 @@ const data = reactive<PageData<PalletInventoryMovementForm, PalletInventoryMovem
     specialInventoryFlag: [{ required: true, message: '特殊库存标识不能为空', trigger: 'change' }],
     moveDate: [{ required: true, message: '移动时间不能为空', trigger: 'blur' }],
     businessCode: [{ required: true, message: '业务伙伴不能为空', trigger: 'blur' }],
-    businessName: [{ required: true, message: '业务伙伴名称不能为空', trigger: 'blur' }],
+    businessName: [{ required: true, message: '伙伴名称不能为空', trigger: 'blur' }],
     sapMaterialDocYear: [{ required: true, message: 'SAP凭证年度不能为空', trigger: 'blur' }],
     sapMaterialOrderNo: [{ required: true, message: 'SAP物料凭证号不能为空', trigger: 'blur' }],
     sapMaterialItem: [{ required: true, message: 'SAP物料文件项次不能为空', trigger: 'blur' }],

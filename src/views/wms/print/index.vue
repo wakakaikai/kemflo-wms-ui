@@ -51,7 +51,7 @@
             <el-form-item label="条码内容" prop="sfcContent">
               <el-input v-model="workOrderInfo.sfcContent" placeholder="请输入条码内容" />
             </el-form-item>
-            <el-form-item v-if="currentTemplate == 'receiptOrderTemplate'" label="生产日期" prop="productDate">
+            <el-form-item label="生产日期" prop="productDate">
               <el-date-picker
                 v-model="workOrderInfo.productDate"
                 type="date"

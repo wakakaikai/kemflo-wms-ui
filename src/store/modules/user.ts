@@ -59,11 +59,17 @@ export const useUserStore = defineStore('user', () => {
 
   // 注销
   const logout = async (): Promise<void> => {
-    await logoutApi();
-    token.value = '';
-    roles.value = [];
-    permissions.value = [];
-    removeToken();
+    try {
+      await logoutApi();
+    } catch (error) {
+      console.error('登出API调用失败:', error);
+      // 即使API调用失败，也要清除本地token和用户信息
+    } finally {
+      token.value = '';
+      roles.value = [];
+      permissions.value = [];
+      removeToken();
+    }
   };
 
   const setAvatar = (value: string) => {

@@ -380,6 +380,8 @@ import { nextTick, ref } from 'vue';
 import { parseTime } from '@/utils/ruoyi';
 import { WorkOrderProcessVO } from '@/api/wms/workOrderProcess/types';
 import { listWorkOrderProcess } from '@/api/wms/workOrderProcess';
+import { addBatchWorkOrderScadaPrintHistory, addWorkOrderScadaPrintHistory } from '@/api/wms/workOrderScadaPrintHistory';
+import { v4 as uuidv4 } from 'uuid';
 
 const workOrderList = ref<WorkOrderVO[]>([]);
 const buttonLoading = ref(false);
@@ -795,6 +797,40 @@ const cancelPrint = () => {
   selectedProcessInfo.value = '';
 };
 
+// 批量保存打印日志
+const saveBatchPrintLog = async (processList = []) => {
+  // 遍历工序列表，为每个工序保存打印历史
+  const requestParams = [];
+  for (const process of processList) {
+    const baseData = { ...workOrderInfo.value, ...process };
+
+    // 删除不需要传递的属性
+    delete baseData.id;
+    delete baseData.createBy;
+    delete baseData.createTime;
+    delete baseData.updateBy;
+    delete baseData.updateTime;
+
+    requestParams.push({
+      ...baseData,
+      uuid: uuidv4(),
+      scadaQty: workOrderInfo.value.plannedQty,
+      previousStepOrderNo: workOrderInfo.value.previousOrderNo,
+      previousStepWorkCenter: workOrderInfo.value.previousWorkCenter,
+      previousStepCompleteTime: workOrderInfo.value.previousEndDate,
+      nextStepOrderNo: workOrderInfo.value.nextOrderNo,
+      nextStepWorkCenter: workOrderInfo.value.nextWorkCenter,
+      nextStepStartTime: workOrderInfo.value.nextPlannedStartDate,
+      standardPerson: workOrderProcessInfo.value.personNumber
+    });
+  }
+  try {
+    await addBatchWorkOrderScadaPrintHistory({ workOrderScadaPrintHistoryList: requestParams });
+  } catch (error) {
+    proxy?.$modal.msgError(`保存工序 ${process.process} 的打印历史时出错: ${error.message}`);
+  }
+};
+
 // 批量打印处理
 const handleBatchPrint = async () => {
   if (selectedRecords.value.length === 0) {
@@ -832,6 +868,7 @@ const handleBatchPrint = async () => {
       }
 
       // 根据不同打印模式处理
+      const printProcessList = [];
       switch (currentPrintMode.value) {
         case 'mode1':
           // 模式A：所有工序使用模板A（只打印一张）
@@ -841,6 +878,9 @@ const handleBatchPrint = async () => {
           // 设置页码信息
           workOrderInfo.value.page = 1;
           workOrderInfo.value.totalPages = 1;
+          // 记录打印历史
+          printProcessList.push(workOrderProcessInfo.value);
+          await saveBatchPrintLog(printProcessList);
 
           // 重新生成二维码
           await nextTick();
@@ -873,6 +913,9 @@ const handleBatchPrint = async () => {
           workOrderInfo.value.page = 1;
           workOrderInfo.value.totalPages = 1;
 
+          // 记录打印历史
+          printProcessList.push(workOrderProcessInfo.value);
+          await saveBatchPrintLog(printProcessList);
           // 重新生成二维码
           await nextTick();
           generateQRCode();
@@ -896,7 +939,6 @@ const handleBatchPrint = async () => {
           // 模式C：首工序使用模板A，其余工序使用模板B
           // 首工序使用A模板打印一张 其他工序，每两道使用模板B打印一张
           let currentPage = 1;
-
           for (let j = 0; j < workOrderProcessList.value.length; j++) {
             if (j === 0) {
               // 首工序使用模板A
@@ -965,6 +1007,8 @@ const handleBatchPrint = async () => {
               }
             }
           }
+          // 记录打印历史
+          await saveBatchPrintLog(workOrderProcessList.value);
           // 恢复完整的工序列表，以便处理下一条记录
           await getWorkOrderProcessList();
           break;
@@ -973,7 +1017,6 @@ const handleBatchPrint = async () => {
           // 模式D：选中的首道工序使用模板A，其余工序使用模板B
           // 首工序使用A模板打印一张 其他工序，每两道使用模板B打印一张
           let mode4CurrentPage = 1;
-
           // 计算总页数：首工序1页 + 其余工序每2道工序1页
           let mode4TotalPages = 1;
           if (selectedProcessList.value.length > 1) {
@@ -1048,6 +1091,8 @@ const handleBatchPrint = async () => {
               }
             }
           }
+          // 记录打印历史
+          await saveBatchPrintLog(selectedProcessList.value);
           break;
       }
     }
@@ -1322,7 +1367,6 @@ onMounted(() => {
     min-height: 25px;
   }
 }
-
 
 /* 模板B样式 */
 .kanban-template-2 {

@@ -19,10 +19,11 @@
                 <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
                   <el-form-item label="采购单" prop="poNumber">
                     <!--                    <el-input v-model="queryParams.poNumber" placeholder="请输入采购单" clearable @keyup.enter="handleQuery" />-->
-                    <HistoryInput v-model="queryParams.poNumber" :config="poNumberConfig" placeholder="请输入采购单" @save="handleSave" @select="handleSelect" @keyup.enter="handleQuery" />
+                    <HistoryInput v-model="queryParams.poNumber" :config="poNumberConfig" placeholder="请输入采购单" @keyup.enter="handleQuery" />
                   </el-form-item>
                   <el-form-item label="项次" prop="itemNumber">
-                    <el-input v-model="queryParams.itemNumber" placeholder="请输入项次" clearable @keyup.enter="handleQuery" />
+                    <!--                    <el-input v-model="queryParams.itemNumber" placeholder="请输入项次" clearable @keyup.enter="handleQuery" />-->
+                    <HistoryInput v-model="queryParams.itemNumber" :config="itemNoConfig" placeholder="请输入项次" @keyup.enter="handleQuery" />
                   </el-form-item>
 
                   <!-- 高级搜索项，默认隐藏 -->
@@ -104,65 +105,60 @@
                 </template>
 
                 <!-- 固定库位模式下的统一目标库位输入 -->
-                <div style="padding: 10px; background-color: #f5f7fa; border-radius: 4px">
-                  <el-form :model="fixedInboundForm" ref="fixedInboundFormRef" label-width="auto" :inline="true">
-                    <el-row :gutter="20">
-                      <el-col :sm="24" :md="8" :lg="8" v-if="inboundMode === 'fixed'">
-                        <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
-                          <!--                          <el-input
-                            v-model.trim="fixedInboundForm.locationCode"
-                            placeholder="请输入目标库位编码"
-                            clearable
-                            @keydown.tab.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
-                            @keydown.enter.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
-                          >
-                            <template #append>
-                              <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
-                            </template>
-                          </el-input>-->
-                          <HistoryInput
-                            v-model="fixedInboundForm.locationCode"
-                            :config="fixedInboundFormLocationCodeConfig"
-                            placeholder="请输入目标库位编码"
-                            @save="handleSave"
-                            @select="handleSelect"
-                            @keydown.tab.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
-                            @keydown.enter.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
-                          >
-                            <template #append>
-                              <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
-                            </template>
-                          </HistoryInput>
-                        </el-form-item>
-                      </el-col>
-                      <el-col :sm="24" :md="8" :lg="8">
-                        <el-form-item label="收货人">
-                          <!--                          <el-input v-model="fixedInboundForm.targetUserName" placeholder="请输入收货人">
-                            <template #append>
-                              <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
-                            </template>
-                          </el-input>-->
-                          <HistoryInput
-                            v-model="fixedInboundForm.targetUserName"
-                            :config="targetUserNameConfig"
-                            placeholder="请输入收货人"
-                            @save="handleSave"
-                            @select="handleSelect"
-                          >
-                            <template #append>
-                              <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
-                            </template>
-                          </HistoryInput>
-                        </el-form-item>
-                      </el-col>
-                      <el-col :sm="24" :md="8" :lg="8">
-                        <el-form-item label="过账日期" prop="postingDate">
-                          <el-date-picker clearable v-model="fixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
-                        </el-form-item>
-                      </el-col>
-                    </el-row>
-                  </el-form>
-                </div>
+                <el-form :model="fixedInboundForm" ref="fixedInboundFormRef" label-width="auto" :inline="true">
+                  <el-row :gutter="20">
+                    <el-col :sm="24" :md="6" :lg="6" v-if="inboundMode === 'fixed'">
+                      <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
+                        <!--                          <el-input
+                          v-model.trim="fixedInboundForm.locationCode"
+                          placeholder="请输入目标库位编码"
+                          clearable
+                          @keydown.tab.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
+                          @keydown.enter.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
+                        >
+                          <template #append>
+                            <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
+                          </template>
+                        </el-input>-->
+                        <HistoryInput
+                          v-model="fixedInboundForm.locationCode"
+                          :config="locationCodeConfig"
+                          placeholder="请输入目标库位编码"
+                          @keydown.tab.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
+                          @keydown.enter.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
+                        >
+                          <template #append>
+                            <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
+                          </template>
+                        </HistoryInput>
+                      </el-form-item>
+                    </el-col>
+                    <el-col :sm="24" :md="6" :lg="6">
+                      <el-form-item label="收货人">
+                        <!--                          <el-input v-model="fixedInboundForm.targetUserName" placeholder="请输入收货人">
+                          <template #append>
+                            <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
+                          </template>
+                        </el-input>-->
+                        <HistoryInput v-model="fixedInboundForm.targetUserName" :config="targetUserNameConfig" placeholder="请输入收货人">
+                          <template #append>
+                            <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
+                          </template>
+                        </HistoryInput>
+                      </el-form-item>
+                    </el-col>
+                    <el-col :sm="24" :md="6" :lg="6">
+                      <el-form-item label="发票号" prop="invoiceNo">
+                        <HistoryInput v-model="fixedInboundForm.invoiceNo" :config="invoiceNoConfig" placeholder="请输入发票号"> </HistoryInput>
+                      </el-form-item>
+                    </el-col>
+                    <el-col :sm="24" :md="6" :lg="6">
+                      <el-form-item label="过账日期" prop="postingDate">
+                        <el-date-picker clearable v-model="fixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
+                      </el-form-item>
+                    </el-col>
+                  </el-row>
+                </el-form>
 
                 <div v-if="resultMessage" class="m-y-2">
                   <el-alert show-icon center :title="resultMessage" :type="resultStatus ? 'success' : 'error'">
@@ -197,10 +193,8 @@
                       </el-input>-->
                       <TableHistoryInput
                         v-model="scope.row.locationCode"
-                        :config="fixedInboundFormLocationCodeConfig"
+                        :config="locationCodeConfig"
                         placeholder="请输入目标库位编码"
-                        @save="handleSave"
-                        @select="handleSelect"
                         @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.locationCode)"
                         @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.locationCode)"
                       >
@@ -218,9 +212,9 @@
                         v-model="scope.row.receivePoQuantity"
                         :min="0"
                         :max="parseFloat(scope.row.openQuantity || 0)"
+                        :precision="3"
                         size="small"
                         controls-position="right"
-                        :precision="3"
                         @change="handleReceivePoQuantityChange(scope.row)"
                       />
                     </template>
@@ -228,7 +222,6 @@
 
                   <el-table-column label="库存数量" prop="inventoryQuantity" />
                   <el-table-column label="库存单位" prop="inventoryUnit" />
-
                   <el-table-column label="操作" width="80" align="center">
                     <template #default="scope">
                       <el-button type="danger" link icon="Delete" @click="removeFromInboundList(scope.$index)"></el-button>
@@ -260,7 +253,15 @@
 
                 <el-form ref="stoQueryFormRef" :model="stoQueryParams" :rules="stoRules" :inline="true" label-width="auto">
                   <el-form-item label="交货单号" prop="deliveryOrderNo">
-                    <el-input v-model="stoQueryParams.deliveryOrderNo" placeholder="请输入交货单号" clearable @keydown.tab.prevent="handleStoQuery" @keydown.enter.prevent="handleStoQuery" />
+                    <HistoryInput
+                      v-model="stoQueryParams.deliveryOrderNo"
+                      :config="deliveryOrderNoConfig"
+                      placeholder="请输入交货单号"
+                      @keydown.tab.prevent="handleStoQuery"
+                      @keydown.enter.prevent="handleStoQuery"
+                    >
+                    </HistoryInput>
+                    <!--                    <el-input v-model="stoQueryParams.deliveryOrderNo" placeholder="请输入交货单号" clearable @keydown.tab.prevent="handleStoQuery" @keydown.enter.prevent="handleStoQuery" />-->
                   </el-form-item>
                   <el-form-item>
                     <el-button type="primary" icon="Search" @click="handleStoQuery" :loading="stoLoading">搜索</el-button>
@@ -331,9 +332,9 @@
                 <div style="padding: 10px; background-color: #f5f7fa; border-radius: 4px">
                   <el-form :model="stoFixedInboundForm" ref="stoFixedInboundFormRef" label-width="auto" :inline="true">
                     <el-row :gutter="20">
-                      <el-col :sm="24" :md="8" :lg="8" v-if="stoInboundMode === 'fixed'">
+                      <el-col :sm="24" :md="6" :lg="6" v-if="stoInboundMode === 'fixed'">
                         <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
-                          <el-input
+                          <!--                          <el-input
                             v-model.trim="stoFixedInboundForm.locationCode"
                             placeholder="请输入目标库位编码"
                             clearable
@@ -343,24 +344,40 @@
                             <template #append>
                               <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
                             </template>
-                          </el-input>
+                          </el-input>-->
+                          <HistoryInput
+                            v-model.trim="stoFixedInboundForm.locationCode"
+                            :config="locationCodeConfig"
+                            placeholder="请输入目标库位编码"
+                            @keydown.tab.prevent="locationCodeKeyDownTab(stoFixedInboundForm.locationCode)"
+                            @keydown.enter.prevent="locationCodeKeyDownTab(stoFixedInboundForm.locationCode)"
+                          >
+                            <template #append>
+                              <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
+                            </template>
+                          </HistoryInput>
                         </el-form-item>
                       </el-col>
-                      <el-col :sm="24" :md="8" :lg="8">
+                      <el-col :sm="24" :md="6" :lg="6">
                         <el-form-item label="收货人">
                           <!--                          <el-input v-model="stoFixedInboundForm.targetUserName" placeholder="请输入收货人">
                             <template #append>
                               <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
                             </template>
                           </el-input>-->
-                          <HistoryInput v-model="stoFixedInboundForm.targetUserName" :config="targetUserNameConfig" placeholder="请输入收货人" @save="handleSave" @select="handleSelect">
+                          <HistoryInput v-model="stoFixedInboundForm.targetUserName" :config="targetUserNameConfig" placeholder="请输入收货人">
                             <template #append>
                               <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
                             </template>
                           </HistoryInput>
                         </el-form-item>
                       </el-col>
-                      <el-col :sm="24" :md="8" :lg="8">
+                      <el-col :sm="24" :md="6" :lg="6">
+                        <el-form-item label="发票号" prop="invoiceNo">
+                          <HistoryInput v-model="stoFixedInboundForm.invoiceNo" :config="invoiceNoConfig" placeholder="请输入发票号"> </HistoryInput>
+                        </el-form-item>
+                      </el-col>
+                      <el-col :sm="24" :md="6" :lg="6">
                         <el-form-item label="过账日期" prop="postingDate">
                           <el-date-picker clearable v-model="stoFixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
                         </el-form-item>
@@ -383,7 +400,7 @@
                   <el-table-column label="交货单项次" prop="deliveryItemNo" />
                   <el-table-column label="采购订单号" prop="poNumber" />
                   <el-table-column label="采购单项次" prop="itemNumber" />
-                  <el-table-column label="料号" prop="materialCode" />
+                  <el-table-column label="料号" prop="materialCode" min-width="100" />
                   <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip />
                   <el-table-column label="订单数量" align="center" prop="orderQuantity" min-width="100" />
                   <el-table-column label="未清数量" prop="openQuantity" align="center" />
@@ -391,7 +408,7 @@
                   <!-- 多库位模式下显示独立的目标库位设置 -->
                   <el-table-column label="目标库位" width="220" v-if="stoInboundMode === 'multiple'">
                     <template #default="scope">
-                      <el-input
+                      <!--                      <el-input
                         v-model.trim="scope.row.locationCode"
                         placeholder="请输入目标库位编码"
                         clearable
@@ -401,7 +418,18 @@
                         <template #append>
                           <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
                         </template>
-                      </el-input>
+                      </el-input>-->
+                      <TableHistoryInput
+                        v-model="scope.row.locationCode"
+                        :config="locationCodeConfig"
+                        placeholder="请输入目标库位编码"
+                        @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.locationCode)"
+                        @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.locationCode)"
+                      >
+                        <template #append>
+                          <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
+                        </template>
+                      </TableHistoryInput>
                     </template>
                   </el-table-column>
 
@@ -409,11 +437,11 @@
                   <el-table-column label="库存数量" prop="inventoryQuantity" align="center" />
                   <el-table-column label="库存单位" prop="inventoryUnit" align="center" />
 
-                  <el-table-column label="操作" width="80" align="center">
+                  <!--                  <el-table-column label="操作" width="80" align="center">
                     <template #default="scope">
                       <el-button type="danger" link icon="Delete" @click="removeFromStoInboundList(scope.$index)"></el-button>
                     </template>
-                  </el-table-column>
+                  </el-table-column>-->
                 </el-table>
 
                 <div style="margin-top: 20px; text-align: center">
@@ -480,6 +508,7 @@ const inboundMode = ref<'fixed' | 'multiple'>('fixed');
 const fixedInboundForm = ref({
   locationCode: '',
   targetUserName: '',
+  invoiceNo: '',
   postingDate: null
 });
 
@@ -532,7 +561,7 @@ const data = reactive<PageData<PurchaseOrderDetailForm, PurchaseOrderDetailQuery
 const { queryParams, form, rules } = toRefs(data);
 
 const poNumberConfig: HistoryConfig = {
-  key: 'purchaseInbound.poNumber',
+  key: 'poNumber',
   storage: 'indexedDB',
   maxSize: 10,
   page: 'purchaseInbound',
@@ -545,8 +574,8 @@ const poNumberConfig: HistoryConfig = {
   }
 };
 
-const fixedInboundFormLocationCodeConfig: HistoryConfig = {
-  key: 'purchaseInbound.locationCode',
+const locationCodeConfig: HistoryConfig = {
+  key: 'locationCode',
   storage: 'indexedDB',
   maxSize: 10,
   page: 'purchaseInbound',
@@ -560,7 +589,49 @@ const fixedInboundFormLocationCodeConfig: HistoryConfig = {
 };
 
 const targetUserNameConfig: HistoryConfig = {
-  key: 'purchaseInbound.targetUserName',
+  key: 'targetUserName',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'purchaseInbound',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const invoiceNoConfig: HistoryConfig = {
+  key: 'invoiceNo',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'purchaseInbound',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const deliveryOrderNoConfig: HistoryConfig = {
+  key: 'deliveryOrderNo',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'purchaseInbound',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const itemNoConfig: HistoryConfig = {
+  key: 'itemNo',
   storage: 'indexedDB',
   maxSize: 10,
   page: 'purchaseInbound',
@@ -593,14 +664,6 @@ const columns = ref<FieldOption[]>([
   { key: 15, label: `供应商代码`, visible: true, children: [] },
   { key: 16, label: `供应商名称`, visible: true, children: [] }
 ]);
-
-const handleSave = (value: string) => {
-  // 执行搜索逻辑
-};
-
-const handleSelect = (item: HistoryItem) => {
-  // 填充到搜索框并执行搜索
-};
 
 // 禁用未来的时间
 const disabledFutureDate = (time: Date) => {
@@ -758,6 +821,7 @@ const clearInboundList = () => {
   inboundList.value = [];
   fixedInboundForm.value.locationCode = '';
   fixedInboundForm.value.targetUserName = '';
+  fixedInboundForm.value.invoiceNo = '';
   fixedInboundForm.value.postingDate = null;
 };
 
@@ -868,6 +932,7 @@ const submitForm = async () => {
     validPurchaseInboundList.forEach((item) => {
       item.locationCode = fixedInboundForm.value.locationCode || '';
       item.targetUserName = fixedInboundForm.value.targetUserName || '';
+      item.invoiceNo = fixedInboundForm.value.invoiceNo || '';
       item.postingDate = fixedInboundForm.value.postingDate ? fixedInboundForm.value.postingDate + ' 00:00:00' : '';
     });
   } else {
@@ -881,6 +946,7 @@ const submitForm = async () => {
     // 为所有记录设置统一的接收方、过账日期
     validPurchaseInboundList.forEach((item) => {
       item.targetUserName = fixedInboundForm.value.targetUserName || '';
+      item.invoiceNo = fixedInboundForm.value.invoiceNo || '';
       item.postingDate = fixedInboundForm.value.postingDate ? fixedInboundForm.value.postingDate + ' 00:00:00' : '';
     });
   }
@@ -913,11 +979,12 @@ const submitForm = async () => {
       resultStatus.value = false;
       return;
     }
-    resultMessage.value = `采购入库成功，物料凭证号${res.msg}`;
+    resultMessage.value = res.msg || `采购入库成功${purchaseInboundRequests.length}条记录`;
     resultStatus.value = true;
     inboundList.value = [];
     fixedInboundForm.value.locationCode = '';
     fixedInboundForm.value.targetUserName = '';
+    fixedInboundForm.value.invoiceNo = '';
     fixedInboundForm.value.postingDate = null;
     handleQuery();
   } catch (error) {
@@ -944,6 +1011,7 @@ const stoTableLoading = ref(false);
 const stoFixedInboundForm = ref({
   locationCode: '',
   targetUserName: '',
+  invoiceNo: '',
   postingDate: null
 });
 
@@ -1025,15 +1093,12 @@ const handleStoSelectionChange = (selection) => {
 };
 
 const addSelectedToStoInboundList = () => {
-  // if (stoSelectedItems.value.length === 0) {
-  //   proxy?.$modal.msgWarning('请先选择要添加的STO订单明细');
-  //   return;
-  // }
   stoInboundList.value = [];
   const newItems = stoOrderDetailList.value.map((item) => ({
     ...item,
     poNumber: item.purchaseOrderNo,
     itemNumber: item.purchaseItemNo,
+    receivePoQuantity: item.openQuantity,
     receiveQuantity: item.orderQuantity,
     receiveUnit: item.unit,
     inventoryQuantity: (item.orderQuantity * (item.conversionRatio || 1)).toFixed(3)
@@ -1056,6 +1121,7 @@ const clearStoInboundList = () => {
   stoInboundList.value = [];
   stoFixedInboundForm.value.locationCode = '';
   stoFixedInboundForm.value.targetUserName = '';
+  stoFixedInboundForm.value.invoiceNo = '';
   stoFixedInboundForm.value.postingDate = null;
 };
 
@@ -1081,6 +1147,7 @@ const submitStoForm = async () => {
     validStoInboundList.forEach((item) => {
       item.locationCode = stoFixedInboundForm.value.locationCode || '';
       item.targetUserName = stoFixedInboundForm.value.targetUserName || '';
+      item.invoiceNo = stoFixedInboundForm.value.invoiceNo || '';
       item.postingDate = stoFixedInboundForm.value.postingDate ? stoFixedInboundForm.value.postingDate + ' 00:00:00' : '';
     });
   } else {
@@ -1094,6 +1161,7 @@ const submitStoForm = async () => {
     // 为所有记录设置统一的接收方、过账日期
     validStoInboundList.forEach((item) => {
       item.targetUserName = stoFixedInboundForm.value.targetUserName || '';
+      item.invoiceNo = stoFixedInboundForm.value.invoiceNo || '';
       item.postingDate = stoFixedInboundForm.value.postingDate ? stoFixedInboundForm.value.postingDate + ' 00:00:00' : '';
     });
   }
@@ -1111,8 +1179,10 @@ const submitStoForm = async () => {
     // 构造STO入库请求参数
     const stoInboundRequests = validStoInboundList.map((item) => ({
       ...item,
-      receiveQuantity: item.receiveQuantity,
-      receiveUnit: item.unit,
+      receivePoQuantity: item.receivePoQuantity,
+      receivePoUnit: item.orderUnit,
+      receiveQuantity: item.inventoryQuantity,
+      receiveUnit: item.inventoryUnit,
       receiveType: '2'
     }));
     const res: any = await addPurchaseInbound({
@@ -1129,6 +1199,7 @@ const submitStoForm = async () => {
     stoInboundList.value = [];
     stoFixedInboundForm.value.locationCode = '';
     stoFixedInboundForm.value.targetUserName = '';
+    stoFixedInboundForm.value.invoiceNo = '';
     stoFixedInboundForm.value.postingDate = null;
     getStoList();
   } catch (error) {

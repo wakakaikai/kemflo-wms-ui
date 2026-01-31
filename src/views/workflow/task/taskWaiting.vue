@@ -36,6 +36,8 @@
       <el-table v-loading="loading" border :data="taskList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column align="center" type="index" label="序号" width="60"></el-table-column>
+        <el-table-column :show-overflow-tooltip="true" prop="businessCode" align="center" label="业务编码"></el-table-column>
+        <el-table-column :show-overflow-tooltip="true" prop="businessTitle" align="center" label="业务标题"></el-table-column>
         <el-table-column :show-overflow-tooltip="true" prop="flowName" align="center" label="流程定义名称"></el-table-column>
         <el-table-column align="center" prop="flowCode" label="流程定义编码"></el-table-column>
         <el-table-column align="center" prop="categoryName" label="流程分类"></el-table-column>
@@ -171,6 +173,9 @@ const openUserSelect = () => {
 //确认选择申请人
 const userSelectCallBack = (data: UserVO[]) => {
   userSelectCount.value = 0;
+  selectUserIds.value = [];
+  queryParams.value.createByIds = [];
+
   if (data && data.length > 0) {
     userSelectCount.value = data.length;
     selectUserIds.value = data.map((item) => item.userId);

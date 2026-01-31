@@ -150,9 +150,9 @@
             <el-tooltip content="入库" placement="top" v-if="tabActiveName == 'pendingInbound' || tabActiveName == 'warehouseFailed'">
               <el-button v-hasPermi="['wms:packing:edit']" link type="success" icon="CircleCheck" @click="handleReceivePacking(scope.row)">接收</el-button>
             </el-tooltip>
-            <el-tooltip content="出库" placement="top" v-if="tabActiveName == 'warehouseReceive'">
+<!--            <el-tooltip content="出库" placement="top" v-if="tabActiveName == 'warehouseReceive'">
               <el-button v-hasPermi="['wms:packing:edit']" link type="danger" icon="CircleCheck" @click="handleReturnPacking(scope.row)">退料</el-button>
-            </el-tooltip>
+            </el-tooltip>-->
           </template>
         </el-table-column>
       </el-table>

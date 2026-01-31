@@ -646,7 +646,7 @@ const submitTransfer = async () => {
       resultStatus.value = false;
       return;
     }
-    resultMessage.value = `成功移转${validTransfers.length}条记录`;
+    resultMessage.value = resultMessage.value = res.msg || `成功移转${transferRequests.length}条记录`;
     resultStatus.value = true;
     transferList.value = [];
     fixedTransferForm.value.targetLocationCode = '';

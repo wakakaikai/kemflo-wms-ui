@@ -10,13 +10,13 @@
       clearable
       :class="{ 'has-history': historyList.length > 0 }"
     >
-      <template #append>
+      <template #append v-if="$slots.append">
         <slot name="append"></slot>
       </template>
-<!--      <template #prepend>
+      <template #prepend v-if="$slots.prepend">
         <slot name="prepend"></slot>
-      </template>-->
-      <template #prefix>
+      </template>
+      <template #prefix v-if="$slots.prefix">
         <slot name="prefix"></slot>
       </template>
       <template #suffix v-if="config.component?.showHistoryIcon !== false">

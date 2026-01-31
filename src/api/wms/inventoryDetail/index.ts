@@ -85,3 +85,28 @@ export const transferInventory = (data: any) => {
     data: data
   });
 };
+
+/**
+ * 栈板库存退货
+ * @param data
+ */
+export const returnPalletInventory = (data: any) => {
+  return request({
+    url: '/wms/inventoryDetail/palletReturn',
+    method: 'post',
+    data: data
+  });
+};
+
+/**
+ * 库存移转记录
+ * @param data
+ */
+export const returnPurchaseInventory = (data: any) => {
+  return request({
+    url: '/wms/inventoryDetail/purchaseReturn',
+    method: 'post',
+    data: data
+  });
+};
+
