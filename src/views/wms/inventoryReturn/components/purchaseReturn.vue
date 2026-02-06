@@ -29,8 +29,8 @@
               <el-form-item label="物料凭证项次" prop="sapMaterialItem">
                 <HistoryInput v-model="queryParams.sapMaterialItem" :config="sapMaterialItemConfig" placeholder="请输入物料凭证项次" @keyup.enter="handleQuery" />
               </el-form-item>
-              <el-form-item label="采购单项次" prop="itemNumber">
-                <HistoryInput v-model="queryParams.itemNumber" :config="itemNoConfig" placeholder="请输入采购单项次" @keyup.enter="handleQuery" />
+              <el-form-item label="采购单项次" prop="poItemNo">
+                <HistoryInput v-model="queryParams.poItemNo" :config="itemNoConfig" placeholder="请输入采购单项次" @keyup.enter="handleQuery" />
               </el-form-item>
             </div>
 
@@ -287,7 +287,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { listInventoryMovement } from '@/api/wms/inventoryMovement';
 import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } from '@/api/wms/inventoryMovement/types';
 // 导入图标组件
-import { ArrowDown, ArrowUp, Bell } from '@element-plus/icons-vue';
+import { ArrowDown, ArrowUp, Bell, QuestionFilled } from '@element-plus/icons-vue';
 
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
@@ -799,6 +799,9 @@ const submitTransfer = async (moveType: any) => {
       returnQuantity: item.returnQuantity,
       poUnit: item.poUnit,
       conversionRatio: item.conversionRatio,
+      sapMaterialDocYear: item.sapMaterialDocYear,
+      sapMaterialItem: item.sapMaterialItem,
+      sapMaterialOrderNo: item.sapMaterialOrderNo,
       specialInventoryFlag: item.specialInventoryFlag,
       targetLocationCode: item.targetLocationCode,
       targetUserName: item.targetUserName,

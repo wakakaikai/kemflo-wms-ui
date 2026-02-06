@@ -8,8 +8,8 @@
           <el-tabs v-model="activeTab" class="print-tabs">
             <el-tab-pane label="内容打印" name="content">
               <el-radio-group v-model="currentTemplate" class="template-list">
-<!--                <el-radio value="receiptOrderTemplate">生产入库单模板1(97×84mm)</el-radio>-->
-<!--                <el-radio label="receiptOrderTemplate2">生产入库单模板2(97×84mm)</el-radio>-->
+                <!--                <el-radio value="receiptOrderTemplate">生产入库单模板1(97×84mm)</el-radio>-->
+                <!--                <el-radio label="receiptOrderTemplate2">生产入库单模板2(97×84mm)</el-radio>-->
                 <el-radio label="receiptOrderTemplate3">生产入库单模板3(97×84mm)</el-radio>
                 <!--                <el-radio value="designA4">工业设计+A4/A5纸</el-radio>-->
                 <!--                <el-radio value="qr8060">工业二维码(80×60mm)</el-radio>-->
@@ -32,7 +32,7 @@
 
           <!-- 工单信息输入 -->
           <el-form label-position="top" ref="queryFormRef" :rules="rules" :model="workOrderInfo">
-<!--            <el-form-item label="公司名称" prop="companyName">
+            <!--            <el-form-item label="公司名称" prop="companyName">
               &lt;!&ndash;              <el-input v-model="workOrderInfo.companyName" placeholder="请输入公司名称" />&ndash;&gt;
               <el-select v-model="workOrderInfo.companyName" placeholder="请选择公司名称">
                 <el-option v-for="dict in wms_company_name" :key="dict.value" :label="dict.label" :value="dict.value" />
@@ -132,7 +132,7 @@
             <div v-if="currentTemplate === 'receiptOrderTemplate'" :class="['production-receipt', getPaperSizeClass()]" ref="printContent">
               <div class="receipt-header">
                 <div class="company-name-container">
-                   <!-- <span class="company-name">{{ workOrderInfo.companyName }}</span>-->
+                  <!-- <span class="company-name">{{ workOrderInfo.companyName }}</span>-->
                   <span class="company-name">半成品、成品入库单</span>
                 </div>
               </div>
@@ -490,7 +490,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" name="print">
 import { nextTick, onMounted, ref, watch } from 'vue';
 import { Picture, Printer } from '@element-plus/icons-vue';
 import QRCode from 'qrcode';

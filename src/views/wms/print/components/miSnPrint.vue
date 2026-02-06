@@ -54,7 +54,7 @@
               <div class="label-body">
                 <!-- 标签顶部：生产日期 -->
                 <div class="product-date-section">
-                  <span class="production-date">生产日期: {{ workOrderInfo.productDate }}</span>
+                  <span>生产日期: {{ workOrderInfo.productDate }}</span>
                 </div>
                 <!--条形码 -->
                 <div class="label-barcode">
@@ -118,6 +118,7 @@ const workOrderInfo = ref({
 });
 
 const copies = ref(1);
+const printContent = ref(null);
 const rules = {
   material: [{ required: true, message: '物料料号不能为空', trigger: 'blur' }],
   productDate: [{ required: true, message: '生产日期不能为空', trigger: 'blur' }]
@@ -125,8 +126,6 @@ const rules = {
 
 // 条形码SVG引用
 const barcodeSvg = ref(null);
-const printContent = ref(null);
-
 // 生成条形码（使用JSBarcode）
 const generateBarcode = () => {
   const content = workOrderInfo.value.sfcContent;
@@ -140,7 +139,7 @@ const generateBarcode = () => {
     JsBarcode(barcodeSvg.value, content, {
       format: 'CODE128', // 使用CODE128格式，适合字母数字混合
       displayValue: false, // 显示文本值
-      height: 27, // 条形码高度
+      height: 28, // 条形码高度
       width: 1, // 条形码条宽
       margin: 0 // 边距
     });
@@ -303,16 +302,17 @@ onMounted(() => {
 
 <style scoped>
 .print-container {
-  height: calc(100vh - 200px);
+  height: calc(100vh - 100px);
   display: flex;
   flex-direction: column;
   background-color: #f5f7fa;
+  padding: 10px;
 }
 
 .sidebar {
   background-color: #fff;
   border-right: 1px solid #e6e6e6;
-  padding: 16px;
+  padding: 10px;
   overflow-y: auto;
   height: 100%;
 }
@@ -336,7 +336,7 @@ onMounted(() => {
 }
 
 .preview-area {
-  padding: 16px;
+  padding: 0 10px;
   background-color: #f5f7fa;
   height: 100%;
   display: flex;
@@ -374,14 +374,14 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  background: #f8f8f9;
 }
 
 /* MI标签模板样式 */
 .mi-print-sn-template {
   width: 35mm;
   height: 12mm;
-  /*  border: 1px solid #dcdfe6;*/
-  padding: 3px 4px;
+  padding: 0.5mm 1.5mm;
   background: white;
   display: flex;
   flex-direction: column;
@@ -393,17 +393,16 @@ onMounted(() => {
   justify-content: flex-start;
   font-weight: bold;
   font-family: 'MiSans Regular', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 5pt;
-  line-height: 1.5mm;
+  font-size: 4pt;
+  line-height: 2mm;
+  height: 2mm;
 }
 
 .label-barcode {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 5mm; /* 限制高度为5mm */
-  font-family: 'MiSans Regular', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 4pt;
+  height: 4.8mm;
 }
 
 .barcode {
@@ -432,10 +431,10 @@ onMounted(() => {
   justify-content: space-between;
   align-items: flex-start;
   flex: 1;
+  height: 4mm;
 }
 
 .left-section {
-  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -453,20 +452,20 @@ onMounted(() => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  font-size: 4pt;
-  font-weight: bold;
+  padding: 0.2mm;
 }
 
 .maintenance-text {
-  font-size: 3.5pt;
-  line-height: 1.3mm;
-  padding: 1px;
+  line-height: 1.6mm;
+  font-size: 3.18pt;
+  font-weight: bold;
 }
+
 .sn-section,
 .sku-section {
   display: flex;
   font-family: 'MiSans Regular', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 5pt;
+  font-size: 4.5pt;
   font-weight: bold;
   line-height: 2mm;
 }
@@ -476,15 +475,6 @@ onMounted(() => {
   .mi-print-sn-template {
     transform: scale(2); /* 放大200%用于屏幕预览 */
     transform-origin: top center; /* 从顶部中心缩放 */
-    border: 1px solid #dcdfe6;
-  }
-}
-
-/* 打印样式 */
-@media print {
-  .mi-print-sn-template {
-    transform: none !important; /* 移除缩放 */
-    border: none !important; /* 移除边框 */
   }
 }
 </style>

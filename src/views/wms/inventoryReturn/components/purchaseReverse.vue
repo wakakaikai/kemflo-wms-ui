@@ -491,7 +491,6 @@ const addSelectedToTransferList = () => {
   // 获取新项次的物料凭证号集合
   const newMaterialOrderNos = [...new Set(newItems.map((item) => item.sapMaterialOrderNo))];
 
-  debugger;
   // 检查新项次是否包含多种物料凭证号
   if (newMaterialOrderNos.length > 1) {
     proxy.$modal.msgError('请选择相同物料凭证号的项次');
@@ -717,6 +716,7 @@ const submitTransfer = async () => {
       returnQuantity: item.returnQuantity,
       poUnit: item.poUnit,
       conversionRatio: item.conversionRatio,
+      sapMaterialDocYear: item.sapMaterialDocYear,
       sapMaterialOrderNo: item.sapMaterialOrderNo,
       sapMaterialItem: item.sapMaterialItem,
       specialInventoryFlag: item.specialInventoryFlag,
