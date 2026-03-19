@@ -150,7 +150,7 @@
             <el-tooltip content="入库" placement="top" v-if="tabActiveName == 'pendingInbound' || tabActiveName == 'warehouseFailed'">
               <el-button v-hasPermi="['wms:packing:edit']" link type="success" icon="CircleCheck" @click="handleReceivePacking(scope.row)">接收</el-button>
             </el-tooltip>
-<!--            <el-tooltip content="出库" placement="top" v-if="tabActiveName == 'warehouseReceive'">
+            <!--            <el-tooltip content="出库" placement="top" v-if="tabActiveName == 'warehouseReceive'">
               <el-button v-hasPermi="['wms:packing:edit']" link type="danger" icon="CircleCheck" @click="handleReturnPacking(scope.row)">退料</el-button>
             </el-tooltip>-->
           </template>
@@ -266,7 +266,7 @@
 </template>
 
 <script setup name="Inbound" lang="ts">
-import { listPackingAndDetail, receivePacking, rejectPacking,returnPacking } from '@/api/wms/packing';
+import { listPackingAndDetail, receivePacking, rejectPacking, returnPacking } from '@/api/wms/packing';
 import { PackingForm, PackingQuery, PackingVO } from '@/api/wms/packing/types';
 import PackingDialog from '@/views/wms/packing/components/packingDialog.vue';
 import useDialog from '@/hooks/useDialog';
@@ -403,7 +403,7 @@ const data = reactive<PageData<PackingForm, PackingQuery>>({
   rules: {
     id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
     palletCode: [{ required: true, message: '栈板编号不能为空', trigger: 'blur' }],
-    locationCode: [{ required: true, message: '目的库位不能为空', trigger: 'change' }],
+    locationCode: [{ required: true, message: '目的库位不能为空', trigger: 'change' }]
   }
 });
 
@@ -553,29 +553,22 @@ const submitInbound = () => {
   packingFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
       buttonLoading.value = true;
-      try {
-        if (form.value.id) {
-          await receivePacking({
-            packingBoList: [
-              {
-                id: form.value.id,
-                warehouseCode: form.value.warehouseCode,
-                areaCode: form.value.areaCode,
-                locationCode: form.value.locationCode,
-                palletCode: form.value.palletCode,
-                packingCode: form.value.packingCode
-              }
-            ]
-          });
-        }
+      if (form.value.id) {
+        const res = await receivePacking({
+          packingBoList: [
+            {
+              id: form.value.id,
+              warehouseCode: form.value.warehouseCode,
+              areaCode: form.value.areaCode,
+              locationCode: form.value.locationCode,
+              palletCode: form.value.palletCode,
+              packingCode: form.value.packingCode
+            }
+          ]
+        }).finally(() => (buttonLoading.value = false));
         visible.value = false;
-        proxy?.$modal.msgSuccess('送仓成功');
+        proxy?.$modal.msgSuccess(res.msg || '栈板接收成功');
         await getList();
-      } catch (error) {
-        console.error('送仓失败:', error);
-        proxy?.$modal.msgError('送仓失败，请重试');
-      } finally {
-        buttonLoading.value = false;
       }
     }
   });

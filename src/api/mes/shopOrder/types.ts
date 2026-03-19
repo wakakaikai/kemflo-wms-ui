@@ -20,9 +20,19 @@ export interface ShopOrderVO {
   status: string;
 
   /**
+   * 状态列表
+   */
+  statusList: Array<string>;
+
+  /**
    * 工单类型
    */
   shopOrderType: string;
+
+  /**
+   * 工单类型列表
+   */
+  shopOrderTypeList: Array<string>;
 
   /**
    * 工单优先级
@@ -38,6 +48,11 @@ export interface ShopOrderVO {
    * 计划物料
    */
   plannedItemBo: string;
+
+  /**
+   * 计划物料
+   */
+  plannedItem: string;
 
   /**
    * 计划BOM
@@ -138,6 +153,11 @@ export interface ShopOrderVO {
    * 备注
    */
   remark: string;
+
+  /**
+   * 工单资源
+   */
+  resource: string;
 }
 
 export interface ShopOrderForm extends BaseEntity {
@@ -167,6 +187,11 @@ export interface ShopOrderForm extends BaseEntity {
   status?: string;
 
   /**
+   * 状态列表
+   */
+  statusList: Array<string>;
+
+  /**
    * 状态描述
    */
   statusDesc?: string;
@@ -175,6 +200,11 @@ export interface ShopOrderForm extends BaseEntity {
    * 工单类型
    */
   shopOrderType?: string;
+
+  /**
+   * 工单类型列表
+   */
+  shopOrderTypeList: Array<string>;
 
   /**
    * 工单优先级
@@ -290,6 +320,11 @@ export interface ShopOrderForm extends BaseEntity {
    * 备注
    */
   remark?: string;
+
+  /**
+   * 资源
+   */
+  resource?: string;
 }
 
 export interface ShopOrderQuery extends PageQuery {
@@ -309,9 +344,19 @@ export interface ShopOrderQuery extends PageQuery {
   status?: string;
 
   /**
+   * 状态列表
+   */
+  statusList: Array<string>;
+
+  /**
    * 工单类型
    */
   shopOrderType?: string;
+
+  /**
+   * 工单类型列表
+   */
+  shopOrderTypeList: Array<string>;
 
   /**
    * 工单优先级

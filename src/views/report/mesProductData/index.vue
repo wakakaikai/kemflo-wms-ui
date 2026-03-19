@@ -4,11 +4,11 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :rules="rules" :inline="true" label-width="auto">
-            <el-form-item label="工厂" prop="site">
+<!--            <el-form-item label="工厂" prop="site">
               <el-select v-model="queryParams.site" value-key="id" placeholder="请选择工厂">
                 <el-option v-for="item in siteOption" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
-            </el-form-item>
+            </el-form-item>-->
             <el-form-item label="工单号" prop="shopOrder">
               <el-input v-model="queryParams.shopOrder" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -88,12 +88,12 @@
     <!-- 添加产品条码搜索对话框 -->
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="35%" append-to-body>
       <el-form ref="sfcFormRef" :model="form" :inline="true" label-width="auto">
-        <el-form-item label="条码输入框" prop="sfcStr" @paste.native.prevent="pasteContent" @keyup.enter.prevent="handleAddSfc">
-          <el-input v-model="form.sfcStr" type="text" placeholder="支持Excel批量粘贴" clearable />
+        <el-form-item label="条码输入框" prop="sfcStr">
+          <el-input v-model="form.sfcStr" type="textarea" :rows="2" clearable placeholder="支持Excel批量粘贴" @paste="pasteContent" @keyup.enter.prevent="handleAddSfc" />
         </el-form-item>
         <el-form-item>
-          <el-button icon="Plus" plain type="primary" @click="addSfc">新增</el-button>
-          <el-button icon="Refresh" @click="resetSfc">重置</el-button>
+          <el-button icon="Plus" type="primary" @click="addSfc">新增</el-button>
+          <el-button icon="Refresh" type="danger" @click="resetSfc">重置</el-button>
         </el-form-item>
       </el-form>
       <template #footer>

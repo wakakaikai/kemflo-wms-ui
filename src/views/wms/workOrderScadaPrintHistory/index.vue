@@ -23,7 +23,7 @@
     <el-card shadow="never">
       <template #header>
         <el-row :gutter="10" class="mb8">
-          <el-col :span="1.5">
+          <!--          <el-col :span="1.5">
             <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['wms:workOrderScadaPrintHistory:add']">新增</el-button>
           </el-col>
           <el-col :span="1.5">
@@ -31,7 +31,7 @@
           </el-col>
           <el-col :span="1.5">
             <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['wms:workOrderScadaPrintHistory:remove']">删除</el-button>
-          </el-col>
+          </el-col>-->
           <el-col :span="1.5">
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:workOrderScadaPrintHistory:export']">导出</el-button>
           </el-col>
@@ -41,36 +41,37 @@
 
       <el-table v-loading="loading" :data="workOrderScadaPrintHistoryList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column v-if="columns[0].visible" label="工单号" align="center" prop="workOrderNo" />
-        <el-table-column v-if="columns[1].visible" label="产品料号" align="center" prop="item" />
-        <el-table-column v-if="columns[2].visible" label="产品描述" align="center" prop="itemDesc" show-overflow-tooltip />
-        <el-table-column v-if="columns[3].visible" label="计划数量" align="center" prop="plannedQty" />
-        <el-table-column v-if="columns[4].visible" label="看板卡数量" align="center" prop="scadaQty" />
-        <el-table-column v-if="columns[5].visible" label="单位" align="center" prop="unit" />
-        <el-table-column v-if="columns[6].visible" label="销售订单号" align="center" prop="salesOrderNo" />
-        <el-table-column v-if="columns[7].visible" label="交货日" align="center" prop="soDeliveryDate" width="180">
+        <el-table-column v-if="columns[0].visible" label="工单号" align="center" prop="workOrderNo" fixed="left" />
+        <el-table-column v-if="columns[1].visible" label="工序" align="center" prop="process" fixed="left" />
+        <el-table-column v-if="columns[2].visible" label="打印时间" align="center" prop="dateTime" />
+        <el-table-column v-if="columns[3].visible" label="产品料号" align="center" prop="item" />
+        <el-table-column v-if="columns[4].visible" label="产品描述" align="center" prop="itemDesc" show-overflow-tooltip />
+        <el-table-column v-if="columns[5].visible" label="计划数量" align="center" prop="plannedQty" />
+        <el-table-column v-if="columns[6].visible" label="看板卡数量" align="center" prop="scadaQty" />
+        <el-table-column v-if="columns[7].visible" label="单位" align="center" prop="unit" />
+        <el-table-column v-if="columns[8].visible" label="销售单号" align="center" prop="salesOrderNo" />
+        <el-table-column v-if="columns[9].visible" label="交货日" align="center" prop="soDeliveryDate" width="180">
           <template #default="scope">
             <span>{{ parseTime(scope.row.soDeliveryDate, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[8].visible" label="工序" align="center" prop="process" />
-        <el-table-column v-if="columns[9].visible" label="工序描述" align="center" prop="processShortDesc" />
-        <el-table-column v-if="columns[10].visible" label="工作中心" align="center" prop="workCenter" />
-        <el-table-column v-if="columns[11].visible" label="前一制程工单号" align="center" prop="previousStepOrderNo" />
-        <el-table-column v-if="columns[12].visible" label="前一制程工作中心" align="center" prop="previousStepWorkCenter" />
-        <el-table-column v-if="columns[13].visible" label="前一制程完工时间" align="center" prop="previousStepCompleteTime" width="180" />
-        <el-table-column v-if="columns[14].visible" label="下一制程工单号" align="center" prop="nextStepOrderNo" />
-        <el-table-column v-if="columns[15].visible" label="下一制程工作中心" align="center" prop="nextStepWorkCenter" />
-        <el-table-column v-if="columns[16].visible" label="下一制程开工时间" align="center" prop="nextStepStartTime" width="180" />
-        <el-table-column v-if="columns[17].visible" label="标准人数" align="center" prop="standardPerson" />
-        <el-table-column v-if="columns[18].visible" label="标准产能" align="center" prop="standardCapacity" />
-        <el-table-column v-if="columns[19].visible" label="计划开工日期" align="center" prop="plannedStartDate" width="180" />
-        <el-table-column v-if="columns[20].visible" label="计划完工日期" align="center" prop="plannedEndDate" width="180" />
-        <el-table-column v-if="columns[21].visible" label="创建时间" align="center" prop="createTime" />
-        <el-table-column v-if="columns[22].visible" label="创建者" align="center" prop="createByName" />
-        <el-table-column v-if="columns[23].visible" label="更新时间" align="center" prop="updateTime" />
-        <el-table-column v-if="columns[24].visible" label="更新者" align="center" prop="updateByName" />
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <el-table-column v-if="columns[10].visible" label="工序描述" align="center" prop="processShortDesc" />
+        <el-table-column v-if="columns[11].visible" label="工作中心" align="center" prop="workCenter" />
+        <el-table-column v-if="columns[12].visible" label="前一制程工单号" align="center" prop="previousStepOrderNo" />
+        <el-table-column v-if="columns[13].visible" label="前一制程工作中心" align="center" prop="previousStepWorkCenter" />
+        <el-table-column v-if="columns[14].visible" label="前一制程完工时间" align="center" prop="previousStepCompleteTime" width="180" />
+        <el-table-column v-if="columns[15].visible" label="下一制程工单号" align="center" prop="nextStepOrderNo" />
+        <el-table-column v-if="columns[16].visible" label="下一制程工作中心" align="center" prop="nextStepWorkCenter" />
+        <el-table-column v-if="columns[17].visible" label="下一制程开工时间" align="center" prop="nextStepStartTime" width="180" />
+        <el-table-column v-if="columns[18].visible" label="标准人数" align="center" prop="standardPerson" />
+        <el-table-column v-if="columns[19].visible" label="标准产能" align="center" prop="standardCapacity" />
+        <el-table-column v-if="columns[20].visible" label="计划开工日期" align="center" prop="plannedStartDate" width="180" />
+        <el-table-column v-if="columns[21].visible" label="计划完工日期" align="center" prop="plannedEndDate" width="180" />
+        <el-table-column v-if="columns[22].visible" label="创建时间" align="center" prop="createTime" />
+        <el-table-column v-if="columns[23].visible" label="创建者" align="center" prop="createByName" />
+        <el-table-column v-if="columns[24].visible" label="更新时间" align="center" prop="updateTime" />
+        <el-table-column v-if="columns[25].visible" label="更新者" align="center" prop="updateByName" />
+        <!--        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
               <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:workOrderScadaPrintHistory:edit']"></el-button>
@@ -79,7 +80,7 @@
               <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:workOrderScadaPrintHistory:remove']"></el-button>
             </el-tooltip>
           </template>
-        </el-table-column>
+        </el-table-column>-->
       </el-table>
 
       <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
@@ -105,7 +106,7 @@
         <el-form-item label="单位" prop="unit">
           <el-input v-model="form.unit" placeholder="请输入单位" />
         </el-form-item>
-        <el-form-item label="销售订单号" prop="salesOrderNo">
+        <el-form-item label="销售单号" prop="salesOrderNo">
           <el-input v-model="form.salesOrderNo" placeholder="请输入销售订单号" />
         </el-form-item>
         <el-form-item label="交货日" prop="soDeliveryDate">
@@ -254,30 +255,31 @@ const { queryParams, form, rules } = toRefs(data);
 // 创建响应式数组对象
 const columns = ref<FieldOption[]>([
   { key: 0, label: `工单号`, visible: true, children: [] },
-  { key: 1, label: `产品料号`, visible: true, children: [] },
-  { key: 2, label: `产品描述`, visible: true, children: [] },
-  { key: 3, label: `计划数量`, visible: true, children: [] },
-  { key: 4, label: `看板卡数量`, visible: false, children: [] },
-  { key: 5, label: `单位`, visible: false, children: [] },
-  { key: 6, label: `销售订单号`, visible: true, children: [] },
-  { key: 7, label: `交货日`, visible: true, children: [] },
-  { key: 8, label: `工序`, visible: true, children: [] },
-  { key: 9, label: `工序描述`, visible: true, children: [] },
-  { key: 10, label: `工作中心`, visible: true, children: [] },
-  { key: 11, label: `前一制程工单号`, visible: true, children: [] },
-  { key: 12, label: `前一制程工作中心`, visible: true, children: [] },
-  { key: 13, label: `前一制程完工时间`, visible: true, children: [] },
-  { key: 14, label: `下一制程工单号`, visible: true, children: [] },
-  { key: 15, label: `下一制程工作中心`, visible: true, children: [] },
-  { key: 16, label: `下一制程开工时间`, visible: true, children: [] },
-  { key: 17, label: `标准人数`, visible: true, children: [] },
-  { key: 18, label: `标准产能`, visible: true, children: [] },
-  { key: 19, label: `计划开工日期`, visible: true, children: [] },
-  { key: 20, label: `计划完工日期`, visible: true, children: [] },
-  { key: 21, label: `创建时间`, visible: false, children: [] },
-  { key: 22, label: `创建者`, visible: false, children: [] },
-  { key: 23, label: `更新时间`, visible: false, children: [] },
-  { key: 24, label: `更新者`, visible: false, children: [] }
+  { key: 1, label: `工序`, visible: true, children: [] },
+  { key: 2, label: `打印时间`, visible: true, children: [] },
+  { key: 3, label: `产品料号`, visible: true, children: [] },
+  { key: 4, label: `产品描述`, visible: true, children: [] },
+  { key: 5, label: `计划数量`, visible: true, children: [] },
+  { key: 6, label: `看板卡数量`, visible: false, children: [] },
+  { key: 7, label: `单位`, visible: false, children: [] },
+  { key: 8, label: `销售单号`, visible: true, children: [] },
+  { key: 9, label: `交货日`, visible: true, children: [] },
+  { key: 10, label: `工序描述`, visible: true, children: [] },
+  { key: 11, label: `工作中心`, visible: true, children: [] },
+  { key: 12, label: `前一制程工单号`, visible: true, children: [] },
+  { key: 13, label: `前一制程工作中心`, visible: true, children: [] },
+  { key: 14, label: `前一制程完工时间`, visible: true, children: [] },
+  { key: 15, label: `下一制程工单号`, visible: true, children: [] },
+  { key: 16, label: `下一制程工作中心`, visible: true, children: [] },
+  { key: 17, label: `下一制程开工时间`, visible: true, children: [] },
+  { key: 18, label: `标准人数`, visible: true, children: [] },
+  { key: 19, label: `标准产能`, visible: true, children: [] },
+  { key: 20, label: `计划开工日期`, visible: true, children: [] },
+  { key: 21, label: `计划完工日期`, visible: true, children: [] },
+  { key: 22, label: `创建时间`, visible: false, children: [] },
+  { key: 23, label: `创建者`, visible: false, children: [] },
+  { key: 24, label: `更新时间`, visible: false, children: [] },
+  { key: 25, label: `更新者`, visible: false, children: [] }
 ]);
 
 /** 查询工单看板卡打印历史列表 */

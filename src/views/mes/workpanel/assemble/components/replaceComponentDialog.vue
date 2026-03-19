@@ -113,8 +113,8 @@ const handleChange = async (record: any) => {
 
 /** 键盘回车事件 */
 const keyDownTab = async () => {
-  const validateResult = await handleChange(form.value);
-  if (validateResult == 'error') return;
+  const validateStatus = await handleChange(form.value);
+  if (validateStatus == 'error') return;
   submitForm();
 };
 

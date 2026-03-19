@@ -14,7 +14,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :loading="loading" :data="workCenterList" style="width: 100%" border highlight-current-row @row-click="handleRowClick">
+      <el-table v-loading="loading" :data="workCenterList" style="width: 100%" border highlight-current-row @row-click="handleRowClick">
         <!-- 单选列（通过高亮行实现） -->
         <el-table-column width="55">
           <template #default="checkedDataScope">

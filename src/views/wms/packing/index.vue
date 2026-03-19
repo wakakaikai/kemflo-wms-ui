@@ -694,16 +694,16 @@ const submitInbound = () => {
     if (valid) {
       buttonLoading.value = true;
       if (form.value.id) {
-        await inBoundPending({
+        const res = await inBoundPending({
           id: form.value.id,
           warehouseCode: form.value.warehouseCode,
           palletCode: form.value.palletCode,
           packingCode: form.value.packingCode
         }).finally(() => (buttonLoading.value = false));
+        visible.value = false;
+        proxy?.$modal.msgSuccess(res.msg || '送仓成功');
+        await getList();
       }
-      visible.value = false;
-      proxy?.$modal.msgSuccess('送仓成功');
-      await getList();
     }
   });
 };

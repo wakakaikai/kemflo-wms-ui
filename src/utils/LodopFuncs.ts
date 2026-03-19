@@ -81,7 +81,9 @@ function checkOrTryHttp() {
   try {
     const WSK1 = new WebSocket(URL_WS1);
     WSK1.onopen = function (e) {
-      setTimeout('checkOrTryHttp()', 200);
+      setTimeout(() => {
+        checkOrTryHttp();
+      }, 200);
     };
     WSK1.onmessage = function (e) {
       if (!window.getCLodop) eval(e.data);
@@ -89,7 +91,9 @@ function checkOrTryHttp() {
     WSK1.onerror = function (e) {
       const WSK2 = new WebSocket(URL_WS2);
       WSK2.onopen = function (e) {
-        setTimeout('checkOrTryHttp()', 200);
+        setTimeout(() => {
+          checkOrTryHttp();
+        }, 200);
       };
       WSK2.onmessage = function (e) {
         if (!window.getCLodop) eval(e.data);
@@ -176,11 +180,12 @@ function getLodop(oOBJECT, oEMBED) {
       }
     }
     //===如下空白位置适合调用统一功能(如注册语句、语言选择等):=======================
-
+    // LODOP.SET_LICENSES('', '1C0B0E119AF063B4606A76829B739625286', '', '');
+    LODOP.SET_LICENSES('', 'CCB118FD508ADE50BC61778094A594B7312', '', '');
     //===============================================================================
     return LODOP;
   } catch (err) {
-    alert('getLodop出错:' + err);
+    console.log('getLodop出错:' + err);
   }
 }
 

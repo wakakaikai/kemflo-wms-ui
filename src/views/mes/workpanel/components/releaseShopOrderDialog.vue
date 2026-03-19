@@ -227,6 +227,8 @@ const submitForm = () => {
 
 // 工单对话框
 const openShopOrderDialog = () => {
+  outPodConfig.value.statusList = ['NEW', 'RELEASABLE', 'RELEASED', 'ACTIVE'];
+  outPodConfig.value.shopOrderTypeList = ['PRODUCTION', 'PRODUCTION-ZZ', 'REWORK', 'REWORK-CJ'];
   shopOrderDialogRef.value.openDialog();
 };
 

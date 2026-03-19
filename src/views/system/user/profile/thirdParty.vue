@@ -12,7 +12,7 @@
       <el-table-column label="绑定时间" width="180" align="center" prop="createTime" />
       <el-table-column label="操作" width="80" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
-          <el-button size="small" type="text" @click="unlockAuth(scope.row)">解绑</el-button>
+          <el-button size="small" text @click="unlockAuth(scope.row)">解绑</el-button>
         </template>
       </el-table-column>
     </el-table>

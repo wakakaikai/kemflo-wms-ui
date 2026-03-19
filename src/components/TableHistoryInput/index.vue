@@ -70,7 +70,7 @@
 
       <div v-if="filteredHistory.length > 0" class="history-footer">
         <span class="history-count"> 共 {{ filteredHistory.length }} 条 </span>
-        <el-button type="text" size="small" @click="clearAll"> 清空历史 </el-button>
+        <el-button text size="small" @click="clearAll"> 清空历史 </el-button>
       </div>
     </div>
   </div>

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <el-dialog v-model="visible" :title="title" width="70%" append-to-body @opened="handleOpenDialog">
+    <el-dialog v-model="visible" :title="title" width="1200px" append-to-body @opened="handleOpenDialog">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
         <el-form-item label="工单" prop="shopOrder">
           <el-input v-model="queryParams.shopOrder" placeholder="请输入工单" clearable @keyup.enter="handleQuery" />
@@ -14,7 +14,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :loading="loading" :data="shopOrderList" style="width: 100%" border highlight-current-row @row-click="handleRowClick">
+      <el-table v-loading="loading" :data="shopOrderList" style="width: 100%" height="350" border stripe fixed-header fit highlight-current-row @row-click="handleRowClick">
         <!-- 单选列（通过高亮行实现） -->
         <el-table-column width="55">
           <template #default="checkedDataScope">
@@ -23,22 +23,15 @@
             </el-radio>
           </template>
         </el-table-column>
-        <el-table-column label="工单" align="center" prop="shopOrder" width="140" />
-        <el-table-column label="计划物料" align="center" prop="plannedItem" width="180" />
-        <el-table-column label="产品描述" align="center" prop="itemDesc" />
+        <el-table-column label="工单" align="center" prop="shopOrder" />
+        <el-table-column label="计划物料" align="center" prop="plannedItem" />
+        <el-table-column label="产品描述" align="center" prop="itemDesc" show-overflow-tooltip />
         <!--        <el-table-column label="工单类型" align="center" prop="shopOrderTypeDesc" />-->
-        <!--        <el-table-column label="计划工作中心" align="center" prop="plannedWorkCenter" width="120" />-->
-        <el-table-column label="计划开始时间" align="center" prop="plannedStartDate" width="120">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.plannedStartDate, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="计划完成时间" align="center" prop="plannedCompDate" width="120">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.plannedCompDate, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="计划生产数量" align="center" prop="qtyToBuild" />
+        <el-table-column label="计划工作中心" align="center" prop="plannedWorkCenter" width="120" />
+        <el-table-column label="计划开始时间" align="center" prop="plannedStartDate" />
+        <el-table-column label="计划完成时间" align="center" prop="plannedCompDate" />
+        <el-table-column label="计划数量" align="center" prop="qtyToBuild" />
+        <el-table-column label="已下达数量" align="center" prop="qtyReleased" />
         <el-table-column label="完成数量" align="center" prop="qtyDone" />
       </el-table>
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
@@ -52,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { listShopOrder, getShopOrder, delShopOrder, addShopOrder, updateShopOrder, releaseShopOrderSfc } from '@/api/mes/shopOrder';
+import { listShopOrder } from '@/api/mes/shopOrder';
 import { ShopOrderVO, ShopOrderQuery, ShopOrderForm, SfcPreviewVO } from '@/api/mes/shopOrder/types';
 import useDialog from '@/hooks/useDialog';
 
@@ -71,7 +64,9 @@ const initFormData: ShopOrderForm = {
   handle: undefined,
   shopOrder: undefined,
   status: undefined,
+  statusList: undefined,
   shopOrderType: undefined,
+  shopOrderTypeList: undefined,
   priority: undefined,
   plannedWorkCenterBo: undefined,
   plannedItemBo: undefined,
@@ -95,7 +90,8 @@ const initFormData: ShopOrderForm = {
   considerScrap: undefined,
   remark: undefined,
   dataModifyTime: undefined,
-  dataModifyUser: undefined
+  dataModifyUser: undefined,
+  resource: undefined
 };
 const data = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
   form: { ...initFormData },
@@ -105,7 +101,9 @@ const data = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
     handle: undefined,
     shopOrder: undefined,
     status: undefined,
+    statusList: undefined,
     shopOrderType: undefined,
+    shopOrderTypeList: undefined,
     priority: undefined,
     plannedWorkCenterBo: undefined,
     plannedItemBo: undefined,
@@ -132,6 +130,7 @@ const data = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
     modifyUserId: undefined,
     updater: undefined,
     modifyTime: undefined,
+    resource: undefined,
     params: {}
   },
   rules: {}
@@ -146,10 +145,15 @@ const { title, visible, openDialog, closeDialog } = useDialog({
 /** 查询工序列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await listShopOrder(queryParams.value);
-  shopOrderList.value = res.rows;
-  total.value = res.total;
-  loading.value = false;
+  try {
+    const res = await listShopOrder(queryParams.value);
+    shopOrderList.value = res.rows;
+    total.value = res.total;
+  } catch (error) {
+    console.error('Error fetching data:', error);
+  } finally {
+    loading.value = false;
+  }
 };
 
 /** 选中数据 */
@@ -189,6 +193,8 @@ const submitForm = () => {
 const handleOpenDialog = () => {
   resetQuery();
   queryParams.value.resource = props?.podConfig.resource;
+  queryParams.value.statusList = props?.podConfig.statusList;
+  queryParams.value.shopOrderTypeList = props?.podConfig.shopOrderTypeList;
   handleQuery();
 };
 onMounted(async () => {});

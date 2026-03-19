@@ -80,6 +80,21 @@ export interface WorkOrderVO {
   previousOrderNo: string;
 
   /**
+   * 生产模式：mts-按库存生产 mto-按订单生产
+   */
+  productionMode: string;
+
+  /**
+   * 集约生产标识
+   */
+  intensiveProductionFlag: boolean;
+
+  /**
+   * 尾数工单标识
+   */
+  mantissaOrderFlag: boolean;
+
+  /**
    * 备注
    */
   remark: string;
@@ -172,6 +187,21 @@ export interface WorkOrderForm extends BaseEntity {
   previousOrderNo?: string;
 
   /**
+   * 生产模式：mts-按库存生产 mto-按订单生产
+   */
+  productionMode: string;
+
+  /**
+   * 集约生产标识
+   */
+  intensiveProductionFlag: boolean;
+
+  /**
+   * 尾数工单标识
+   */
+  mantissaOrderFlag: boolean;
+
+  /**
    * 备注
    */
   remark?: string;
@@ -257,6 +287,21 @@ export interface WorkOrderQuery extends PageQuery {
    * 上阶工单号
    */
   previousOrderNo?: string;
+
+  /**
+   * 生产模式：mts-按库存生产 mto-按订单生产
+   */
+  productionMode: string;
+
+  /**
+   * 集约生产标识
+   */
+  intensiveProductionFlag: boolean;
+
+  /**
+   * 尾数工单标识
+   */
+  mantissaOrderFlag: boolean;
 
   /**
    * 工单优先级

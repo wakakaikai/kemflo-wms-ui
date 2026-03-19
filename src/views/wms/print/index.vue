@@ -157,7 +157,7 @@
                     <span>{{ workOrderInfo.materialDesc }}</span>
                   </div>
                   <!-- 其他字段与二维码同行 -->
-                  <div class="info-with-qr">
+                  <div class="info-row-container">
                     <div class="info-column">
                       <div class="info-row">
                         <label>入库数量</label>
@@ -216,7 +216,7 @@
                       <span class="version-text">V{{ workOrderInfo.version }}</span>
                     </span>
                   </div>
-                  <div class="info-with-qr">
+                  <div class="info-row-container">
                     <div class="info-column">
                       <!-- 客户订单-->
                       <div class="info-row">
@@ -261,7 +261,7 @@
                   </div>
                   <hr class="split-line" />
                   <!-- 产能信息 -->
-                  <div class="info-with-qr">
+                  <div class="info-row-container">
                     <div class="info-column">
                       <div class="info-row">
                         <label>当前制程</label>
@@ -304,7 +304,7 @@
                   </div>
                   <hr class="split-line" />
                   <!-- 制程信息 -->
-                  <div class="info-with-qr">
+                  <div class="info-row-container">
                     <div class="info-column">
                       <div class="info-row">
                         <label style="font-size: 12px">前一制程</label>
@@ -367,27 +367,43 @@
                       <span class="version-text">V{{ workOrderInfo.version }}</span>
                     </span>
                   </div>
-                  <!-- 客户订单-->
-                  <div class="info-row">
-                    <label>客户订单</label>
-                    <span>{{ workOrderInfo.salesOrderNo }}</span>
+                  <div class="info-row-container">
+                    <div class="info-column">
+                      <!-- 客户订单-->
+                      <div class="info-row">
+                        <label>客户订单</label>
+                        <span>{{ workOrderInfo.salesOrderNo }}</span>
+                      </div>
+                      <!-- 订单交货日期-->
+                      <div class="info-row">
+                        <label>交&nbsp;货&nbsp;日</label>
+                        <span>{{ parseTime(workOrderInfo.soDeliveryDate, '{y}-{m}-{d}') }}</span>
+                      </div>
+
+                      <!-- 产品品号 -->
+                      <div class="info-row">
+                        <label>产品品号</label>
+                        <span>{{ workOrderInfo.material }}</span>
+                      </div>
+                    </div>
+
+                    <div class="info-column">
+                      <div class="info-row">
+                        <!-- 印章效果的集字和尾字 -->
+                        <div class="seal-stamp-container">
+                          <div class="seal-stamp seal-intensive" v-if="workOrderInfo.intensiveProductionFlag">集</div>
+                          <div class="seal-stamp seal-mantissa" v-if="workOrderInfo.mantissaOrderFlag">尾</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <!-- 订单交货日期-->
-                  <div class="info-row">
-                    <label>交&nbsp;货&nbsp;日</label>
-                    <span>{{ parseTime(workOrderInfo.soDeliveryDate, '{y}-{m}-{d}') }}</span>
-                  </div>
-                  <!-- 产品品号占一行 -->
-                  <div class="info-row full-row">
-                    <label>产品品号</label>
-                    <span>{{ workOrderInfo.material }}</span>
-                  </div>
+
                   <div class="info-row product-description">
                     <label>产品描述</label>
                     <span>{{ workOrderInfo.materialDesc }}</span>
                   </div>
                   <!-- 其他字段与二维码同行 -->
-                  <div class="info-with-qr">
+                  <div class="info-row-container">
                     <div class="info-column">
                       <!-- 工单数量-->
                       <div class="info-row">
@@ -423,7 +439,7 @@
                   <hr class="split-line" />
 
                   <!-- 制程信息 -->
-                  <div class="info-with-qr">
+                  <div class="info-row-container">
                     <div class="info-column">
                       <div class="info-row">
                         <label style="font-size: 12px">下一制程</label>
@@ -584,7 +600,9 @@ const workOrderInfo = ref({
   operator: '',
   inspector: '',
   version: 1,
-  remark: ''
+  remark: '',
+  intensiveProductionFlag: false,
+  mantissaOrderFlag: false
 });
 
 /** 查询工单信息列表 */
@@ -1178,7 +1196,7 @@ const handleExportImage = async () => {
     });
 
     const link = document.createElement('a');
-    link.download = `工单流转卡_${workOrderInfo.value.workOrderNo}.png`;
+    link.download = `入库单_${workOrderInfo.value.workOrderNo}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
   } catch (error) {
@@ -1469,7 +1487,7 @@ onMounted(() => {
   }
 }
 
-.info-with-qr {
+.info-row-container {
   display: flex;
   flex-direction: row;
 }
@@ -1912,6 +1930,45 @@ onMounted(() => {
     background-color: #000;
     width: 100%;
   }
+}
+
+/* 印章效果样式 */
+.seal-stamp-container {
+  position: relative;
+  width: 120px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+}
+
+.seal-stamp {
+  position: absolute;
+  font-size: 30px;
+  font-weight: bold;
+  color: #c00000;
+  text-align: center;
+  line-height: 1;
+  transform: rotate(0deg);
+  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.3);
+
+  background-color: transparent;
+  border: 3px solid #c00000;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+/*
+.seal-intensive {
+  margin-right: 60px;
+}
+*/
+
+.seal-mantissa {
+  margin-left: 60px;
 }
 
 /* 响应式调整 */

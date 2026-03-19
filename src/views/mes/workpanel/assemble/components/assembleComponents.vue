@@ -402,7 +402,7 @@ defineExpose({});
       <el-table-column prop="bomItem" label="组件" width="140" align="center" />
       <el-table-column prop="bomItemDesc" label="描述" min-width="200" align="center" />
       <el-table-column prop="assembleOperation" label="工序" width="100" align="center" />
-      <el-table-column prop="itemNeedValid" label="校验规则" width="110" align="center">
+      <el-table-column prop="itemNeedValid" label="料号校验" width="110" align="center">
         <template #default="{ row }">
           {{ row.itemNeedValid }}
         </template>
@@ -443,7 +443,7 @@ defineExpose({});
       <el-skeleton :spinning="disassemblyLoading">
         <div style="text-align: center">
           组件条码：{{ publicRecord.inventoryId }}, 物料：{{ `${publicRecord.componentAndRevision}` }}
-          <div>{{ ` ${publicRecord.componentDesc}` }}</div>
+          <div>{{ `${publicRecord.componentDesc}` }}</div>
         </div>
 
         <template #footer>

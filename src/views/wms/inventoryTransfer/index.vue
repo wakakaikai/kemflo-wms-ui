@@ -184,6 +184,7 @@
                 <template #default="scope">
                   <el-input v-model="scope.row.supplierCode" placeholder="供应商寄售编码" v-if="scope.row.specialInventoryFlag == 'K'" />
                   <el-input v-model="scope.row.customerCode" placeholder="客户寄售编码" v-else-if="scope.row.specialInventoryFlag == 'W'" />
+                  <span v-else-if="scope.row.specialInventoryFlag == 'E'">{{ scope.row.businessCode }}</span>
                   <span v-else />
                 </template>
               </el-table-column>
@@ -435,6 +436,7 @@ const addSelectedToTransferList = () => {
     specialInventoryFlag: item.specialInventoryFlag,
     inventoryType: 'N',
     transferQuantity: null,
+    businessCode: item.businessCode,
     remark: ''
   }));
 
@@ -638,7 +640,8 @@ const submitTransfer = async () => {
     }));
 
     const res: any = await transferInventory({
-      inventoryTransferBoList: transferRequests
+      inventoryTransferBoList: transferRequests,
+      transferType: 0
     });
 
     if (res.code !== HttpStatus.SUCCESS) {

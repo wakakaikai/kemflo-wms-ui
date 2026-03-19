@@ -39,6 +39,15 @@ export const querySfcBomComponentList = (data: any) => {
   });
 };
 
+// 查询条码工序组装信息
+export const querySfcShopOrderBomComponentList = (data: any) => {
+  return request({
+    url: '/mes/sfc/shopOrderBomComponent/list',
+    method: 'post',
+    data
+  });
+};
+
 // 校验组件是否满足组装
 export const validateSfcBomComponent = (data: any) => {
   return request({

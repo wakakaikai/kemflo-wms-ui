@@ -74,11 +74,26 @@
             <span>{{ parseTime(scope.row.soDeliveryDate, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[12].visible" label="创建时间" align="center" prop="createTime" />
-        <el-table-column v-if="columns[13].visible" label="创建者" align="center" prop="createByName" />
-        <el-table-column v-if="columns[14].visible" label="更新时间" align="center" prop="updateTime" />
-        <el-table-column v-if="columns[15].visible" label="更新者" align="center" prop="updateByName" />
-        <el-table-column v-if="columns[16].visible" label="备注" align="center" prop="remark" />
+        <el-table-column v-if="columns[12].visible" label="生产模式" align="center" prop="productionMode" min-width="120">
+          <template #default="scope">
+            <dict-tag :options="wms_production_mode" :value="scope.row.productionMode" />
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columns[13].visible" label="集约生产标识" align="center" prop="intensiveProductionFlag">
+          <template #default="scope">
+            <el-checkbox v-model="scope.row.intensiveProductionFlag" disabled />
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columns[14].visible" label="尾数工单标识" align="center" prop="mantissaOrderFlag">
+          <template #default="scope">
+            <el-checkbox v-model="scope.row.mantissaOrderFlag" disabled />
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columns[15].visible" label="创建时间" align="center" prop="createTime" />
+        <el-table-column v-if="columns[16].visible" label="创建者" align="center" prop="createByName" />
+        <el-table-column v-if="columns[17].visible" label="更新时间" align="center" prop="updateTime" />
+        <el-table-column v-if="columns[18].visible" label="更新者" align="center" prop="updateByName" />
+        <el-table-column v-if="columns[19].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -106,9 +121,7 @@
           <el-input v-model="form.itemDesc" placeholder="请输入产品描述" />
         </el-form-item>
         <el-form-item label="出库检查" prop="checkEnable">
-          <el-radio-group v-model="form.checkEnable">
-            <el-radio v-for="dict in wms_work_order_check_enable" :key="dict.value" :value="parseInt(dict.value)">{{ dict.label }}</el-radio>
-          </el-radio-group>
+          <el-switch v-model="form.checkEnable" inline-prompt active-text="是" inactive-text="否" />
         </el-form-item>
         <el-form-item label="计划开工日期" prop="plannedStartDate">
           <el-date-picker v-model="form.plannedStartDate" clearable type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择计划开工日期"> </el-date-picker>
@@ -121,6 +134,17 @@
         </el-form-item>
         <el-form-item label="已交货数量" prop="deliveredQty">
           <el-input v-model="form.deliveredQty" placeholder="请输入已交货数量" />
+        </el-form-item>
+        <el-form-item label="生产模式" prop="productionMode">
+          <el-select v-model="form.productionMode" placeholder="请选择生产模式">
+            <el-option v-for="dict in wms_production_mode" :key="dict.value" :label="dict.value + dict.label" :value="dict.value"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="集约生产标识" prop="intensiveProductionFlag">
+          <el-switch v-model="form.intensiveProductionFlag" inline-prompt active-text="是" inactive-text="否" />
+        </el-form-item>
+        <el-form-item label="尾数工单标识" prop="mantissaOrderFlag">
+          <el-switch v-model="form.mantissaOrderFlag" inline-prompt active-text="是" inactive-text="否" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" />
@@ -373,7 +397,7 @@ import { listWorkOrder, getWorkOrder, delWorkOrder, addWorkOrder, updateWorkOrde
 import { WorkOrderVO, WorkOrderQuery, WorkOrderForm } from '@/api/wms/workOrder/types';
 import { TableColumns } from '@/api/types';
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { sys_yes_no, wms_work_order_check_enable } = toRefs<any>(proxy?.useDict('sys_yes_no', 'wms_work_order_check_enable'));
+const { wms_production_mode, wms_work_order_check_enable } = toRefs<any>(proxy?.useDict('wms_production_mode', 'wms_work_order_check_enable'));
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { nextTick, ref } from 'vue';
@@ -421,6 +445,9 @@ const initFormData: WorkOrderForm = {
   plannedQty: undefined,
   deliveredQty: undefined,
   waitStockQty: undefined,
+  productionMode: undefined,
+  intensiveProductionFlag: undefined,
+  mantissaOrderFlag: undefined,
   remark: undefined
 };
 const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
@@ -437,6 +464,9 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
     plannedQty: undefined,
     deliveredQty: undefined,
     waitStockQty: undefined,
+    productionMode: undefined,
+    intensiveProductionFlag: undefined,
+    mantissaOrderFlag: undefined,
     params: {}
   },
   rules: {
@@ -465,11 +495,14 @@ const columns = ref<TableColumns[]>([
   { key: 10, label: '销售订单项次', visible: true },
   { key: 11, label: '溯源工单号', visible: true },
   { key: 12, label: '销售订单交货日', visible: true },
-  { key: 13, label: '创建时间', visible: false },
-  { key: 14, label: '创建者', visible: false },
-  { key: 15, label: '更新时间', visible: false },
-  { key: 16, label: '更新者', visible: false },
-  { key: 17, label: '备注', visible: false }
+  { key: 13, label: '生产模式', visible: true },
+  { key: 14, label: '集约生产标识', visible: false },
+  { key: 15, label: '尾数工单标识', visible: false },
+  { key: 16, label: '创建时间', visible: false },
+  { key: 17, label: '创建者', visible: false },
+  { key: 18, label: '更新时间', visible: false },
+  { key: 19, label: '更新者', visible: false },
+  { key: 20, label: '备注', visible: false }
 ]);
 
 // 工单信息

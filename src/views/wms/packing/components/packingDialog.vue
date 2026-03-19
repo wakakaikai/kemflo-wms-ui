@@ -262,7 +262,6 @@ const palletSelectCallBack = (record) => {
 // 显示工单选择对话框
 const showWorkOrderDialog = () => {
   workOrderDialogRef.value.openDialog();
-  console.log(workOrderToOtherPackingQtyMap);
   workOrderDialogRef.value.initWorkOrderDialog(packingDetailBoList.value, workOrderToOtherPackingQtyMap);
 };
 

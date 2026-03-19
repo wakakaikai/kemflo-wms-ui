@@ -66,7 +66,7 @@
         <el-table-column label="计划BOM" align="center" prop="plannedBom" width="180" />
         <el-table-column label="计划工艺路线" align="center" prop="plannedRouter" width="180" />
         <el-table-column label="实际工艺路线" align="center" prop="router" width="180" />
-        <el-table-column label="计划生产数量" align="center" prop="qtyToBuild" />
+        <el-table-column label="计划数量" align="center" prop="qtyToBuild" />
         <el-table-column label="下达数量" align="center" prop="qtyReleased" />
         <el-table-column label="计划开始时间" align="center" prop="plannedStartDate" width="180" />
         <el-table-column label="计划完成时间" align="center" prop="plannedCompDate" width="180" />
@@ -125,8 +125,8 @@
         <el-form-item label="实际工艺路线" prop="routerBo">
           <el-input v-model="form.routerBo" placeholder="请输入实际工艺路线" />
         </el-form-item>
-        <el-form-item label="计划生产数量" prop="qtyToBuild">
-          <el-input v-model="form.qtyToBuild" placeholder="请输入计划生产数量" />
+        <el-form-item label="计划数量" prop="qtyToBuild">
+          <el-input v-model="form.qtyToBuild" placeholder="请输入计划数量" />
         </el-form-item>
         <el-form-item label="下达数量" prop="qtyReleased">
           <el-input v-model="form.qtyReleased" placeholder="请输入下达数量" />
@@ -289,7 +289,7 @@ const data = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
     plannedItemBo: [{ required: true, message: '计划物料不能为空', trigger: 'blur' }],
     plannedBomBo: [{ required: true, message: '计划BOM不能为空', trigger: 'blur' }],
     plannedRouterBo: [{ required: true, message: '计划工艺路线不能为空', trigger: 'blur' }],
-    qtyToBuild: [{ required: true, message: '计划生产数量不能为空', trigger: 'blur' }],
+    qtyToBuild: [{ required: true, message: '计划数量不能为空', trigger: 'blur' }],
     plannedStartDate: [{ required: true, message: '计划开始时间不能为空', trigger: 'blur' }],
     plannedCompDate: [{ required: true, message: '计划完成时间不能为空', trigger: 'blur' }],
     qtyDone: [{ required: true, message: '完成数量不能为空', trigger: 'blur' }]

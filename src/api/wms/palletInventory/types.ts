@@ -10,14 +10,29 @@ export interface PalletInventoryVO {
   palletCode: string;
 
   /**
-   * 工单号
+   * 打包编号
    */
-  workOrderNo: string;
+  packingCode: string;
 
   /**
-   * 物料标识卡条码
+   * 物料标识卡SN
    */
   materialSn: string;
+
+  /**
+   * 材料类型: 1-物料, 2-设备
+   */
+  itemType: number;
+
+  /**
+   * 物料编码/设备编号
+   */
+  itemCode: string;
+
+  /**
+   * 物料名称/设备名称
+   */
+  itemName: string;
 
   /**
    * 批次号
@@ -40,9 +55,9 @@ export interface PalletInventoryVO {
   blockedQuantity: number;
 
   /**
-   * 数量-报废
+   * 特殊库存标识
    */
-  scrappedQuantity: number;
+  specialInventoryFlag: string;
 
   /**
    * 单位
@@ -50,60 +65,54 @@ export interface PalletInventoryVO {
   unit: string;
 
   /**
-   * 料号
+   * 状态
    */
-  itemCode: string;
+  status: number;
 
   /**
-   * 产品物料名称/设备名称
+   * 预约人
    */
-  itemName: string;
+  reservedBy: number;
 
   /**
-   * 库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP
+   * 单据类型
    */
-  inventoryType: string;
+  sourceDocType: string;
 
   /**
-   * 库存状态（0:非限制, 1:质检 2-冻结 3-已报废）
+   * 单据编号
    */
-  inventoryStatus: number;
+  sourceDocCode: string;
 
   /**
-   * 入库状态（0:待入库, 1:已入库）
+   * 仓库编码
    */
-  stockInStatus: number;
+  warehouseCode: string;
 
   /**
-   * 凭证年度
+   * 库区编码
    */
-  materialDocYear: number;
+  areaCode: string;
 
   /**
-   * 物料凭证号
+   * 库位编码
    */
-  materialOrderNo: string;
+  locationCode: string;
 
   /**
-   * 物料文件项次
+   * 业务伙伴
    */
-  materialItem: string;
+  businessCode: string;
 
   /**
-   * 生产日期
+   * 业务伙伴名称
    */
-  productDate: string;
-
-  /**
-   * 失效日期
-   */
-  expireDate: string;
+  businessName: string;
 
   /**
    * 备注
    */
   remark: string;
-
 }
 
 export interface PalletInventoryForm extends BaseEntity {
@@ -118,14 +127,29 @@ export interface PalletInventoryForm extends BaseEntity {
   palletCode?: string;
 
   /**
-   * 工单号
+   * 打包编号
    */
-  workOrderNo?: string;
+  packingCode?: string;
 
   /**
-   * 物料标识卡条码
+   * 物料标识卡SN
    */
   materialSn?: string;
+
+  /**
+   * 材料类型: 1-物料, 2-设备
+   */
+  itemType?: number;
+
+  /**
+   * 物料编码/设备编号
+   */
+  itemCode?: string;
+
+  /**
+   * 物料名称/设备名称
+   */
+  itemName?: string;
 
   /**
    * 批次号
@@ -148,9 +172,9 @@ export interface PalletInventoryForm extends BaseEntity {
   blockedQuantity?: number;
 
   /**
-   * 数量-报废
+   * 特殊库存标识
    */
-  scrappedQuantity?: number;
+  specialInventoryFlag?: string;
 
   /**
    * 单位
@@ -158,78 +182,86 @@ export interface PalletInventoryForm extends BaseEntity {
   unit?: string;
 
   /**
-   * 料号
+   * 状态
    */
-  itemCode?: string;
+  status?: number;
 
   /**
-   * 产品物料名称/设备名称
+   * 预约人
    */
-  itemName?: string;
+  reservedBy?: number;
 
   /**
-   * 库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP
+   * 单据类型
    */
-  inventoryType?: string;
+  sourceDocType?: string;
 
   /**
-   * 库存状态（0:非限制, 1:质检 2-冻结 3-已报废）
+   * 单据编号
    */
-  inventoryStatus?: number;
+  sourceDocCode?: string;
 
   /**
-   * 入库状态（0:待入库, 1:已入库）
+   * 仓库编码
    */
-  stockInStatus?: number;
+  warehouseCode?: string;
 
   /**
-   * 凭证年度
+   * 库区编码
    */
-  materialDocYear?: number;
+  areaCode?: string;
 
   /**
-   * 物料凭证号
+   * 库位编码
    */
-  materialOrderNo?: string;
+  locationCode?: string;
 
   /**
-   * 物料文件项次
+   * 业务伙伴
    */
-  materialItem?: string;
+  businessCode?: string;
 
   /**
-   * 生产日期
+   * 业务伙伴名称
    */
-  productDate?: string;
-
-  /**
-   * 失效日期
-   */
-  expireDate?: string;
+  businessName?: string;
 
   /**
    * 备注
    */
   remark?: string;
-
 }
 
 export interface PalletInventoryQuery extends PageQuery {
-
   /**
    * 栈板编号
    */
   palletCode?: string;
 
   /**
-   * 工单号
+   * 打包编号
    */
-  workOrderNo?: string;
+  packingCode?: string;
 
   /**
-   * 物料标识卡条码
+   * 物料标识卡SN
    */
   materialSn?: string;
+
+  /**
+   * 材料类型: 1-物料, 2-设备
+   */
+  itemType?: number;
+
+  /**
+   * 物料编码/设备编号
+   */
+  itemCode?: string;
+
+  /**
+   * 物料名称/设备名称
+   */
+  itemName?: string;
 
   /**
    * 批次号
@@ -252,9 +284,9 @@ export interface PalletInventoryQuery extends PageQuery {
   blockedQuantity?: number;
 
   /**
-   * 数量-报废
+   * 特殊库存标识
    */
-  scrappedQuantity?: number;
+  specialInventoryFlag?: string;
 
   /**
    * 单位
@@ -262,60 +294,52 @@ export interface PalletInventoryQuery extends PageQuery {
   unit?: string;
 
   /**
-   * 料号
+   * 状态
    */
-  itemCode?: string;
+  status?: number;
 
   /**
-   * 产品物料名称/设备名称
+   * 预约人
    */
-  itemName?: string;
+  reservedBy?: number;
 
   /**
-   * 库存类型: N-正常, K-供应商寄售, W-客户寄售, P-工单库存WIP
+   * 单据类型
    */
-  inventoryType?: string;
+  sourceDocType?: string;
 
   /**
-   * 库存状态（0:非限制, 1:质检 2-冻结 3-已报废）
+   * 单据编号
    */
-  inventoryStatus?: number;
+  sourceDocCode?: string;
 
   /**
-   * 入库状态（0:待入库, 1:已入库）
+   * 仓库编码
    */
-  stockInStatus?: number;
+  warehouseCode?: string;
 
   /**
-   * 凭证年度
+   * 库区编码
    */
-  materialDocYear?: number;
+  areaCode?: string;
 
   /**
-   * 物料凭证号
+   * 库位编码
    */
-  materialOrderNo?: string;
+  locationCode?: string;
 
   /**
-   * 物料文件项次
+   * 业务伙伴
    */
-  materialItem?: string;
+  businessCode?: string;
 
   /**
-   * 生产日期
+   * 业务伙伴名称
    */
-  productDate?: string;
+  businessName?: string;
 
   /**
-   * 失效日期
+   * 日期范围参数
    */
-  expireDate?: string;
-
-    /**
-     * 日期范围参数
-     */
-    params?: any;
+  params?: any;
 }
-
-
-

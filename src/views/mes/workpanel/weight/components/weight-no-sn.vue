@@ -1,5 +1,5 @@
 <template>
-  <div class="serial-debugger">
+  <div class="serial-debugger weight-no-sn-container">
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="true" class="mb-[10px]">
         <!-- 工序资源展示区域 -->
@@ -632,8 +632,16 @@ onMounted(() => {
   navigator.serial?.addEventListener('connect', handleSerialConnect);
   navigator.serial?.addEventListener('disconnect', handleSerialDisconnect);
 
+  // 添加键盘事件监听（带条件判断）
+  const handleKeyDown = (event: KeyboardEvent) => {
+    // 确保当前路由是这个页面
+    if (currentRoute.value.name === 'WGT-NO-SN' || currentRoute.value.path.includes('WGT-NO-SN')) {
+      handleGlobalKeyDown(event);
+    }
+  };
+
   // 添加全局键盘事件监听
-  window.addEventListener('keydown', handleGlobalKeyDown);
+  window.addEventListener('keydown', handleKeyDown);
 });
 
 // 组件卸载前关闭连接并撤销权限
@@ -653,7 +661,7 @@ onBeforeUnmount(async () => {
     }
   }
 
-  window.removeEventListener('keydown', handleGlobalKeyDown);
+  window.removeEventListener('keydown', handleKeyDown);
 });
 
 // 处理串口连接事件

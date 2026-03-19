@@ -70,7 +70,7 @@
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="35%" append-to-body>
       <el-form ref="sfcFormRef" :model="form" :inline="true" label-width="auto">
         <el-form-item label="条码输入框" prop="sfcStr" @paste.native.prevent="pasteContent" @keyup.enter.prevent="handleAddSfc">
-          <el-input v-model="form.sfcStr" type="text" placeholder="支持Excel批量粘贴" clearable />
+          <el-input v-model="form.sfcStr" text placeholder="支持Excel批量粘贴" clearable />
         </el-form-item>
         <el-form-item>
           <el-button icon="Plus" plain type="primary" @click="addSfc">新增</el-button>

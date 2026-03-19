@@ -74,7 +74,7 @@
       <div v-if="filteredHistory.length > 0" class="history-footer">
 <!--        <span class="history-tips"> ↑↓ 选择，↵ 确认，Esc 关闭 </span>-->
         <span class="history-count"> 共 {{ filteredHistory.length }} 条 </span>
-        <el-button type="text" size="small" @click="clearAll"> 清空历史 </el-button>
+        <el-button text size="small" @click="clearAll"> 清空历史 </el-button>
       </div>
     </div>
   </div>
@@ -527,7 +527,7 @@ defineExpose({
   border: 1px solid #e4e7ed;
   border-radius: 4px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  z-index: 2000;
+  z-index: 2000 !important;
   margin-top: 4px;
   overflow-y: auto;
   animation: dropdown-appear 0.2s ease;

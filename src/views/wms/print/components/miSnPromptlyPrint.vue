@@ -5,6 +5,51 @@
       <el-aside width="320px" class="sidebar">
         <!-- 扫描条码输入框 -->
         <el-form label-position="top" :model="workOrderInfo" :rules="rules" ref="settingFormRef">
+          <!-- 打印机选择 -->
+          <el-form-item label="选择打印机">
+            <el-select v-model="selectedPrinter" placeholder="请选择打印机" style="width: 100%" filterable @change="onPrinterChange">
+              <template #prefix>
+                <el-button text @click="refreshPrinterList" title="刷新所有设置">
+                  <el-icon><Refresh /></el-icon>
+                </el-button>
+              </template>
+              <el-option v-for="printer in printerList" :key="printer.name" :label="printer.name" :value="printer.name">
+                <div class="printer-option">
+                  <span>{{ printer.name }}</span>
+                  <span v-if="printer.isDefault" class="printer-default">默认</span>
+                </div>
+              </el-option>
+            </el-select>
+          </el-form-item>
+
+          <!-- 纸张选择 -->
+          <el-form-item label="选择纸张">
+            <el-select v-model="selectedPaper" placeholder="请先选择打印机" style="width: 100%" filterable :disabled="!selectedPrinter" @change="onPaperChange">
+              <template #prefix>
+                <el-button text @click="refreshPapers" icon="Refresh" title="刷新所有设置"> </el-button>
+              </template>
+              <el-option v-for="paper in paperList" :key="paper.value" :label="paper.label" :value="paper.value">
+                <div class="paper-option">
+                  <span>{{ paper.label }}</span>
+                </div>
+              </el-option>
+            </el-select>
+          </el-form-item>
+
+          <!-- 工单号码 -->
+          <el-form-item label="工单号码" prop="shopOrder">
+            <!--              <el-input v-model="queryParams.shopOrder" placeholder="请输入工单号码">
+              <template #append>
+                <el-button icon="Search" @click="showShopOrderDialog" />
+              </template>
+            </el-input>-->
+            <HistoryInput v-model="workOrderInfo.shopOrder" :config="shopOrderConfig" placeholder="请输入工单号码" @keyup.enter="getShopOrderList">
+              <template #append>
+                <el-button icon="Search" @click="showShopOrderDialog" />
+              </template>
+            </HistoryInput>
+          </el-form-item>
+
           <!-- 扫描条码输入 -->
           <el-form-item label="扫描条码">
             <el-input v-model="scanInput" placeholder="请扫描条码" @keydown.enter.prevent="handleScanEnter" ref="scanInputRef" autofocus clearable>
@@ -14,59 +59,22 @@
             </el-input>
           </el-form-item>
 
-
-
-          <!-- 快速设置卡片 -->
-          <el-card class="quick-settings" shadow="never">
-            <template #header>
-              <div class="card-header">
-                <span>打印机设置</span>
-                <el-button type="text" @click="refreshAllSettings" title="刷新所有设置">
-                  <el-icon><Refresh /></el-icon>
-                </el-button>
-              </div>
-            </template>
-
-            <!-- 打印机选择 -->
-            <el-form-item label="选择打印机">
-              <el-select v-model="selectedPrinter" placeholder="请选择打印机" style="width: 100%" filterable @change="onPrinterChange">
-                <el-option v-for="printer in printerList" :key="printer.name" :label="printer.name" :value="printer.name">
-                  <div class="printer-option">
-                    <span>{{ printer.name }}</span>
-                    <span v-if="printer.isDefault" class="printer-default">默认</span>
-                  </div>
-                </el-option>
-              </el-select>
-            </el-form-item>
-
-            <!-- 纸张选择 -->
-            <el-form-item label="选择纸张">
-              <el-select v-model="selectedPaper" placeholder="请先选择打印机" style="width: 100%" filterable :disabled="!selectedPrinter" @change="onPaperChange">
-                <el-option v-for="paper in paperList" :key="paper.value" :label="paper.label" :value="paper.value">
-                  <div class="paper-option">
-                    <span>{{ paper.label }}</span>
-                  </div>
-                </el-option>
-              </el-select>
-            </el-form-item>
-
-            <!-- 打印份数 -->
-            <el-form-item label="打印份数">
-              <el-input-number v-model="copies" :min="1" :max="9999" controls-position="right" style="width: 100%" />
-            </el-form-item>
-          </el-card>
+          <!-- 打印份数 -->
+          <!--          <el-form-item label="打印份数">
+            <el-input-number v-model="copies" :min="1" :max="9999" controls-position="right" style="width: 100%" />
+          </el-form-item>-->
 
           <!-- 操作按钮 -->
-          <div class="action-buttons">
-            <el-button type="primary" @click="handlePrintPreview" :loading="printing" :disabled="!selectedPrinter" style="margin-bottom: 10px">
+          <!--          <div class="action-buttons">
+            <el-button type="primary" @click="handlePrintPreview" :loading="printing" :disabled="!selectedPrinter">
               <el-icon><View /></el-icon>
               打印预览
             </el-button>
-            <el-button type="success" @click="handlePrint" :loading="printing" :disabled="!selectedPrinter" style="margin-bottom: 10px">
+            <el-button type="success" @click="handlePrint" :loading="printing" :disabled="!selectedPrinter">
               <el-icon><Printer /></el-icon>
               直接打印
             </el-button>
-          </div>
+          </div>-->
         </el-form>
       </el-aside>
 
@@ -75,54 +83,70 @@
         <div class="preview-container">
           <div class="preview-header">
             <div class="header-left">
-              <h3>MI标签预览</h3>
+              <h3>MI即扫即打预览</h3>
             </div>
           </div>
 
           <!-- 预览内容 -->
           <div class="single-preview">
             <div class="preview-content">
-              <div class="preview-wrapper">
-                <!-- MI标签模板 -->
-                <div class="mi-print-sn-template" ref="printContent">
-                  <!-- 标签顶部：项目描述及颜色 -->
-                  <div class="top-section">
-                    <span class="project-info">{{ workOrderInfo.materialDesc }}</span>
-                    <span class="color-info">颜色：{{ workOrderInfo.color }}</span>
-                  </div>
-
-                  <!-- 条形码区域 -->
-                  <div class="barcode-section">
-                    <svg ref="snBarcodeSvg" class="barcode"></svg>
-                  </div>
-
-                  <!-- SN和SKU信息 -->
-                  <div class="info-section">
-                    <div class="sn-sku-row">
-                      <span class="sn-value">SN:{{ workOrderInfo.sfcContent }}</span>
-                      <span class="sku-value">SKU:{{ workOrderInfo.sku }}</span>
+              <div class="preview-main-history-container">
+                <div class="preview-wrapper">
+                  <!-- MI标签模板 -->
+                  <div class="mi-print-sn-template" ref="printContent">
+                    <!-- 标签顶部：项目描述及颜色 -->
+                    <div class="top-section">
+                      <span class="project-info">{{ workOrderInfo.productDesc }}</span>
+                      <span class="color-info">颜色：{{ workOrderInfo.color }}</span>
                     </div>
-                  </div>
 
-                  <!-- 69码区域 -->
-                  <div class="sixty-nine-barcode-section">
-                    <svg ref="sixtyNineBarcodeSvg" class="sixty-nine-barcode"></svg>
-                  </div>
+                    <!-- 条形码区域 -->
+                    <div class="barcode-section">
+                      <svg ref="snBarcodeSvg" class="barcode"></svg>
+                    </div>
 
-                  <div class="content-row">
-                    <!-- 生产日期 -->
-                    <div class="left-section">
-                      <div class="date-section">
-                        <span class="date-value">生产日期: {{ workOrderInfo.productDate }}</span>
+                    <!-- SN和SKU信息 -->
+                    <div class="info-section">
+                      <div class="sn-sku-row">
+                        <span class="sn-value">SN:&nbsp;{{ workOrderInfo.sfcContent }}</span>
+                        <span class="sku-value">SKU:&nbsp;{{ workOrderInfo.sku }}</span>
                       </div>
                     </div>
 
-                    <!-- 合格证标识 -->
-                    <div class="right-section">
-                      <div class="certification">
-                        <span class="cert-text">合格证 已检验</span>
+                    <!-- 69码区域 -->
+                    <div class="sixty-nine-barcode-section">
+                      <svg ref="sixtyNineBarcodeSvg" class="sixty-nine-barcode"></svg>
+                    </div>
+
+                    <div class="content-row">
+                      <!-- 生产日期 -->
+                      <div class="left-section">
+                        <div class="date-section">
+                          <span class="date-value">生产日期: {{ workOrderInfo.productDate }}</span>
+                        </div>
+                      </div>
+
+                      <!-- 合格证标识 -->
+                      <div class="right-section">
+                        <div class="certification">
+                          <span class="cert-text">合格证 已检验</span>
+                        </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                <!-- 扫描历史面板 -->
+                <div class="scan-history-panel">
+                  <div class="history-header">
+                    <h4>扫描历史</h4>
+                  </div>
+                  <div class="history-list">
+                    <div v-for="(item, index) in scanHistory" :key="index" class="history-item">
+                      <div class="history-content">{{ item.content }}</div>
+                      <div class="history-time">{{ item.time }}</div>
+                    </div>
+                    <div v-if="scanHistory.length === 0" class="no-history"></div>
                   </div>
                 </div>
               </div>
@@ -143,22 +167,24 @@
     </el-container>
 
     <!-- 工单选择对话框 -->
-    <work-order-dialog ref="workOrderDialogRef" @workOrderCallBack="workOrderCallBack" />
+    <ShopOrderDialog ref="shopOrderDialogRef" :podConfig="podConfig" @shop-order-call-back="shopOrderCallBack" />
   </div>
 </template>
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from 'vue';
-import { Printer, Download, Refresh, View } from '@element-plus/icons-vue';
+import { ref, nextTick, onMounted } from 'vue';
 import html2canvas from 'html2canvas';
-import { ElMessage } from 'element-plus';
-import WorkOrderDialog from '@/views/wms/print/components/workOrderDialog.vue';
-
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+import { listShopOrder } from '@/api/mes/shopOrder';
 import JsBarcode from 'jsbarcode';
 import { getLodop } from '@/utils/LodopFuncs';
+import { savePrintHistory } from '@/api/mes/shopOrderSfcPrintHistory';
+import { HttpStatus } from '@/enums/RespEnum';
+import HistoryInput from '@/components/HistoryInput/index.vue';
+import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
+import { HistoryConfig } from '@/types/history';
 
-// Refs
-const workOrderDialogRef = ref<InstanceType<typeof WorkOrderDialog>>();
 const settingFormRef = ref();
+const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
 const scanInputRef = ref<HTMLInputElement | null>(null);
 const printContent = ref<HTMLElement | null>(null);
 const snBarcodeSvg = ref<HTMLElement | null>(null);
@@ -180,20 +206,37 @@ const selectedPaper = ref('');
 // 工单信息
 const workOrderInfo = ref({
   material: '',
-  workOrderNo: '123123',
+  shopOrder: '',
   productDate: '',
-  sfcContent: '76054/BQAPNF5Z500001',
-  sixtyNineSn: '6932554423407',
-  sku: 'BHR07SBCN',
-  materialDesc: '小米汽车车顶横杆行李架-YU7版',
+  sfcContent: '',
+  ean: '',
+  sku: '',
+  productDesc: '',
   color: '锖灰色'
 });
+
+const shopOrderConfig: HistoryConfig = {
+  key: 'shopOrder',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'print',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const podConfig = ref<{ [key: string]: any }>({});
 
 // 用户输入
 const scanInput = ref('');
 const copies = ref(1);
 const printing = ref(false);
-
+// 扫描历史
+const scanHistory = ref<Array<{ content: string; time: string }>>([]);
 // 预览设置
 const zoom = ref(2);
 
@@ -202,11 +245,53 @@ const rules = {
   workOrderNo: [{ required: true, message: '工单号码不能为空', trigger: 'blur' }]
 };
 
+// 显示工单选择对话框
+const showShopOrderDialog = () => {
+  podConfig.value.statusList = ['NEW', 'RELEASABLE', 'RELEASED', 'ACTIVE'];
+  podConfig.value.shopOrderTypeList = ['PRODUCTION', 'PRODUCTION-ZZ', 'REWORK', 'REWORK-CJ'];
+  shopOrderDialogRef.value.openDialog();
+};
+// 弹框回调
+const shopOrderCallBack = (data: any) => {
+  workOrderInfo.value.shopOrder = data.shopOrder;
+  workOrderInfo.value.sku = data.sku;
+  workOrderInfo.value.ean = data.ean;
+  workOrderInfo.value.productDesc = data.productDesc;
+  nextTick(() => {
+    generateSixtyNineBarcode();
+  });
+};
+
+/** 查询工序列表 */
+const getShopOrderList = async () => {
+  try {
+    const res = await listShopOrder({
+      shopOrder: workOrderInfo.value.shopOrder
+    });
+    if (res.total == 0) {
+      proxy.$modal.msgError('工单号' + queryParams.value.shopOrder + '资料不存在');
+      return;
+    }
+    if (res.total > 1) {
+      proxy.$modal.msgError('工单号' + queryParams.value.shopOrder + '存在多笔资料');
+      return;
+    }
+    const data = res.rows[0];
+    workOrderInfo.value.shopOrder = data.shopOrder;
+    workOrderInfo.value.sku = data.sku;
+    workOrderInfo.value.ean = data.ean;
+    workOrderInfo.value.productDesc = data.productDesc;
+    generateSixtyNineBarcode();
+  } catch (error) {
+    proxy.$modal.msgError('查询工单数据失败: ' + (error as Error).message);
+  }
+};
+
 // 获取打印机列表
 const getPrintersFromLodop = (): Array<{ name: string; isDefault: boolean }> => {
   const LODOP = getLodop();
   if (!LODOP) {
-    ElMessage.error('未检测到Lodop打印服务，请安装Lodop插件');
+    proxy.$modal.msgError('未检测到Lodop打印服务，请安装Lodop插件');
     return [];
   }
 
@@ -227,20 +312,6 @@ const getPrintersFromLodop = (): Array<{ name: string; isDefault: boolean }> => 
     return printers;
   } catch (error) {
     console.error('获取打印机列表失败:', error);
-
-    // 方法2：尝试使用Create_Printer_List
-    try {
-      const selectElement = document.createElement('select');
-      LODOP.Create_Printer_List(selectElement);
-      const printers = Array.from(selectElement.options).map((option) => ({
-        name: option.text,
-        isDefault: option.text === LODOP.Printers?.default
-      }));
-      return printers;
-    } catch (e) {
-      console.error('备选方法获取打印机失败:', e);
-      return [];
-    }
   }
 };
 
@@ -262,7 +333,7 @@ const getPaperList = (printerName: string) => {
   try {
     const LODOP = getLodop();
     if (!LODOP) {
-      console.error('Lodop实例获取失败');
+      proxy.$modal.msgError('未检测到Lodop打印服务，请安装Lodop插件');
       return [];
     }
 
@@ -304,34 +375,7 @@ const getPaperList = (printerName: string) => {
       LODOP.PRINT_INIT('');
 
       return papers;
-    } catch (error) {
-      console.error('Create_PageSize_List失败:', error);
-
-      // 备选方案：使用GET_VALUE获取纸张信息
-      try {
-        // 获取纸张宽度和高度
-        const pageWidth = LODOP.GET_VALUE('PRINTSETUP_PAGE_WIDTH');
-        const pageHeight = LODOP.GET_VALUE('PRINTSETUP_PAGE_HEIGHT');
-        const paperName = LODOP.GET_VALUE('PRINTSETUP_PAGESIZE_NAME') || '默认纸张';
-
-        const papers = [
-          {
-            value: paperName,
-            label: `${paperName} (${pageWidth ? pageWidth / 10 : '?'}${pageHeight ? pageHeight / 10 : '?'}mm)`
-          }
-        ];
-
-        document.body.removeChild(selectElement);
-        LODOP.PRINT_INIT('');
-
-        return papers;
-      } catch (e) {
-        console.error('备选方案也失败:', e);
-        document.body.removeChild(selectElement);
-        LODOP.PRINT_INIT('');
-        return [];
-      }
-    }
+    } catch (error) {}
   } catch (error) {
     console.error('获取纸张列表失败:', error);
     return [];
@@ -341,7 +385,7 @@ const getPaperList = (printerName: string) => {
 // 刷新纸张列表
 const refreshPapers = async () => {
   if (!selectedPrinter.value) {
-    ElMessage.warning('请先选择打印机');
+    proxy.$modal.msgWarning('请先选择打印机');
     return;
   }
 
@@ -353,19 +397,10 @@ const refreshPapers = async () => {
       selectedPaper.value = papers[0].value;
     }
   }
-
-  ElMessage.success(`已找到 ${papers.length} 种纸张类型`);
-};
-
-// 刷新所有设置
-const refreshAllSettings = () => {
-  refreshPrinterList();
-  refreshPapers();
 };
 
 // 打印机变更事件
 const onPrinterChange = () => {
-  // 可以在这里获取打印机信息
   refreshPapers(); // 打印机变更时自动刷新纸张列表
 };
 
@@ -374,6 +409,25 @@ const onPaperChange = () => {
   // 可以在这里处理纸张变更逻辑
   console.log('纸张已更改:', selectedPaper.value);
 };
+
+/**
+ * JsBarcode("#barcode", "123", {
+ *   format: "CODE39",//选择要使用的条形码类型
+ *   width:3,//设置条之间的宽度
+ *   height:100,//高度
+ *   displayValue:true,//是否在条形码下方显示文字
+ *   text:"456",//覆盖显示的文本
+ *   fontOptions:"bold italic",//使文字加粗体或变斜体
+ *   font:"fantasy",//设置文本的字体
+ *   textAlign:"left",//设置文本的水平对齐方式
+ *   textPosition:"top",//设置文本的垂直位置
+ *   textMargin:5,//设置条形码和文本之间的间距
+ *   fontSize:15,//设置文本的大小
+ *   background:"#eee",//设置条形码的背景
+ *   lineColor:"#2196f3",//设置条和文本的颜色。
+ *   margin:15//设置条形码周围的空白边距
+ * });
+ */
 
 // 生成条形码
 const generateBarcode = () => {
@@ -397,10 +451,11 @@ const generateBarcode = () => {
 
 // 生成69码
 const generateSixtyNineBarcode = () => {
-  const content = workOrderInfo.value.sixtyNineSn;
-  if (!content || !sixtyNineBarcodeSvg.value) return;
-
+  const content = workOrderInfo.value.ean;
   sixtyNineBarcodeSvg.value.innerHTML = '';
+  if (!content || !sixtyNineBarcodeSvg.value) {
+    return;
+  }
   try {
     JsBarcode(sixtyNineBarcodeSvg.value, content, {
       format: 'EAN13',
@@ -416,15 +471,6 @@ const generateSixtyNineBarcode = () => {
   }
 };
 
-// 显示工单选择对话框
-const showWorkOrderDialog = () => {
-  workOrderDialogRef.value?.openDialog();
-};
-
-const workOrderCallBack = (workOrderNoInfo: any) => {
-  workOrderInfo.value.workOrderNo = workOrderNoInfo;
-};
-
 // 处理扫描输入回车事件
 const handleScanEnter = async () => {
   if (!scanInput.value.trim()) return;
@@ -432,10 +478,22 @@ const handleScanEnter = async () => {
   workOrderInfo.value.sfcContent = scanInput.value.trim();
   scanInput.value = '';
 
+  // 添加到扫描历史
+  const now = new Date();
+  const timeString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+  scanHistory.value.unshift({
+    content: workOrderInfo.value.sfcContent,
+    time: timeString
+  });
+
+  // 限制历史记录数量为10条
+  if (scanHistory.value.length > 5) {
+    scanHistory.value = scanHistory.value.slice(0, 5);
+  }
+
   await nextTick();
-  generateBarcode();
-  generateSixtyNineBarcode();
-  ElMessage.success('条码已更新');
+  await generateBarcode();
+  await handlePrint();
 };
 
 // 模拟扫描
@@ -447,40 +505,25 @@ const simulateScan = () => {
   handleScanEnter();
 };
 
-// 关闭内嵌预览
-const closeEmbedPreview = () => {
-  const previewContainer = document.getElementById('preview-container');
-  if (previewContainer) {
-    previewContainer.style.display = 'none';
-  }
-};
-
 // 打印预览
 const handlePrintPreview = async () => {
   const LODOP = getLodop();
   if (!LODOP) {
-    ElMessage.error('未检测到Lodop打印服务，请安装Lodop插件');
+    proxy.$modal.msgError('未检测到Lodop打印服务，请安装Lodop插件');
     return;
   }
 
   if (!selectedPrinter.value) {
-    ElMessage.error('请先选择打印机');
+    proxy.$modal.msgError('请先选择打印机');
     return;
   }
 
   if (!workOrderInfo.value.sfcContent) {
-    ElMessage.error('请先输入序列号或扫描条码');
-    return;
-  }
-
-  const valid = await settingFormRef.value?.validate().catch(() => false);
-  if (!valid) {
-    ElMessage.error('请填写工单号码');
+    proxy.$modal.msgError('请先输入序列号或扫描条码');
     return;
   }
 
   printing.value = true;
-
   try {
     // 生成条形码
     await nextTick();
@@ -496,7 +539,7 @@ const handlePrintPreview = async () => {
     });
 
     // 初始化打印任务
-    LODOP.PRINT_INIT('MI标签打印');
+    LODOP.PRINT_INIT('MI即扫即打');
 
     // 设置打印机
     LODOP.SET_PRINTER_INDEX(selectedPrinter.value);
@@ -519,17 +562,19 @@ const handlePrintPreview = async () => {
 
     // 参考lodop样例设置预览窗口，使用更大更合适的预览窗口
     // LODOP.SET_SHOW_MODE('LANDSCAPE_DEF_ROTATED', true); // 设置横向打印默认旋转
-
+    // 打印后自动关闭预览
+    LODOP.SET_PRINT_MODE('AUTO_CLOSE_PREWINDOW', 1);
     // 设置预览窗口大小为800x600
     LODOP.SET_PREVIEW_WINDOW(1, 0, 1, 800, 600, '打印预览');
+    // 去除背景滚动线
+    LODOP.SET_SHOW_MODE('HIDE_PAPER_BOARD', 1);
     //按原图比例(不变形)缩放模式
     LODOP.SET_PRINT_STYLEA(0, 'Stretch', 2);
     // 显示预览
     LODOP.PREVIEW();
-    ElMessage.success('打印预览已打开');
+    proxy.$modal.msgSuccess('打印预览已打开');
   } catch (error: any) {
-    console.error('打印预览失败:', error);
-    ElMessage.error('打印预览失败: ' + error.message);
+    proxy.$modal.msgError('打印预览失败: ' + (error as Error).message);
   } finally {
     printing.value = false;
   }
@@ -539,33 +584,37 @@ const handlePrintPreview = async () => {
 const handlePrint = async () => {
   const LODOP = getLodop();
   if (!LODOP) {
-    ElMessage.error('未检测到Lodop打印服务，请安装Lodop插件');
+    proxy.$modal.msgError('未检测到Lodop打印服务，请安装Lodop插件');
     return;
   }
 
   if (!selectedPrinter.value) {
-    ElMessage.error('请先选择打印机');
+    proxy.$modal.msgError('请先选择打印机');
     return;
   }
 
   if (!workOrderInfo.value.sfcContent) {
-    ElMessage.error('请先输入序列号或扫描条码');
+    proxy.$modal.msgError('请先输入序列号或扫描条码');
     return;
   }
-
-  const valid = await settingFormRef.value?.validate().catch(() => false);
-  if (!valid) {
-    ElMessage.error('请填写工单号码');
-    return;
-  }
-
   printing.value = true;
-
+  const res = await savePrintHistory({
+    shopOrderSfcBoList: [
+      {
+        shopOrder: workOrderInfo.value.shopOrder,
+        sfc: workOrderInfo.value.sfcContent
+      }
+    ],
+    printType: 2
+  });
+  if (res.code !== HttpStatus.SUCCESS) {
+    printLoading.value = false;
+    return;
+  }
   try {
     // 生成条形码
-    await nextTick();
-    generateBarcode();
-    generateSixtyNineBarcode();
+    // await nextTick();
+    // generateBarcode();
 
     // 生成截图
     const canvas = await html2canvas(printContent.value!, {
@@ -591,7 +640,10 @@ const handlePrint = async () => {
 
     // 添加打印内容
     for (let i = 0; i < copies.value; i++) {
+      // 添加打印内容
       LODOP.ADD_PRINT_IMAGE(0, 0, '100%', '100%', canvas.toDataURL('image/png'));
+      //按原图比例(不变形)缩放模式
+      LODOP.SET_PRINT_STYLEA(0, 'Stretch', 2);
       if (i < copies.value - 1) {
         LODOP.NEWPAGE();
       }
@@ -600,10 +652,9 @@ const handlePrint = async () => {
     // 直接打印
     LODOP.PRINT();
 
-    ElMessage.success('打印任务已发送');
+    proxy.$modal.msgSuccess('打印任务已发送');
   } catch (error: any) {
-    console.error('打印失败:', error);
-    ElMessage.error('打印失败: ' + error.message);
+    proxy.$modal.msgError('打印失败: ' + (error as Error).message);
   } finally {
     printing.value = false;
   }
@@ -624,10 +675,9 @@ const exportLabel = async () => {
     link.href = canvas.toDataURL('image/png');
     link.click();
 
-    ElMessage.success('标签已导出');
+    proxy.$modal.msgSuccess('标签已导出');
   } catch (error) {
-    console.error('导出失败:', error);
-    ElMessage.error('导出失败');
+    proxy.$modal.msgError('导出失败:' + +(error as Error).message);
   }
 };
 
@@ -652,18 +702,6 @@ onMounted(() => {
     scanInputRef.value?.focus();
   });
 });
-
-// 监听工单信息变化
-watch(
-  workOrderInfo,
-  () => {
-    nextTick(() => {
-      generateBarcode();
-      generateSixtyNineBarcode();
-    });
-  },
-  { deep: true }
-);
 </script>
 <style scoped>
 .print-container {
@@ -680,19 +718,6 @@ watch(
   padding: 10px;
   overflow-y: auto;
   height: 100%;
-}
-
-.quick-settings {
-  margin-bottom: 20px;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 5px;
 }
 
 .card-header span {
@@ -721,10 +746,6 @@ watch(
   font-size: 12px;
   padding: 2px 6px;
   border-radius: 3px;
-}
-
-.action-buttons {
-  margin-top: 20px;
 }
 
 .preview-area {
@@ -768,18 +789,6 @@ watch(
   color: #333;
 }
 
-.status-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
-:deep(.el-tag) {
-  height: 24px;
-  line-height: 22px;
-  font-size: 12px;
-}
-
 .header-right {
   display: flex;
   align-items: center;
@@ -789,7 +798,6 @@ watch(
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 20px;
   background-color: #f8f9fa;
 }
 
@@ -797,10 +805,18 @@ watch(
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: white;
+  background: #ffffff;
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   padding: 20px;
+}
+
+.preview-main-history-container {
+  display: flex;
+  flex: 1;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
 }
 
 .preview-wrapper {
@@ -808,9 +824,7 @@ watch(
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: transform 0.3s ease;
   padding: 20px;
-  overflow: auto;
   background:
     linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
     linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
@@ -822,6 +836,61 @@ watch(
     -10px 0px;
 }
 
+.scan-history-panel {
+  width: 300px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+.history-header {
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+  background-color: #fafbfc;
+}
+.history-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.history-item {
+  padding: 10px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.history-item:hover {
+  background-color: #f5f7fa;
+}
+
+.history-content {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+
+.history-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.no-history {
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  padding: 20px 0;
+}
 .preview-info {
   margin-top: 20px;
   padding: 20px;
@@ -950,149 +1019,11 @@ watch(
   line-height: 3mm;
 }
 
-/* 内嵌预览容器 */
-#preview-container {
-  z-index: 9999;
-}
-
-/* 响应式设计 */
-@media (max-width: 1200px) {
-  .print-container {
-    padding: 5px;
-  }
-
-  .sidebar {
-    width: 280px !important;
-  }
-
-  .preview-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .header-right {
-    width: 100%;
-  }
-
-  .action-buttons {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 768px) {
-  .print-container {
-    height: calc(100vh - 80px);
-  }
-
-  :deep(.el-container) {
-    flex-direction: column;
-  }
-
-  .sidebar {
-    width: 100% !important;
-    height: auto !important;
-    border-right: none;
-    border-bottom: 1px solid #e6e6e6;
-  }
-
-  .preview-area {
-    padding: 5px;
-  }
-
-  .preview-content {
-    padding: 10px;
-  }
-
-  .preview-wrapper {
-    padding: 10px;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .action-buttons .el-button {
-    width: 100%;
-    margin-bottom: 5px;
-  }
-}
-
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
-
-/* 输入框焦点样式 */
-:deep(.el-input__inner:focus),
-:deep(.el-textarea__inner:focus) {
-  border-color: #409eff;
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
-}
-
-/* 按钮hover效果 */
-:deep(.el-button:not(.is-disabled)) {
-  transition: all 0.3s ease;
-}
-
-:deep(.el-button:not(.is-disabled):hover) {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-/* 卡片hover效果 */
-.el-card {
-  transition: all 0.3s ease;
-}
-
-.el-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-/* 标签样式增强 */
-.el-tag {
-  transition: all 0.3s ease;
-}
-
-.el-tag:hover {
-  opacity: 0.9;
-}
-
-/* 表单验证错误样式 */
-:deep(.el-form-item.is-error .el-input__inner),
-:deep(.el-form-item.is-error .el-textarea__inner) {
-  border-color: #f56c6c;
-}
-
-:deep(.el-form-item__error) {
-  color: #f56c6c;
-  font-size: 12px;
-  line-height: 1;
-  padding-top: 4px;
-}
-
 /* 屏幕显示时放大200% */
 @media screen {
   .mi-print-sn-template {
     transform: scale(2);
-    transform-origin: top center;
+    /*    transform-origin: top center;*/
   }
 }
 </style>
