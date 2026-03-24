@@ -60,16 +60,33 @@ NEW_FILE_CODE
             <div class="search-result">
               <el-table ref="inventoryTableRef" :data="palletInventoryList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="55" align="center" />
-                <el-table-column v-if="columns[0].visible" label="栈板编号" align="left" prop="palletCode" fixed="left" min-width="120" />
-                <el-table-column v-if="columns[1].visible" label="工单号" align="left" prop="workOrderNo" fixed="left" min-width="130" />
-                <el-table-column v-if="columns[2].visible" label="物料编码" align="left" prop="itemCode" fixed="left" min-width="160" />
-                <el-table-column v-if="columns[3].visible" label="物料名称" align="left" prop="itemName" max-width="150" fixed="left" show-overflow-tooltip />
-                <el-table-column v-if="columns[4].visible" label="批次号" align="center" prop="batchCode" min-width="110" />
-                <el-table-column v-if="columns[5].visible" label="可用数量" align="center" prop="availableQuantity" fixed="left" min-width="90" />
-                <el-table-column v-if="columns[6].visible" label="单位" align="center" prop="unit" />
-                <el-table-column v-if="columns[7].visible" label="仓库编码" align="center" prop="warehouseCode" />
-                <el-table-column v-if="columns[8].visible" label="库区编码" align="center" prop="areaCode" />
-                <el-table-column v-if="columns[9].visible" label="库位编码" align="center" prop="locationCode" fixed="right" />
+                <el-table-column v-if="columns[0].visible" label="栈板编号" align="center" prop="palletCode" fixed="left" />
+                <el-table-column v-if="columns[1].visible" label="工单号" align="center" prop="workOrderNo" fixed="left" />
+                <el-table-column v-if="columns[2].visible" label="物料编码" align="left" prop="itemCode" />
+                <el-table-column v-if="columns[3].visible" label="物料名称" align="center" prop="itemName" max-width="200" show-overflow-tooltip />
+                <el-table-column v-if="columns[4].visible" label="下制程" align="center" prop="nextStepOrderNo">
+                  <template #default="scope">
+                    <span>{{ scope.row.nextStepOrderNo || '-' }} {{ scope.row.nextStepWorkCenter || '' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column v-if="columns[5].visible" label="下制程单位" align="center" prop="nextStepOrderNo">
+                  <template #default="scope">
+                    <span>{{ scope.row.nextStepOrderNo ? scope.row.nextStepDeptName : '-' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column v-if="columns[6].visible" label="非限制数量" align="center" prop="availableQuantity" min-width="90" />
+                <el-table-column v-if="columns[7].visible" label="质检数量" align="center" prop="inspectionQuantity" />
+                <el-table-column v-if="columns[8].visible" label="冻结数量" align="center" prop="blockedQuantity" />
+                <el-table-column v-if="columns[9].visible" label="单位" align="center" prop="unit" />
+                <el-table-column v-if="columns[10].visible" label="仓库编码" align="center" prop="warehouseCode" />
+                <el-table-column v-if="columns[11].visible" label="库区编码" align="center" prop="areaCode" />
+                <el-table-column v-if="columns[12].visible" label="库位编码" align="center" prop="locationCode" />
+                <el-table-column v-if="columns[13].visible" label="物料标识卡" align="center" prop="materialSn" min-width="120" />
+                <el-table-column v-if="columns[14].visible" label="批次号" align="center" prop="batchCode" />
+                <el-table-column v-if="columns[15].visible" label="凭证年度" align="center" prop="materialDocYear" />
+                <el-table-column v-if="columns[16].visible" label="物料凭证号" align="center" prop="materialOrderNo" />
+                <el-table-column v-if="columns[17].visible" label="文件项次" align="center" prop="materialItem" />
+                <el-table-column v-if="columns[18].visible" label="备注" align="center" prop="remark" />
               </el-table>
 
               <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
@@ -305,16 +322,25 @@ const { queryParams, form, rules } = toRefs(data);
 
 // 列显隐信息
 const columns = ref<FieldOption[]>([
-  { key: 0, label: `栈板编号`, visible: true, children: [] },
-  { key: 1, label: `工单号`, visible: true, children: [] },
-  { key: 2, label: `物料编码`, visible: true, children: [] },
-  { key: 3, label: `物料名称`, visible: true, children: [] },
-  { key: 4, label: `批次号`, visible: true, children: [] },
-  { key: 5, label: `可用数量`, visible: true, children: [] },
-  { key: 6, label: `单位`, visible: true, children: [] },
-  { key: 7, label: `仓库编码`, visible: false, children: [] },
-  { key: 8, label: `库区编码`, visible: false, children: [] },
-  { key: 9, label: `库位编码`, visible: true, children: [] }
+  { key: 1, label: '栈板编号', visible: true },
+  { key: 2, label: '工单号', visible: true },
+  { key: 3, label: '物料编码', visible: true },
+  { key: 4, label: '物料名称', visible: true },
+  { key: 5, label: '下制程', visible: true },
+  { key: 6, label: '下制程单位', visible: true },
+  { key: 7, label: '非限制数量', visible: true },
+  { key: 8, label: '质检数量', visible: false },
+  { key: 9, label: '冻结数量', visible: false },
+  { key: 10, label: '单位', visible: true },
+  { key: 11, label: '仓库编码', visible: false },
+  { key: 12, label: '库区编码', visible: false },
+  { key: 13, label: '库位编码', visible: true },
+  { key: 14, label: '物料标识卡', visible: false },
+  { key: 15, label: '批次号', visible: false },
+  { key: 16, label: '凭证年度', visible: false },
+  { key: 17, label: '物料凭证号', visible: false },
+  { key: 18, label: '文件项次', visible: false },
+  { key: 19, label: '备注', visible: false }
 ]);
 
 /** 切换高级搜索显示状态 */

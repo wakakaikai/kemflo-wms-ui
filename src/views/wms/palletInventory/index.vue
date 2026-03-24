@@ -19,26 +19,8 @@
             <el-form-item label="物料编码" prop="itemCode">
               <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="物料名称" prop="itemName">
-              <el-input v-model="queryParams.itemName" placeholder="请输入物料名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="库存类型" prop="inventoryType">
-              <el-select v-model="queryParams.inventoryType" placeholder="请选择库存类型" clearable>
-                <el-option v-for="dict in wms_inventory_type" :key="dict.value" :label="dict.label" :value="dict.value" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="库存状态" prop="inventoryStatus">
-              <el-select v-model="queryParams.inventoryStatus" placeholder="请选择库存状态" clearable>
-                <el-option v-for="dict in wms_inventory_status" :key="dict.value" :label="dict.label" :value="dict.value" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="入库状态" prop="stockInStatus">
-              <el-select v-model="queryParams.stockInStatus" placeholder="请选择入库状态" clearable>
-                <el-option v-for="dict in wms_stock_in_status" :key="dict.value" :label="dict.label" :value="dict.value" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="凭证年度" prop="materialDocYear">
-              <el-input v-model="queryParams.materialDocYear" placeholder="请输入凭证年度" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="仓库编码" prop="warehouseCode">
+              <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="物料凭证号" prop="materialOrderNo">
               <el-input v-model="queryParams.materialOrderNo" placeholder="请输入物料凭证号" clearable @keyup.enter="handleQuery" />
@@ -67,53 +49,39 @@
           <el-col :span="1.5">
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:palletInventory:export']">导出</el-button>
           </el-col>
-          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
         </el-row>
       </template>
 
       <el-table v-loading="loading" :data="palletInventoryList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <!--        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />-->
-        <el-table-column label="栈板编号" align="center" prop="palletCode" fixed="left" min-width="150" />
-        <el-table-column label="工单号" align="center" prop="workOrderNo" fixed="left" />
-        <el-table-column label="物料标识卡" align="center" prop="materialSn" fixed="left" min-width="120" />
-        <el-table-column label="批次号" align="center" prop="batchCode" />
-        <el-table-column label="非限制数量" align="center" prop="availableQuantity" min-width="90" />
-        <el-table-column label="质检数量" align="center" prop="inspectionQuantity" />
-        <el-table-column label="冻结数量" align="center" prop="blockedQuantity" />
-        <!--        <el-table-column label="数量-报废" align="center" prop="scrappedQuantity" />-->
-        <el-table-column label="单位" align="center" prop="unit" />
-        <el-table-column label="物料编码" align="center" prop="itemCode" min-width="150" />
-        <el-table-column label="物料名称" align="center" prop="itemName" max-width="200" show-overflow-tooltip />
-        <el-table-column label="库存类型" align="center" prop="inventoryType">
+        <el-table-column v-if="columns[0].visible" label="栈板编号" align="center" prop="palletCode" fixed="left" />
+        <el-table-column v-if="columns[1].visible" label="工单号" align="center" prop="workOrderNo" fixed="left" />
+        <el-table-column v-if="columns[2].visible" label="物料编码" align="left" prop="itemCode" />
+        <el-table-column v-if="columns[3].visible" label="物料名称" align="center" prop="itemName" max-width="200" show-overflow-tooltip />
+        <el-table-column v-if="columns[4].visible" label="下制程" align="center" prop="nextStepOrderNo">
           <template #default="scope">
-            <dict-tag :options="wms_inventory_type" :value="scope.row.inventoryType" />
+            <span>{{ scope.row.nextStepOrderNo || '-' }} {{ scope.row.nextStepWorkCenter || '' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="库存状态" align="center" prop="inventoryStatus">
+        <el-table-column v-if="columns[5].visible" label="下制程单位" align="center" prop="nextStepOrderNo">
           <template #default="scope">
-            <dict-tag :options="wms_inventory_status" :value="scope.row.inventoryStatus" />
+            <span>{{ scope.row.nextStepOrderNo ? scope.row.nextStepDeptName : '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="入库状态" align="center" prop="stockInStatus">
-          <template #default="scope">
-            <dict-tag :options="wms_stock_in_status" :value="scope.row.stockInStatus" />
-          </template>
-        </el-table-column>
-        <el-table-column label="凭证年度" align="center" prop="materialDocYear" />
-        <el-table-column label="物料凭证号" align="center" prop="materialOrderNo" />
-        <el-table-column label="物料文件项次" align="center" prop="materialItem" />
-        <el-table-column label="生产日期" align="center" prop="productDate" width="180">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.productDate, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="失效日期" align="center" prop="expireDate" width="180">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.expireDate, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="备注" align="center" prop="remark" />
+        <el-table-column v-if="columns[6].visible" label="非限制数量" align="center" prop="availableQuantity" min-width="90" />
+        <el-table-column v-if="columns[7].visible" label="质检数量" align="center" prop="inspectionQuantity" />
+        <el-table-column v-if="columns[8].visible" label="冻结数量" align="center" prop="blockedQuantity" />
+        <el-table-column v-if="columns[9].visible" label="单位" align="center" prop="unit" />
+        <el-table-column v-if="columns[10].visible" label="仓库编码" align="center" prop="warehouseCode" />
+        <el-table-column v-if="columns[11].visible" label="库区编码" align="center" prop="areaCode" />
+        <el-table-column v-if="columns[12].visible" label="库位编码" align="center" prop="locationCode" />
+        <el-table-column v-if="columns[13].visible" label="物料标识卡" align="center" prop="materialSn" min-width="120" />
+        <el-table-column v-if="columns[14].visible" label="批次号" align="center" prop="batchCode" />
+        <el-table-column v-if="columns[15].visible" label="凭证年度" align="center" prop="materialDocYear" />
+        <el-table-column v-if="columns[16].visible" label="物料凭证号" align="center" prop="materialOrderNo" />
+        <el-table-column v-if="columns[17].visible" label="文件项次" align="center" prop="materialItem" />
+        <el-table-column v-if="columns[18].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -130,7 +98,7 @@
     </el-card>
     <!-- 添加或修改栈板库存明细对话框 -->
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" append-to-body>
-      <el-form ref="palletInventoryFormRef" :model="form" :rules="rules" label-width="80px">
+      <el-form ref="palletInventoryFormRef" :model="form" :rules="rules" label-width="auto">
         <el-form-item label="栈板编号" prop="palletCode">
           <el-input v-model="form.palletCode" placeholder="请输入栈板编号" />
         </el-form-item>
@@ -167,16 +135,6 @@
         <el-form-item label="库存类型" prop="inventoryType">
           <el-select v-model="form.inventoryType" placeholder="请选择库存类型">
             <el-option v-for="dict in wms_inventory_type" :key="dict.value" :label="dict.label" :value="dict.value"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="库存状态" prop="inventoryStatus">
-          <el-select v-model="form.inventoryStatus" placeholder="请选择库存状态">
-            <el-option v-for="dict in wms_inventory_status" :key="dict.value" :label="dict.label" :value="parseInt(dict.value)"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="入库状态" prop="stockInStatus">
-          <el-select v-model="form.stockInStatus" placeholder="请选择入库状态">
-            <el-option v-for="dict in wms_stock_in_status" :key="dict.value" :label="dict.label" :value="parseInt(dict.value)"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="凭证年度" prop="materialDocYear">
@@ -308,11 +266,36 @@ const data = reactive<PageData<PalletInventoryForm, PalletInventoryQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 
+const columns = ref<TableColumns[]>([
+  { key: 1, label: '栈板编号', visible: true },
+  { key: 2, label: '工单号', visible: true },
+  { key: 3, label: '物料编码', visible: true },
+  { key: 4, label: '物料名称', visible: true },
+  { key: 5, label: '下制程', visible: true },
+  { key: 6, label: '下制程单位', visible: true },
+  { key: 7, label: '非限制数量', visible: true },
+  { key: 8, label: '质检数量', visible: false },
+  { key: 9, label: '冻结数量', visible: false },
+  { key: 10, label: '单位', visible: true },
+  { key: 11, label: '仓库编码', visible: false },
+  { key: 12, label: '库区编码', visible: false },
+  { key: 13, label: '库位编码', visible: true },
+  { key: 14, label: '物料标识卡', visible: false },
+  { key: 15, label: '批次号', visible: false },
+  { key: 16, label: '凭证年度', visible: false },
+  { key: 17, label: '物料凭证号', visible: false },
+  { key: 18, label: '文件项次', visible: false },
+  { key: 19, label: '备注', visible: false }
+]);
+
 /** 查询栈板库存明细列表 */
 const getList = async () => {
   loading.value = true;
   const res = await listPalletInventory(queryParams.value);
   palletInventoryList.value = res.rows;
+  res.rows.forEach((item) => {
+    item.workOrderNo = item.sourceDocCode;
+  });
   total.value = res.total;
   loading.value = false;
 };

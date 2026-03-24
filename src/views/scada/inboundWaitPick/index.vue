@@ -7,7 +7,7 @@
       </div>
       <div class="header-center">
         <h2>入库待拣看板</h2>
-        <!--        <el-tag type="info" class="header-tag">暂存区</el-tag>-->
+<!--        <el-tag type="info" class="header-tag">{{ settingsForm.warehouseCode }}</el-tag>-->
       </div>
       <div class="header-right">
         <div class="current-time">{{ currentDateTime }}</div>
@@ -228,7 +228,7 @@
     <div class="station-middle">
       <el-card class="box-card" shadow="never">
         <div class="card-header">
-          <div class="card-title">库存清单</div>
+          <div class="card-title">栈板库存清单</div>
         </div>
         <div class="scroll-table-container">
           <!-- 固定表头 -->
@@ -253,12 +253,20 @@
           <div class="scroll-wrapper layout-desktop">
             <div class="scroll-container">
               <!-- 无数据提示 -->
-              <div v-if="filteredTableData.length === 0" class="no-data">暂无数据</div>
+              <div v-if="filteredTableData.length == 0" class="no-data">暂无数据</div>
 
               <!-- 无缝滚动表格 -->
-              <Vue3SeamlessScroll v-else :list="filteredTableData" :visibleCount="10" :hover="true" :step="stepVal" :wheel="true" ref="seamlessScrollRef" v-if="showScroll">
+              <Vue3SeamlessScroll
+                :list="filteredTableData"
+                :visibleCount="settingsForm.displayLimit"
+                :hover="true"
+                :step="stepVal"
+                :wheel="true"
+                ref="seamlessScrollRef"
+                v-if="showScroll && filteredTableData.length > 0"
+              >
                 <template v-slot="{ data }">
-                  <div class="seamless-item">
+                  <div class="seamless-item" :key="data.id">
                     <div class="item-row" :class="tableRowClassName({ row: data })">
                       <div class="item-cell work-order">
                         <span class="cell-content">{{ data.workOrder }}</span>
@@ -283,8 +291,8 @@
                       </div>
 
                       <div class="item-cell reserved-status">
-                        <div class="status-badge" :class="data.isReserved ? 'status-reserved' : 'status-unreserved'">
-                          {{ data.isReserved ? '已预约' : '未预约' }}
+                        <div class="status-badge" :class="data.status ? 'status-reserved' : 'status-unreserved'">
+                          {{ data.status === 1 ? '已预约' : '未预约' }}
                         </div>
                       </div>
                       <div class="item-cell material-operator">{{ data.reservedName || '-' }}</div>
@@ -306,40 +314,34 @@
       <div class="settings-content">
         <el-form :model="settingsForm" label-width="120px">
           <el-form-item label="显示数量">
-            <el-slider v-model="settingsForm.displayLimit" :min="1" :max="50" :step="1" show-input @change="saveSettings" />
+            <el-slider v-model="settingsForm.displayLimit" :min="1" :max="50" :step="1" show-input />
             <div class="setting-tip">设置表格同时显示的数据条数</div>
           </el-form-item>
-
           <el-form-item label="滚动速度">
-            <el-slider v-model="settingsForm.scrollSpeed" :min="0.1" :max="2" :step="0.1" show-input @change="saveSettings" />
+            <el-slider v-model="settingsForm.scrollSpeed" :min="0.1" :max="2" :step="0.1" show-input />
             <div class="setting-tip">数值越大滚动越快</div>
           </el-form-item>
-
-          <el-form-item label="启用滚动">
-            <el-switch v-model="settingsForm.enableScroll" @change="saveSettings" />
-          </el-form-item>
-
-          <el-form-item label="自动刷新">
-            <el-switch v-model="settingsForm.autoRefresh" @change="saveSettings" />
-          </el-form-item>
-
           <el-form-item label="刷新间隔" v-if="settingsForm.autoRefresh">
-            <el-input-number v-model="settingsForm.refreshInterval" :min="10" :max="300" :step="10" @change="saveSettings">
+            <el-input-number v-model="settingsForm.refreshInterval" :min="30" :max="300" :step="5">
               <template #suffix>
                 <span>秒</span>
               </template>
             </el-input-number>
           </el-form-item>
-
           <el-form-item label="仓库">
-            <el-input v-model="settingsForm.warehouseCode" placeholder="请输入仓库代码" clearable style="width: 100%" @change="saveSettings" />
+            <el-input v-model="settingsForm.warehouseCode" placeholder="请输入仓库代码" clearable style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="下一制程">
+            <el-select v-model="settingsForm.selectedProcess" placeholder="请选择下一制程" multiple style="width: 100%">
+              <el-option v-for="process in processOptions" :key="process.value" :label="process.label" :value="process.value" />
+            </el-select>
           </el-form-item>
         </el-form>
       </div>
 
       <template #footer>
-        <el-button @click="showSettings = false">关闭</el-button>
-        <el-button type="primary" @click="resetSettings">恢复默认</el-button>
+        <el-button @click="showSettings = false">取消</el-button>
+        <el-button type="primary" @click="saveSettings">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -347,12 +349,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue';
-import { dayjs, ElMessage, ElMessageBox } from 'element-plus';
-import { Refresh } from '@element-plus/icons-vue';
+import { dayjs } from 'element-plus';
 import { Vue3SeamlessScroll } from 'vue3-seamless-scroll';
-import moment from 'moment';
 import { queryPendingPickingList } from '@/api/wms/scada';
-
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 // 类型定义
 interface InboundItem {
   id: string;
@@ -372,7 +372,7 @@ interface InboundItem {
 }
 
 interface SettingsForm {
-  selectedProcess: string;
+  selectedProcess: string[];
   warehouseCode: string;
   refreshInterval: number;
   autoRefresh: boolean;
@@ -383,7 +383,6 @@ interface SettingsForm {
 
 // 响应式数据
 const tableData = ref<InboundItem[]>([]);
-const selectedRows = ref<InboundItem[]>([]);
 const showSettings = ref(false);
 const currentDateTime = ref('');
 const boardRef = ref(null);
@@ -405,65 +404,37 @@ const deptStatsList = ref<
 
 // 设置表单
 const settingsForm = reactive<SettingsForm>({
-  selectedProcess: '',
+  selectedProcess: ['SCL', 'YSJ', 'LX', 'PP', 'CN10', 'OTHER'],
   warehouseCode: 'KB10',
   refreshInterval: 30,
   autoRefresh: true,
   enableScroll: true,
-  scrollSpeed: 0.5,
-  displayLimit: 15
+  scrollSpeed: 1,
+  displayLimit: 30
 });
 
 // 制程选项
 const processOptions = [
-  { label: '水处理装配', value: '水处理装配' },
-  { label: '饮水机', value: '饮水机' },
-  { label: '滤芯', value: '滤芯' },
+  { label: '水处理', value: 'SCL' },
+  { label: '饮水机', value: 'YSJ' },
+  { label: '滤芯', value: 'LX' },
   { label: 'PP', value: 'PP' },
-  { label: '空', value: '空' }
+  { label: '出精密', value: 'CN10' },
+  { label: '其他', value: 'OTHER' }
 ];
 
 const stepVal = ref(1);
 const showScroll = ref(true);
 
-// 滚动配置
-// const scrollOption = computed(() => {
-//   return {
-//     step: stepVal.value,
-//     hoverStop: true,
-//     direction: 1,
-//     limitMoveNum: settingsForm.displayLimit,
-//     switchOffset: 30,
-//     autoPlay: settingsForm.enableScroll,
-//     navigation: false,
-//     singleHeight: 0,
-//     singleWaitTime: 0,
-//     isRem: false,
-//     waitTime: 0
-//   };
-// });
-
-const scrollOption = computed(() => ({
-  step: stepVal.value,
-  hoverStop: true,
-  direction: 1,
-  limitMoveNum: 3, // ⚠️ 固定写死先测试
-  autoPlay: settingsForm.enableScroll,
-  singleHeight: 0,
-  singleWaitTime: 0
-}));
-
-// 显示限制
-const displayLimit = computed(() => settingsForm.displayLimit);
-
 // 计算属性
 const filteredTableData = computed(() => {
-  // return tableData.value.filter((item) => {
-  //   if (item.picked || item.transferredToAuto) return false;
-  //   if (settingsForm.selectedProcess && item.nextProcess !== settingsForm.selectedProcess) return false;
-  //   return true;
-  // });
-  return tableData.value;
+  if (!settingsForm.selectedProcess || settingsForm.selectedProcess.length === 0) {
+    return tableData.value;
+  }
+  return tableData.value.filter((item) => {
+    return settingsForm.selectedProcess.includes(item.nextStepDeptCode);
+  });
+  // return tableData.value;
 });
 
 // 统计数据
@@ -616,7 +587,7 @@ const updateDateTime = () => {
 // 全屏切换
 const toggleFullscreen = () => {
   if (!document.fullscreenEnabled) {
-    ElMessage.warning('浏览器不支持全屏');
+    proxy.$modal.msgWarning('浏览器不支持全屏');
     return;
   }
   if (!isFullscreen.value) {
@@ -643,7 +614,8 @@ const handleRefresh = () => {
 // 保存设置
 const saveSettings = () => {
   localStorage.setItem('inboundWaitPickSettings', JSON.stringify(settingsForm));
-  ElMessage.success('设置已保存');
+  proxy.$modal.msgSuccess('设置成功');
+  showSettings.value = false;
 
   stepVal.value = settingsForm.scrollSpeed;
 
@@ -656,31 +628,19 @@ const saveSettings = () => {
   }
 };
 
-// 恢复默认设置
-const resetSettings = () => {
-  Object.assign(settingsForm, {
-    selectedProcess: '',
-    refreshInterval: 30,
-    autoRefresh: true,
-    enableScroll: true,
-    scrollSpeed: 0.5,
-    displayLimit: 15
-  });
-  saveSettings();
-  showSettings.value = false;
-};
-
 let timer: number | null = null;
 let refreshTimer: number | null = null;
 
 // 组件挂载
 onMounted(() => {
   updateDateTime();
-  timer = window.setInterval(updateDateTime, 10000);
+  timer = window.setInterval(updateDateTime, 1000);
 
   const savedSettings = localStorage.getItem('inboundWaitPickSettings');
   if (savedSettings) {
     Object.assign(settingsForm, JSON.parse(savedSettings));
+  } else {
+    saveSettings();
   }
 
   loadData();
@@ -691,20 +651,6 @@ onMounted(() => {
     refreshTimer = window.setInterval(handleRefresh, settingsForm.refreshInterval * 1000);
   }
 });
-
-// 监听自动刷新设置
-watch(
-  () => settingsForm.autoRefresh,
-  (newVal) => {
-    if (refreshTimer) {
-      clearInterval(refreshTimer);
-      refreshTimer = null;
-    }
-    if (newVal) {
-      refreshTimer = window.setInterval(handleRefresh, settingsForm.refreshInterval * 1000);
-    }
-  }
-);
 
 // 监听刷新间隔变化
 watch(
@@ -756,7 +702,6 @@ onUnmounted(() => {
   background: rgba(16, 13, 68, 0.8);
   border-radius: 12px;
   padding: 0;
-  margin-bottom: 5px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(100, 100, 255, 0.2);
   cursor: pointer;
@@ -828,7 +773,7 @@ onUnmounted(() => {
 /* ==================== 统计卡片区域 ==================== */
 .station-top {
   flex: 0 0 auto;
-  padding: 10px 0 5px 0;
+  padding: 10px 0 10px 0;
 }
 
 .cards-container {

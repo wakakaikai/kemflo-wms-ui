@@ -70,7 +70,6 @@
           <el-button :loading="printLoading" v-hasPermi="['mes:print:miSn']" color="#626aef" icon="Printer" @click="handlePrint"> 打印 </el-button>
         </div>
         <div class="action-buttons">
-
           <el-button :loading="printLoading" v-hasPermi="['mes:print:miSn']" color="#626aef" icon="Printer" @click="handleExportImage"> 导出 </el-button>
           <el-button :loading="printLoading" v-hasPermi="['mes:print:miSn']" color="#626aef" icon="Printer" @click="handlePreview"> 预览 </el-button>
         </div>
@@ -86,39 +85,39 @@
           <div class="preview-content">
             <!-- MI标签模板 -->
             <div class="preview-content-sn">
-              <div class="mi-print-sn-template" ref="printContent">
-                <!-- 主体内容 -->
-                <div class="label-body">
-                  <!-- 标签顶部：生产日期 -->
-                  <div class="product-date-section">
-                    <span>生产日期: {{ workOrderInfo.productDate }}</span>
-                  </div>
-                  <!--条形码 -->
-                  <div class="label-barcode">
-                    <svg ref="barcodeSvg" class="barcode"></svg>
-                  </div>
-
-                  <div class="content-row">
-                    <!-- 左侧SN和SKU信息 -->
-                    <div class="left-section">
-                      <!-- 序列号(SN) -->
-                      <div class="sn-section">
-                        <span class="sn-label">SN:&nbsp;</span>
-                        <span class="sn-value">{{ queryParams.sfc }}</span>
-                      </div>
-
-                      <!-- SKU信息 -->
-                      <div class="sku-section">
-                        <span class="sku-label">SKU:&nbsp;</span>
-                        <span class="sku-value">{{ workOrderInfo.sku }}</span>
-                      </div>
+              <div id="print-content">
+                <div class="mi-print-sn-template" ref="printContent" style="width: 35mm; height: 12mm; background: #ffffff; display: flex; flex-direction: column">
+                  <!-- 主体内容 -->
+                  <div style="padding: 1mm 2mm">
+                    <!-- 标签顶部：生产日期 -->
+                    <div style="font-family: 'MiSans Regular', sans-serif; font-size: 4pt">
+                      <span>生产日期: {{ workOrderInfo.productDate }}</span>
+                    </div>
+                    <!--条形码 -->
+                    <div style="display: flex; justify-content: center; align-items: center; height: 5mm; width: 100%">
+                      <svg ref="barcodeSvg" class="barcode"></svg>
                     </div>
 
-                    <!-- 右侧维修凭证框 -->
-                    <div class="right-section">
-                      <div class="maintenance-box">
-                        <div class="maintenance-text text-content">维修凭证</div>
-                        <div class="maintenance-text">请勿撕毁</div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 1px; line-height: 7px">
+                      <!-- 左侧SN和SKU信息 -->
+                      <div style="display: flex; flex-direction: column">
+                        <!-- 序列号(SN) -->
+                        <div style="font-family: 'MiSans Regular', sans-serif; font-size: 4.5pt">
+                          <span>SN:&nbsp;</span>
+                          <span>{{ queryParams.sfc }}</span>
+                        </div>
+
+                        <!-- SKU信息 -->
+                        <div style="font-family: 'MiSans Regular', sans-serif; font-size: 4.5pt">
+                          <span>SKU:&nbsp;</span>
+                          <span>{{ workOrderInfo.sku }}</span>
+                        </div>
+                      </div>
+
+                      <!-- 右侧维修凭证框 -->
+                      <div style="border: 1px solid #000; display: flex; flex-direction: column; font-family: 'MiSans Regular', sans-serif; font-size: 3.18pt; line-height: 6px;padding: 0 1px;">
+                        <span>维修凭证</span>
+                        <span>请勿撕毁</span>
                       </div>
                     </div>
                   </div>
@@ -306,10 +305,14 @@ const generateBarcode = () => {
     JsBarcode(barcodeSvg.value, content, {
       format: 'CODE128', // 使用CODE128格式，适合字母数字混合
       displayValue: false, // 显示文本值
-      height: 28, // 条形码高度
+      height: 20, // 条形码高度
       width: 1, // 条形码条宽
       margin: 0 // 边距
     });
+    const svg = barcodeSvg.value;
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    svg.setAttribute('preserveAspectRatio', 'none');
   } catch (error) {
     console.error('条形码生成失败:', error);
   }
@@ -491,7 +494,7 @@ const handlePrint = async () => {
       return;
     }
     // 初始化打印任务
-    LODOP.PRINT_INIT('MI生产标签');
+    LODOP.PRINT_INIT('');
 
     // 设置打印机
     LODOP.SET_PRINTER_INDEX(selectedPrinter.value);
@@ -518,18 +521,18 @@ const handlePrint = async () => {
           await nextTick(); // 确保条形码渲染完成
 
           // 生成截图
+
           const canvas = await html2canvas(printContent.value, {
             scale: 2,
             logging: false,
             useCORS: true,
-            scrollX: 0,
-            scrollY: 0
+            backgroundColor: '#ffffff'
           });
-
-          // 添加打印内容
-          LODOP.ADD_PRINT_IMAGE(0, 0, '100%', '100%', canvas.toDataURL('image/png'));
-          // 按原图比例(不变形)缩放模式
-          LODOP.SET_PRINT_STYLEA(0, 'Stretch', 2);
+          LODOP.ADD_PRINT_HTM(0, 0, '100%', '100%', '<!DOCTYPE html>' + document.querySelector('#print-content').innerHTML);
+          // LODOP.ADD_PRINT_HTM(0, 0, '100%', '100%', document.querySelector('#print-content')!.innerHTML);
+          // LODOP.ADD_PRINT_IMAGE(0, 0, '100%', '100%', canvas.toDataURL('image/png'));
+          //按原图比例(不变形)缩放模式
+          // LODOP.SET_PRINT_STYLEA(0, 'Stretch', 1);
           if (i < ids.value.length - 1) {
             LODOP.NEWPAGE();
           }
@@ -546,20 +549,22 @@ const handlePrint = async () => {
         scale: 2,
         logging: false,
         useCORS: true,
-        scrollX: 0,
-        scrollY: 0
+        backgroundColor: '#ffffff'
       });
 
       // 添加打印内容，根据copies值重复打印
       for (let i = 0; i < copies.value; i++) {
         LODOP.ADD_PRINT_IMAGE(0, 0, '100%', '100%', canvas.toDataURL('image/png'));
+        //按原图比例(不变形)缩放模式
+        LODOP.SET_PRINT_STYLEA(0, 'Stretch', 1);
         if (i < copies.value - 1) {
           LODOP.NEWPAGE();
         }
       }
     }
     // 直接打印
-    LODOP.PRINT();
+    LODOP.PRINT_DESIGN();
+    // LODOP.PREVIEW();
     printLoading.value = false;
     proxy.$modal.msgSuccess('打印任务已发送');
   } catch (error) {
@@ -653,15 +658,14 @@ const handlePreview = async () => {
 
           // 生成截图
           const canvas = await html2canvas(printContent.value, {
-            scale: 2,
+            scale: 4,
             logging: false,
             useCORS: true,
-            scrollX: 0,
-            scrollY: 0
+            backgroundColor: '#ffffff'
           });
 
           // 添加打印内容
-          LODOP.ADD_PRINT_IMAGE(0, 0, '100%', '100%', canvas.toDataURL('image/png'));
+          LODOP.ADD_PRINT_IMAGE(0, 0, '35mm', '12mm', canvas.toDataURL('image/png'));
           // 按原图比例(不变形)缩放模式
           LODOP.SET_PRINT_STYLEA(0, 'Stretch', 2);
           if (i < ids.value.length - 1) {
@@ -677,16 +681,17 @@ const handlePreview = async () => {
 
       // 生成截图
       const canvas = await html2canvas(printContent.value, {
-        scale: 2,
+        scale: 4,
         logging: false,
         useCORS: true,
-        scrollX: 0,
-        scrollY: 0
+        backgroundColor: '#ffffff'
       });
 
       // 添加打印内容，根据copies值重复打印
       for (let i = 0; i < copies.value; i++) {
-        LODOP.ADD_PRINT_IMAGE(0, 0, '100%', '100%', canvas.toDataURL('image/png'));
+        LODOP.ADD_PRINT_IMAGE(0, 0, '35mm', '12mm', canvas.toDataURL('image/png'));
+        // 按原图比例(不变形)缩放模式
+        LODOP.SET_PRINT_STYLEA(0, 'Stretch', 2);
         if (i < copies.value - 1) {
           LODOP.NEWPAGE();
         }
@@ -887,99 +892,6 @@ onMounted(() => {
 }
 
 /* MI标签模板样式 */
-.mi-print-sn-template {
-  width: 35mm;
-  height: 12mm;
-  padding: 1mm 1.5mm;
-  background: white;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-.product-date-section {
-  display: flex;
-  justify-content: flex-start;
-  font-family: 'MiSans VF Regular', sans-serif;
-  font-size: 4.5pt;
-  line-height: 2mm;
-  height: 2mm;
-}
-
-.label-barcode {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 4.2mm;
-}
-
-.barcode {
-  height: 5mm !important;
-  width: 100%;
-  font-family: 'MiSans VF Regular', sans-serif;
-  font-size: 4pt;
-}
-
-.label-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-.label-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  font-family: 'MiSans VF Regular', sans-serif;
-  font-size: 4pt;
-}
-
-.content-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex: 1;
-  height: 4mm;
-}
-
-.left-section {
-  display: flex;
-  flex-direction: column;
-}
-
-.right-section {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-}
-
-.maintenance-box {
-  border: 0.5pt solid black;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 0.2mm;
-  font-family: 'MiSans VF Demibold', sans-serif;
-}
-
-.maintenance-text {
-  line-height: 1.4mm;
-  font-size: 4pt;
-  font-family: '宋体', serif;
-}
-
-.text-content {
-  margin-bottom: 1px;
-}
-
-.sn-section,
-.sku-section {
-  display: flex;
-  font-family: 'MiSans VF Regular', sans-serif;
-  font-size: 4.5pt;
-  line-height: 2mm;
-}
 
 /* 屏幕显示时放大200% */
 @media screen {

@@ -52,11 +52,7 @@
 
           <!-- 扫描条码输入 -->
           <el-form-item label="扫描条码">
-            <el-input v-model="scanInput" placeholder="请扫描条码" @keydown.enter.prevent="handleScanEnter" ref="scanInputRef" autofocus clearable>
-              <template #append>
-                <el-button icon="CameraFilled" @click="simulateScan" title="模拟扫描" />
-              </template>
-            </el-input>
+            <el-input v-model="scanInput" placeholder="请扫描条码" @keydown.enter.prevent="handleScanEnter" ref="scanInputRef" autofocus clearable> </el-input>
           </el-form-item>
 
           <!-- 打印份数 -->
@@ -96,13 +92,13 @@
                   <div class="mi-print-sn-template" ref="printContent">
                     <!-- 标签顶部：项目描述及颜色 -->
                     <div class="top-section">
-                      <span class="project-info">{{ workOrderInfo.productDesc }}</span>
-                      <span class="color-info">颜色：{{ workOrderInfo.color }}</span>
+                      <span>{{ workOrderInfo.productDesc }}</span>
+                      <span>颜色：{{ workOrderInfo.color }}</span>
                     </div>
 
                     <!-- 条形码区域 -->
                     <div class="barcode-section">
-                      <svg ref="snBarcodeSvg" class="barcode"></svg>
+                      <svg ref="snBarcodeSvg"></svg>
                     </div>
 
                     <!-- SN和SKU信息 -->
@@ -115,20 +111,15 @@
 
                     <!-- 69码区域 -->
                     <div class="sixty-nine-barcode-section">
-                      <svg ref="sixtyNineBarcodeSvg" class="sixty-nine-barcode"></svg>
+                      <svg ref="sixtyNineBarcodeSvg"></svg>
                     </div>
 
-                    <div class="content-row">
-                      <!-- 生产日期 -->
-                      <div class="left-section">
-                        <div class="date-section">
-                          <span class="date-value">生产日期: {{ workOrderInfo.productDate }}</span>
-                        </div>
+                    <div class="footer-row">
+                      <div class="footer-left">
+                        <span class="production-date">生产日期：{{ workOrderInfo.productDate }}</span>
                       </div>
-
-                      <!-- 合格证标识 -->
-                      <div class="right-section">
-                        <div class="certification">
+                      <div class="footer-right">
+                        <div class="cert-box">
                           <span class="cert-text">合格证 已检验</span>
                         </div>
                       </div>
@@ -208,7 +199,7 @@ const workOrderInfo = ref({
   material: '',
   shopOrder: '',
   productDate: '',
-  sfcContent: '',
+  sfcContent: '76054/BQAPNF6Q900003',
   ean: '',
   sku: '',
   productDesc: '',
@@ -435,15 +426,18 @@ const generateBarcode = () => {
   if (!content || !snBarcodeSvg.value) return;
 
   snBarcodeSvg.value.innerHTML = '';
-
   try {
     JsBarcode(snBarcodeSvg.value, content, {
       format: 'CODE128',
       displayValue: false,
-      height: 30,
-      width: 1.2,
+      height: 28,
+      width: 1,
       margin: 0
     });
+    const svg = snBarcodeSvg.value;
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    svg.setAttribute('preserveAspectRatio', 'none');
   } catch (error) {
     console.error('条形码生成失败:', error);
   }
@@ -460,12 +454,32 @@ const generateSixtyNineBarcode = () => {
     JsBarcode(sixtyNineBarcodeSvg.value, content, {
       format: 'EAN13',
       displayValue: true,
-      height: 120,
-      width: 9,
-      fontSize: 70,
-      textAlign: 'center',
-      textMargin: 5
+      height: 90,
+      width: 5,
+      margin: 0,
+      fontSize: 40
     });
+    setTimeout(() => {
+      const svg = sixtyNineBarcodeSvg.value;
+      svg.setAttribute('width', '100%');
+      svg.setAttribute('height', '100%');
+      svg.setAttribute('preserveAspectRatio', 'none');
+
+      sixtyNineBarcodeSvg.value.querySelectorAll('text').forEach((t, idx) => {
+        t.style.letterSpacing = '0.3em';
+        t.style.fontFamily = 'MiSans Medium';
+        // t.style.fontSize = '10pt';
+
+        // 获取当前 x 坐标并增加偏移量
+        const currentX = t.getAttribute('x');
+        if (currentX && idx == 0) {
+          t.setAttribute('x', parseFloat(currentX) + 20); // 向右移动15像素
+        }
+        if (currentX && idx > 0) {
+          t.setAttribute('x', parseFloat(currentX) + 8); // 向右移动15像素
+        }
+      });
+    }, 50);
   } catch (error) {
     console.error('69码生成失败:', error);
   }
@@ -496,90 +510,6 @@ const handleScanEnter = async () => {
   await handlePrint();
 };
 
-// 模拟扫描
-const simulateScan = () => {
-  const randomNum = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, '0');
-  scanInput.value = `76054/BQAPNF5Z50${randomNum}`;
-  handleScanEnter();
-};
-
-// 打印预览
-const handlePrintPreview = async () => {
-  const LODOP = getLodop();
-  if (!LODOP) {
-    proxy.$modal.msgError('未检测到Lodop打印服务，请安装Lodop插件');
-    return;
-  }
-
-  if (!selectedPrinter.value) {
-    proxy.$modal.msgError('请先选择打印机');
-    return;
-  }
-
-  if (!workOrderInfo.value.sfcContent) {
-    proxy.$modal.msgError('请先输入序列号或扫描条码');
-    return;
-  }
-
-  printing.value = true;
-  try {
-    // 生成条形码
-    await nextTick();
-    generateBarcode();
-    generateSixtyNineBarcode();
-
-    // 生成截图
-    const canvas = await html2canvas(printContent.value!, {
-      scale: 2,
-      logging: false,
-      useCORS: true,
-      backgroundColor: '#ffffff'
-    });
-
-    // 初始化打印任务
-    LODOP.PRINT_INIT('MI即扫即打');
-
-    // 设置打印机
-    LODOP.SET_PRINTER_INDEX(selectedPrinter.value);
-
-    // 如果选择了纸张，则设置纸张类型
-    if (selectedPaper.value) {
-      LODOP.SET_PRINT_PAGESIZE(1, '', '', selectedPaper.value);
-    } else {
-      // 设置默认纸张大小
-      LODOP.SET_PRINT_PAGESIZE(0, 0, 0, '47mm 30mm'); // 设置纸张大小
-    }
-
-    // 添加打印内容
-    for (let i = 0; i < copies.value; i++) {
-      LODOP.ADD_PRINT_IMAGE(0, 0, '100%', '100%', canvas.toDataURL('image/png'));
-      if (i < copies.value - 1) {
-        LODOP.NEWPAGE();
-      }
-    }
-
-    // 参考lodop样例设置预览窗口，使用更大更合适的预览窗口
-    // LODOP.SET_SHOW_MODE('LANDSCAPE_DEF_ROTATED', true); // 设置横向打印默认旋转
-    // 打印后自动关闭预览
-    LODOP.SET_PRINT_MODE('AUTO_CLOSE_PREWINDOW', 1);
-    // 设置预览窗口大小为800x600
-    LODOP.SET_PREVIEW_WINDOW(1, 0, 1, 800, 600, '打印预览');
-    // 去除背景滚动线
-    LODOP.SET_SHOW_MODE('HIDE_PAPER_BOARD', 1);
-    //按原图比例(不变形)缩放模式
-    LODOP.SET_PRINT_STYLEA(0, 'Stretch', 2);
-    // 显示预览
-    LODOP.PREVIEW();
-    proxy.$modal.msgSuccess('打印预览已打开');
-  } catch (error: any) {
-    proxy.$modal.msgError('打印预览失败: ' + (error as Error).message);
-  } finally {
-    printing.value = false;
-  }
-};
-
 // 直接打印
 const handlePrint = async () => {
   const LODOP = getLodop();
@@ -597,20 +527,20 @@ const handlePrint = async () => {
     proxy.$modal.msgError('请先输入序列号或扫描条码');
     return;
   }
-  printing.value = true;
-  const res = await savePrintHistory({
-    shopOrderSfcBoList: [
-      {
-        shopOrder: workOrderInfo.value.shopOrder,
-        sfc: workOrderInfo.value.sfcContent
-      }
-    ],
-    printType: 2
-  });
-  if (res.code !== HttpStatus.SUCCESS) {
-    printLoading.value = false;
-    return;
-  }
+  // printing.value = true;
+  // const res = await savePrintHistory({
+  //   shopOrderSfcBoList: [
+  //     {
+  //       shopOrder: workOrderInfo.value.shopOrder,
+  //       sfc: workOrderInfo.value.sfcContent
+  //     }
+  //   ],
+  //   printType: 2
+  // });
+  // if (res.code !== HttpStatus.SUCCESS) {
+  //   printLoading.value = false;
+  //   return;
+  // }
   try {
     // 生成条形码
     // await nextTick();
@@ -618,7 +548,7 @@ const handlePrint = async () => {
 
     // 生成截图
     const canvas = await html2canvas(printContent.value!, {
-      scale: 2,
+      scale: 4,
       logging: false,
       useCORS: true,
       backgroundColor: '#ffffff'
@@ -641,16 +571,23 @@ const handlePrint = async () => {
     // 添加打印内容
     for (let i = 0; i < copies.value; i++) {
       // 添加打印内容
-      LODOP.ADD_PRINT_IMAGE(0, 0, '100%', '100%', canvas.toDataURL('image/png'));
-      //按原图比例(不变形)缩放模式
+      // LODOP.ADD_PRINT_IMAGE(0, 0, '100%', '100%', canvas.toDataURL('image/png'));
+      LODOP.ADD_PRINT_IMAGE(0, 0, '47mm', '30mm', canvas.toDataURL('image/png'));
+      // LODOP.ADD_PRINT_IMAGE(0, 0, '47mm', '30mm', "<img  border='0' src=\"${canvas.toDataURL('image/png')}\" width=4440 height=2836  />");
+      // //按原图比例(不变形)缩放模式
       LODOP.SET_PRINT_STYLEA(0, 'Stretch', 2);
+      // LODOP.ADD_PRINT_HTM(0, 0, '47mm', '30mm', '<!DOCTYPE html>' + document.getElementsByClassName('mi-print-sn-template')[0].innerHTML);
+      // LODOP.ADD_PRINT_HTML(0, 0, '47mm', '30mm', document.getElementsByClassName('mi-print-sn-template')[0].innerHTML);
+      // LODOP.ADD_PRINT_HTM(0, 0, '100%', '100%', printContent.value.innerHTML);
+
       if (i < copies.value - 1) {
         LODOP.NEWPAGE();
       }
     }
 
     // 直接打印
-    LODOP.PRINT();
+    // LODOP.PRINT();
+    LODOP.PREVIEW();
 
     proxy.$modal.msgSuccess('打印任务已发送');
   } catch (error: any) {
@@ -913,13 +850,12 @@ onMounted(() => {
 }
 
 .top-section {
+  font-weight: bold;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 3mm;
-  font-family: 'MiSans Regular', 'MiSans VF', Helvetica, Arial, sans-serif;
-  font-size: 5pt;
-  font-weight: bold;
+  font-family: 'MiSans Regular', sans-serif;
+  font-size: 4pt;
   margin-bottom: 0.5mm;
 }
 
@@ -929,35 +865,16 @@ onMounted(() => {
   align-items: center;
 }
 
-.barcode {
-  font-family: 'MiSans Regular', 'MiSans VF', Helvetica, Arial, sans-serif;
-  font-size: 4pt;
-  width: 100%;
-  height: 5mm !important;
-}
-
 .sixty-nine-barcode-section {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-}
-
-.sixty-nine-barcode {
-  font-family: 'MiSans Regular', 'MiSans VF', Helvetica, Arial, sans-serif;
-  font-size: 10pt;
-  height: 10mm;
-  width: 100%;
+  margin-left: -5px;
 }
 
 .info-section {
   display: flex;
   justify-content: space-between;
-  margin-top: 0.5mm;
-  height: 2mm;
-  font-family: 'MiSans Regular', 'MiSans VF', Helvetica, Arial, sans-serif;
+  font-family: 'MiSans Regular', sans-serif;
   font-size: 4.5pt;
-  font-weight: bold;
+  margin: -1px 0 2px 0;
 }
 
 .sn-sku-row {
@@ -967,58 +884,45 @@ onMounted(() => {
   align-items: center;
 }
 
-.content-row {
+.footer-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  margin-top: 2px;
+}
+
+.footer-left {
   flex: 1;
-  height: 3mm;
-  margin-top: 1mm;
-}
-
-.left-section {
   display: flex;
-  flex-direction: column;
-  flex: 1;
 }
 
-.right-section {
+.footer-left .production-date {
+  font-family: 'MiSans Regular', sans-serif;
+  font-size: 4pt;
+  color: #000;
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-}
-
-.date-section {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.date-value {
+  align-items: center;
+  margin-bottom: 2px;
   font-weight: bold;
-  font-family: 'MiSans VF', 'MiSans Regular', Helvetica, Arial, sans-serif;
-  font-size: 5pt;
-  height: 3mm;
-  line-height: 3mm;
 }
 
-.certification {
+.cert-box {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 3mm;
-  line-height: 3mm;
-  font-size: 5pt;
+  border: 0.5pt solid #000;
+  //padding: 0px 1px 1px 1px;
+  padding: 0 1px;
   font-weight: bold;
-  border: 0.8pt solid black;
-  padding: 0 0.5mm;
-  font-family: 'MiSans VF', 'MiSans Regular', Helvetica, Arial, sans-serif;
-  border-radius: 1px;
 }
 
 .cert-text {
-  line-height: 3mm;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'MiSans Regular', 'MiSans VF', sans-serif;
+  font-size: 3.18pt;
+  color: #000;
 }
-
 /* 屏幕显示时放大200% */
 @media screen {
   .mi-print-sn-template {

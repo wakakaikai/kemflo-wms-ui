@@ -3,23 +3,45 @@
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="预约编号" prop="reservationCode">
               <el-input v-model="queryParams.reservationCode" placeholder="请输入预约编号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="栈板编号" prop="palletCode">
               <el-input v-model="queryParams.palletCode" placeholder="请输入栈板编号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="预约状态" prop="reservationStatus">
-              <el-select v-model="queryParams.reservationStatus" placeholder="请选择预约状态" clearable>
-                <el-option v-for="dict in wms_reservation_status" :key="dict.value" :label="dict.label" :value="dict.value" />
-              </el-select>
-            </el-form-item>
             <el-form-item label="物料编码" prop="itemCode">
               <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="库位编码" prop="locationCode">
               <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="目标库位编码" prop="targetLocationCode">
+              <el-input v-model="queryParams.targetLocationCode" placeholder="请输入目标库位编码" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="预约时间" prop="reservationDateTimeRange">
+              <el-date-picker
+                v-model="queryParams.reservationDateTimeRange"
+                type="datetimerange"
+                :shortcuts="shortcuts"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                range-separator="-"
+                start-placeholder="请选择开始日期"
+                end-placeholder="请选择结束日期"
+                :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
+              />
+            </el-form-item>
+            <el-form-item label="发货时间" prop="shippedDateTimeRange">
+              <el-date-picker
+                v-model="queryParams.shippedDateTimeRange"
+                type="datetimerange"
+                :shortcuts="shortcuts"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                range-separator="-"
+                start-placeholder="请选择开始日期"
+                end-placeholder="请选择结束日期"
+                :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
+              />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -29,6 +51,41 @@
         </el-card>
       </div>
     </transition>
+
+    <!-- 预约状态标签页 -->
+    <el-tabs v-model="currentStatus" @tab-change="handleStatusChange">
+      <el-tab-pane name="">
+        <template #label>
+          <el-badge :value="allCount" class="item" color="#67c23a" :offset="[10, 0]" :max="9999999999">
+            <span>全部</span>
+          </el-badge>
+        </template>
+      </el-tab-pane>
+
+      <el-tab-pane name="1">
+        <template #label>
+          <el-badge :value="reservedCount" class="item" color="#409EFF" :offset="[10, 0]" :max="9999999999">
+            <span>已预约</span>
+          </el-badge>
+        </template>
+      </el-tab-pane>
+
+      <el-tab-pane name="2">
+        <template #label>
+          <el-badge :value="shippedCount" class="item" color="#e6a23c" :offset="[10, 0]" :max="9999999999">
+            <span>已发货</span>
+          </el-badge>
+        </template>
+      </el-tab-pane>
+
+      <el-tab-pane name="3">
+        <template #label>
+          <el-badge :value="cancelledCount" class="item" color="#f56c6c" :offset="[10, 0]" :max="9999999999">
+            <span>已取消</span>
+          </el-badge>
+        </template>
+      </el-tab-pane>
+    </el-tabs>
 
     <el-card shadow="never">
       <template #header>
@@ -46,7 +103,16 @@
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:palletInventoryReservationHistory:export']">导出</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="success" plain icon="Check" @click="handleConfirmReceipt" :disabled="multiple" v-hasPermi="['wms:palletInventoryReservationHistory:confirm']">确认收货</el-button>
+            <el-button
+              v-if="currentStatus == '1' || currentStatus == ''"
+              type="success"
+              plain
+              icon="Check"
+              @click="handleConfirmReceipt"
+              :disabled="multiple"
+              v-hasPermi="['wms:palletInventoryReservationHistory:confirmReceipt']"
+              >确认收货</el-button
+            >
           </el-col>
 
           <right-toolbar v-model:showSearch="showSearch" :columns="columns" @queryTable="getList"></right-toolbar>
@@ -290,7 +356,7 @@ const data = reactive<PageData<PalletInventoryReservationHistoryForm, PalletInve
     pageSize: 10,
     reservationCode: undefined,
     reservationDate: undefined,
-    reservationStatus: undefined,
+    reservationStatus: '1',
     shippedDate: undefined,
     shippedStatus: undefined,
     shippedResultStatus: undefined,
@@ -382,6 +448,93 @@ const columns = ref<FieldOption[]>([
   { key: 25, label: `备注`, visible: false, children: [] }
 ]);
 
+const shortcuts = [
+  {
+    text: '今天',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate());
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '昨天',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近两天',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近三天',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 2);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近一周',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近一月',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setMonth(start.getMonth() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    text: '近三月',
+    value: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setMonth(start.getMonth() - 3);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  }
+];
+
+const currentStatus = ref<string>('');
+const allCount = ref<number>(0);
+const reservedCount = ref<number>(0);
+const shippedCount = ref<number>(0);
+const cancelledCount = ref<number>(0);
+
 /** 查询栈板库存预约记录列表 */
 const getList = async () => {
   loading.value = true;
@@ -389,6 +542,16 @@ const getList = async () => {
   palletInventoryReservationHistoryList.value = res.rows;
   total.value = res.total;
   loading.value = false;
+  // 更新各状态数量
+  updateStatusCounts(res.rows);
+};
+
+/** 更新各状态数量 */
+const updateStatusCounts = (data: PalletInventoryReservationHistoryVO[]) => {
+  allCount.value = data.length;
+  reservedCount.value = data.filter((item) => item.reservationStatus === 1).length;
+  shippedCount.value = data.filter((item) => item.reservationStatus === 2).length;
+  cancelledCount.value = data.filter((item) => item.reservationStatus === 3).length;
 };
 
 /** 取消按钮 */
@@ -521,6 +684,13 @@ const locationCodeKeyDownTab = async (locationCode: any) => {
 const storageLocationSelectCallBack = (record: any) => {
   form.value.targetLocationCode = record.locationCode;
 };
+
+/** 预约状态标签页切换 */
+const handleStatusChange = (value: string) => {
+  queryParams.value.reservationStatus = value || undefined;
+  handleQuery();
+};
+
 onMounted(() => {
   getList();
 });

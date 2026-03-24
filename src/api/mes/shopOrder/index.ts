@@ -8,7 +8,7 @@ import { ShopOrderVO, ShopOrderForm, ShopOrderQuery, SfcPreviewVO } from '@/api/
  * @returns {*}
  */
 
-export const listShopOrder = (query?: ShopOrderQuery): AxiosPromise<ShopOrderVO[]> => {
+export const listShopOrder = (query?: any) => {
   return request({
     url: '/mes/shopOrder/list',
     method: 'get',

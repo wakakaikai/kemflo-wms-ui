@@ -244,7 +244,6 @@ import UserCollectionsDialog from '@/views/wms/userCollections/components/userCo
 import { transferInventory } from '@/api/wms/inventoryDetail';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
-import { listUserCollections } from '@/api/wms/userCollections';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import { HistoryConfig } from '@/types/history';
@@ -403,7 +402,7 @@ const columns = ref<FieldOption[]>([
   { key: 4, label: `物料名称`, visible: true, children: [] },
   { key: 5, label: `批次号`, visible: true, children: [] },
   { key: 6, label: `非限制数量`, visible: true, children: [] },
-  { key: 7, label: `质检数量`, visible: true, children: [] },
+  { key: 7, label: `质检数量`, visible: false, children: [] },
   { key: 8, label: `冻结数量`, visible: false, children: [] },
   { key: 9, label: `在途数量`, visible: false, children: [] },
   { key: 10, label: `特殊库存`, visible: false, children: [] },
