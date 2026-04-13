@@ -100,7 +100,7 @@
           </el-form>
         </div>
 
-        <div class="action-buttons">
+<!--        <div class="action-buttons">
           <el-button type="primary" @click="immediatelyPrint" class="print-btn">
             <el-icon><Printer /></el-icon>
             测试打印
@@ -109,7 +109,7 @@
             <el-icon><Picture /></el-icon>
             导出图片
           </el-button>
-        </div>
+        </div>-->
       </el-aside>
 
       <!-- 主内容预览区域 -->

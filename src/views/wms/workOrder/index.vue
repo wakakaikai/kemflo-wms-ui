@@ -201,9 +201,14 @@
                   <label>工单号码</label>
                   <span>{{ workOrderInfo.workOrderNo }}</span>
                 </div>
-                <div class="info-column">
+                <div class="info-column" style="position: relative">
                   <label>客户订单</label>
                   <span>{{ workOrderInfo.salesOrderNo }}</span>
+                  <!-- 印章效果的集字和尾字 -->
+                  <div class="seal-stamp-container">
+                    <div class="seal-stamp seal-intensive" v-if="workOrderInfo.intensiveProductionFlag">集</div>
+<!--                    <div class="seal-stamp seal-mantissa" v-if="workOrderInfo.mantissaOrderFlag">尾</div>-->
+                  </div>
                 </div>
               </div>
 
@@ -212,7 +217,7 @@
                   <label>工单数量</label>
                   <span>{{ Number(workOrderInfo.plannedQty) }}&nbsp;{{ workOrderInfo.unit }}</span>
                 </div>
-                <div class="info-column">
+                <div class="info-column" style="position: relative">
                   <label>交货日期</label>
                   <span>{{ parseTime(workOrderInfo.soDeliveryDate, '{y}-{m}-{d}') }}</span>
                 </div>
@@ -506,7 +511,7 @@ const columns = ref<TableColumns[]>([
 ]);
 
 // 工单信息
-const workOrderInfo = ref({});
+const workOrderInfo = ref<WorkOrderVO>();
 const workOrderProcessInfo = ref({});
 
 const workOrderProcessList = ref<WorkOrderProcessVO[]>([]);
@@ -672,6 +677,8 @@ const getWorkOrderProcessList = async () => {
     workOrderInfo.value.nextOrderNo = '';
     workOrderInfo.value.nextWorkCenter = '';
     workOrderInfo.value.nextPlannedStartDate = '';
+    workOrderInfo.value.intensiveProductionFlag = false;
+    workOrderInfo.value.mantissaOrderFlag = false;
 
     // 更新预览模板
     updatePreviewTemplate();
@@ -1196,10 +1203,16 @@ const workOrderProcessSelectCallBack = (data: WorkOrderProcessVO[]) => {
   workOrderInfo.value.previousWorkCenter = selectedProcessList.value[0].previousWorkCenter;
   workOrderInfo.value.previousEndDate = selectedProcessList.value[0].previousEndDate;
 
+  workOrderInfo.value.intensiveProductionFlag = selectedProcessList.value[0].intensiveProductionFlag;
+  workOrderInfo.value.mantissaOrderFlag = selectedProcessList.value[0].mantissaOrderFlag;
+
   const lastIndex = selectedProcessList.value.length - 1;
   workOrderInfo.value.nextOrderNo = selectedProcessList.value[lastIndex].nextProcessNode;
   workOrderInfo.value.nextWorkCenter = selectedProcessList.value[lastIndex].nextWorkCenter;
   workOrderInfo.value.nextPlannedStartDate = selectedProcessList.value[lastIndex].nextPlannedStartDate;
+
+  workOrderInfo.value.intensiveProductionFlag = selectedProcessList.value[lastIndex].intensiveProductionFlag;
+  workOrderInfo.value.mantissaOrderFlag = selectedProcessList.value[lastIndex].mantissaOrderFlag;
 
   // 为每个工序计算标准产能: 基础数量 / (排程时间 / 60)
   selectedProcessList.value.forEach((process) => {
@@ -1538,5 +1551,45 @@ onMounted(() => {
   .process-table td {
     min-height: 25px;
   }
+}
+
+/* 印章效果样式 */
+.seal-stamp-container {
+  position: absolute;
+  top: -1px;
+  right: -7px;
+  width: 120px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.seal-stamp {
+  position: relative;
+  font-size: 30px;
+  font-weight: bold;
+  color: #c00000;
+  text-align: center;
+  line-height: 1;
+  transform: rotate(0deg);
+  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.3);
+  background-color: transparent;
+  border: 3px solid #c00000;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.seal-intensive {
+  margin-right: 10px;
+}
+
+.seal-mantissa {
+  margin-left: 0;
 }
 </style>

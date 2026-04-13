@@ -67,7 +67,7 @@
           <el-col :span="1.5">
             <el-button v-hasPermi="['wms:customerProfile:export']" type="warning" plain icon="Download" @click="handleExport">导出</el-button>
           </el-col>
-          <right-toolbar v-model:showSearch="showSearch" :columns="columns"  @query-table="getList"></right-toolbar>
+          <right-toolbar v-model:showSearch="showSearch" :columns="columns" @query-table="getList"></right-toolbar>
         </el-row>
       </template>
 
@@ -200,7 +200,7 @@ const columns = ref<TableColumns[]>([
   { key: 15, label: '贸易条件1', visible: true },
   { key: 16, label: '付款条件2', visible: true },
   { key: 17, label: '账户分配组', visible: true },
-  { key: 18, label: '税分类', visible: true },
+  { key: 18, label: '税分类', visible: true }
 ]);
 watch(
   columns,

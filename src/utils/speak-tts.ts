@@ -32,7 +32,7 @@ export const useSpeech = () => {
         voice: 'Microsoft Huihui - Chinese (Simplified, PRC)',
         listeners: {
           onvoiceschanged: (voices) => {
-            console.log('可用语音列表:', voices);
+            // console.log('可用语音列表:', voices);
           }
         }
       });

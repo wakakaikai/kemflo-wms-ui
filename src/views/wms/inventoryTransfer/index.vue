@@ -255,7 +255,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { listInventoryDetail } from '@/api/wms/inventoryDetail';
 import { InventoryDetailForm, InventoryDetailQuery, InventoryDetailVO } from '@/api/wms/inventoryDetail/types';
 // 导入图标组件
-import { ArrowDown, ArrowUp, Bell } from '@element-plus/icons-vue';
+import { ArrowDown, ArrowUp, Bell, Switch } from '@element-plus/icons-vue';
 
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';

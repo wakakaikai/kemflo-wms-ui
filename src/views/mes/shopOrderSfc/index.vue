@@ -7,8 +7,8 @@
             <el-form-item label="工单号" prop="shopOrder">
               <el-input v-model="queryParams.shopOrder" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="条码" prop="sfcList">
-              <el-input v-model="queryParams.sfcList" placeholder="请输入条码" clearable @keyup.enter="handleQuery">
+            <el-form-item label="条码" prop="sfcStr">
+              <el-input v-model="queryParams.sfcStr" placeholder="请输入条码" clearable @keyup.enter="handleQuery" readonly>
                 <template #append>
                   <el-button icon="CopyDocument" @click="openBatchInputDialog" title="批量录入条码" />
                 </template>
@@ -39,7 +39,9 @@
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['mes:shopOrderSfc:export']">导出</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button color="#34d399" class="text-white flex-1" :disabled="multiple" icon="Printer" @click="handleAddPrintCount" v-hasPermi="['mes:shopOrderSfc:addPrintCount']">打印授权</el-button>
+            <el-button color="#34d399" class="text-white flex-1" :disabled="multiple" icon="Printer" @click="handleAddPrintCount" v-hasPermi="['mes:shopOrderSfcReprintAuthorizeHistory:add']"
+              >打印授权</el-button
+            >
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
         </el-row>
@@ -56,7 +58,7 @@
         <el-table-column label="创建时间" align="center" prop="createTime" />
         <el-table-column label="更新者" align="center" prop="updater" />
         <el-table-column label="更新时间" align="center" prop="modifyTime" />
-<!--        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <!--        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
               <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['mes:shopOrderSfc:edit']"></el-button>
@@ -98,7 +100,7 @@
     </el-dialog>
 
     <!-- 批量输入对话框 -->
-    <BatchInputDialog v-model="batchInputDialogVisible" title="批量录入条码" placeholder="请输入条码，支持多行粘贴" @confirm="handleBatchInputConfirm" />
+    <BatchInputDialog ref="batchInputDialogRef" v-model="batchInputDialogVisible" title="批量录入条码" placeholder="请输入条码，支持多行粘贴" @confirm="handleBatchInputConfirm" />
 
     <!-- 添加打印次数对话框 -->
     <AddPrintCountDialog ref="addPrintCountDialogRef" :selectedShopOrderSfcList="selectedShopOrderSfcList" @confirm="confirmAddPrintCount" />
@@ -114,6 +116,7 @@ const addPrintCountDialogRef = ref<InstanceType<typeof AddPrintCountDialog>>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const batchInputDialogVisible = ref(false);
+const batchInputDialogRef = ref<InstanceType<typeof BatchInputDialog>>();
 
 const shopOrderSfcList = ref<ShopOrderSfcVO[]>([]);
 const selectedShopOrderSfcList = ref<ShopOrderSfcVO[]>([]);
@@ -160,7 +163,7 @@ const data = reactive<PageData<ShopOrderSfcForm, ShopOrderSfcQuery>>({
     pageNum: 1,
     pageSize: 10,
     shopOrderBo: undefined,
-    shopOrder: '000130022461',
+    shopOrder: '',
     sfcBo: undefined,
     qty: undefined,
     batchId: undefined,
@@ -226,6 +229,7 @@ const handleQuery = () => {
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
+  queryParams.value.sfcList = [];
   handleQuery();
 };
 
@@ -293,11 +297,12 @@ const handleExport = () => {
 // 打开批量录入条码弹框
 const openBatchInputDialog = () => {
   batchInputDialogVisible.value = true;
+  batchInputDialogRef.value?.resetInput();
 };
 // 弹框确定的回调
 const handleBatchInputConfirm = (values: string[]) => {
   // 将批量输入的值合并到查询参数中
-  // queryParams.value.sfcStr = values.join(',');
+  queryParams.value.sfcStr = values.join(',');
   queryParams.value.sfcList = values;
   handleQuery(); // 执行查询
 };

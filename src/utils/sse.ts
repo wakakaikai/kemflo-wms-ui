@@ -25,10 +25,10 @@ export const initSSE = (baseUrl: string) => {
 
   const { data, error } = useEventSource(url, [], {
     autoReconnect: {
-      retries: 100,
+      retries: 10,
       delay: 30000,
       onFailed() {
-        console.error('SSE 连接失败，已重试100次');
+        console.error('SSE 连接失败，已重试10次');
       }
     }
   });

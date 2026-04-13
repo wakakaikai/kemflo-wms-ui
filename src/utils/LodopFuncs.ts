@@ -1,4 +1,4 @@
-//= =本JS是加载Lodop插件或Web打印服务CLodop/Lodop7的综合示例，可直接使用，建议理解后融入自己程序==
+//==本JS是加载Lodop插件或Web打印服务CLodop/Lodop7的综合示例，可直接使用，建议理解后融入自己程序==
 
 //用双端口加载主JS文件Lodop.js(或CLodopfuncs.js兼容老版本)以防其中某端口被占:
 const MainJS = 'CLodopfuncs.js',
@@ -81,9 +81,7 @@ function checkOrTryHttp() {
   try {
     const WSK1 = new WebSocket(URL_WS1);
     WSK1.onopen = function (e) {
-      setTimeout(() => {
-        checkOrTryHttp();
-      }, 200);
+      setTimeout('checkOrTryHttp()', 200);
     };
     WSK1.onmessage = function (e) {
       if (!window.getCLodop) eval(e.data);
@@ -91,9 +89,7 @@ function checkOrTryHttp() {
     WSK1.onerror = function (e) {
       const WSK2 = new WebSocket(URL_WS2);
       WSK2.onopen = function (e) {
-        setTimeout(() => {
-          checkOrTryHttp();
-        }, 200);
+        setTimeout('checkOrTryHttp()', 200);
       };
       WSK2.onmessage = function (e) {
         if (!window.getCLodop) eval(e.data);
@@ -151,7 +147,7 @@ function getLodop(oOBJECT, oEMBED) {
       } else {
         if (isLinuxX86 && LODOP.CVERSION < '7.1.1.9') strAlertMessage = strLodop7Update_X86;
         else if (isLinuxARM && LODOP.CVERSION < '7.1.1.9') strAlertMessage = strLodop7Update_ARM;
-        else if (CLODOP.CVERSION < '6.6.3.3') strAlertMessage = strCLodopUpdate;
+        else if (CLODOP.CVERSION < '6.6.3.6') strAlertMessage = strCLodopUpdate;
 
         if (strAlertMessage) document.body.innerHTML = strAlertMessage + strInstallOK + document.body.innerHTML;
       }
@@ -180,12 +176,11 @@ function getLodop(oOBJECT, oEMBED) {
       }
     }
     //===如下空白位置适合调用统一功能(如注册语句、语言选择等):=======================
-    // LODOP.SET_LICENSES('', '1C0B0E119AF063B4606A76829B739625286', '', '');
     LODOP.SET_LICENSES('', 'CCB118FD508ADE50BC61778094A594B7312', '', '');
     //===============================================================================
     return LODOP;
   } catch (err) {
-    console.log('getLodop出错:' + err);
+    alert('getLodop出错:' + err);
   }
 }
 

@@ -23,11 +23,11 @@
                 <el-option v-for="dict in sys_common_status" :key="dict.value" :label="dict.label" :value="dict.value" />
               </el-select>
             </el-form-item>
-            <el-form-item label="操作时间" style="width: 308px">
+            <el-form-item label="操作时间">
               <el-date-picker
                 v-model="dateRange"
                 value-format="YYYY-MM-DD HH:mm:ss"
-                type="daterange"
+                type="datetimerange"
                 range-separator="-"
                 start-placeholder="开始日期"
                 end-placeholder="结束日期"
@@ -47,9 +47,7 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button v-hasPermi="['monitor:operlog:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">
-              删除
-            </el-button>
+            <el-button v-hasPermi="['monitor:operlog:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()"> 删除 </el-button>
           </el-col>
           <el-col :span="1.5">
             <el-button v-hasPermi="['monitor:operlog:remove']" type="danger" plain icon="WarnTriangleFilled" @click="handleClean">清空</el-button>
@@ -61,15 +59,7 @@
         </el-row>
       </template>
 
-      <el-table
-        ref="operLogTableRef"
-        v-loading="loading"
-        :data="operlogList"
-        border
-        :default-sort="defaultSort"
-        @selection-change="handleSelectionChange"
-        @sort-change="handleSortChange"
-      >
+      <el-table ref="operLogTableRef" v-loading="loading" :data="operlogList" border :default-sort="defaultSort" @selection-change="handleSelectionChange" @sort-change="handleSortChange">
         <el-table-column type="selection" width="50" align="center" />
         <el-table-column label="日志编号" align="center" prop="operId" />
         <el-table-column label="系统模块" align="center" prop="title" :show-overflow-tooltip="true" />
@@ -78,15 +68,7 @@
             <dict-tag :options="sys_oper_type" :value="scope.row.businessType" />
           </template>
         </el-table-column>
-        <el-table-column
-          label="操作人员"
-          align="center"
-          width="110"
-          prop="operName"
-          :show-overflow-tooltip="true"
-          sortable="custom"
-          :sort-orders="['descending', 'ascending']"
-        />
+        <el-table-column label="操作人员" align="center" width="110" prop="operName" :show-overflow-tooltip="true" sortable="custom" :sort-orders="['descending', 'ascending']" />
         <el-table-column label="部门" align="center" prop="deptName" width="130" :show-overflow-tooltip="true" />
         <el-table-column label="操作地址" align="center" prop="operIp" width="130" :show-overflow-tooltip="true" />
         <el-table-column label="操作状态" align="center" prop="status">
@@ -99,15 +81,7 @@
             <span>{{ proxy.parseTime(scope.row.operTime) }}</span>
           </template>
         </el-table-column>
-        <el-table-column
-          label="消耗时间"
-          align="center"
-          prop="costTime"
-          width="110"
-          :show-overflow-tooltip="true"
-          sortable="custom"
-          :sort-orders="['descending', 'ascending']"
-        >
+        <el-table-column label="消耗时间" align="center" prop="costTime" width="110" :show-overflow-tooltip="true" sortable="custom" :sort-orders="['descending', 'ascending']">
           <template #default="scope">
             <span>{{ scope.row.costTime }}毫秒</span>
           </template>
@@ -132,6 +106,7 @@
 import { list, delOperlog, cleanOperlog } from '@/api/monitor/operlog';
 import { OperLogForm, OperLogQuery, OperLogVO } from '@/api/monitor/operlog/types';
 import OperInfoDialog from './oper-info-dialog.vue';
+import { parseTime } from '@/utils/ruoyi';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { sys_oper_type, sys_common_status } = toRefs<any>(proxy?.useDict('sys_oper_type', 'sys_common_status'));
@@ -256,6 +231,12 @@ const handleExport = () => {
   );
 };
 onMounted(() => {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate());
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  dateRange.value = [parseTime(start), parseTime(end)];
   getList();
 });
 </script>

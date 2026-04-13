@@ -28,7 +28,11 @@ axios.defaults.headers['clientid'] = import.meta.env.VITE_APP_CLIENT_ID;
 // 创建 axios 实例
 const service = axios.create({
   baseURL: import.meta.env.VITE_APP_BASE_API,
-  timeout: 50000
+  timeout: 120000,
+  transitional: {
+    // 超时错误更明确
+    clarifyTimeoutError: true
+  }
 });
 
 // 请求拦截器
@@ -147,14 +151,14 @@ service.interceptors.response.use(
         });
       }
       return Promise.reject('无效的会话，或者会话已过期，请重新登录。');
-    } else if (code === HttpStatus.PARAM_ERROR) {
-      return Promise.resolve(res.data);
     } else if (code === HttpStatus.SERVER_ERROR) {
       ElMessage({ message: msg, type: 'error' });
       return Promise.reject(new Error(msg));
     } else if (code === HttpStatus.WARN) {
       ElMessage({ message: msg, type: 'warning' });
       return Promise.reject(new Error(msg));
+    } else if (code == HttpStatus.PARAM_ERROR) {
+      return Promise.resolve(res.data);
     } else if (code !== HttpStatus.SUCCESS) {
       ElNotification.error({ title: msg });
       return Promise.reject('error');

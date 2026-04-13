@@ -106,7 +106,7 @@
       <template #header>
         <el-row :gutter="24" class="mb8">
           <el-col :span="1.5">
-            <el-button v-hasPermi="['wms:packing:export']" type="warning" plain icon="Download" @click="handleExport"> 导出 </el-button>
+            <el-button v-hasPermi="['wms:packingData:export']" type="warning" plain icon="Download" @click="handleExport"> 导出 </el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @query-table="getList"></right-toolbar>
         </el-row>

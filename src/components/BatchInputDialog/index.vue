@@ -94,7 +94,11 @@ const removeItem = (index: number) => {
 };
 
 const handleSubmit = () => {
-  if (items.value.length === 0) return;
+  if (items.value.length === 0) {
+    emit('confirm', []);
+    dialogVisible.value = false;
+    return;
+  }
 
   const values = items.value.map((item) => item.value);
   if (props.confirmCallback) {

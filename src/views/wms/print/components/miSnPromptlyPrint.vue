@@ -10,7 +10,9 @@
             <el-select v-model="selectedPrinter" placeholder="请选择打印机" style="width: 100%" filterable @change="onPrinterChange">
               <template #prefix>
                 <el-button text @click="refreshPrinterList" title="刷新所有设置">
-                  <el-icon><Refresh /></el-icon>
+                  <el-icon>
+                    <Refresh />
+                  </el-icon>
                 </el-button>
               </template>
               <el-option v-for="printer in printerList" :key="printer.name" :label="printer.name" :value="printer.name">
@@ -26,7 +28,7 @@
           <el-form-item label="选择纸张">
             <el-select v-model="selectedPaper" placeholder="请先选择打印机" style="width: 100%" filterable :disabled="!selectedPrinter" @change="onPaperChange">
               <template #prefix>
-                <el-button text @click="refreshPapers" icon="Refresh" title="刷新所有设置"> </el-button>
+                <el-button text @click="refreshPapers" icon="Refresh" title="刷新所有设置"></el-button>
               </template>
               <el-option v-for="paper in paperList" :key="paper.value" :label="paper.label" :value="paper.value">
                 <div class="paper-option">
@@ -38,21 +40,21 @@
 
           <!-- 工单号码 -->
           <el-form-item label="工单号码" prop="shopOrder">
-            <!--              <el-input v-model="queryParams.shopOrder" placeholder="请输入工单号码">
+            <el-input v-model="workOrderInfo.shopOrder" placeholder="请输入工单号码" readonly>
               <template #append>
                 <el-button icon="Search" @click="showShopOrderDialog" />
               </template>
-            </el-input>-->
-            <HistoryInput v-model="workOrderInfo.shopOrder" :config="shopOrderConfig" placeholder="请输入工单号码" @keyup.enter="getShopOrderList">
+            </el-input>
+            <!--            <HistoryInput v-model="workOrderInfo.shopOrder" :config="shopOrderConfig" placeholder="请输入工单号码" @keyup.enter="getShopOrderList">
               <template #append>
                 <el-button icon="Search" @click="showShopOrderDialog" />
               </template>
-            </HistoryInput>
+            </HistoryInput>-->
           </el-form-item>
 
           <!-- 扫描条码输入 -->
           <el-form-item label="扫描条码">
-            <el-input v-model="scanInput" placeholder="请扫描条码" @keydown.enter.prevent="handleScanEnter" ref="scanInputRef" autofocus clearable> </el-input>
+            <el-input ref="scanInputRef" v-model="scanInput" placeholder="请扫描条码" @keydown.enter.prevent="keyDownTab" @keydown.tab.prevent="keyDownTab" autofocus clearable></el-input>
           </el-form-item>
 
           <!-- 打印份数 -->
@@ -79,7 +81,7 @@
         <div class="preview-container">
           <div class="preview-header">
             <div class="header-left">
-              <h3>MI即扫即打预览</h3>
+              <h3>MI即扫即打预览(47mm*30mm)</h3>
             </div>
           </div>
 
@@ -110,7 +112,7 @@
                     </div>
 
                     <!-- 69码区域 -->
-                    <div class="sixty-nine-barcode-section">
+                    <div class="sixty-nine-barcode-section" v-if="workOrderInfo.ean">
                       <svg ref="sixtyNineBarcodeSvg"></svg>
                     </div>
 
@@ -148,7 +150,7 @@
                   <el-descriptions-item label="标签尺寸">47mm × 30mm</el-descriptions-item>
                   <el-descriptions-item label="打印份数">{{ copies }} 份</el-descriptions-item>
                   <el-descriptions-item label="当前缩放">{{ (zoom * 100).toFixed(0) }}%</el-descriptions-item>
-                  <el-descriptions-item label="当前打印机" :span="2">{{ selectedPrinter || '未选择' }}</el-descriptions-item>
+                  <el-descriptions-item label="当前打印机" :span="2">{{ selectedPrinter || '未选择' }} </el-descriptions-item>
                 </el-descriptions>
               </div>
             </div>
@@ -164,15 +166,14 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted } from 'vue';
 import html2canvas from 'html2canvas';
+
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 import { listShopOrder } from '@/api/mes/shopOrder';
 import JsBarcode from 'jsbarcode';
 import { getLodop } from '@/utils/LodopFuncs';
 import { savePrintHistory } from '@/api/mes/shopOrderSfcPrintHistory';
 import { HttpStatus } from '@/enums/RespEnum';
-import HistoryInput from '@/components/HistoryInput/index.vue';
 import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
-import { HistoryConfig } from '@/types/history';
 
 const settingFormRef = ref();
 const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
@@ -199,26 +200,12 @@ const workOrderInfo = ref({
   material: '',
   shopOrder: '',
   productDate: '',
-  sfcContent: '76054/BQAPNF6Q900003',
+  sfcContent: '',
   ean: '',
   sku: '',
   productDesc: '',
   color: '锖灰色'
 });
-
-const shopOrderConfig: HistoryConfig = {
-  key: 'shopOrder',
-  storage: 'indexedDB',
-  maxSize: 10,
-  page: 'print',
-  autoSave: true,
-  component: {
-    showDropdown: true,
-    showTime: false,
-    showDelete: true,
-    dropdownMaxHeight: '300px'
-  }
-};
 
 const podConfig = ref<{ [key: string]: any }>({});
 
@@ -260,11 +247,11 @@ const getShopOrderList = async () => {
       shopOrder: workOrderInfo.value.shopOrder
     });
     if (res.total == 0) {
-      proxy.$modal.msgError('工单号' + queryParams.value.shopOrder + '资料不存在');
+      proxy.$modal.msgError('工单号' + workOrderInfo.value.shopOrder + '资料不存在');
       return;
     }
     if (res.total > 1) {
-      proxy.$modal.msgError('工单号' + queryParams.value.shopOrder + '存在多笔资料');
+      proxy.$modal.msgError('工单号' + workOrderInfo.value.shopOrder + '存在多笔资料');
       return;
     }
     const data = res.rows[0];
@@ -287,7 +274,6 @@ const getPrintersFromLodop = (): Array<{ name: string; isDefault: boolean }> => 
   }
 
   try {
-    // 方法1：使用GET_PRINTER_COUNT和GET_PRINTER_NAME
     const printerCount = LODOP.GET_PRINTER_COUNT();
     const printers = [];
     const defaultPrinterName = LODOP.GET_PRINTER_NAME(-1); // -1表示默认打印机
@@ -446,10 +432,10 @@ const generateBarcode = () => {
 // 生成69码
 const generateSixtyNineBarcode = () => {
   const content = workOrderInfo.value.ean;
-  sixtyNineBarcodeSvg.value.innerHTML = '';
   if (!content || !sixtyNineBarcodeSvg.value) {
     return;
   }
+  sixtyNineBarcodeSvg.value.innerHTML = '';
   try {
     JsBarcode(sixtyNineBarcodeSvg.value, content, {
       format: 'EAN13',
@@ -486,7 +472,7 @@ const generateSixtyNineBarcode = () => {
 };
 
 // 处理扫描输入回车事件
-const handleScanEnter = async () => {
+const keyDownTab = async () => {
   if (!scanInput.value.trim()) return;
 
   workOrderInfo.value.sfcContent = scanInput.value.trim();
@@ -507,59 +493,35 @@ const handleScanEnter = async () => {
 
   await nextTick();
   await generateBarcode();
-  await handlePrint();
-};
-
-// 直接打印
-const handlePrint = async () => {
-  const LODOP = getLodop();
-  if (!LODOP) {
-    proxy.$modal.msgError('未检测到Lodop打印服务，请安装Lodop插件');
-    return;
-  }
-
-  if (!selectedPrinter.value) {
-    proxy.$modal.msgError('请先选择打印机');
-    return;
-  }
-
-  if (!workOrderInfo.value.sfcContent) {
-    proxy.$modal.msgError('请先输入序列号或扫描条码');
-    return;
-  }
-  // printing.value = true;
-  // const res = await savePrintHistory({
-  //   shopOrderSfcBoList: [
-  //     {
-  //       shopOrder: workOrderInfo.value.shopOrder,
-  //       sfc: workOrderInfo.value.sfcContent
-  //     }
-  //   ],
-  //   printType: 2
-  // });
-  // if (res.code !== HttpStatus.SUCCESS) {
-  //   printLoading.value = false;
-  //   return;
-  // }
+  // await handlePrint();
   try {
-    // 生成条形码
-    // await nextTick();
-    // generateBarcode();
-
-    // 生成截图
-    const canvas = await html2canvas(printContent.value!, {
-      scale: 4,
-      logging: false,
-      useCORS: true,
-      backgroundColor: '#ffffff'
+    printing.value = true;
+    const res = await savePrintHistory({
+      shopOrderSfcBoList: [
+        {
+          shopOrder: workOrderInfo.value.shopOrder,
+          sfc: workOrderInfo.value.sfcContent
+        }
+      ],
+      printType: 2,
+      businessCode: 'MI'
     });
-
+    if (res.code !== HttpStatus.SUCCESS) {
+      printing.value = false;
+      return;
+    }
+    workOrderInfo.value.productDate = res.data[0].productDate;
+    const LODOP = getLodop();
+    if (!LODOP) {
+      proxy.$modal.msgError('未检测到Lodop打印服务，请安装Lodop插件');
+      return;
+    }
     // 初始化打印任务
-    LODOP.PRINT_INIT('MI标签打印');
-
+    LODOP.PRINT_INIT('小米汽车YU7标签');
     // 设置打印机
     LODOP.SET_PRINTER_INDEX(selectedPrinter.value);
 
+    // 设置纸张大小 47mm × 30mm
     // 如果选择了纸张，则设置纸张类型
     if (selectedPaper.value) {
       LODOP.SET_PRINT_PAGESIZE(1, '', '', selectedPaper.value);
@@ -567,31 +529,108 @@ const handlePrint = async () => {
       // 设置默认纸张大小
       LODOP.SET_PRINT_PAGESIZE(0, 0, 0, '47mm 30mm'); // 设置纸张大小
     }
+    // 设置打印模式
+    // LODOP.SET_PRINT_MODE('PRINT_PAGE_PERCENT', 1);
+    // LODOP.SET_PRINT_MODE('RESOLUTION', 600);
+    // LODOP.SET_PRINT_STYLE('FontSmoothing', 2);
 
-    // 添加打印内容
-    for (let i = 0; i < copies.value; i++) {
-      // 添加打印内容
-      // LODOP.ADD_PRINT_IMAGE(0, 0, '100%', '100%', canvas.toDataURL('image/png'));
-      LODOP.ADD_PRINT_IMAGE(0, 0, '47mm', '30mm', canvas.toDataURL('image/png'));
-      // LODOP.ADD_PRINT_IMAGE(0, 0, '47mm', '30mm', "<img  border='0' src=\"${canvas.toDataURL('image/png')}\" width=4440 height=2836  />");
-      // //按原图比例(不变形)缩放模式
-      LODOP.SET_PRINT_STYLEA(0, 'Stretch', 2);
-      // LODOP.ADD_PRINT_HTM(0, 0, '47mm', '30mm', '<!DOCTYPE html>' + document.getElementsByClassName('mi-print-sn-template')[0].innerHTML);
-      // LODOP.ADD_PRINT_HTML(0, 0, '47mm', '30mm', document.getElementsByClassName('mi-print-sn-template')[0].innerHTML);
-      // LODOP.ADD_PRINT_HTM(0, 0, '100%', '100%', printContent.value.innerHTML);
+    // 开启字体平滑
+    // LODOP.SET_PRINT_STYLE('FontSmoothing', 2); // 2=开启字体平滑
 
-      if (i < copies.value - 1) {
-        LODOP.NEWPAGE();
-      }
-    }
+    // ========== 标题：小米汽车车顶平台行李架 ==========
+    LODOP.ADD_PRINT_TEXT('2mm', '2mm', '43mm', '2mm', workOrderInfo.value.productDesc);
+    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
+    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4.5);
+    LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.14);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.14);
 
-    // 直接打印
-    // LODOP.PRINT();
-    LODOP.PREVIEW();
+    // ========== 颜色：锖灰色 ==========
+    LODOP.ADD_PRINT_TEXT('2.01mm', '35.51mm', '14mm', '2.01mm', `颜色：${workOrderInfo.value.color}`);
+    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
+    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4.5);
+    LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.14);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.14);
 
-    proxy.$modal.msgSuccess('打印任务已发送');
-  } catch (error: any) {
-    proxy.$modal.msgError('打印失败: ' + (error as Error).message);
+    // ========== SN条码 ==========
+    LODOP.ADD_PRINT_BARCODE('4.4mm', '2.01mm', '42.99mm', '5mm', '128Auto', workOrderInfo.value.sfcContent);
+    LODOP.SET_PRINT_STYLEA(0, 'ShowBarText', 0);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.14);
+
+    // ========== SN文字 ==========
+    LODOP.ADD_PRINT_TEXT('9.7mm', '2.01mm', '35mm', '2.49mm', `SN: ${workOrderInfo.value.sfcContent}`);
+    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
+    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4);
+    LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.14);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.14);
+
+    // ========== SKU文字 ==========
+    LODOP.ADD_PRINT_TEXT('9.7mm', '31.6mm', '20mm', '2.49mm', `SKU: ${workOrderInfo.value.sku}`);
+    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
+    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4);
+    LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.14);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.14);
+
+    // ========== EAN13 条码 ==========
+    LODOP.ADD_PRINT_BARCODE('12.00mm', '5mm', '41.00mm', '10.8mm', 'EAN13', workOrderInfo.value.ean);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.1);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.1);
+    LODOP.SET_PRINT_STYLEA(0, 'ShowBarText', 0);
+
+    // ========== EAN13 分段：第1位 ==========
+    const ean = workOrderInfo.value.ean || '';
+    const first = ean.substr(0, 1);
+    const middle = ean.substr(1, 6);
+    const last = ean.substr(7, 6);
+
+    LODOP.ADD_PRINT_TEXT('19.7mm', '2.01mm', '7.99mm', '5mm', first);
+    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
+    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.1);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.1);
+
+    // ========== EAN13 分段：中间6位 ==========
+    LODOP.ADD_PRINT_TEXT('19.7mm', '7.41mm', '20mm', '5mm', middle);
+    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
+    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10);
+    LODOP.SET_PRINT_STYLEA(0, 'LetterSpacing', '0.6mm');
+    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.1);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.1);
+
+    // ========== EAN13 分段：最后6位 ==========
+    LODOP.ADD_PRINT_TEXT('19.7mm', '26.99mm', '20mm', '5mm', last);
+    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
+    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10);
+    LODOP.SET_PRINT_STYLEA(0, 'LetterSpacing', '0.6mm');
+    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.1);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.1);
+
+    // ========== 生产日期 ==========
+    LODOP.ADD_PRINT_TEXT('25.61mm', '2.2mm', '25mm', '2.01mm', `生产日期：${res.data[0]?.productDate}`);
+    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
+    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4);
+    LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.05);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.05);
+
+    // ========== 边框 ==========
+    LODOP.ADD_PRINT_RECT('25mm', '36.7mm', '8.39mm', '2.41mm', 0, 0);
+
+    // ========== 合格证已检验 ==========
+    LODOP.ADD_PRINT_TEXT('25.51mm', '37.2mm', '14mm', '2.8mm', '合格证 已检验');
+    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
+    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 3);
+    LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.14);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.14);
+
+    // ========== 预览或打印 ==========
+    // LODOP.PRINT_DESIGN(); // 设计模式，调试时使用
+    // LODOP.PREVIEW(); // 预览
+    LODOP.PRINT(); // 直接打印
   } finally {
     printing.value = false;
   }
@@ -781,17 +820,20 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
 }
+
 .history-header {
   padding: 15px;
   border-bottom: 1px solid #eee;
   background-color: #fafbfc;
 }
+
 .history-header h4 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
   color: #333;
 }
+
 .history-list {
   flex: 1;
   overflow-y: auto;
@@ -828,6 +870,7 @@ onMounted(() => {
   font-size: 14px;
   padding: 20px 0;
 }
+
 .preview-info {
   margin-top: 20px;
   padding: 20px;
@@ -863,6 +906,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
+  max-height: 7mm;
 }
 
 .sixty-nine-barcode-section {
@@ -875,6 +919,7 @@ onMounted(() => {
   font-family: 'MiSans Regular', sans-serif;
   font-size: 4.5pt;
   margin: -1px 0 2px 0;
+  max-height: 5mm;
 }
 
 .sn-sku-row {
@@ -882,6 +927,7 @@ onMounted(() => {
   width: 100%;
   justify-content: space-between;
   align-items: center;
+  margin-top: 2px;
 }
 
 .footer-row {
@@ -910,7 +956,6 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   border: 0.5pt solid #000;
-  //padding: 0px 1px 1px 1px;
   padding: 0 1px;
   font-weight: bold;
 }
@@ -923,6 +968,7 @@ onMounted(() => {
   font-size: 3.18pt;
   color: #000;
 }
+
 /* 屏幕显示时放大200% */
 @media screen {
   .mi-print-sn-template {

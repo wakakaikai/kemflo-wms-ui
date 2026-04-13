@@ -10,6 +10,11 @@ export interface ShopOrderSfcPrintHistoryVO {
   traceId: string | number;
 
   /**
+   * 打印类型：1-普通标签 2-即扫即打标签
+   */
+  type: number;
+
+  /**
    * 工单号
    */
   shopOrder: string;
@@ -53,6 +58,11 @@ export interface ShopOrderSfcPrintHistoryVO {
    * 删除标识
    */
   deleteFlag: number;
+
+  /**
+   * 备注
+   */
+  remark: string;
 }
 
 export interface ShopOrderSfcPrintHistoryForm extends BaseEntity {
@@ -65,6 +75,11 @@ export interface ShopOrderSfcPrintHistoryForm extends BaseEntity {
    * 追踪ID
    */
   traceId?: string | number;
+
+  /**
+   * 打印类型：1-普通标签 2-即扫即打标签
+   */
+  type?: number;
 
   /**
    * 工单号
@@ -110,6 +125,11 @@ export interface ShopOrderSfcPrintHistoryForm extends BaseEntity {
    * 删除标识
    */
   deleteFlag?: number;
+
+  /**
+   * 备注
+   */
+  remark?: string;
 }
 
 export interface ShopOrderSfcPrintHistoryQuery extends PageQuery {
@@ -117,6 +137,11 @@ export interface ShopOrderSfcPrintHistoryQuery extends PageQuery {
    * 追踪ID
    */
   traceId?: string | number;
+
+  /**
+   * 打印类型：1-普通标签 2-即扫即打标签
+   */
+  type?: number;
 
   /**
    * 工单号
