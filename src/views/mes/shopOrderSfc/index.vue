@@ -230,6 +230,7 @@ const handleQuery = () => {
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   queryParams.value.sfcList = [];
+  batchInputDialogRef.value?.resetInput();
   handleQuery();
 };
 
@@ -297,7 +298,6 @@ const handleExport = () => {
 // 打开批量录入条码弹框
 const openBatchInputDialog = () => {
   batchInputDialogVisible.value = true;
-  batchInputDialogRef.value?.resetInput();
 };
 // 弹框确定的回调
 const handleBatchInputConfirm = (values: string[]) => {

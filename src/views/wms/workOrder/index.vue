@@ -68,32 +68,34 @@
         <el-table-column v-if="columns[7].visible" label="单位" align="center" prop="unit" />
         <el-table-column v-if="columns[8].visible" label="销售订单号" align="center" prop="salesOrderNo" min-width="120" />
         <el-table-column v-if="columns[9].visible" label="销售订单项次" align="center" prop="salesOrderItem" min-width="120" />
-        <el-table-column v-if="columns[10].visible" label="溯源工单号" align="center" prop="traceOrderNo" min-width="120" />
-        <el-table-column v-if="columns[11].visible" label="销售订单交货日" align="center" prop="soDeliveryDate" width="180">
+        <el-table-column v-if="columns[10].visible" label="销售订数量" align="center" prop="salesOrderQty" min-width="120" />
+        <el-table-column v-if="columns[11].visible" label="销售订单单位" align="center" prop="salesOrderUnit" min-width="120" />
+        <el-table-column v-if="columns[12].visible" label="溯源工单号" align="center" prop="traceOrderNo" min-width="120" />
+        <el-table-column v-if="columns[13].visible" label="销售订单交货日" align="center" prop="soDeliveryDate" width="180">
           <template #default="scope">
             <span>{{ parseTime(scope.row.soDeliveryDate, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[12].visible" label="生产模式" align="center" prop="productionMode" min-width="120">
+        <el-table-column v-if="columns[14].visible" label="生产模式" align="center" prop="productionMode" min-width="120">
           <template #default="scope">
             <dict-tag :options="wms_production_mode" :value="scope.row.productionMode" />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[13].visible" label="集约生产标识" align="center" prop="intensiveProductionFlag">
+        <el-table-column v-if="columns[15].visible" label="集约生产标识" align="center" prop="intensiveProductionFlag">
           <template #default="scope">
             <el-checkbox v-model="scope.row.intensiveProductionFlag" disabled />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[14].visible" label="尾数工单标识" align="center" prop="mantissaOrderFlag">
+        <el-table-column v-if="columns[16].visible" label="尾数工单标识" align="center" prop="mantissaOrderFlag">
           <template #default="scope">
             <el-checkbox v-model="scope.row.mantissaOrderFlag" disabled />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[15].visible" label="创建时间" align="center" prop="createTime" />
-        <el-table-column v-if="columns[16].visible" label="创建者" align="center" prop="createByName" />
-        <el-table-column v-if="columns[17].visible" label="更新时间" align="center" prop="updateTime" />
-        <el-table-column v-if="columns[18].visible" label="更新者" align="center" prop="updateByName" />
-        <el-table-column v-if="columns[19].visible" label="备注" align="center" prop="remark" />
+        <el-table-column v-if="columns[17].visible" label="创建时间" align="center" prop="createTime" />
+        <el-table-column v-if="columns[18].visible" label="创建者" align="center" prop="createByName" />
+        <el-table-column v-if="columns[19].visible" label="更新时间" align="center" prop="updateTime" />
+        <el-table-column v-if="columns[20].visible" label="更新者" align="center" prop="updateByName" />
+        <el-table-column v-if="columns[21].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -207,7 +209,7 @@
                   <!-- 印章效果的集字和尾字 -->
                   <div class="seal-stamp-container">
                     <div class="seal-stamp seal-intensive" v-if="workOrderInfo.intensiveProductionFlag">集</div>
-<!--                    <div class="seal-stamp seal-mantissa" v-if="workOrderInfo.mantissaOrderFlag">尾</div>-->
+                    <!--                    <div class="seal-stamp seal-mantissa" v-if="workOrderInfo.mantissaOrderFlag">尾</div>-->
                   </div>
                 </div>
               </div>
@@ -229,8 +231,8 @@
                   <span>{{ workOrderInfo.item }}</span>
                 </div>
                 <div class="info-column">
-                  <label>看板数量</label>
-                  <span>{{ workOrderInfo.plannedQty }}</span>
+                  <label>销售数量</label>
+                  <span>{{ parseFloat(workOrderInfo.salesOrderQty) || '' }} {{ workOrderInfo.salesOrderUnit }}</span>
                 </div>
               </div>
 
@@ -330,8 +332,8 @@
                   <span>{{ workOrderInfo.workOrderNo }}</span>
                 </div>
                 <div class="info-column">
-                  <label>看板数量</label>
-                  <span>{{ Number(workOrderInfo.plannedQty) }} PCS</span>
+                  <label>销售数量</label>
+                  <span>{{ parseFloat(workOrderInfo.salesOrderQty) || '' }} {{ workOrderInfo.salesOrderUnit }}</span>
                 </div>
               </div>
               <div class="split-line" />
@@ -498,16 +500,18 @@ const columns = ref<TableColumns[]>([
   { key: 8, label: '单位', visible: true },
   { key: 9, label: '销售订单号', visible: true },
   { key: 10, label: '销售订单项次', visible: true },
-  { key: 11, label: '溯源工单号', visible: true },
-  { key: 12, label: '销售订单交货日', visible: true },
-  { key: 13, label: '生产模式', visible: true },
-  { key: 14, label: '集约生产标识', visible: false },
-  { key: 15, label: '尾数工单标识', visible: false },
-  { key: 16, label: '创建时间', visible: false },
-  { key: 17, label: '创建者', visible: false },
-  { key: 18, label: '更新时间', visible: false },
-  { key: 19, label: '更新者', visible: false },
-  { key: 20, label: '备注', visible: false }
+  { key: 11, label: '销售订数量', visible: true },
+  { key: 12, label: '销售订单单位', visible: true },
+  { key: 13, label: '溯源工单号', visible: true },
+  { key: 14, label: '销售订单交货日', visible: true },
+  { key: 15, label: '生产模式', visible: true },
+  { key: 16, label: '集约生产标识', visible: false },
+  { key: 17, label: '尾数工单标识', visible: false },
+  { key: 18, label: '创建时间', visible: false },
+  { key: 19, label: '创建者', visible: false },
+  { key: 20, label: '更新时间', visible: false },
+  { key: 21, label: '更新者', visible: false },
+  { key: 22, label: '备注', visible: false }
 ]);
 
 // 工单信息

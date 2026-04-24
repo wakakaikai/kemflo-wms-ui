@@ -40,6 +40,11 @@ export interface WorkOrderVO {
   plannedEndDate: string;
 
   /**
+   * 完成交付日期
+   */
+  completeDeliveredDate: string;
+
+  /**
    * 计划数量
    */
   plannedQty: number;
@@ -80,19 +85,19 @@ export interface WorkOrderVO {
   previousOrderNo: string;
 
   /**
-   * 生产模式：mts-按库存生产 mto-按订单生产
+   * 生产模式
    */
   productionMode: string;
 
   /**
    * 集约生产标识
    */
-  intensiveProductionFlag: boolean;
+  intensiveProductionFlag: number;
 
   /**
    * 尾数工单标识
    */
-  mantissaOrderFlag: boolean;
+  mantissaOrderFlag: number;
 
   /**
    * 备注
@@ -147,6 +152,11 @@ export interface WorkOrderForm extends BaseEntity {
   plannedEndDate?: string;
 
   /**
+   * 完成交付日期
+   */
+  completeDeliveredDate?: string;
+
+  /**
    * 计划数量
    */
   plannedQty?: number;
@@ -187,19 +197,19 @@ export interface WorkOrderForm extends BaseEntity {
   previousOrderNo?: string;
 
   /**
-   * 生产模式：mts-按库存生产 mto-按订单生产
+   * 生产模式
    */
-  productionMode: string;
+  productionMode?: string;
 
   /**
    * 集约生产标识
    */
-  intensiveProductionFlag: boolean;
+  intensiveProductionFlag?: number;
 
   /**
    * 尾数工单标识
    */
-  mantissaOrderFlag: boolean;
+  mantissaOrderFlag?: number;
 
   /**
    * 备注
@@ -249,6 +259,11 @@ export interface WorkOrderQuery extends PageQuery {
   plannedEndDate?: string;
 
   /**
+   * 完成交付日期
+   */
+  completeDeliveredDate?: string;
+
+  /**
    * 计划数量
    */
   plannedQty?: number;
@@ -289,19 +304,19 @@ export interface WorkOrderQuery extends PageQuery {
   previousOrderNo?: string;
 
   /**
-   * 生产模式：mts-按库存生产 mto-按订单生产
+   * 生产模式
    */
-  productionMode: string;
+  productionMode?: string;
 
   /**
    * 集约生产标识
    */
-  intensiveProductionFlag: boolean;
+  intensiveProductionFlag?: number;
 
   /**
    * 尾数工单标识
    */
-  mantissaOrderFlag: boolean;
+  mantissaOrderFlag?: number;
 
   /**
    * 工单优先级

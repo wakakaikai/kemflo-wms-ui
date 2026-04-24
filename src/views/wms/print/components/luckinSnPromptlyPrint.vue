@@ -7,7 +7,8 @@
         <el-form label-position="top" :model="workOrderInfo" :rules="rules" ref="settingFormRef">
           <!-- 打印机选择 -->
           <el-form-item label="选择打印机">
-            <el-select v-model="selectedPrinter" placeholder="请选择打印机" style="width: 100%" filterable @change="onPrinterChange">
+            <el-select v-model="selectedPrinter" placeholder="请选择打印机" style="width: 100%" filterable
+                       @change="onPrinterChange">
               <template #prefix>
                 <el-button text @click="refreshPrinterList" title="刷新所有设置">
                   <el-icon>
@@ -25,8 +26,9 @@
           </el-form-item>
 
           <!-- 纸张选择 -->
-          <!--          <el-form-item label="选择纸张">
-            <el-select v-model="selectedPaper" placeholder="请先选择打印机" style="width: 100%" filterable :disabled="!selectedPrinter" @change="onPaperChange">
+          <el-form-item label="选择纸张">
+            <el-select v-model="selectedPaper" placeholder="请先选择打印机" style="width: 100%" filterable
+                       :disabled="!selectedPrinter" @change="onPaperChange">
               <template #prefix>
                 <el-button text @click="refreshPapers" icon="Refresh" title="刷新所有设置"></el-button>
               </template>
@@ -36,7 +38,7 @@
                 </div>
               </el-option>
             </el-select>
-          </el-form-item>-->
+          </el-form-item>
 
           <!-- 工单号码 -->
           <el-form-item label="工单号码" prop="shopOrder">
@@ -49,7 +51,8 @@
 
           <!-- 扫描条码输入 -->
           <el-form-item label="扫描条码">
-            <el-input ref="scanInputRef" v-model="scanInput" placeholder="请扫描条码" @keydown.enter.prevent="keyDownTab" @keydown.tab.prevent="keyDownTab" autofocus clearable />
+            <el-input ref="scanInputRef" v-model="scanInput" placeholder="请扫描条码"
+                      @keydown.enter.prevent="keyDownTab" @keydown.tab.prevent="keyDownTab" autofocus clearable />
           </el-form-item>
 
           <!-- 打印份数 -->
@@ -265,7 +268,8 @@ const getPaperList = (printerName: string) => {
       LODOP.PRINT_INIT('');
 
       return papers;
-    } catch (error) {}
+    } catch (error) {
+    }
   } catch (error) {
     console.error('获取纸张列表失败:', error);
     return [];
@@ -491,15 +495,13 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   padding: 15px;
-  background:
-    linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
-    linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
+  background: linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
+  linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
   background-size: 20px 20px;
-  background-position:
-    0 0,
-    0 10px,
-    10px -10px,
-    -10px 0px;
+  background-position: 0 0,
+  0 10px,
+  10px -10px,
+  -10px 0px;
   border-radius: 8px;
 }
 

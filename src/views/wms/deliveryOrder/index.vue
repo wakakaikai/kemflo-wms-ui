@@ -40,7 +40,7 @@
         <!--        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />-->
         <el-table-column label="交货单号" align="center" prop="deliveryOrderNo" width="150">
           <template #default="scope">
-            <router-link :to="'/basic/warehouse/deliveryOrderDetail?id=' + scope.row.id" class="link-type">
+            <router-link :to="'/basic/warehouse/deliveryOrderDetail?deliveryOrderNo=' + scope.row.deliveryOrderNo" class="link-type">
               <span>{{ scope.row.deliveryOrderNo }}</span>
             </router-link>
           </template>

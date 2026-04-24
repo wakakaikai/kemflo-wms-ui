@@ -538,7 +538,7 @@ const keyDownTab = async () => {
     // LODOP.SET_PRINT_STYLE('FontSmoothing', 2); // 2=开启字体平滑
 
     // ========== 标题：小米汽车车顶平台行李架 ==========
-    LODOP.ADD_PRINT_TEXT('2mm', '2mm', '43mm', '2mm', workOrderInfo.value.productDesc);
+    LODOP.ADD_PRINT_TEXT('2mm', '3.00mm', '43mm', '2mm', workOrderInfo.value.productDesc);
     LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
     LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4.5);
     LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
@@ -554,12 +554,23 @@ const keyDownTab = async () => {
     LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.14);
 
     // ========== SN条码 ==========
-    LODOP.ADD_PRINT_BARCODE('4.4mm', '2.01mm', '42.99mm', '5mm', '128Auto', workOrderInfo.value.sfcContent);
-    LODOP.SET_PRINT_STYLEA(0, 'ShowBarText', 0);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.14);
+    const tempCanvas = document.createElement('canvas');
+    JsBarcode(tempCanvas, workOrderInfo.value.sfcContent, {
+      format: 'CODE128',
+      displayValue: false,
+      height: 28,
+      width: 1,
+      margin: 0
+    });
+    // 使用图片方式打印条形码
+    LODOP.ADD_PRINT_IMAGE('4.4mm', '3.00mm', '42.41mm', '5mm', tempCanvas.toDataURL('image/png'));
+    LODOP.SET_PRINT_STYLEA(0, 'Stretch', 1); // 扩展缩放模式
+    // LODOP.ADD_PRINT_BARCODE('4.4mm', '2.01mm', '43mm', '5mm', '128Auto', workOrderInfo.value.sfcContent);
+    // LODOP.SET_PRINT_STYLEA(0, 'ShowBarText', 0);
+    // LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.04);
 
     // ========== SN文字 ==========
-    LODOP.ADD_PRINT_TEXT('9.7mm', '2.01mm', '35mm', '2.49mm', `SN: ${workOrderInfo.value.sfcContent}`);
+    LODOP.ADD_PRINT_TEXT('9.7mm', '3.00mm', '35mm', '2.49mm', `SN: ${workOrderInfo.value.sfcContent}`);
     LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
     LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4);
     LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
@@ -575,25 +586,25 @@ const keyDownTab = async () => {
     LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.14);
 
     // ========== EAN13 条码 ==========
-    LODOP.ADD_PRINT_BARCODE('12.00mm', '5mm', '41.00mm', '10.8mm', 'EAN13', workOrderInfo.value.ean);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.1);
+    LODOP.ADD_PRINT_BARCODE('12.00mm', '6mm', '41.00mm', '10.8mm', 'EAN13', workOrderInfo.value.ean);
+    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.08);
     LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.1);
     LODOP.SET_PRINT_STYLEA(0, 'ShowBarText', 0);
 
     // ========== EAN13 分段：第1位 ==========
     const ean = workOrderInfo.value.ean || '';
-    const first = ean.substr(0, 1);
-    const middle = ean.substr(1, 6);
-    const last = ean.substr(7, 6);
+    const first = ean.substring(0, 1);
+    const middle = ean.substring(1, 7);
+    const last = ean.substring(7, 13);
 
-    LODOP.ADD_PRINT_TEXT('19.7mm', '2.01mm', '7.99mm', '5mm', first);
+    LODOP.ADD_PRINT_TEXT('19.7mm', '3.00mm', '8.99mm', '5mm', first);
     LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
     LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10);
     LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.1);
     LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.1);
 
     // ========== EAN13 分段：中间6位 ==========
-    LODOP.ADD_PRINT_TEXT('19.7mm', '7.41mm', '20mm', '5mm', middle);
+    LODOP.ADD_PRINT_TEXT('19.7mm', '8.41mm', '20mm', '5mm', middle);
     LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
     LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10);
     LODOP.SET_PRINT_STYLEA(0, 'LetterSpacing', '0.6mm');
@@ -601,7 +612,7 @@ const keyDownTab = async () => {
     LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.1);
 
     // ========== EAN13 分段：最后6位 ==========
-    LODOP.ADD_PRINT_TEXT('19.7mm', '26.99mm', '20mm', '5mm', last);
+    LODOP.ADD_PRINT_TEXT('19.7mm', '27.00mm', '20mm', '5mm', last);
     LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
     LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10);
     LODOP.SET_PRINT_STYLEA(0, 'LetterSpacing', '0.6mm');
@@ -609,7 +620,7 @@ const keyDownTab = async () => {
     LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.1);
 
     // ========== 生产日期 ==========
-    LODOP.ADD_PRINT_TEXT('25.61mm', '2.2mm', '25mm', '2.01mm', `生产日期：${res.data[0]?.productDate}`);
+    LODOP.ADD_PRINT_TEXT('25.61mm', '3.00mm', '25mm', '2.01mm', `生产日期：${res.data[0]?.productDate}`);
     LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
     LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4);
     LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);

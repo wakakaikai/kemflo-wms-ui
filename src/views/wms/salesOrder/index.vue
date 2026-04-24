@@ -40,8 +40,14 @@
 
       <el-table v-loading="loading" :data="salesOrderList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />
-        <el-table-column label="销售订单号" align="center" prop="salesOrderNo" />
+        <!--        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />-->
+        <el-table-column label="销售订单号" align="center" prop="salesOrderNo">
+          <template #default="scope">
+            <router-link :to="'/basic/warehouse/salesOrderDetail?salesOrderNo=' + scope.row.salesOrderNo" class="link-type">
+              <span>{{ scope.row.salesOrderNo }}</span>
+            </router-link>
+          </template>
+        </el-table-column>
         <el-table-column label="凭证日期" align="center" prop="voucherDate" width="180">
           <template #default="scope">
             <span>{{ parseTime(scope.row.voucherDate, '{y}-{m}-{d}') }}</span>

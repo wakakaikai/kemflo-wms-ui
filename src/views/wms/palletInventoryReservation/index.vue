@@ -21,13 +21,20 @@ NEW_FILE_CODE
                 <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
               </el-form-item>
 
-              <el-form-item label="物料编码" prop="itemCode">
-                <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
+              <el-form-item label="工单号" prop="workOrderNoStr">
+                <el-input v-model="queryParams.workOrderNoStr" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" readonly>
+                  <template #append>
+                    <el-button icon="CopyDocument" @click="openBatchInputDialog" title="批量录入工单号" />
+                  </template>
+                </el-input>
               </el-form-item>
 
               <!-- 高级搜索项，默认隐藏 -->
               <div v-show="showAdvancedSearch">
-                <el-form-item label="工单号" prop="workOrderNo">
+                <el-form-item label="物料编码" prop="itemCode">
+                  <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
+                </el-form-item>
+<!--                <el-form-item label="工单号" prop="workOrderNo">
                   <el-input v-model="queryParams.workOrderNo" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
                 </el-form-item>
                 <el-form-item label="物料名称" prop="itemName">
@@ -40,7 +47,7 @@ NEW_FILE_CODE
                   <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable>
                     <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
                   </el-select>
-                </el-form-item>
+                </el-form-item>-->
               </div>
 
               <el-form-item>
@@ -61,9 +68,9 @@ NEW_FILE_CODE
               <el-table ref="inventoryTableRef" :data="palletInventoryList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="55" align="center" />
                 <el-table-column v-if="columns[0].visible" label="栈板编号" align="center" prop="palletCode" fixed="left" />
-                <el-table-column v-if="columns[1].visible" label="工单号" align="center" prop="workOrderNo" fixed="left" />
-                <el-table-column v-if="columns[2].visible" label="物料编码" align="left" prop="itemCode" />
-                <el-table-column v-if="columns[3].visible" label="物料名称" align="center" prop="itemName" max-width="200" show-overflow-tooltip />
+                <el-table-column v-if="columns[1].visible" label="物料编码" align="left" prop="itemCode" />
+                <el-table-column v-if="columns[2].visible" label="物料名称" align="center" prop="itemName" max-width="200" show-overflow-tooltip />
+                <el-table-column v-if="columns[3].visible" label="批次号" align="center" prop="batchCode" />
                 <el-table-column v-if="columns[4].visible" label="下制程" align="center" prop="nextStepOrderNo">
                   <template #default="scope">
                     <span>{{ scope.row.nextStepOrderNo || '-' }} {{ scope.row.nextStepWorkCenter || '' }}</span>
@@ -77,16 +84,17 @@ NEW_FILE_CODE
                 <el-table-column v-if="columns[6].visible" label="非限制数量" align="center" prop="availableQuantity" min-width="90" />
                 <el-table-column v-if="columns[7].visible" label="质检数量" align="center" prop="inspectionQuantity" />
                 <el-table-column v-if="columns[8].visible" label="冻结数量" align="center" prop="blockedQuantity" />
-                <el-table-column v-if="columns[9].visible" label="单位" align="center" prop="unit" />
-                <el-table-column v-if="columns[10].visible" label="仓库编码" align="center" prop="warehouseCode" />
-                <el-table-column v-if="columns[11].visible" label="库区编码" align="center" prop="areaCode" />
-                <el-table-column v-if="columns[12].visible" label="库位编码" align="center" prop="locationCode" />
-                <el-table-column v-if="columns[13].visible" label="物料标识卡" align="center" prop="materialSn" min-width="120" />
-                <el-table-column v-if="columns[14].visible" label="批次号" align="center" prop="batchCode" />
-                <el-table-column v-if="columns[15].visible" label="凭证年度" align="center" prop="materialDocYear" />
-                <el-table-column v-if="columns[16].visible" label="物料凭证号" align="center" prop="materialOrderNo" />
-                <el-table-column v-if="columns[17].visible" label="文件项次" align="center" prop="materialItem" />
-                <el-table-column v-if="columns[18].visible" label="备注" align="center" prop="remark" />
+                <el-table-column v-if="columns[9].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
+                  <template #default="scope">
+                    <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
+                  </template>
+                </el-table-column>
+                <el-table-column v-if="columns[10].visible" label="业务伙伴" align="center" prop="businessCode" />
+                <el-table-column v-if="columns[11].visible" label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
+                <el-table-column v-if="columns[12].visible" label="单位" align="center" prop="unit" />
+                <el-table-column v-if="columns[13].visible" label="仓库编码" align="center" prop="warehouseCode" />
+                <el-table-column v-if="columns[14].visible" label="库区编码" align="center" prop="areaCode" />
+                <el-table-column v-if="columns[15].visible" label="库位编码" align="center" prop="locationCode" />
               </el-table>
 
               <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
@@ -209,6 +217,9 @@ NEW_FILE_CODE
       </el-row>
     </el-card>
 
+    <!-- 批量输入对话框 -->
+    <BatchInputDialog ref="batchInputDialogRef" v-model="batchInputDialogVisible" title="批量录入工单号" placeholder="请输入工单号，支持多行粘贴" @confirm="handleBatchInputConfirm" />
+
     <!-- 库位选择对话框 -->
     <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
   </div>
@@ -225,6 +236,7 @@ import StorageLocationDialog from '@/views/wms/packing/components/storageLocatio
 
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HttpStatus } from '@/enums/RespEnum';
+import BatchInputDialog from '@/components/BatchInputDialog/index.vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag'));
@@ -241,6 +253,9 @@ const total = ref(0);
 const currentIndex = ref(0);
 const resultMessage = ref('');
 const resultStatus = ref(false);
+
+const batchInputDialogVisible = ref(false);
+const batchInputDialogRef = ref<InstanceType<typeof BatchInputDialog>>();
 
 // 预约模式：fixed-固定库位，multiple-多库位
 const reservationMode = ref<'fixed' | 'multiple'>('fixed');
@@ -323,24 +338,21 @@ const { queryParams, form, rules } = toRefs(data);
 // 列显隐信息
 const columns = ref<FieldOption[]>([
   { key: 1, label: '栈板编号', visible: true },
-  { key: 2, label: '工单号', visible: true },
-  { key: 3, label: '物料编码', visible: true },
-  { key: 4, label: '物料名称', visible: true },
+  { key: 2, label: '物料编码', visible: true },
+  { key: 3, label: '物料名称', visible: true },
+  { key: 4, label: '批次号', visible: true },
   { key: 5, label: '下制程', visible: true },
   { key: 6, label: '下制程单位', visible: true },
   { key: 7, label: '非限制数量', visible: true },
   { key: 8, label: '质检数量', visible: false },
   { key: 9, label: '冻结数量', visible: false },
-  { key: 10, label: '单位', visible: true },
-  { key: 11, label: '仓库编码', visible: false },
-  { key: 12, label: '库区编码', visible: false },
-  { key: 13, label: '库位编码', visible: true },
-  { key: 14, label: '物料标识卡', visible: false },
-  { key: 15, label: '批次号', visible: false },
-  { key: 16, label: '凭证年度', visible: false },
-  { key: 17, label: '物料凭证号', visible: false },
-  { key: 18, label: '文件项次', visible: false },
-  { key: 19, label: '备注', visible: false }
+  { key: 10, label: '特殊库存', visible: true },
+  { key: 11, label: '业务伙伴', visible: true },
+  { key: 12, label: '伙伴名称', visible: false },
+  { key: 13, label: '单位', visible: false },
+  { key: 14, label: '仓库编码', visible: false },
+  { key: 15, label: '库区编码', visible: false },
+  { key: 16, label: '库位编码', visible: true }
 ]);
 
 /** 切换高级搜索显示状态 */
@@ -369,6 +381,7 @@ const getList = async () => {
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
+  delete queryParams.value.workOrderNoStr;
   getList();
 };
 
@@ -376,6 +389,8 @@ const handleQuery = () => {
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   inventoryTableRef.value?.clearSelection();
+  queryParams.value.workOrderNoList = [];
+  batchInputDialogRef.value?.resetInput();
   handleQuery();
 };
 
@@ -565,6 +580,18 @@ const submitReservation = async () => {
   } finally {
     buttonLoading.value = false;
   }
+};
+
+// 打开批量录入条码弹框
+const openBatchInputDialog = () => {
+  batchInputDialogVisible.value = true;
+};
+// 弹框确定的回调
+const handleBatchInputConfirm = (values: string[]) => {
+  // 将批量输入的值合并到查询参数中
+  queryParams.value.workOrderNoStr = values.join(',');
+  queryParams.value.workOrderNoList = values;
+  handleQuery(); // 执行查询
 };
 
 onMounted(() => {

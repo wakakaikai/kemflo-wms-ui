@@ -142,7 +142,7 @@ import { listDeliveryOrderDetail, getDeliveryOrderDetail, delDeliveryOrderDetail
 import { DeliveryOrderDetailVO, DeliveryOrderDetailQuery, DeliveryOrderDetailForm } from '@/api/wms/deliveryOrderDetail/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-
+const route = useRoute();
 const deliveryOrderDetailList = ref<DeliveryOrderDetailVO[]>([]);
 const buttonLoading = ref(false);
 const loading = ref(true);
@@ -310,7 +310,23 @@ const handleExport = () => {
   );
 };
 
+/** 监听路由参数变化 */
+watch(
+  () => route.query.deliveryOrderNo,
+  (newVal) => {
+    if (newVal) {
+      queryParams.value.deliveryOrderNo = newVal as string;
+      queryParams.value.pageNum = 1;
+      getList();
+    }
+  }
+);
+
 onMounted(() => {
+  if (route.query.deliveryOrderNo) {
+    queryParams.value.deliveryOrderNo = route.query.deliveryOrderNo as string;
+    queryParams.value.pageNum = 1;
+  }
   getList();
 });
 </script>

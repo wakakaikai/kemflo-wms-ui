@@ -7,11 +7,11 @@ import { MesProductDataForm } from '@/api/report/mesProductData/types';
  * @returns {*}
  */
 
-export const listWorkOrderProcess = (data?: any) => {
+export const listWorkOrderProcess = (query?: any) => {
   return request({
     url: '/wms/scada/listWorkOrderProcess',
-    method: 'post',
-    data: data
+    method: 'get',
+    params: query
   });
 };
 
@@ -20,12 +20,29 @@ export const listWorkOrderProcess = (data?: any) => {
  * @param data
  * @returns {*}
  */
-export const listWorkOrderSummary = (data: MesProductDataForm) => {
+export const listWorkOrderSummary = (query?: any) => {
   return request({
-    url: '/mes/scada/inspection/list',
-    method: 'post',
-    data: data,
-    timeout: 180000
+    url: '/wms/scada/listWorkOrderSummary',
+    method: 'get',
+    params: query
+  });
+};
+
+
+export const listGanttTaskList = (query?: any) => {
+  return request({
+    url: '/wms/scada/listGanttTaskList',
+    method: 'get',
+    params: query
+  });
+};
+
+
+export const listProductprocess = (query?: any) => {
+  return request({
+    url: '/wms/scada/listProductprocess',
+    method: 'get',
+    params: query
   });
 };
 

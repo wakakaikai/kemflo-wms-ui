@@ -7,13 +7,11 @@
           <el-form label-position="top" :model="queryParams" :rules="rules" ref="settingFormRef">
             <!-- 打印机选择 -->
             <el-form-item label="选择打印机">
-              <el-select v-model="selectedPrinter" placeholder="请选择打印机" style="width: 100%" filterable
-                         @change="onPrinterChange">
+              <el-select v-model="selectedPrinter" placeholder="请选择打印机" style="width: 100%" filterable @change="onPrinterChange">
                 <template #prefix>
                   <el-button icon="Refresh" text @click="refreshPrinterList" title="刷新打印机"></el-button>
                 </template>
-                <el-option v-for="printer in printerList" :key="printer.name" :label="printer.name"
-                           :value="printer.name">
+                <el-option v-for="printer in printerList" :key="printer.name" :label="printer.name" :value="printer.name">
                   <div class="printer-option">
                     <span>{{ printer.name }}</span>
                     <span v-if="printer.isDefault" class="printer-default">默认</span>
@@ -24,8 +22,7 @@
 
             <!-- 纸张选择 -->
             <el-form-item label="选择纸张">
-              <el-select v-model="selectedPaper" placeholder="请先选择打印机" style="width: 100%" filterable
-                         :disabled="!selectedPrinter" @change="onPaperChange">
+              <el-select v-model="selectedPaper" placeholder="请先选择打印机" style="width: 100%" filterable :disabled="!selectedPrinter" @change="onPaperChange">
                 <template #prefix>
                   <el-button icon="Refresh" text @click="refreshPapers" title="刷新纸张"></el-button>
                 </template>
@@ -39,8 +36,7 @@
 
             <!-- 工单号码 -->
             <el-form-item label="工单号码" prop="shopOrder">
-              <el-input v-model="queryParams.shopOrder" placeholder="请输入工单号码" @keyup.enter="getShopOrderList"
-                        readonly>
+              <el-input v-model="queryParams.shopOrder" placeholder="请输入工单号码" @keyup.enter="getShopOrderList" readonly>
                 <template #append>
                   <el-button icon="Search" @click="showShopOrderDialog" />
                 </template>
@@ -63,9 +59,7 @@
               </el-icon>
             </el-tooltip>
           </el-button>
-          <el-button :loading="printLoading" v-hasPermi="['mes:print:miSn']" color="#626aef" icon="Printer"
-                     @click="handlePrint"> 打印
-          </el-button>
+          <el-button :loading="printLoading" v-hasPermi="['mes:print:miSn']" color="#626aef" icon="Printer" @click="handlePrint"> 打印 </el-button>
         </div>
         <!--        <div class="action-buttons">
           <el-button :loading="printLoading" v-hasPermi="['mes:print:miSn']" color="#626aef" icon="Printer" @click="handleExportImage"> 导出 </el-button>
@@ -132,18 +126,17 @@
             </div>
             <!-- 预览信息 -->
             <div class="preview-info">
-              <el-descriptions :column="2" size="small" border>
+              <el-descriptions :column="2" size="small" border class="compact-descriptions">
                 <el-descriptions-item label="标签尺寸">35mm × 12mm</el-descriptions-item>
                 <el-descriptions-item label="打印份数">{{ copies }} 份</el-descriptions-item>
                 <el-descriptions-item label="当前缩放">200%</el-descriptions-item>
-                <el-descriptions-item label="当前打印机" :span="2">{{ selectedPrinter || '未选择' }}
-                </el-descriptions-item>
-                <el-descriptions-item label="工单号码">{{ queryParams.shopOrder }}</el-descriptions-item>
-                <el-descriptions-item label="料号">{{ queryParams.plannedItem }}</el-descriptions-item>
-                <el-descriptions-item label="计划数量">{{ queryParams.qtyToBuild }}</el-descriptions-item>
-                <el-descriptions-item label="已下达数量">{{ queryParams.qtyReleased }}</el-descriptions-item>
-                <el-descriptions-item label="产品描述" :span="2" class="product-desc" width="150px">
-                  {{ queryParams.itemDesc }}
+                <el-descriptions-item label="打印机" :span="2" class="printer-item">{{ selectedPrinter || '未选择' }}</el-descriptions-item>
+                <el-descriptions-item label="工单号码" class="text-overflow-item">{{ form.shopOrder }}</el-descriptions-item>
+                <el-descriptions-item label="料号" class="text-overflow-item">{{ form.plannedItem }}</el-descriptions-item>
+                <el-descriptions-item label="计划数量">{{ form.qtyToBuild }}</el-descriptions-item>
+                <el-descriptions-item label="下达数量">{{ form.qtyReleased }}</el-descriptions-item>
+                <el-descriptions-item label="产品描述" :span="2" class="product-desc-item">
+                  {{ form.itemDesc }}
                 </el-descriptions-item>
               </el-descriptions>
             </div>
@@ -162,17 +155,14 @@
               </div>
             </div>
             <div class="shop-order-list">
-              <el-table ref="multipleTableRef" v-loading="loading" :data="shopOrderSfcList"
-                        @selection-change="handleSelectionChange" row-key="id" height="260" border stripe fixed-header
-                        fit>
+              <el-table ref="multipleTableRef" v-loading="loading" :data="shopOrderSfcList" @selection-change="handleSelectionChange" row-key="id" height="260" border stripe fixed-header fit>
                 <el-table-column type="selection" width="55" align="center" :reserve-selection="true" />
                 <el-table-column label="工单" align="center" prop="shopOrder" />
                 <el-table-column label="条码" align="center" prop="sfc" />
                 <el-table-column label="标签可打印次数" align="center" prop="normalPrintQuantity" />
               </el-table>
 
-              <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum"
-                          v-model:limit="queryParams.pageSize" @pagination="getShopOrderSfcList" />
+              <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getShopOrderSfcList" />
             </div>
           </div>
         </div>
@@ -285,8 +275,11 @@ const getShopOrderSfcList = async () => {
   cancelAll();
   loading.value = true;
   queryParams.value.sfc = '';
+  console.log('查询工单下的条码列表', queryParams.value);
   const res = await listShopOrderSfc({
     shopOrder: queryParams.value.shopOrder,
+    pageNum: queryParams.value.pageNum,
+    pageSize: queryParams.value.pageSize,
     enableNormalPrint: true,
     sfc: ''
   });
@@ -349,8 +342,9 @@ const showShopOrderDialog = () => {
 };
 // 弹框回调
 const shopOrderCallBack = (data: any) => {
-  queryParams.value = data;
+  form.value = data;
   workOrderInfo.value.sku = data.sku;
+  queryParams.value.shopOrder = data.shopOrder;
   getShopOrderSfcList();
 };
 
@@ -535,37 +529,47 @@ const handlePrint = async () => {
 
       // ==================== 1. 生产日期（顶部） ====================
       // 字体大小 4pt 位置：上边距 左边距 宽度 高度
-      LODOP.ADD_PRINT_TEXT('1.01mm', '1.6mm', '30mm', '1.01mm', `生产日期: ${selectedShopOrderSfcList.value[i].productDate}`);
+      LODOP.ADD_PRINT_TEXT('1.01mm', '1.4mm', '30mm', '1.01mm', `生产日期: ${selectedShopOrderSfcList.value[i].productDate}`);
       LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4);
       LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
 
       // ==================== 2. 条形码 ====================
-      LODOP.ADD_PRINT_BARCODE('2.99mm', '1.6mm', '30mm', '5mm', '128Auto', selectedSfc);
-      LODOP.SET_PRINT_STYLEA(0, 'ShowBarText', 0); // 1=显示，0=隐藏
-      LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.055);
+      // LODOP.ADD_PRINT_BARCODE('2.99mm', '1.6mm', '30mm', '5mm', '128Auto', selectedSfc);
+      // LODOP.SET_PRINT_STYLEA(0, 'ShowBarText', 0); // 1=显示，0=隐藏
+      // LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.055);
+      const tempCanvas = document.createElement('canvas');
+      JsBarcode(tempCanvas, selectedSfc, {
+        format: 'CODE128',
+        displayValue: false,
+        height: 50,
+        width: 2,
+        margin: 0
+      });
+      // 使用图片方式打印条形码
+      LODOP.ADD_PRINT_IMAGE('2.99mm', '1.2mm', '30mm', '5mm', tempCanvas.toDataURL('image/png'));
+      LODOP.SET_PRINT_STYLEA(0, 'Stretch', 1); // 扩展缩放模式
 
       // ==================== 3. SN 和 SKU 信息（左侧） ====================
       // SN
-      LODOP.ADD_PRINT_TEXT('8mm', '1.6mm', '35mm', '1.7mm', `SN: ${selectedSfc}`);
+      LODOP.ADD_PRINT_TEXT('8mm', '1.2mm', '35mm', '1.7mm', `SN: ${selectedSfc}`);
       LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4.5);
       LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
 
       // SKU
-      LODOP.ADD_PRINT_TEXT('9.7mm', '1.6mm', '25mm', '1.7mm', `SKU: ${workOrderInfo.value.sku}`);
+      LODOP.ADD_PRINT_TEXT('9.7mm', '1.2mm', '25mm', '1.7mm', `SKU: ${workOrderInfo.value.sku}`);
       LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4.5);
       LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
 
       // ==================== 4. 维修凭证框（右侧） ====================
-      LODOP.ADD_PRINT_RECT('8.1mm', '26.3mm', '5.03mm', '2.91mm', 0, 0.5); // 边框，线条宽度1
-      // LODOP.SET_PRINT_STYLEA(0, 'PenWidth', 0.5); // 边框线宽
+      LODOP.ADD_PRINT_RECT('8.1mm', '26.01mm', '5.03mm', '2.91mm', 0, 0);
       LODOP.SET_PRINT_STYLEA(0, 'Bold', 0);
 
-      LODOP.ADD_PRINT_TEXT('8.2mm', '26.95mm', '10.05mm', '1.59mm', '维修凭证');
+      LODOP.ADD_PRINT_TEXT('8.2mm', '26.59mm', '10.05mm', '1.59mm', '维修凭证');
       LODOP.SET_PRINT_STYLEA(0, 'FontSize', 3.3);
       LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
       LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
 
-      LODOP.ADD_PRINT_TEXT('9.7mm', '26.95mm', '10.05mm', '1.59mm', '请勿撕毁');
+      LODOP.ADD_PRINT_TEXT('9.71mm', '26.59mm', '10.05mm', '1.59mm', '请勿撕毁');
       LODOP.SET_PRINT_STYLEA(0, 'FontSize', 3.3);
       LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
       LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
@@ -728,13 +732,15 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   padding: 20px;
-  background: linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
-  linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
+  background:
+    linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
+    linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
   background-size: 20px 20px;
-  background-position: 0 0,
-  0 10px,
-  10px -10px,
-  -10px 0px;
+  background-position:
+    0 0,
+    0 10px,
+    10px -10px,
+    -10px 0px;
 }
 
 .preview-info {
@@ -825,6 +831,53 @@ onMounted(() => {
       }
     }
   }
+}
+
+/* 紧凑的描述列表样式 */
+.compact-descriptions {
+  font-size: 12px;
+}
+
+.compact-descriptions :deep(.el-descriptions__label) {
+  width: 70px;
+  min-width: 70px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.compact-descriptions :deep(.el-descriptions__content) {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+/* 文本溢出处理 */
+.text-overflow-item {
+  max-width: 0;
+}
+
+.text-overflow-item :deep(.el-descriptions__cell) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.printer-item :deep(.el-descriptions__cell) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-desc-item {
+  max-width: 0;
+}
+
+.product-desc-item :deep(.el-descriptions__cell) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-all;
 }
 
 /* 屏幕显示时放大200% */

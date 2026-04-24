@@ -40,11 +40,11 @@
 
       <el-table v-loading="loading" :data="salesOrderDetailList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />
+        <!--        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />-->
         <el-table-column label="销售订单号" align="center" prop="salesOrderNo" />
         <el-table-column label="销售订单项次" align="center" prop="salesItemNo" />
         <el-table-column label="物料号" align="center" prop="materialCode" />
-        <el-table-column label="物料描述" align="center" prop="materialDesc" />
+        <el-table-column label="物料描述" align="center" prop="materialDesc" show-overflow-tooltip />
         <el-table-column label="订单数量" align="center" prop="orderQuantity" />
         <el-table-column label="订单单位" align="center" prop="orderUnit" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
@@ -98,7 +98,7 @@ import { listSalesOrderDetail, getSalesOrderDetail, delSalesOrderDetail, addSale
 import { SalesOrderDetailVO, SalesOrderDetailQuery, SalesOrderDetailForm } from '@/api/wms/salesOrderDetail/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-
+const route = useRoute();
 const salesOrderDetailList = ref<SalesOrderDetailVO[]>([]);
 const buttonLoading = ref(false);
 const loading = ref(true);
@@ -123,32 +123,23 @@ const initFormData: SalesOrderDetailForm = {
   materialCode: undefined,
   materialDesc: undefined,
   orderQuantity: undefined,
-  orderUnit: undefined,
-}
+  orderUnit: undefined
+};
 const data = reactive<PageData<SalesOrderDetailForm, SalesOrderDetailQuery>>({
-  form: {...initFormData},
+  form: { ...initFormData },
   queryParams: {
     pageNum: 1,
     pageSize: 10,
     salesOrderNo: undefined,
     salesItemNo: undefined,
     materialCode: undefined,
-    params: {
-    }
+    params: {}
   },
   rules: {
-    id: [
-      { required: true, message: "唯一ID不能为空", trigger: "blur" }
-    ],
-    salesOrderNo: [
-      { required: true, message: "销售订单号不能为空", trigger: "blur" }
-    ],
-    salesItemNo: [
-      { required: true, message: "销售订单项次不能为空", trigger: "blur" }
-    ],
-    materialCode: [
-      { required: true, message: "物料号不能为空", trigger: "blur" }
-    ],
+    id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
+    salesOrderNo: [{ required: true, message: '销售订单号不能为空', trigger: 'blur' }],
+    salesItemNo: [{ required: true, message: '销售订单项次不能为空', trigger: 'blur' }],
+    materialCode: [{ required: true, message: '物料号不能为空', trigger: 'blur' }]
   }
 });
 
@@ -161,55 +152,55 @@ const getList = async () => {
   salesOrderDetailList.value = res.rows;
   total.value = res.total;
   loading.value = false;
-}
+};
 
 /** 取消按钮 */
 const cancel = () => {
   reset();
   dialog.visible = false;
-}
+};
 
 /** 表单重置 */
 const reset = () => {
-  form.value = {...initFormData};
+  form.value = { ...initFormData };
   salesOrderDetailFormRef.value?.resetFields();
-}
+};
 
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
   getList();
-}
+};
 
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   handleQuery();
-}
+};
 
 /** 多选框选中数据 */
 const handleSelectionChange = (selection: SalesOrderDetailVO[]) => {
-  ids.value = selection.map(item => item.id);
+  ids.value = selection.map((item) => item.id);
   single.value = selection.length != 1;
   multiple.value = !selection.length;
-}
+};
 
 /** 新增按钮操作 */
 const handleAdd = () => {
   reset();
   dialog.visible = true;
-  dialog.title = "添加销售订单明细";
-}
+  dialog.title = '添加销售订单明细';
+};
 
 /** 修改按钮操作 */
 const handleUpdate = async (row?: SalesOrderDetailVO) => {
   reset();
-  const _id = row?.id || ids.value[0]
+  const _id = row?.id || ids.value[0];
   const res = await getSalesOrderDetail(_id);
   Object.assign(form.value, res.data);
   dialog.visible = true;
-  dialog.title = "修改销售订单明细";
-}
+  dialog.title = '修改销售订单明细';
+};
 
 /** 提交按钮 */
 const submitForm = () => {
@@ -217,34 +208,54 @@ const submitForm = () => {
     if (valid) {
       buttonLoading.value = true;
       if (form.value.id) {
-        await updateSalesOrderDetail(form.value).finally(() =>  buttonLoading.value = false);
+        await updateSalesOrderDetail(form.value).finally(() => (buttonLoading.value = false));
       } else {
-        await addSalesOrderDetail(form.value).finally(() =>  buttonLoading.value = false);
+        await addSalesOrderDetail(form.value).finally(() => (buttonLoading.value = false));
       }
-      proxy?.$modal.msgSuccess("操作成功");
+      proxy?.$modal.msgSuccess('操作成功');
       dialog.visible = false;
       await getList();
     }
   });
-}
+};
 
 /** 删除按钮操作 */
 const handleDelete = async (row?: SalesOrderDetailVO) => {
   const _ids = row?.id || ids.value;
-  await proxy?.$modal.confirm('是否确认删除销售订单明细编号为"' + _ids + '"的数据项？').finally(() => loading.value = false);
+  await proxy?.$modal.confirm('是否确认删除销售订单明细编号为"' + _ids + '"的数据项？').finally(() => (loading.value = false));
   await delSalesOrderDetail(_ids);
-  proxy?.$modal.msgSuccess("删除成功");
+  proxy?.$modal.msgSuccess('删除成功');
   await getList();
-}
+};
 
 /** 导出按钮操作 */
 const handleExport = () => {
-  proxy?.download('wms/salesOrderDetail/export', {
-    ...queryParams.value
-  }, `salesOrderDetail_${new Date().getTime()}.xlsx`)
-}
+  proxy?.download(
+    'wms/salesOrderDetail/export',
+    {
+      ...queryParams.value
+    },
+    `salesOrderDetail_${new Date().getTime()}.xlsx`
+  );
+};
+
+/** 监听路由参数变化 */
+watch(
+  () => route.query.salesOrderNo,
+  (newVal) => {
+    if (newVal) {
+      queryParams.value.salesOrderNo = newVal as string;
+      queryParams.value.pageNum = 1;
+      getList();
+    }
+  }
+);
 
 onMounted(() => {
+  if (route.query.salesOrderNo) {
+    queryParams.value.salesOrderNo = route.query.salesOrderNo as string;
+    queryParams.value.pageNum = 1;
+  }
   getList();
 });
 </script>

@@ -147,7 +147,7 @@ function getLodop(oOBJECT, oEMBED) {
       } else {
         if (isLinuxX86 && LODOP.CVERSION < '7.1.1.9') strAlertMessage = strLodop7Update_X86;
         else if (isLinuxARM && LODOP.CVERSION < '7.1.1.9') strAlertMessage = strLodop7Update_ARM;
-        else if (CLODOP.CVERSION < '6.6.3.6') strAlertMessage = strCLodopUpdate;
+        else if (CLODOP.CVERSION < '6.6.3.8') strAlertMessage = strCLodopUpdate;
 
         if (strAlertMessage) document.body.innerHTML = strAlertMessage + strInstallOK + document.body.innerHTML;
       }
@@ -177,11 +177,11 @@ function getLodop(oOBJECT, oEMBED) {
     }
     //===如下空白位置适合调用统一功能(如注册语句、语言选择等):=======================
     LODOP.SET_LICENSES('', 'CCB118FD508ADE50BC61778094A594B7312', '', '');
+
     //===============================================================================
     return LODOP;
   } catch (err) {
     alert('getLodop出错:' + err);
   }
 }
-
 export { getLodop };

@@ -78,7 +78,7 @@
         </template>
       </el-tab-pane>
 
-      <el-tab-pane name="3">
+      <el-tab-pane name="-1">
         <template #label>
           <el-badge :value="cancelledCount" class="item" color="#f56c6c" :offset="[10, 0]" :max="9999999999">
             <span>已取消</span>
@@ -543,15 +543,25 @@ const getList = async () => {
   total.value = res.total;
   loading.value = false;
   // 更新各状态数量
-  updateStatusCounts(res.rows);
+  updateStatusCounts();
 };
 
 /** 更新各状态数量 */
-const updateStatusCounts = (data: PalletInventoryReservationHistoryVO[]) => {
-  allCount.value = data.length;
-  reservedCount.value = data.filter((item) => item.reservationStatus === 1).length;
-  shippedCount.value = data.filter((item) => item.reservationStatus === 2).length;
-  cancelledCount.value = data.filter((item) => item.reservationStatus === 3).length;
+const updateStatusCounts = () => {
+  switch (currentStatus.value) {
+    case '1':
+      reservedCount.value = total.value;
+      break;
+    case '2':
+      shippedCount.value = total.value;
+      break;
+    case '-1':
+      cancelledCount.value = total.value;
+      break;
+    default:
+      allCount.value = total.value;
+      break;
+  }
 };
 
 /** 取消按钮 */
