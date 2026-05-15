@@ -199,6 +199,11 @@ export interface WorkOrderProcessQuery extends PageQuery {
   workOrderNo?: string;
 
   /**
+   * 工单标签码
+   */
+  workOrderSn?: string;
+
+  /**
    * 工艺路线
    */
   router?: string;

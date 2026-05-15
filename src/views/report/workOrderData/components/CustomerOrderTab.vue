@@ -4,33 +4,28 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form :model="queryParams" ref="queryFormRef" :inline="true" v-show="showSearch" label-width="auto">
-            <el-form-item label="工单号" prop="workOrderNo">
-              <el-input v-model="queryParams.workOrderNo" placeholder="请输入工单编码" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="产品编号" prop="item">
-              <el-input v-model="queryParams.item" placeholder="请输入产品编号" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="产品名称" prop="item">
-              <el-input v-model="queryParams.item" placeholder="请输入产品名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="销售订单" prop="salesOrderNo">
               <el-input v-model="queryParams.salesOrderNo" placeholder="请输入销售订单" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-
+            <el-form-item label="销售单项次" prop="salesOrderItem">
+              <el-input v-model="queryParams.salesOrderItem" placeholder="请输入销售订单项次" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="工单号" prop="workOrderNo">
+              <el-input v-model="queryParams.workOrderNo" placeholder="请输入工单编码" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="物料编码" prop="item">
+              <el-input v-model="queryParams.item" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
               <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" icon="Refresh" v-hasPermi="['mes:pro:protask:list']" circle @click="getList" />
-              <!--        <el-button type="primary" icon="Edit" v-hasPermi="['mes:pro:protask:edit']" circle @click="handleOpenGantt" />-->
             </el-form-item>
           </el-form>
         </el-card>
       </div>
     </transition>
 
-    <div class="gantt-wrapper">
+    <div class="gantt-wrapper" v-loading="loading" element-loading-text="正在加载数据..." element-loading-background="rgba(255, 255, 255, 0.9)">
       <div class="gantt-content">
         <GanttChar class="gantt-chart" ref="ganttCharRef" :tasks="tasks" />
       </div>
@@ -95,9 +90,10 @@ const data = reactive({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    workOrderNo: undefined,
+    workOrderNo: '000130088983',
     item: undefined,
-    salesOrderNo: '1000031550'
+    salesOrderNo: '1000031550',
+    salesOrderItem: ''
   }
 });
 const { queryParams } = data;
@@ -117,7 +113,7 @@ onMounted(() => {
 /** 查询列表 */
 const getList = () => {};
 
-/** 获取甘特图任务 —— 优化后 */
+/** 获取甘特图任务 */
 const getGanttTasks = async () => {
   loading.value = true;
   try {
@@ -125,7 +121,7 @@ const getGanttTasks = async () => {
     tasks.value.data = res.data.data;
     tasks.value.links = res.data.links;
 
-    // 关键：只更新数据，不暴力 reload
+    // 只更新数据
     if (ganttCharRef.value) {
       ganttCharRef.value.updateData(tasks.value);
     }
@@ -137,7 +133,7 @@ const getGanttTasks = async () => {
 /** 搜索 */
 const handleQuery = () => {
   // queryParams.value.pageNum = 1;
-  getGanttTasks(); // 只刷新甘特，不重复触发
+  getGanttTasks();
 };
 
 /** 重置 */

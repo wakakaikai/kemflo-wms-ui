@@ -40,6 +40,11 @@ export interface ItemVO {
   checkEnable: number | string;
 
   /**
+   * 栈板检查：0: 正常 1: 停用
+   */
+  palletCheckFlag?: number | string;
+
+  /**
    * 备注
    */
   remark: string;
@@ -87,6 +92,11 @@ export interface ItemForm extends BaseEntity {
   checkEnable?: number | string;
 
   /**
+   * 栈板检查：0: 正常 1: 停用
+   */
+  palletCheckFlag?: number | string;
+
+  /**
    * 备注
    */
   remark?: string;
@@ -127,6 +137,11 @@ export interface ItemQuery extends PageQuery {
    * 启用质检结果：0: 正常 1: 停用
    */
   checkEnable?: number | string;
+
+  /**
+   * 栈板检查：0: 正常 1: 停用
+   */
+  palletCheckFlag?: number | string;
 
   /**
    * 日期范围参数

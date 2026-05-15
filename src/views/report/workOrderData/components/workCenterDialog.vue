@@ -112,7 +112,7 @@ const { title, visible, openDialog, closeDialog } = useDialog({
 /** 查询工作中心列表 */
 const getList = async () => {
   loading.value = true;
-  queryParams.value.isLastWorkCenter = true;
+  queryParams.value.isErpWorkCenter = true;
   queryParams.value.status = 'ENABLED';
   const res = await listWorkCenter(queryParams.value);
   workCenterList.value = res.rows;

@@ -16,7 +16,7 @@
 
       <el-tab-pane name="customerOrderQuery">
         <template #label>
-          <span>依客户订单查询</span>
+          <span>依客户订单信息</span>
         </template>
       </el-tab-pane>
 
@@ -28,16 +28,16 @@
     </el-tabs>
 
     <!-- 工单工序信息 -->
-    <ProcessInfoTab v-if="tabActiveName === 'processInfo'" :query-params="queryParams" @update-count="processInfoCount = $event" />
+    <ProcessInfoTab v-show="tabActiveName === 'processInfo'" :query-params="queryParams" @update-count="processInfoCount = $event" />
 
     <!-- 工单汇总信息 -->
-    <WorkOrderSummaryTab v-if="tabActiveName === 'workOrderSummary'" :query-params="queryParams" @update-count="workOrderSummaryCount = $event" />
+    <WorkOrderSummaryTab v-show="tabActiveName === 'workOrderSummary'" :query-params="queryParams" @update-count="workOrderSummaryCount = $event" />
 
     <!-- 依客户订单查询 -->
-    <CustomerOrderTab v-if="tabActiveName === 'customerOrderQuery'" :query-params="queryParams" @update-count="customerOrderCount = $event" />
+    <CustomerOrderTab v-show="tabActiveName === 'customerOrderQuery'" :query-params="queryParams" @update-count="customerOrderCount = $event" />
 
     <!-- 工单报工信息 -->
-    <WorkOrderReportTab v-if="tabActiveName === 'workOrderReport'" :query-params="queryParams" @update-count="workOrderReportCount = $event" />
+    <WorkOrderReportTab v-show="tabActiveName === 'workOrderReport'" :query-params="queryParams" @update-count="workOrderReportCount = $event" />
   </div>
 </template>
 

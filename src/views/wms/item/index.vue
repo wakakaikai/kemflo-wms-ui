@@ -16,24 +16,11 @@
             <el-form-item label="物料组" prop="itemGroup">
               <el-input v-model="queryParams.itemGroup" placeholder="请输入物料组" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="物料类型" prop="itemType">
-              <el-select v-model="queryParams.itemType" placeholder="请选择物料类型" clearable>
-                <el-option v-for="dict in wms_item_type" :key="dict.value" :label="dict.label" :value="dict.value" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="采购类型" prop="purchaseType">
-              <el-select v-model="queryParams.purchaseType" placeholder="请选择采购类型" clearable>
-                <el-option v-for="dict in wms_purchase_type" :key="dict.value" :label="dict.label" :value="dict.value" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="特殊采购" prop="specialPurchase">
-              <el-input v-model="queryParams.specialPurchase" placeholder="请输入特殊采购" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="条码正则" prop="sfcRegular">
-              <el-input v-model="queryParams.sfcRegular" placeholder="请输入条码正则" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="质检检查" prop="checkEnable">
-              <DictRadio v-model="queryParams.checkEnable" :radio-data="sys_normal_disable" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
+              <DictRadio v-model="queryParams.checkEnable" :radio-data="wms_boolean_type" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
+            </el-form-item>
+            <el-form-item label="栈板检查" prop="palletCheckFlag">
+              <DictRadio v-model="queryParams.palletCheckFlag" :radio-data="wms_boolean_type" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -66,7 +53,7 @@
       <el-table v-loading="loading" :data="itemList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="物料" align="center" prop="item" />
-        <el-table-column label="描述" align="center" prop="itemDesc" />
+        <el-table-column label="描述" align="center" prop="itemDesc" min-width="200" show-overflow-tooltip />
         <el-table-column label="旧料号" align="center" prop="oldItem" />
         <el-table-column label="物料组" align="center" prop="itemGroup" />
         <el-table-column label="物料类型" align="center" prop="itemType">
@@ -93,7 +80,12 @@
         </el-table-column>
         <el-table-column label="质检检查" align="center" prop="checkEnable">
           <template #default="scope">
-            <dict-tag :options="sys_normal_disable" :value="scope.row.checkEnable" />
+            <dict-tag :options="wms_boolean_type" :value="scope.row.checkEnable" />
+          </template>
+        </el-table-column>
+        <el-table-column label="栈板检查" align="center" prop="palletCheckFlag">
+          <template #default="scope">
+            <dict-tag :options="wms_boolean_type" :value="scope.row.palletCheckFlag" />
           </template>
         </el-table-column>
         <el-table-column label="备注" align="center" prop="remark" />
@@ -134,7 +126,12 @@
         </el-form-item>
         <el-form-item label="质检检查" prop="checkEnable">
           <el-radio-group v-model="form.checkEnable">
-            <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="parseInt(dict.value)">{{ dict.label }}</el-radio>
+            <el-radio v-for="dict in wms_boolean_type" :key="dict.value" :value="dict.value == 'true'">{{ dict.label }}</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="栈板检查" prop="palletCheckFlag">
+          <el-radio-group v-model="form.palletCheckFlag">
+            <el-radio v-for="dict in wms_boolean_type" :key="dict.value" :value="dict.value == 'true'">{{ dict.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
@@ -156,8 +153,9 @@ import { listItem, getItem, delItem, addItem, updateItem } from '@/api/wms/item'
 import { ItemVO, ItemQuery, ItemForm } from '@/api/wms/item/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { sys_normal_disable } = toRefs<any>(proxy?.useDict('sys_normal_disable'));
-const { wms_purchase_type, wms_item_type, wms_special_purchase,sys_yes_no } = toRefs<any>(proxy?.useDict('wms_purchase_type', 'wms_item_type', 'wms_special_purchase','sys_yes_no'));
+const { wms_purchase_type, wms_item_type, wms_special_purchase, sys_yes_no, wms_boolean_type } = toRefs<any>(
+  proxy?.useDict('wms_purchase_type', 'wms_item_type', 'wms_special_purchase', 'sys_yes_no', 'wms_boolean_type')
+);
 
 const itemList = ref<ItemVO[]>([]);
 const buttonLoading = ref(false);
@@ -184,6 +182,7 @@ const initFormData: ItemForm = {
   itemGroup: undefined,
   unit: undefined,
   checkEnable: undefined,
+  palletCheckFlag: undefined,
   remark: undefined
 };
 const data = reactive<PageData<ItemForm, ItemQuery>>({
@@ -197,6 +196,7 @@ const data = reactive<PageData<ItemForm, ItemQuery>>({
     itemGroup: undefined,
     unit: undefined,
     checkEnable: null,
+    palletCheckFlag: null,
     params: {}
   },
   rules: {

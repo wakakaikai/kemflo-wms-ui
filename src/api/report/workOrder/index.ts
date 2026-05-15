@@ -1,5 +1,4 @@
 import request from '@/utils/request';
-import { MesProductDataForm } from '@/api/report/mesProductData/types';
 
 /**
  * 查询工单工序信息
@@ -16,19 +15,23 @@ export const listWorkOrderProcess = (query?: any) => {
 };
 
 /**
- * 查询Mes巡检数据
+ * 查询工单汇总信息
  * @param data
  * @returns {*}
  */
-export const listWorkOrderSummary = (query?: any) => {
+export const listWorkOrderSummary = (data?: any) => {
   return request({
     url: '/wms/scada/listWorkOrderSummary',
-    method: 'get',
-    params: query
+    method: 'post',
+    data: data,
+    timeout: 180000
   });
 };
 
-
+/**
+ * 依客户订单查询工单号
+ * @param query
+ */
 export const listGanttTaskList = (query?: any) => {
   return request({
     url: '/wms/scada/listGanttTaskList',
@@ -37,39 +40,14 @@ export const listGanttTaskList = (query?: any) => {
   });
 };
 
-
-export const listProductprocess = (query?: any) => {
+/**
+ * 工单报工信息
+ * @param query
+ */
+export const listWorkOrderReport = (query?: any) => {
   return request({
-    url: '/wms/scada/listProductprocess',
+    url: '/wms/scada/listWorkOrderReport',
     method: 'get',
     params: query
-  });
-};
-
-/**
- * 查询Mes巡检数据
- * @param data
- * @returns {*}
- */
-export const listWorkOrderReport = (data: MesProductDataForm) => {
-  return request({
-    url: '/mes/scada/inspection/list',
-    method: 'post',
-    data: data,
-    timeout: 180000
-  });
-};
-
-/**
- * 查询Mes巡检数据
- * @param data
- * @returns {*}
- */
-export const listCustomerOrder = (data: MesProductDataForm) => {
-  return request({
-    url: '/mes/scada/inspection/list',
-    method: 'post',
-    data: data,
-    timeout: 180000
   });
 };

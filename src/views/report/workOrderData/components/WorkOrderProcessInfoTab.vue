@@ -8,7 +8,7 @@
               <el-input v-model="queryParams.workOrderNo" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="入库标识卡号" prop="workOrderSn">
-              <el-input v-model="queryParams.workOrderSn" placeholder="请输入工序号" clearable @keyup.enter="handleQuery" />
+              <el-input v-model="queryParams.workOrderSn" placeholder="请输入入库标识卡号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -23,7 +23,7 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:workOrderProcess:export']">导出</el-button>
+            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:workOrderProcessReport:export']">导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
         </el-row>
@@ -31,28 +31,21 @@
 
       <el-table v-loading="loading" :data="workOrderProcessList" @selection-change="handleSelectionChange" :height="tableHeight" border stripe fixed-header>
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="状态" align="center" prop="finalStatus" fixed="left">
+        <el-table-column label="状态" align="left" min-width="200" fixed="left">
           <template #default="scope">
-            <div class="status-indicator">
-              <span v-if="scope.row.finalStatus === 0" class="indicator-dot success"></span>
-              <span v-else-if="scope.row.finalStatus === 1" class="indicator-dot warning"></span>
-              <span v-else-if="scope.row.finalStatus === 2" class="indicator-dot danger"></span>
-              <span v-else class="indicator-dot default"></span>
-              <el-popover v-if="scope.row.finalStatusDetail" placement="top-start" :width="300" trigger="hover">
-                <template #reference>
-                  <span class="status-text">
-                    {{ scope.row.finalStatusDesc }}
-                  </span>
-                </template>
-                <div class="status-detail-content">
-                  <div v-for="(item, index) in scope.row.finalStatusDetail.split('|')" :key="index">
-                    {{ item.trim() }}
-                  </div>
+            <div class="status-with-detail">
+              <div class="status-indicator-inline">
+                <span v-if="scope.row.finalStatus === 0" class="indicator-dot success"></span>
+                <span v-else-if="scope.row.finalStatus === 1" class="indicator-dot warning"></span>
+                <span v-else-if="scope.row.finalStatus === 2" class="indicator-dot danger"></span>
+                <span v-else class="indicator-dot default"></span>
+                <span class="status-text">{{ scope.row.finalStatusDesc }}</span>
+              </div>
+              <div class="status-detail-content" v-if="scope.row.finalStatusDetail">
+                <div v-for="(item, index) in scope.row.finalStatusDetail.split('|')" :key="index">
+                  {{ item.trim() }}
                 </div>
-              </el-popover>
-              <span v-else class="status-text">
-                {{ scope.row.finalStatusDesc }}
-              </span>
+              </div>
             </div>
           </template>
         </el-table-column>
@@ -65,16 +58,44 @@
         <el-table-column label="客户订单" align="center" prop="salesOrderNo" />
         <el-table-column label="订单项次" align="center" prop="salesOrderItem" />
         <el-table-column label="客户交期" align="center" prop="soDeliveryDate" />
-        <el-table-column label="工单数量" align="center" prop="plannedQty" />
-        <el-table-column label="入库数量" align="center" prop="wmsDeliveredQty" />
-        <el-table-column label="报工数量" align="center" prop="mesReportQty" />
-<!--        <el-table-column label="完成数量" align="center" prop="mesDoneQty" />-->
+        <el-table-column label="工单数量" align="center" prop="plannedQty">
+          <template #default="scope">
+            <span>
+              {{ scope.row.plannedQty ? parseFloat(scope.row.plannedQty) : '-' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="入库数量" align="center" prop="wmsDeliveredQty">
+          <template #default="scope">
+            <span>
+              {{ scope.row.wmsDeliveredQty ? parseFloat(scope.row.wmsDeliveredQty) : '-' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="报工数量" align="center" prop="mesReportQty">
+          <template #default="scope">
+            <span>
+              {{ scope.row.mesReportQty ? parseFloat(scope.row.mesReportQty) : '--' }}
+            </span>
+          </template>
+        </el-table-column>
+        <!--        <el-table-column label="完成数量" align="center" prop="mesDoneQty" />-->
         <el-table-column label="预计开工" align="center" prop="plannedStartDate" />
         <el-table-column label="预计完工" align="center" prop="plannedEndDate" />
+        <el-table-column label="预计D2D生产时长" align="center" prop="plannedD2DDurationDesc" />
+        <el-table-column label="标准人数" align="center" prop="standardPersonNumber">
+          <template #default="scope">
+            <span>
+              {{ scope.row.standardPersonNumber ? parseFloat(scope.row.standardPersonNumber) : '-' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="标准产能" align="center" prop="standardPersonCapacity" />
         <el-table-column label="预计生产时长" align="center" prop="plannedDurationDesc" />
         <el-table-column label="实际开工" align="center" prop="actualStartDate" />
         <el-table-column label="实际完工" align="center" prop="actualEndDate" />
-        <el-table-column label="实际已生产时长" align="center" prop="actualDurationDesc" />
+        <el-table-column label="实际D2D生产时长" align="center" prop="actualD2DDurationDesc" />
+        <el-table-column label="实际生产时长" align="center" prop="actualDurationDesc" />
         <el-table-column label="下制程工单号" align="center" prop="nextWorkOrderNo" />
         <el-table-column label="下制程工序" align="center" prop="nextProcessNo" />
         <el-table-column label="下制程工作中心" align="center" prop="nextWorkCenter" />
@@ -85,11 +106,21 @@
         <el-table-column label="前制程工作中心" align="center" prop="previousWorkCenter" />
         <el-table-column label="前制程预计完工时间" align="center" prop="previousPlannedEndDate" />
         <el-table-column label="前制程实际完工时间" align="center" prop="previousActualEndDate" />
-        <el-table-column label="前制程已报工数量" align="center" prop="previousReportQty" />
-        <el-table-column label="前制程工单入库数量" align="center" prop="previousDeliveredQty" />
-        <!--        <el-table-column label="前制程报工完工时间" align="center" prop="previousActualReportEndDate" />-->
+        <el-table-column label="前制程已报工数量" align="center" prop="previousReportQty">
+          <template #default="scope">
+            <span>
+              {{ scope.row.previousReportQty ? parseFloat(scope.row.previousReportQty) : '-' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="前制程工单入库数量" align="center" prop="previousDeliveredQty">
+          <template #default="scope">
+            <span>
+              {{ scope.row.previousDeliveredQty ? parseFloat(scope.row.previousDeliveredQty) : '-' }}
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column label="前制程入库完工时间" align="center" prop="previousActualDeliveredDate" />
-        <!--        <el-table-column label="状态明细" align="center" prop="statusDetail" />-->
       </el-table>
 
       <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
@@ -105,7 +136,7 @@ const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const workOrderProcessList = ref<WorkOrderProcessVO[]>([]);
 
-const loading = ref(true);
+const loading = ref(false);
 const showSearch = ref(true);
 const ids = ref<Array<string | number>>([]);
 const single = ref(true);
@@ -118,6 +149,7 @@ const workOrderProcessFormRef = ref<ElFormInstance>();
 const initFormData: WorkOrderProcessForm = {
   id: undefined,
   workOrderNo: undefined,
+  workOrderSn: undefined,
   router: undefined,
   process: undefined,
   processShortDesc: undefined,
@@ -141,6 +173,7 @@ const data = reactive<PageData<WorkOrderProcessForm, WorkOrderProcessQuery>>({
     pageNum: 1,
     pageSize: 10,
     workOrderNo: undefined,
+    workOrderSn: undefined,
     router: undefined,
     process: undefined,
     processShortDesc: undefined,
@@ -166,7 +199,7 @@ const { queryParams, form, rules } = toRefs(data);
 // 动态表格高度
 const tableHeight = ref<number>(350);
 
-// 计算表格高度（核心方法）
+// 计算表格高度
 const calcTableHeight = () => {
   // 窗口高度 - 页面其他占位高度（根据你的页面自行调整）
   const clientHeight = document.documentElement.clientHeight;
@@ -226,7 +259,7 @@ const handleSelectionChange = (selection: WorkOrderProcessVO[]) => {
 /** 导出按钮操作 */
 const handleExport = () => {
   proxy?.download(
-    'wms/workOrderProcess/export',
+    'wms/scada/exportWorkOrderProcess',
     {
       ...queryParams.value
     },
@@ -235,7 +268,6 @@ const handleExport = () => {
 };
 
 onMounted(() => {
-  getList();
   calcTableHeight();
   window.addEventListener('resize', handleResize);
 });
@@ -315,6 +347,83 @@ onUnmounted(() => {
     line-height: 1.6;
     color: #606266;
     font-size: 14px;
+  }
+}
+
+/* 展开行内状态与描述合并的样式 */
+.status-with-detail {
+  /*  padding: 4px 0;*/
+
+  .status-indicator-inline {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 4px;
+
+    .indicator-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 3px;
+      box-shadow: 0 0 3px rgba(0, 0, 0, 0.15);
+
+      &.success {
+        background-color: #67c23a;
+        box-shadow: 0 0 5px rgba(103, 194, 58, 0.4);
+      }
+
+      &.warning {
+        background-color: #e6a23c;
+        box-shadow: 0 0 5px rgba(230, 162, 60, 0.4);
+      }
+
+      &.danger {
+        background-color: #f56c6c;
+        box-shadow: 0 0 5px rgba(245, 108, 108, 0.4);
+      }
+
+      &.default {
+        background-color: #909399;
+        box-shadow: 0 0 3px rgba(144, 147, 153, 0.3);
+      }
+    }
+
+    .status-info {
+      flex: 1;
+      min-width: 0;
+
+      .status-text {
+        font-size: 14px;
+        color: #303133;
+        font-weight: 500;
+        line-height: 1.6;
+        display: block;
+        margin-bottom: 6px;
+      }
+    }
+  }
+
+  .status-detail-content {
+    padding-left: 24px;
+    max-height: 200px;
+    overflow-y: auto;
+    word-break: break-word;
+    line-height: 1.8;
+    color: #606266;
+    font-size: 13px;
+
+    div {
+      padding: 2px 0;
+      position: relative;
+
+      &:before {
+        content: '•';
+        position: absolute;
+        left: -12px;
+        color: #909399;
+      }
+    }
   }
 }
 </style>

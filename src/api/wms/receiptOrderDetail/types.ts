@@ -20,6 +20,15 @@ export interface ReceiptOrderDetailVO {
   planQuantity: number;
 
   /**
+   * 完成数量
+   */
+  completeQuantity: number;
+
+  /**
+   * WMS入库数量
+   */
+  wmsDeliveredQuantity: number;
+  /**
    * 收货数量
    */
   realQuantity: number;
