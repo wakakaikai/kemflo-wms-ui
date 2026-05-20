@@ -55,7 +55,7 @@
     <template #footer>
       <div class="plan-footer">
         <span class="create-time">{{ formatDate(plan.createTime) }}</span>
-        <span class="order-count">{{ plan.workOrderNos.length }}个工单</span>
+        <span class="order-count">{{ workOrderCount }}个工单</span>
       </div>
     </template>
   </el-card>
@@ -75,6 +75,20 @@ const props = defineProps<Props>();
 const emit = defineEmits(['select', 'view-detail', 'confirm', 'execute']);
 
 const isSelected = computed(() => props.selected);
+
+const workOrderCount = computed(() => {
+  const nos = props.plan.workOrderNos;
+  if (Array.isArray(nos)) return nos.length;
+  if (typeof nos === 'string') {
+    try {
+      const parsed = JSON.parse(nos);
+      return Array.isArray(parsed) ? parsed.length : 1;
+    } catch {
+      return 1;
+    }
+  }
+  return props.plan.workOrderCount || 0;
+});
 
 const formatDate = (dateStr: string) => {
   return dayjs(dateStr).format('MM/DD HH:mm');

@@ -96,7 +96,11 @@
           </template>
         </el-table-column>
         <el-table-column label="FIFO顺序" align="center" prop="fifoSequence" />
-        <el-table-column label="分配状态(ALLOCATED-已分配, LOCKED-已锁定, PICKING-拣货中, PICKED-已拣货, ISSUED-已发料)" align="center" prop="allocationStatus" />
+        <el-table-column label="分配状态" align="center" prop="allocationStatus" width="110">
+          <template #default="{ row }">
+            <el-tag :type="allocStatusTag(row.allocationStatus)" size="small">{{ allocStatusLabel(row.allocationStatus) }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
@@ -176,8 +180,19 @@
 <script setup name="AllocationDetail" lang="ts">
 import { listAllocationDetail, getAllocationDetail, delAllocationDetail, addAllocationDetail, updateAllocationDetail } from '@/api/wms/allocationDetail';
 import { AllocationDetailVO, AllocationDetailQuery, AllocationDetailForm } from '@/api/wms/allocationDetail/types';
+import { useRoute } from 'vue-router';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const route = useRoute();
+
+const allocStatusLabel = (s: string) => {
+  const m: Record<string, string> = { ALLOCATED: '已分配', LOCKED: '已锁定', PICKING: '拣货中', PICKED: '已拣货', ISSUED: '已发料', RELEASED: '已释放' };
+  return m[s] || s;
+};
+const allocStatusTag = (s: string) => {
+  const m: Record<string, string> = { ALLOCATED: 'info', LOCKED: 'warning', PICKING: 'primary', PICKED: 'success', ISSUED: 'success', RELEASED: 'danger' };
+  return m[s] || 'info';
+};
 
 const allocationDetailList = ref<AllocationDetailVO[]>([]);
 const buttonLoading = ref(false);
@@ -381,6 +396,10 @@ const handleExport = () => {
 }
 
 onMounted(() => {
+  const planId = route.query.planId;
+  if (planId) {
+    queryParams.value.planId = planId as string;
+  }
   getList();
 });
 </script>

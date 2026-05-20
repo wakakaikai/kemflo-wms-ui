@@ -82,7 +82,7 @@
         <!--        <el-table-column label="完成数量" align="center" prop="mesDoneQty" />-->
         <el-table-column label="预计开工" align="center" prop="plannedStartDate" />
         <el-table-column label="预计完工" align="center" prop="plannedEndDate" />
-        <el-table-column label="预计D2D生产时长" align="center" prop="plannedD2DDurationDesc" />
+        <el-table-column label="预计DTD生产时长" align="center" prop="plannedD2DDurationDesc" />
         <el-table-column label="标准人数" align="center" prop="standardPersonNumber">
           <template #default="scope">
             <span>
@@ -92,20 +92,27 @@
         </el-table-column>
         <el-table-column label="标准产能" align="center" prop="standardPersonCapacity" />
         <el-table-column label="预计生产时长" align="center" prop="plannedDurationDesc" />
-        <el-table-column label="实际开工" align="center" prop="actualStartDate" />
-        <el-table-column label="实际完工" align="center" prop="actualEndDate" />
-        <el-table-column label="实际D2D生产时长" align="center" prop="actualD2DDurationDesc" />
+        <el-table-column label="实际开工" align="center" prop="actualStartDate" min-width="100" />
+        <el-table-column label="实际完工" align="center" prop="actualEndDate" min-width="100" >
+          <template #default="scope">
+            <span>
+              {{ scope.row.mesReportQty >= scope.row.plannedQty ? scope.row.actualEndDate : '' }}
+            </span>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="实际DTD生产时长" align="center" prop="actualD2DDurationDesc" />
         <el-table-column label="实际生产时长" align="center" prop="actualDurationDesc" />
         <el-table-column label="下制程工单号" align="center" prop="nextWorkOrderNo" />
         <el-table-column label="下制程工序" align="center" prop="nextProcessNo" />
         <el-table-column label="下制程工作中心" align="center" prop="nextWorkCenter" />
-        <el-table-column label="下制程预计开工时间" align="center" prop="nextPlannedStartDate" />
-        <el-table-column label="下制程实际开工时间" align="center" prop="nextActualStartDate" />
+        <el-table-column label="下制程预计开工时间" align="center" prop="nextPlannedStartDate" min-width="100" />
+        <el-table-column label="下制程实际开工时间" align="center" prop="nextActualStartDate" min-width="100" />
         <el-table-column label="前制程工单号" align="center" prop="previousWorkOrderNo" />
         <el-table-column label="前制程工序" align="center" prop="previousProcessNo" />
         <el-table-column label="前制程工作中心" align="center" prop="previousWorkCenter" />
-        <el-table-column label="前制程预计完工时间" align="center" prop="previousPlannedEndDate" />
-        <el-table-column label="前制程实际完工时间" align="center" prop="previousActualEndDate" />
+        <el-table-column label="前制程预计完工时间" align="center" prop="previousPlannedEndDate" min-width="100" />
+        <el-table-column label="前制程实际完工时间" align="center" prop="previousActualEndDate" min-width="100" />
         <el-table-column label="前制程已报工数量" align="center" prop="previousReportQty">
           <template #default="scope">
             <span>
@@ -120,7 +127,7 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="前制程入库完工时间" align="center" prop="previousActualDeliveredDate" />
+        <el-table-column label="前制程入库完工时间" align="center" prop="previousActualDeliveredDate" min-width="100" />
       </el-table>
 
       <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />

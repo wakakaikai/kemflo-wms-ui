@@ -22,12 +22,11 @@ export default defineConfig(({ mode, command }) => {
       host: '0.0.0.0',
       port: Number(env.VITE_APP_PORT),
       open: true,
-      allowedHosts: ['devwms.kemflo.cn'],
       proxy: {
         [env.VITE_APP_BASE_API]: {
-          // target: 'http://localhost:8086',
+          target: 'http://localhost:8086',
           // target: 'http://192.168.20.84:8080/prod-api',
-          target: 'https://wmsqas.kemflo.cn:8776/prod-api',
+          // target: 'https://wmsqas.kemflo.cn:8776/prod-api',
           // target: 'https://wms.kemflo.cn:8777/prod-api',
           changeOrigin: true,
           ws: true,

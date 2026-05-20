@@ -118,3 +118,12 @@ export const sendMesWebSocket = (data: any) => {
     data
   });
 };
+
+// 数据采集过站
+export const dataCollectPassSfc = (data: any) => {
+  return request({
+    url: '/mes/dataCollection/passSfc',
+    method: 'post',
+    data
+  });
+};

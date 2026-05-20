@@ -86,13 +86,13 @@
                 {{ scope.row.mesReportQty ? parseFloat(scope.row.mesReportQty) : '--' }}
               </template>
             </el-table-column>
-            <el-table-column label="预计开工" align="center" prop="plannedEndDate" />
-            <el-table-column label="预计完工" align="center" prop="plannedStartDate" />
-            <el-table-column label="预计D2D生产时长" align="left" prop="plannedD2DDurationDesc" />
+            <el-table-column label="预计开工" align="center" prop="plannedStartDate" />
+            <el-table-column label="预计完工" align="center" prop="plannedEndDate" />
+            <el-table-column label="预计DTD生产时长" align="left" prop="plannedD2DDurationDesc" />
             <el-table-column label="预计生产时长" align="left" prop="plannedDurationDesc" />
             <el-table-column label="实际开工" align="center" prop="actualStartDate" />
             <el-table-column label="实际完工" align="center" prop="actualEndDate" />
-            <el-table-column label="实际D2D生产时长" align="left" prop="actualD2DDurationDesc">
+            <el-table-column label="实际DTD生产时长" align="left" prop="actualD2DDurationDesc">
               <template #default="scope">
                 <span>{{ parseFloat(scope.row.actualD2DDuration) > 0 ? scope.row.actualD2DDurationDesc : '' }}</span>
               </template>
@@ -196,6 +196,7 @@ const dialog = reactive<DialogOption>({
 const initFormData: WorkOrderForm = {
   id: undefined,
   workOrderNo: undefined,
+  workOrderSn: undefined,
   item: undefined,
   itemDesc: undefined,
   checkEnable: 0,
@@ -215,6 +216,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
     pageNum: 1,
     pageSize: 10,
     workOrderNo: undefined,
+    workOrderSn: undefined,
     item: undefined,
     itemDesc: undefined,
     inspectionFlag: undefined,

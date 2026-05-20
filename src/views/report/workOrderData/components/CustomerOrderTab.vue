@@ -90,9 +90,9 @@ const data = reactive({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    workOrderNo: '000130088983',
+    workOrderNo: '',
     item: undefined,
-    salesOrderNo: '1000031550',
+    salesOrderNo: '',
     salesOrderItem: ''
   }
 });

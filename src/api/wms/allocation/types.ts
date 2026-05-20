@@ -34,6 +34,28 @@ export interface AllocationRequest {
   emergencyReason?: string;
 }
 
+export interface EmergencyAllocationRequest {
+  insertWorkOrderNo: string;
+  existingOrderNos?: string[];
+  emergencyLevel?: number;
+  emergencyReason?: string;
+}
+
+export interface AllocationPlanDetailVO {
+  planInfo?: AllocationPlanVO;
+  allocationDetails?: AllocationDetailVO[];
+  workOrders?: WorkOrderVO[];
+  statistics?: Record<string, unknown>;
+}
+
+export interface AllocationExecuteResult {
+  success?: boolean;
+  message?: string;
+  pickingTask?: { id: number; taskNo: string };
+  issueOrder?: { id: number; issueNo: string };
+  planId?: number;
+}
+
 export interface AllocationPlanVO {
   id: number;
   planNo: string;

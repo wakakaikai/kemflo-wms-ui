@@ -1,6 +1,7 @@
 <template>
-  <div class="gantt-wrapper">
+  <div class="gantt-wrapper" :class="{ 'fullscreen-mode': isFullscreen }">
     <div v-if="showLegend" class="legend-container">
+      <!-- 图例说明 -->
       <div class="legend-item">
         <div class="color-block primary"></div>
         <span>{{ legendText.plan }}</span>
@@ -9,7 +10,83 @@
         <div class="color-block success"></div>
         <span>{{ legendText.actual }}</span>
       </div>
+      <!-- 树节点展开/折叠控制 -->
+      <div class="tree-control">
+        <el-switch v-model="allExpanded" @change="handleTreeExpandChange" inline-prompt active-text="展开" inactive-text="折叠" style="--el-switch-on-color: #409eff; --el-switch-off-color: #dcdfe6" />
+      </div>
+
+      <!-- 右侧网格显示切换 -->
+      <div class="grid-toggle-control">
+        <el-switch
+          v-model="showGridLines"
+          @change="handleGridLineChange"
+          inline-prompt
+          active-text="网格"
+          inactive-text="非网格"
+          style="--el-switch-on-color: #409eff; --el-switch-off-color: #dcdfe6"
+        />
+      </div>
+
+      <!-- 视图切换按钮组（6个预定义视图级别） -->
+      <div class="view-switcher">
+        <el-button-group>
+          <el-tooltip content="小时级详细视图" placement="top">
+            <el-button :type="currentView === 'hours' ? 'primary' : ''" @click="switchView('hours')"> 小时 </el-button>
+          </el-tooltip>
+          <el-tooltip content="天级视图" placement="top">
+            <el-button :type="currentView === 'days' ? 'primary' : ''" @click="switchView('days')"> 天 </el-button>
+          </el-tooltip>
+          <el-tooltip content="周级视图（默认）" placement="top">
+            <el-button :type="currentView === 'weeks' ? 'primary' : ''" @click="switchView('weeks')"> 周 </el-button>
+          </el-tooltip>
+          <el-tooltip content="月级视图" placement="top">
+            <el-button :type="currentView === 'months' ? 'primary' : ''" @click="switchView('months')"> 月 </el-button>
+          </el-tooltip>
+          <el-tooltip content="季度视图" placement="top">
+            <el-button :type="currentView === 'quarters' ? 'primary' : ''" @click="switchView('quarters')"> 季度 </el-button>
+          </el-tooltip>
+          <el-tooltip content="年级宏观视图" placement="top">
+            <el-button :type="currentView === 'years' ? 'primary' : ''" @click="switchView('years')"> 年 </el-button>
+          </el-tooltip>
+        </el-button-group>
+      </div>
+
+      <!-- 缩放控制按钮组 -->
+      <div class="zoom-controls">
+        <el-button-group>
+          <el-tooltip content="缩小" placement="top">
+            <el-button @click="zoomOut">
+              <el-icon><ZoomOut /></el-icon>
+            </el-button>
+          </el-tooltip>
+          <el-tooltip content="放大" placement="top">
+            <el-button @click="zoomIn">
+              <el-icon><ZoomIn /></el-icon>
+            </el-button>
+          </el-tooltip>
+          <el-tooltip content="重置缩放" placement="top">
+            <el-button @click="resetZoom">
+              <el-icon><Refresh /></el-icon>
+            </el-button>
+          </el-tooltip>
+          <!--          <el-tooltip content="自动适应" type="primary" placement="top">
+                      <el-button type="primary" @click="zoomToFit">
+                        <el-icon><RefreshLeft /></el-icon>
+                      </el-button>
+                    </el-tooltip>-->
+        </el-button-group>
+      </div>
+      <!-- 全屏模式切换 -->
+      <div class="fullscreen-control">
+        <el-tooltip :content="isFullscreen ? '退出全屏' : '全屏模式'" placement="top">
+          <el-button @click="toggleFullscreen">
+            <el-icon><FullScreen /></el-icon>
+          </el-button>
+        </el-tooltip>
+      </div>
     </div>
+
+    <!-- 甘特图容器 -->
     <div ref="ganttRef" class="gantt-container"></div>
   </div>
 </template>
@@ -20,9 +97,13 @@ import 'dhtmlx-gantt/codebase/dhtmlxgantt.css';
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import dayjs from 'dayjs';
 import minMax from 'dayjs/plugin/minMax';
+import { ZoomIn, ZoomOut, Refresh, FullScreen, Expand, Close } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 
+// 扩展 dayjs 插件
 dayjs.extend(minMax);
 
+// ==================== Props 定义 ====================
 const props = defineProps({
   tasks: {
     type: Object,
@@ -46,16 +127,8 @@ const props = defineProps({
   columns: {
     type: Array,
     default: () => [
-      // {
-      //   name: 'index',
-      //   label: '序号',
-      //   align: 'center',
-      //   width: 60,
-      //   template(task) {
-      //     return gantt.getWBSCode(gantt.getTask(task.id));
-      //   }
-      // },
-      { name: 'id', label: '工单号', tree: true, width: 280, resize: true },
+      // 左侧表格列配置
+      { name: 'id', label: '工单号', tree: true, width: '260', resize: true },
       {
         name: 'salesOrderNo',
         label: '销售订单',
@@ -78,13 +151,453 @@ const props = defineProps({
   }
 });
 
+// ==================== Emits 定义 ====================
 const emit = defineEmits(['ready', 'task-click', 'task-dblclick']);
 
+// ==================== 响应式状态 ====================
 const ganttRef = ref(null);
+const currentView = ref('weeks'); // 默认使用 weeks 视图（对应 zoomConfig）
+const zoomLevel = ref(2); // 默认缩放级别（从0开始，对应 weeks）
+const isFullscreen = ref(false); // 全屏状态
+const allExpanded = ref(true); // 记录是否全部展开
+const showGridLines = ref(false); // 控制网格线显示/隐藏
 let isInitialized = false;
 let updateTimer = null;
 let renderTimer = null;
+let originalOverflow = ''; // 保存原始overflow样式
+const cachedZoomSettings: any = {}; // 缓存缩放设置
 
+// ==================== 统一的缩放配置（替代原来的 viewConfigs）====================
+// 使用 dhtmlx-gantt 的 Zoom Extension API，提供6个预定义的视图级别
+const zoomConfig = {
+  levels: [
+    {
+      name: 'hours', // 小时视图 - 适合查看当天详细安排
+      scales: [
+        { unit: 'day', step: 1, format: '%Y年%m月%d日 (%D)' },
+        { unit: 'hour', step: 1, format: '%H:00' },
+        {
+          unit: 'minute',
+          step: 10,
+          format: '%H:%i'
+        }
+      ],
+      round_dnd_dates: true,
+      min_column_width: 80,
+      scale_height: 60
+    },
+    {
+      name: 'days', // 天视图 - 适合查看周内每日计划
+      scales: [
+        { unit: 'month', step: 1, format: '%Y年%m月' },
+        {
+          unit: 'day',
+          step: 1,
+          format: '%d日 (%D)',
+          css: (date) => {
+            if (date.getDay() === 0 || date.getDay() === 6) return 'weekend';
+            return '';
+          }
+        },
+        {
+          unit: 'hour',
+          step: 1,
+          format: '%H:%i'
+        }
+      ],
+      round_dnd_dates: true,
+      min_column_width: 60,
+      scale_height: 60
+    },
+    {
+      name: 'weeks', // 周视图（默认）- 适合查看月度工单安排
+      scales: [
+        {
+          unit: 'week',
+          step: 1,
+          format: (date) => {
+            const startDate = date;
+            const endDate = gantt.date.add(gantt.date.add(date, 1, 'week'), -1, 'day');
+            const dateToStr = gantt.date.date_to_str('%Y-%m-%d');
+            const startStr = dateToStr(startDate);
+            const endStr = dateToStr(endDate);
+            return startStr + ' - ' + endStr;
+          }
+        },
+        {
+          unit: 'day',
+          step: 1,
+          format: '%Y-%m-%d (%D)',
+          css: (date) => {
+            if (date.getDay() === 0 || date.getDay() === 6) return 'weekend';
+            return '';
+          }
+        },
+        {
+          unit: 'hour',
+          step: 4,
+          format: '%H:%i'
+        }
+      ],
+      round_dnd_dates: false,
+      min_column_width: 50,
+      scale_height: 70
+    },
+    {
+      name: 'months', // 月视图 - 适合查看季度规划
+      scales: [
+        { unit: 'year', step: 1, format: '%Y年' },
+        { unit: 'month', step: 1, format: '%m月' },
+        {
+          unit: 'day',
+          step: 1,
+          format: '%d (%D)',
+          css: (date) => {
+            if (date.getDay() === 0 || date.getDay() === 6) return 'weekend';
+            return '';
+          }
+        }
+      ],
+      round_dnd_dates: false,
+      min_column_width: 80,
+      scale_height: 60
+    },
+    {
+      name: 'quarters', // 季度视图 - 适合查看年度计划
+      scales: [
+        { unit: 'year', step: 1, format: '%Y年' },
+        {
+          unit: 'quarter',
+          step: 1,
+          format: (date) => {
+            const month = date.getMonth();
+            let q_num;
+
+            if (month >= 9) {
+              q_num = 4;
+            } else if (month >= 6) {
+              q_num = 3;
+            } else if (month >= 3) {
+              q_num = 2;
+            } else {
+              q_num = 1;
+            }
+
+            return 'Q' + q_num;
+          }
+        },
+        { unit: 'month', step: 1, format: '%m月' }
+      ],
+      round_dnd_dates: false,
+      min_column_width: 70,
+      scale_height: 70
+    },
+    {
+      name: 'years', // 年视图 - 适合长期战略规划
+      scales: [
+        {
+          unit: 'year',
+          step: 1,
+          format: '%Y年'
+        },
+        {
+          unit: 'year',
+          step: 5,
+          format: (date) => {
+            const dateToStr = gantt.date.date_to_str('%Y');
+            const endDate = gantt.date.add(gantt.date.add(date, 5, 'year'), -1, 'day');
+            return dateToStr(date) + ' ~ ' + dateToStr(endDate);
+          }
+        }
+      ],
+      round_dnd_dates: false,
+      min_column_width: 100,
+      scale_height: 60
+    }
+  ]
+};
+
+// 视图映射（用于按钮显示和快速切换）
+const viewMapping = {
+  hours: { label: '小时视图', level: 0 },
+  days: { label: '天视图', level: 1 },
+  weeks: { label: '周视图', level: 2 },
+  months: { label: '月视图', level: 3 },
+  quarters: { label: '季度视图', level: 4 },
+  years: { label: '年视图', level: 5 }
+};
+
+// ==================== 视图切换功能 ====================
+// 切换视图
+const switchView = (viewName: string) => {
+  if (!isInitialized || !gantt || !gantt.ext || !gantt.ext.zoom) return;
+
+  const viewInfo = viewMapping[viewName];
+  if (!viewInfo) {
+    console.warn(`Unknown view: ${viewName}`);
+    return;
+  }
+
+  currentView.value = viewName;
+  zoomLevel.value = viewInfo.level;
+
+  try {
+    gantt.ext.zoom.setLevel(viewName);
+    gantt.render();
+
+    // 重新添加今天标记线
+    addTodayLine();
+  } catch (error) {
+    console.error('Switch view failed:', error);
+  }
+};
+
+// ==================== 缩放功能 ====================
+// 初始化缩放配置（在 gantt.init() 之后调用）
+const initZoomConfig = () => {
+  if (!gantt || !gantt.ext || !gantt.ext.zoom) {
+    console.warn('Zoom extension not available');
+    return;
+  }
+
+  try {
+    gantt.ext.zoom.init(zoomConfig);
+
+    // 设置初始缩放级别
+    gantt.ext.zoom.setLevel(zoomConfig.levels[zoomLevel.value].name);
+  } catch (error) {
+    console.error('Failed to initialize zoom config:', error);
+  }
+};
+
+// 放大 - 切换到更详细的视图
+const zoomIn = () => {
+  if (!isInitialized || !gantt || !gantt.ext || !gantt.ext.zoom) return;
+
+  const maxLevel = zoomConfig.levels.length - 1;
+
+  if (zoomLevel.value < maxLevel) {
+    zoomLevel.value++;
+    const levelName = zoomConfig.levels[zoomLevel.value].name;
+
+    gantt.ext.zoom.setLevel(levelName);
+    gantt.render();
+
+    // 重新添加今天标记线
+    addTodayLine();
+  }
+};
+
+// 缩小 - 切换到更宏观的视图
+const zoomOut = () => {
+  if (!isInitialized || !gantt || !gantt.ext || !gantt.ext.zoom) return;
+
+  if (zoomLevel.value > 0) {
+    zoomLevel.value--;
+    const levelName = zoomConfig.levels[zoomLevel.value].name;
+
+    gantt.ext.zoom.setLevel(levelName);
+    gantt.render();
+
+    // 重新添加今天标记线
+    addTodayLine();
+  }
+};
+
+// 重置缩放到默认级别（周视图）
+const resetZoom = () => {
+  if (!isInitialized || !gantt || !gantt.ext || !gantt.ext.zoom) return;
+
+  zoomLevel.value = 2; // 默认 weeks 级别
+  currentView.value = 'weeks';
+  const levelName = zoomConfig.levels[zoomLevel.value].name;
+
+  gantt.ext.zoom.setLevel(levelName);
+  gantt.render();
+
+  // 重新添加今天标记线
+  addTodayLine();
+};
+
+// 获取缩放级别的显示名称
+const getLevelDisplayName = (levelIndex: number): string => {
+  const names = {
+    0: '小时视图',
+    1: '天视图',
+    2: '周视图',
+    3: '月视图',
+    4: '季度视图',
+    5: '年视图'
+  };
+  return names[levelIndex] || '未知视图';
+};
+
+// 自动适应视图（根据数据范围自动选择最佳缩放级别）
+const zoomToFit = () => {
+  if (!isInitialized || !gantt) return;
+
+  try {
+    const project = gantt.getSubtaskDates();
+    const areaWidth = gantt.$task.offsetWidth;
+    const scaleConfigs = zoomConfig.levels;
+
+    let bestLevel = 0;
+
+    for (let i = 0; i < scaleConfigs.length; i++) {
+      bestLevel = i;
+      const level = scaleConfigs[i].scales;
+      const lowestScale = level[level.length - 1];
+      const columnCount = getUnitsBetween(project.start_date, project.end_date, lowestScale.unit, lowestScale.step || 1);
+
+      if ((columnCount + 2) * gantt.config.min_column_width <= areaWidth) {
+        break;
+      }
+    }
+
+    if (bestLevel >= scaleConfigs.length) {
+      bestLevel = scaleConfigs.length - 1;
+    }
+
+    zoomLevel.value = bestLevel;
+    const levelName = scaleConfigs[bestLevel].name;
+
+    gantt.ext.zoom.setLevel(levelName);
+    gantt.render();
+
+    addTodayLine();
+  } catch (error) {
+    console.error('Auto zoom failed:', error);
+  }
+};
+
+// ==================== 网格线显示切换功能 ====================
+const handleGridLineChange = (value: boolean) => {
+  if (!isInitialized || !gantt) {
+    return;
+  }
+  try {
+    // 更新静态背景配置
+    gantt.config.static_background = !value;
+    gantt.config.static_background_cells = !value;
+
+    // 重新渲染甘特图以应用更改
+    gantt.render();
+  } catch (error) {
+    console.error('Toggle grid lines failed:', error);
+  }
+};
+
+// 计算两个日期之间的单位数量
+const getUnitsBetween = (from: Date, to: Date, unit: string, step: number): number => {
+  let start = new Date(from);
+  const end = new Date(to);
+  let units = 0;
+  while (start.valueOf() < end.valueOf()) {
+    units++;
+    start = gantt.date.add(start, step, unit);
+  }
+  return units;
+};
+
+// ==================== 树节点展开/折叠功能 ====================
+const expandAllTasks = () => {
+  if (!isInitialized || !gantt) {
+    return;
+  }
+
+  try {
+    // 使用 eachTask 遍历所有任务，设置 $open 属性
+    gantt.eachTask((task: any) => {
+      task.$open = true;
+    });
+
+    // 统一渲染，性能更好
+    gantt.render();
+
+    allExpanded.value = true;
+  } catch (error) {
+    console.error('展开所有节点失败:', error);
+  }
+};
+
+const collapseAllTasks = () => {
+  if (!isInitialized || !gantt) {
+    ElMessage.warning('甘特图未初始化');
+    return;
+  }
+
+  try {
+    // 使用 eachTask 遍历所有任务，设置 $open 属性
+    gantt.eachTask((task: any) => {
+      task.$open = false;
+    });
+
+    // 统一渲染，性能更好
+    gantt.render();
+
+    allExpanded.value = false;
+  } catch (error) {
+    console.error('折叠所有节点失败:', error);
+  }
+};
+
+// Switch 组件变化处理函数
+const handleTreeExpandChange = (value: boolean) => {
+  if (value) {
+    expandAllTasks();
+  } else {
+    collapseAllTasks();
+  }
+};
+// ==================== 全屏模式功能 ====================
+// 切换全屏模式
+const toggleFullscreen = () => {
+  if (!isInitialized) {
+    ElMessage.warning('甘特图未初始化');
+    return;
+  }
+
+  try {
+    // 使用浏览器的原生 Fullscreen API
+    if (!document.fullscreenElement) {
+      // 进入全屏
+      const element = ganttRef.value;
+      if (element.requestFullscreen) {
+        element.requestFullscreen();
+      } else if ((element as any).webkitRequestFullscreen) {
+        (element as any).webkitRequestFullscreen();
+      } else if ((element as any).msRequestFullscreen) {
+        (element as any).msRequestFullscreen();
+      }
+    } else {
+      // 退出全屏
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      } else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen();
+      }
+    }
+  } catch (error) {
+    console.error('全屏模式切换失败:', error);
+  }
+};
+
+// 监听全屏状态变化
+const handleFullscreenChange = () => {
+  const fullscreenElement = document.fullscreenElement || (document as any).webkitFullscreenElement || (document as any).msFullscreenElement;
+
+  if (fullscreenElement === ganttRef.value) {
+    isFullscreen.value = true;
+    console.log('浏览器原生全屏已激活');
+  } else {
+    isFullscreen.value = false;
+    console.log('浏览器原生全屏已退出');
+  }
+};
+
+// ==================== 时间计算工具函数 ====================
 // 计算时间差异
 const dateTimeDifference = (plan: any, actual: any) => {
   if (!plan || !actual) return null;
@@ -135,7 +648,8 @@ const formatDate = (date) => {
   return dayjs(date).format('YYYY-MM-DD HH:mm');
 };
 
-// 渲染时间段条
+// ==================== 自定义渲染函数 ====================
+// 渲染时间段条（用于显示计划和实际时间）
 const handleTimePeriodRender = (seg, task, opt = {}) => {
   const startDate = dayjs(seg.start_date).toDate();
   const endDate = dayjs(seg.end_date).toDate();
@@ -258,7 +772,9 @@ const customTooltipText = (start: any, end: any, task: any) => {
         }
       </div>`;
   };
-
+  if (task.actual_start && !task.actual_end) {
+    task.actual_end = task.currentDate;
+  }
   // 使用actual_start/actual_end字段
   if (task.actual_start && task.actual_end) {
     const plan = {
@@ -310,10 +826,6 @@ const customTooltipText = (start: any, end: any, task: any) => {
       const sign = late ? '延迟' : '提前';
       return `<span style="color:${color}">${label}${sign}:</span> <div style="color:${color}">${val}</div>`;
     };
-    /*
-    <div class="fix-width">${formatDelay(diff.startDelay, '开始')}</div>
-      <div class="fix-width">${formatDelay(diff.endDelay, '结束')}</div>
-*/
 
     return `
         <div class="tip-container">
@@ -333,9 +845,9 @@ const customTooltipText = (start: any, end: any, task: any) => {
 
           <hr class="tip-item" />
           <div class="fix-width"><span>计划时间:</span><div>${formatDateStr(plan.start_date)} ~ ${formatDateStr(plan.end_date)}</div></div>
-          <div class="fix-width"><span>实际时间:</span><div>${formatDateStr(actual.actual_start)} ~ ${formatDateStr(actual.actual_end)}</div></div>
-          <div class="fix-width"><span>计 划 D 2 D :</span><div>${task.plannedD2DDurationDesc}</div></div>
-          <div class="fix-width"><span>实 际 D 2 D :</span><div>${task.actualDurationDesc}</div></div>
+          <div class="fix-width"><span>实际时间:</span><div>${formatDateStr(actual.actual_start)} ~ ${Number(task.mesCompleteQuantity) >= Number(task.planQuantity) ? formatDateStr(actual.actual_end) : ''}</div></div>
+          <div class="fix-width"><span>计 划 D T D :</span><div>${task.plannedD2DDurationDesc}</div></div>
+          <div class="fix-width"><span>实 际 D T D :</span><div>${task.actualD2DDurationDesc}</div></div>
           <div class="fix-width"><span>状态详情:</span><div>${formatStatusDetail(task)}</div></div>
 
           <hr class="tip-item" />
@@ -350,16 +862,15 @@ const customTooltipText = (start: any, end: any, task: any) => {
           <div class="grid-four">
             <span>前一制程:</span>
             <span>${task.previousWorkOrderNo || ''}-${task.previousProcessNo ? Number(task.previousProcessNo) : ''} ${task.previousWorkCenter || ''}</span>
-            <span>完工时间:</span>
-            <span>${task.previousActualEndDate || '-'}</span>
+            <span class="time-label">完工时间:</span>
+            <span class="time-value">${task.previousActualEndDate || '-'}</span>
           </div>
           <div class="grid-four">
             <span>下一制程:</span>
             <span>${task.nextWorkOrderNo || ''}-${task.nextProcessNo ? Number(task.nextProcessNo) : ''} ${task.nextWorkCenter || ''}</span>
-            <span>预计开工:</span>
-            <span>${task.nextPlannedStartDate || '-'}</span>
+            <span class="time-label">预计开工:</span>
+            <span class="time-value">${task.nextPlannedStartDate || '-'}</span>
           </div>
-
         </div>
         `;
   }
@@ -409,7 +920,7 @@ const addTodayLine = () => {
   }
 };
 
-// 初始化配置
+// ==================== 甘特图初始化配置 ====================
 const initConfig = () => {
   // ==================== 国际化设置 ====================
   gantt.i18n.setLocale('cn');
@@ -419,7 +930,12 @@ const initConfig = () => {
   gantt.plugins({
     tooltip: true, // 启用悬浮提示功能
     marker: true, // 启用标记线功能（如今天线）
-    multitask: true // 启用多段任务功能（支持同一任务显示多个时间段）
+    multitask: true, // 启用多段任务功能（支持同一任务显示多个时间段）
+    export_api: true, // 导出功能
+    drag_timeline: true, //拖动时间线
+    // keyboard_navigation: true, // 键盘导航
+    fullscreen: true, // 全屏模式
+    columns_resizable: true // 列宽可调整
   });
 
   // ==================== 基础显示配置 ====================
@@ -432,15 +948,52 @@ const initConfig = () => {
   gantt.config.scale_height = 50; // 时间轴刻度区域高度（像素）
   gantt.config.bar_height = 26; // 任务条高度（像素）
   gantt.config.row_height = 32; // 表格行高（像素）
-  gantt.config.grid_width = 900; // 左侧表格初始宽度（像素）
+  gantt.config.grid_width = 500; // 左侧表格初始宽度（像素）
   gantt.config.max_task_height = 26; // 任务条最大高度限制
+  gantt.config.autosize_grid = false; // 禁用网格自动调整大小
 
   // ==================== 表格列配置 ====================
-  gantt.config.autofit = true; // 自动调整列宽以适应内容
+  gantt.config.autofit = false; // 禁用自动调整列宽，使用手动控制
   gantt.config.grid_elastic_columns = false; // 禁用弹性列宽
-  gantt.config.autosize_columns = true; // 自动计算列宽
+  gantt.config.autosize_columns = false; // 禁用自动计算列宽，使用固定宽度
   gantt.config.drag_column_width = true; // 允许拖动调整列宽
   gantt.config.columns = props.columns; // 使用传入的列配置
+
+  // ==================== 键盘导航配置 ====================
+  gantt.config.keyboard_navigation = true; // 启用键盘导航
+  gantt.config.keyboard_navigation_cells = true; // 允许在表格单元格间导航
+  gantt.config.multiselect = true; // 允许多选（配合键盘使用）
+  gantt.config.touch_drag = false; // 禁用触摸拖拽（避免与键盘冲突）
+
+  // ==================== 全屏模式事件监听 ====================
+  gantt.attachEvent('onBeforeExpand', () => {
+    return true;
+  });
+
+  gantt.attachEvent('onBeforeCollapse', () => {
+    return true;
+  });
+
+  gantt.attachEvent('onExpand', () => {
+    isFullscreen.value = true;
+
+    // 隐藏父级容器的滚动条和溢出
+    const parentContainers = document.querySelectorAll('.app-main, .main-container, .el-main');
+    parentContainers.forEach((container) => {
+      originalOverflow = (container as HTMLElement).style.overflow;
+      (container as HTMLElement).style.overflow = 'hidden';
+    });
+  });
+
+  gantt.attachEvent('onCollapse', () => {
+    isFullscreen.value = false;
+
+    // 恢复父级容器的原始样式
+    const parentContainers = document.querySelectorAll('.app-main, .main-container, .el-main');
+    parentContainers.forEach((container) => {
+      (container as HTMLElement).style.overflow = originalOverflow;
+    });
+  });
 
   // ==================== 日期格式配置 ====================
   gantt.config.xml_date = '%Y-%m-%d %H:%i:%s'; // 日期解析格式
@@ -460,16 +1013,9 @@ const initConfig = () => {
   gantt.config.preserve_scroll = true; // 数据更新时保持滚动位置不变
   gantt.config.show_task_cells = true; // 显示任务单元格网格线
 
-  // gantt.config.task_content_overflow = 'visible'; // 允许任务内容溢出容器（用于显示超出的时间条）
-  // gantt.config.dynamic_loading = false; // 启用动态加载（仅渲染可见区域的任务，提升大数据量性能）
-  // gantt.config.smart_rendering = false; // 关闭智能渲染（避免自定义时间条被裁剪，确保完整显示）
-  // gantt.config.render_mode = 'div'; // 使用div模式
-  // gantt.config.static_background = false; // 启用静态背景渲染(提升滚动性能)
-  // gantt.config.static_background_cells = true; // 启用静态背景单元格
-
   gantt.config.task_content_overflow = 'visible'; // 保留：允许内容溢出
   gantt.config.smart_rendering = false; // 关闭智能渲染（避免自定义时间条被裁剪，确保完整显示）
-  gantt.config.dynamic_loading = false; // 启用动态加载（仅渲染可见区域的任务，提升大数据量性能）
+  gantt.config.dynamic_loading = false; // 禁用动态加载（渲染所有任务，确保自定义时间条完整显示）
   gantt.config.render_mode = 'div'; // 使用div模式
   gantt.config.static_background = true; // 启用静态背景渲染(提升滚动性能)
   gantt.config.static_background_cells = true; // 启用静态背景单元格
@@ -477,98 +1023,79 @@ const initConfig = () => {
   // ==================== 布局配置 ====================
   gantt.config.fix_grid_header = true; // 固定表头，滚动时表头保持可见
 
+  // ==================== 启用表格列宽拖动 ====================
+  gantt.config.grid_resize = true; // 允许调整表格列宽
+  gantt.config.drag_column_width = true; // 允许拖动列宽
+  gantt.config.resize_table_rows = true; // 允许拖动行高
+
+  // 列宽拖动手柄优化（让调整手柄位置更符合用户预期）
+  gantt.attachEvent('onColumnResizeStart', (ind, column) => {
+    // ind: 当前列的索引
+    // column: 当前列的配置对象
+
+    // 1. 只对非树形列且不是第一列的情况生效
+    if (!column.tree || ind == 0) return;
+
+    setTimeout(() => {
+      // 2. 获取调整手柄元素
+      const marker = document.querySelector('.gantt_grid_resize_area');
+      if (!marker) return;
+
+      // 3. 获取所有列配置
+      const cols = gantt.getGridColumns();
+
+      // 4. 计算前一列的宽度
+      const delta = cols[ind - 1].width || 0;
+      if (!delta) return;
+
+      // 5. 调整手柄位置和样式
+      marker.style.boxSizing = 'content-box'; // 使用 content-box 盒模型
+      marker.style.marginLeft = -delta + 'px'; // 向左偏移前一列的宽度
+      marker.style.paddingRight = delta + 'px'; // 右侧增加内边距补偿
+    }, 1);
+  });
+
   // ==================== 布局配置 ====================
   // 自定义左右分栏布局：左侧表格 + 右侧时间轴，各自独立横向滚动
   gantt.config.layout = {
     css: 'gantt_container',
     cols: [
-      // 左侧表格区域：固定宽度，支持横向滚动
       {
-        width: 900,
-        resize: true,
+        width: 860,
+        min_width: 300,
         rows: [
-          // 表格主体
-          { view: 'grid', scrollX: 'gridScroll', scrollY: 'scrollVer' },
-          // 左侧独立横向滚动条
-          { view: 'scrollbar', id: 'gridScroll', scroll: 'x', group: 'horizontal' }
+          { view: 'grid', scrollX: 'gridScroll', scrollable: true, scrollY: 'scrollVer' },
+          { view: 'scrollbar', id: 'gridScroll', group: 'horizontalScrolls' }
         ]
       },
-
-      // 可拖动分隔条
-      { resizer: true, width: 4 },
-
-      // 右侧时间轴区域：占满剩余空间
+      { resizer: true, width: 1 },
       {
-        gravity: 1,
         rows: [
-          // 时间轴主体
-          { view: 'timeline', scrollX: 'timelineScroll', scrollY: 'scrollVer' },
-          // 右侧独立横向滚动条
-          { view: 'scrollbar', id: 'timelineScroll', scroll: 'x', group: 'horizontal' }
+          { view: 'timeline', scrollX: 'scrollHor', scrollY: 'scrollVer' },
+          { view: 'scrollbar', id: 'scrollHor', group: 'horizontalScrolls' }
         ]
       },
-
-      // 纵向滚动条（两侧共享）
-      { view: 'scrollbar', id: 'scrollVer', scroll: 'y' }
+      { view: 'scrollbar', id: 'scrollVer' }
     ]
   };
-
-  // ==================== 表头滚动同步 ====================
-  // 当表格内容横向滚动时，同步滚动表头以保持对齐
-  gantt.attachEvent('onGridScroll', (scrollLeft) => {
-    const headerRow = document.querySelector('.gantt_grid_scale .gantt_grid_head_row');
-    if (headerRow) {
-      headerRow.style.transform = `translateX(-${scrollLeft}px)`;
-    }
-  });
 
   // ==================== 多段任务配置 ====================
   // 启用多段任务功能，允许同一任务显示多个时间段（计划/实际）
   gantt.config.multitask = true; // 开启多段任务支持
   gantt.config.multitask_branch = false; // 不在分支级别显示多段
 
-  // ==================== 时间轴刻度配置 ====================
-  // 三层时间刻度：周 -> 日 -> 小时
-  gantt.config.scales = [
-    // 第一层：按周显示
-    {
-      unit: 'week',
-      step: 1,
-      format: function (date) {
-        const startDate = date;
-        const endDate = gantt.date.add(gantt.date.add(date, 1, 'week'), -1, 'day');
-
-        // 格式化：月份两位 + 年份
-        const dateToStr = gantt.date.date_to_str('%Y-%m-%d');
-        const startStr = dateToStr(startDate);
-        const endStr = dateToStr(endDate);
-        return startStr + ' - ' + endStr;
-      }
-    },
-    // 第二层：按日显示，周末高亮
-    {
-      unit: 'day',
-      step: 1,
-      format: '%Y-%m-%d (%D)',
-      css: function (date) {
-        if (date.getDay() === 0 || date.getDay() === 6) return 'weekend';
-        return '';
-      }
-    },
-    // 第三层：每4小时一个刻度
-    { unit: 'hour', step: 4, format: '%H:%i' }
-  ];
+  // 使用 zoomConfig 的默认 scales（weeks 级别）
+  gantt.config.scales = zoomConfig.levels[2].scales;
 
   // ==================== 模板配置 ====================
   // 树形图标模板：根据任务类型和状态显示不同图标
-  gantt.templates.grid_folder = function (task: any) {
+  gantt.templates.grid_folder = (task: any) => {
     let cls = 'gantt_icon ';
 
     if (task.process && task.process.trim()) {
       // 工序节点：根据状态显示不同颜色图标
       switch (task.finalStatus) {
         case 0:
-          // cls += 'process_icon_process'; // 蓝色
           cls += 'process_icon_done'; // 绿色
           break;
         case 1:
@@ -584,7 +1111,6 @@ const initConfig = () => {
       // 工单节点：根据状态显示不同颜色图标
       switch (task.finalStatus) {
         case 0:
-          // cls += 'order_icon_process'; // 生产中 - 蓝色
           cls += 'order_icon_done'; // 绿色
           break;
         case 1:
@@ -602,24 +1128,28 @@ const initConfig = () => {
   };
 
   // 文件图标模板：复用文件夹图标逻辑
-  gantt.templates.grid_file = function (task: any) {
+  gantt.templates.grid_file = (task: any) => {
     return gantt.templates.grid_folder(task);
   };
 
   // 任务条样式模板：为有时间段的任务设置透明背景
-  gantt.templates.task_class = function (start: any, end: any, task: any) {
+  gantt.templates.task_class = (start: any, end: any, task: any) => {
     // 如果任务有 timeList 或 actual_start/end，使用自定义渲染，任务条设为透明
     if ((task.timeList && task.timeList.length) || (task.actual_start && task.actual_end)) {
       return 'transparent-bar';
     }
     return '';
   };
+
   // 任务文本模板：自定义任务条上的显示内容
   gantt.templates.task_text = customTaskText;
 
   // 悬浮提示模板：自定义鼠标悬停时的提示信息
-  gantt.templates.tooltip_text = customTooltipText;
-
+  // gantt.templates.tooltip_text = customTooltipText;
+  gantt.attachEvent('onGanttReady', function () {
+    console.log('✅ Gantt 准备完成，设置 tooltip');
+    gantt.templates.tooltip_text = customTooltipText;
+  });
   // 周末高亮模板：在时间轴上标记周末
   gantt.templates.scale_cell_class = (date) => {
     const day = date.getDay();
@@ -630,7 +1160,8 @@ const initConfig = () => {
   };
 };
 
-// 递归构建数据
+// ==================== 数据处理函数 ====================
+// 递归构建数据（将后端数据转换为甘特图所需格式）
 const formatData = (treeList) => {
   if (!treeList || !Array.isArray(treeList)) return [];
 
@@ -836,6 +1367,7 @@ const updateData = (newTasks) => {
   }, 150);
 };
 
+// 重新加载数据
 const reload = () => {
   if (!isInitialized) return;
 
@@ -892,18 +1424,62 @@ const softReset = () => {
   }
 };
 
+// 滚动时间轴
+const scrollTimeline = (offset: number) => {
+  if (!isInitialized || !gantt) return;
+
+  const timeline = gantt.$task_data;
+  if (timeline) {
+    timeline.scrollLeft += offset;
+  }
+};
+
+// 滚动到开始
+const scrollToStart = () => {
+  if (!isInitialized || !gantt) return;
+
+  const timeline = gantt.$task_data;
+  if (timeline) {
+    timeline.scrollLeft = 0;
+  }
+};
+
+// 滚动到结束
+const scrollToEnd = () => {
+  if (!isInitialized || !gantt) return;
+
+  const timeline = gantt.$task_data;
+  if (timeline) {
+    timeline.scrollLeft = timeline.scrollWidth;
+  }
+};
+
+// 显示今天
+const showToday = () => {
+  if (!isInitialized || !gantt) return;
+
+  try {
+    const today = new Date();
+    gantt.showDate(today);
+  } catch (error) {
+    console.error('Show today failed:', error);
+  }
+};
+
+// ==================== 生命周期钩子 ====================
 onMounted(async () => {
   await nextTick();
 
   if (!ganttRef.value) {
-    console.warn('Gantt container not found');
     return;
   }
+
+  // 添加全屏状态变化监听器
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
 
   try {
     // 如果已经初始化过，先软重置
     if (isInitialized) {
-      console.log('Gantt already initialized, soft resetting...');
       softReset();
 
       // 短暂等待确保清理完成
@@ -918,17 +1494,17 @@ onMounted(async () => {
 
     // 再次检查容器是否存在
     if (!ganttRef.value) {
-      throw new Error('Gantt container disappeared');
+      isInitialized = false;
+      return;
     }
 
     // 如果是首次初始化，调用 init；否则直接加载数据
     if (!isInitialized) {
-      console.log('Initializing gantt for the first time...');
       gantt.init(ganttRef.value);
       isInitialized = true;
-      console.log('Gantt initialized successfully');
-    } else {
-      console.log('Reusing existing gantt instance');
+
+      // 初始化缩放配置（在 init 之后）
+      initZoomConfig();
     }
 
     // 初始加载数据
@@ -952,9 +1528,7 @@ onMounted(async () => {
           const today = dayjs();
           gantt.render();
           gantt.showDate(today.toDate());
-        } catch (error) {
-          console.warn('调整时间范围失败:', error);
-        }
+        } catch (error) {}
       }, 100);
     }
 
@@ -963,11 +1537,11 @@ onMounted(async () => {
 
     emit('ready', { gantt });
   } catch (error) {
-    console.error('Gantt initialization error:', error);
     isInitialized = false;
   }
 });
 
+// 监听 tasks 变化
 watch(
   () => props.tasks,
   (newTasks) => {
@@ -978,6 +1552,7 @@ watch(
   { deep: false }
 );
 
+// 监听 readonly 变化
 watch(
   () => props.readonly,
   (newReadonly) => {
@@ -988,6 +1563,7 @@ watch(
   }
 );
 
+// 组件卸载前清理
 onBeforeUnmount(() => {
   // 清除所有定时器
   if (updateTimer) {
@@ -999,11 +1575,15 @@ onBeforeUnmount(() => {
     renderTimer = null;
   }
 
+  // 移除全屏状态变化监听器
+  document.removeEventListener('fullscreenchange', handleFullscreenChange);
+
   // 软重置而不是 destructor
   softReset();
   isInitialized = false;
 });
 
+// 暴露方法给父组件
 defineExpose({
   reload,
   updateData
@@ -1011,13 +1591,34 @@ defineExpose({
 </script>
 
 <style lang="scss" scoped>
+// ==================== 组件容器样式 ====================
 .gantt-wrapper {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
+
+  // 全屏模式下的样式
+  &.fullscreen-mode {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 99999 !important;
+    background: #ffffff;
+
+    .legend-container {
+      background: rgba(245, 247, 250, 0.95);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
 }
 
+// ==================== 图例容器样式 ====================
 .legend-container {
   display: flex;
   gap: 20px;
@@ -1026,6 +1627,7 @@ defineExpose({
   border-radius: 4px;
   margin-bottom: 8px;
   flex-shrink: 0;
+  align-items: center;
 }
 
 .legend-item {
@@ -1050,6 +1652,7 @@ defineExpose({
   background-color: #67c23a;
 }
 
+// ==================== 甘特图容器样式 ====================
 .gantt-container {
   width: 100%;
   height: 100%;
@@ -1057,6 +1660,91 @@ defineExpose({
   position: relative;
 }
 
+// ==================== 甘特图深层样式（使用 :deep() 穿透）====================
+
+// 确保甘特图容器正确显示
+:deep(.gantt_container) {
+  border: none !important;
+  font-family: var(--dhx-gantt-font-family);
+}
+
+// 确保横向滚动条可见且不被隐藏
+:deep(.gantt_scroll_hor) {
+  display: block !important;
+  height: 18px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+// 确保垂直滚动条可见
+:deep(.gantt_scroll_ver) {
+  display: block !important;
+  width: 18px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+// 确保网格数据区域可以滚动
+:deep(.gantt_grid_data) {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+// 确保时间轴数据区域可以滚动
+:deep(.gantt_task_data) {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+// 确保表头可以响应鼠标事件以调整列宽
+:deep(.gantt_grid_scale) {
+  cursor: default !important;
+}
+
+// 确保表头分隔条可以拖动
+:deep(.gantt_scale_line) {
+  cursor: col-resize !important;
+}
+
+// 确保列标题之间的分隔线可见且可拖动
+:deep(.gantt_grid_head_cell) {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+// 排序图标样式优化
+:deep(.gantt_sort_desc),
+:deep(.gantt_sort_asc) {
+  width: 16px !important;
+  height: 16px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  right: 5px !important;
+}
+
+// 列宽调整手柄样式
+:deep(.gantt_grid_resize_marker) {
+  display: block !important;
+  width: 5px !important;
+  cursor: col-resize !important;
+  background: rgba(64, 158, 255, 0.3) !important;
+  z-index: 100 !important;
+}
+
+// 全屏模式下甘特图容器样式
+:deep(.gantt_fullscreen) {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  background: #ffffff;
+}
+
+// 今天标记线样式
 :deep(.gantt_marker.today .gantt_marker_content) {
   background: #ff5c5c;
   color: white;
@@ -1065,13 +1753,40 @@ defineExpose({
   border-radius: 4px;
 }
 
+// 透明任务条样式
 :deep(.transparent-bar) {
   background: transparent !important;
   border: none !important;
 }
+
+// ==================== 控制按钮样式 ====================
+
+// 全屏控制按钮样式
+.fullscreen-control {
+  display: flex;
+  align-items: center;
+}
+
+// 树节点控制按钮样式
+.tree-control {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+  gap: 5px;
+}
+
+// 网格切换控制按钮样式
+.grid-toggle-control {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+}
+
+// ==================== 甘特图全局样式（不使用 scoped，影响所有甘特图实例）====================
 </style>
 
 <style>
+/* ==================== CSS 变量定义 ==================== */
 :root {
   /* 主题主色 - 改为绿色 */
   --dhx-gantt-base-colors-primary: #10b981;
@@ -1104,7 +1819,7 @@ defineExpose({
   --dhx-gantt-box-shadow-m: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 
   /* 字体设置 */
-  --dhx-gantt-font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+  --dhx-gantt-font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
   --dhx-gantt-regular-font-size: 14px;
   --dhx-gantt-regular-line-height: 1.4;
   --dhx-gantt-regular-font-weight: 400;
@@ -1116,6 +1831,7 @@ defineExpose({
   --dhx-gantt-task-background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
 
+/* ==================== 树形图标样式 ==================== */
 .gantt_tree_icon.gantt_file,
 .gantt_tree_icon.gantt_folder_open,
 .gantt_tree_icon.gantt_folder_closed {
@@ -1123,9 +1839,11 @@ defineExpose({
   background-image: none;
 }
 
+/* ==================== 任务条溢出控制 ==================== */
 .gantt_task_line {
   overflow: visible !important;
 }
+
 .gantt_task_line.gantt_milestone {
   width: 12px !important;
   height: 16px !important;
@@ -1159,7 +1877,7 @@ defineExpose({
   contain: none !important;
 }
 
-/* 时间条样式 */
+/* ==================== 时间条样式 ==================== */
 .gantt-time-bar {
   transition: opacity 0.2s;
   cursor: pointer;
@@ -1192,6 +1910,8 @@ defineExpose({
   background: #909399 !important;
   color: #fff;
 }
+
+/* ==================== 提示框样式 ==================== */
 /* 提示框整体容器 */
 .gantt_tooltip {
   padding: 8px 8px 8px 8px;
@@ -1212,14 +1932,15 @@ defineExpose({
   align-items: flex-start;
   gap: 4px;
 }
+
 .tip-container {
-/*  padding: 10px 12px;*/
+  /*  padding: 10px 12px;*/
   line-height: 1.2;
   min-width: 400px;
   background-color: #ffffff;
   color: #201d1d;
   border-radius: 6px;
-/*  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);*/
+  /*  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);*/
   font-size: 14px;
 }
 
@@ -1242,12 +1963,28 @@ defineExpose({
 /* 四列布局：前一制程/下一制程 */
 .grid-four {
   display: grid;
-  grid-template-columns: 80px minmax(150px, 1fr) 88px 1fr;
+  grid-template-columns: 70px minmax(120px, 1fr) 70px 1fr;
   gap: 8px;
   align-items: center;
   margin-bottom: 4px;
 }
+/* 时间标签样式（完工时间/预计开工） */
+.grid-four .time-label {
+  width: 70px;
+  color: #000000;
+  text-align: justify;
+  text-align-last: justify;
+  white-space: nowrap;
+}
 
+/* 时间值样式（日期+时间） */
+.grid-four .time-value {
+  width: 130px;
+  color: #000000;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* 标签文字样式 */
 .fix-width span,
 .grid-four span {
@@ -1266,6 +2003,117 @@ defineExpose({
   word-break: break-all;
   text-align: left;
 }
+
+/* ==================== 工具栏布局样式 ==================== */
+.legend-container {
+  display: flex;
+  gap: 20px;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.legend-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  color: #606266;
+}
+
+/* 日期多维度切换 */
+.view-switcher {
+  margin-left: auto;
+}
+
+.color-block {
+  width: 28px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+.color-block.primary {
+  background-color: #409eff;
+}
+
+.color-block.success {
+  background-color: #67c23a;
+}
+
+/* 缩放功能 */
+.legend-container {
+  display: flex;
+  gap: 20px;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.legend-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  color: #606266;
+}
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+}
+
+.export-controls {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+}
+
+.view-switcher {
+  margin-left: auto;
+}
+
+.color-block {
+  width: 28px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+.color-block.primary {
+  background-color: #409eff;
+}
+
+.color-block.success {
+  background-color: #67c23a;
+}
+
+/* ==================== 表格列宽拖动样式 ==================== */
+/* 表格列宽拖动线 - 可见、可拖动、视觉反馈 */
+.gantt_grid_resize_marker {
+  position: absolute !important;
+  z-index: 999 !important;
+  width: 4px !important;
+  background: rgba(64, 158, 255, 0.4) !important;
+  cursor: col-resize !important;
+  opacity: 1 !important;
+  display: block !important;
+}
+
+.gantt_grid_head_cell {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+.gantt_scale_line {
+  cursor: col-resize !important;
+}
+
+/* ==================== 甘特图行内容垂直居中 ==================== */
 /* 让 Gantt 行内容全部垂直居中 */
 .gantt_tree_content {
   display: flex;
@@ -1273,6 +2121,7 @@ defineExpose({
   gap: 6px;
   height: 100%;
 }
+
 /* 父级:让图标 + 文字 同一行垂直居中 */
 .gantt_cell {
   display: flex !important;
@@ -1290,72 +2139,77 @@ defineExpose({
   background-size: contain;
 }
 
-/* 工单图标 = 工单/文件夹 */
+/* ==================== 工单图标（文件夹图标）==================== */
 /* 工单 - 未开始 */
 .order_icon_wait {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='%23909399'%3E%3Cpath d='M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/%3E%3C/svg%3E");
 }
+
 /* 工单 - 生产中 */
 .order_icon_process {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='%23409eff'%3E%3Cpath d='M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/%3E%3C/svg%3E");
 }
+
 /* 工单 - 已完成 */
 .order_icon_done {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='%2367c23a'%3E%3Cpath d='M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/%3E%3C/svg%3E");
 }
+
 /* 工单 - 暂停 */
 .order_icon_pause {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='%23e6a23c'%3E%3Cpath d='M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0 1.1-.9-2-2-2h-8l-2-2z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='%23e6a23c'%3E%3Cpath d='M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/%3E%3C/svg%3E");
 }
+
 /* 工单 - 异常 */
 .order_icon_error {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='%23f56c6c'%3E%3Cpath d='M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/%3E%3C/svg%3E");
 }
 
-/* 工序图标 = 工序/步骤 */
+/* ==================== 工序图标（步骤图标）==================== */
 /* 工序-未开始 灰色 */
 .process_icon_wait {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'%3E%3Cpath d='M661.333333 170.666667l253.866667 34.133333-209.066667 209.066667zM362.666667 853.333333L108.8 819.2l209.066667-209.066667zM170.666667 362.666667L204.8 108.8l209.066667 209.066667z' fill='%23909399'%3E%3C/path%3E%3Cpath d='M198.4 452.266667l-89.6 17.066666c-2.133333 14.933333-2.133333 27.733333-2.133333 42.666667 0 98.133333 34.133333 192 98.133333 264.533333l64-55.466666C219.733333 663.466667 192 588.8 192 512c0-19.2 2.133333-40.533333 6.4-59.733333zM512 106.666667c-115.2 0-217.6 49.066667-292.266667 125.866666l59.733334 59.733334C339.2 230.4 420.266667 192 512 192c19.2 0 40.533333 2.133333 59.733333 6.4l14.933334-83.2C563.2 108.8 537.6 106.666667 512 106.666667zM825.6 571.733333l89.6-17.066666c2.133333-14.933333 2.133333-27.733333 2.133333-42.666667 0-93.866667-32-185.6-91.733333-258.133333l-66.133333 53.333333c46.933333 57.6 72.533333 130.133333 72.533333 202.666667 0 21.333333-2.133333 42.666667-6.4 61.866666zM744.533333 731.733333C684.8 793.6 603.733333 832 512 832c-19.2 0-40.533333-2.133333-59.733333-6.4l-14.933334 83.2c25.6 4.266667 51.2 6.4 74.666667 6.4 115.2 0 217.6-49.066667 292.266667-125.866667l-59.733334-57.6z' fill='%23909399'%3E%3C/path%3E%3Cpath d='M853.333333 661.333333l-34.133333 253.866667-209.066667-209.066667z' fill='%23909399'%3E%3C/path%3E%3C/svg%3E");
 }
+
 /* 工序-生产中 蓝色 */
 .process_icon_process {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'%3E%3Cpath d='M661.333333 170.666667l253.866667 34.133333-209.066667 209.066667zM362.666667 853.333333L108.8 819.2l209.066667-209.066667zM170.666667 362.666667L204.8 108.8l209.066667 209.066667z' fill='%23409eff'%3E%3C/path%3E%3Cpath d='M198.4 452.266667l-89.6 17.066666c-2.133333 14.933333-2.133333 27.733333-2.133333 42.666667 0 98.133333 34.133333 192 98.133333 264.533333l64-55.466666C219.733333 663.466667 192 588.8 192 512c0-19.2 2.133333-40.533333 6.4-59.733333zM512 106.666667c-115.2 0-217.6 49.066667-292.266667 125.866666l59.733334 59.733334C339.2 230.4 420.266667 192 512 192c19.2 0 40.533333 2.133333 59.733333 6.4l14.933334-83.2C563.2 108.8 537.6 106.666667 512 106.666667zM825.6 571.733333l89.6-17.066666c2.133333-14.933333 2.133333-27.733333 2.133333-42.666667 0-93.866667-32-185.6-91.733333-258.133333l-66.133333 53.333333c46.933333 57.6 72.533333 130.133333 72.533333 202.666667 0 21.333333-2.133333 42.666667-6.4 61.866666zM744.533333 731.733333C684.8 793.6 603.733333 832 512 832c-19.2 0-40.533333-2.133333-59.733333-6.4l-14.933334 83.2c25.6 4.266667 51.2 6.4 74.666667 6.4 115.2 0 217.6-49.066667 292.266667-125.866667l-59.733334-57.6z' fill='%23409eff'%3E%3C/path%3E%3Cpath d='M853.333333 661.333333l-34.133333 253.866667-209.066667-209.066667z' fill='%23409eff'%3E%3C/path%3E%3C/svg%3E");
 }
+
 /* 工序-已完成 绿色 */
 .process_icon_done {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'%3E%3Cpath d='M661.333333 170.666667l253.866667 34.133333-209.066667 209.066667zM362.666667 853.333333L108.8 819.2l209.066667-209.066667zM170.666667 362.666667L204.8 108.8l209.066667 209.066667z' fill='%2367c23a'%3E%3C/path%3E%3Cpath d='M198.4 452.266667l-89.6 17.066666c-2.133333 14.933333-2.133333 27.733333-2.133333 42.666667 0 98.133333 34.133333 192 98.133333 264.533333l64-55.466666C219.733333 663.466667 192 588.8 192 512c0-19.2 2.133333-40.533333 6.4-59.733333zM512 106.666667c-115.2 0-217.6 49.066667-292.266667 125.866666l59.733334 59.733334C339.2 230.4 420.266667 192 512 192c19.2 0 40.533333 2.133333 59.733333 6.4l14.933334-83.2C563.2 108.8 537.6 106.666667 512 106.666667zM825.6 571.733333l89.6-17.066666c2.133333-14.933333 2.133333-27.733333 2.133333-42.666667 0-93.866667-32-185.6-91.733333-258.133333l-66.133333 53.333333c46.933333 57.6 72.533333 130.133333 72.533333 202.666667 0 21.333333-2.133333 42.666667-6.4 61.866666zM744.533333 731.733333C684.8 793.6 603.733333 832 512 832c-19.2 0-40.533333-2.133333-59.733333-6.4l-14.933334 83.2c25.6 4.266667 51.2 6.4 74.666667 6.4 115.2 0 217.6-49.066667 292.266667-125.866667l-59.733334-57.6z' fill='%2367c23a'%3E%3C/path%3E%3Cpath d='M853.333333 661.333333l-34.133333 253.866667-209.066667-209.066667z' fill='%2367c23a'%3E%3C/path%3E%3C/svg%3E");
 }
+
 /* 工序-暂停 橙色 */
 .process_icon_pause {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'%3E%3Cpath d='M661.333333 170.666667l253.866667 34.133333-209.066667 209.066667zM362.666667 853.333333L108.8 819.2l209.066667-209.066667zM170.666667 362.666667L204.8 108.8l209.066667 209.066667z' fill='%23e6a23c'%3E%3C/path%3E%3Cpath d='M198.4 452.266667l-89.6 17.066666c-2.133333 14.933333-2.133333 27.733333-2.133333 42.666667 0 98.133333 34.133333 192 98.133333 264.533333l64-55.466666C219.733333 663.466667 192 588.8 192 512c0-19.2 2.133333-40.533333 6.4-59.733333zM512 106.666667c-115.2 0-217.6 49.066667-292.266667 125.866666l59.733334 59.733334C339.2 230.4 420.266667 192 512 192c19.2 0 40.533333 2.133333 59.733333 6.4l14.933334-83.2C563.2 108.8 537.6 106.666667 512 106.666667zM825.6 571.733333l89.6-17.066666c2.133333-14.933333 2.133333-27.733333 2.133333-42.666667 0-93.866667-32-185.6-91.733333-258.133333l-66.133333 53.333333c46.933333 57.6 72.533333 130.133333 72.533333 202.666667 0 21.333333-2.133333 42.666667-6.4 61.866666zM744.533333 731.733333C684.8 793.6 603.733333 832 512 832c-19.2 0-40.533333-2.133333-59.733333-6.4l-14.933334 83.2c25.6 4.266667 51.2 6.4 74.666667 6.4 115.2 0 217.6-49.066667 292.266667-125.866667l-59.733334-57.6z' fill='%23e6a23c'%3E%3C/path%3E%3Cpath d='M853.333333 661.333333l-34.133333 253.866667-209.066667-209.066667z' fill='%23e6a23c'%3E%3C/path%3E%3C/svg%3E");
 }
+
 /* 工序-异常 红色 */
 .process_icon_error {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'%3E%3Cpath d='M661.333333 170.666667l253.866667 34.133333-209.066667 209.066667zM362.666667 853.333333L108.8 819.2l209.066667-209.066667zM170.666667 362.666667L204.8 108.8l209.066667 209.066667z' fill='%23f56c6c'%3E%3C/path%3E%3Cpath d='M198.4 452.266667l-89.6 17.066666c-2.133333 14.933333-2.133333 27.733333-2.133333 42.666667 0 98.133333 34.133333 192 98.133333 264.533333l64-55.466666C219.733333 663.466667 192 588.8 192 512c0-19.2 2.133333-40.533333 6.4-59.733333zM512 106.666667c-115.2 0-217.6 49.066667-292.266667 125.866666l59.733334 59.733334C339.2 230.4 420.266667 192 512 192c19.2 0 40.533333 2.133333 59.733333 6.4l14.933334-83.2C563.2 108.8 537.6 106.666667 512 106.666667zM825.6 571.733333l89.6-17.066666c2.133333-14.933333 2.133333-27.733333 2.133333-42.666667 0-93.866667-32-185.6-91.733333-258.133333l-66.133333 53.333333c46.933333 57.6 72.533333 130.133333 72.533333 202.666667 0 21.333333-2.133333 42.666667-6.4 61.866666zM744.533333 731.733333C684.8 793.6 603.733333 832 512 832c-19.2 0-40.533333-2.133333-59.733333-6.4l-14.933334 83.2c25.6 4.266667 51.2 6.4 74.666667 6.4 115.2 0 217.6-49.066667 292.266667-125.866667l-59.733334-57.6z' fill='%23f56c6c'%3E%3C/path%3E%3Cpath d='M853.333333 661.333333l-34.133333 253.866667-209.066667-209.066667z' fill='%23f56c6c'%3E%3C/path%3E%3C/svg%3E");
 }
 
+/* ==================== 状态详情内容样式 ==================== */
 .ganttx-status-detail-content {
   margin: 0px 0 0 -5px;
   padding: 8px 0;
 
   &.success {
     color: #67c23a;
-    box-shadow: 0 0 5px rgba(103, 194, 58, 0.4);
   }
 
   &.warning {
     color: #e6a23c;
-    box-shadow: 0 0 5px rgba(230, 162, 60, 0.4);
   }
 
   &.danger {
     color: #f56c6c;
-    box-shadow: 0 0 5px rgba(245, 108, 108, 0.4);
   }
 
   &.default {
     color: #909399;
-    box-shadow: 0 0 3px rgba(144, 147, 153, 0.3);
   }
 }
 </style>

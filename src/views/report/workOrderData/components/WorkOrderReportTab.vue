@@ -30,7 +30,6 @@
       </template>
 
       <el-table v-loading="loading" :data="reportList" :height="tableHeight" border fixed-header>
-        <!--        <el-table-column type="selection" width="55" align="center" />-->
         <el-table-column type="expand">
           <template #default="scope">
             <el-table :data="scope.row.mesShopOrderReportVoList" style="width: calc(100% - 50px); margin: 10px 0 10px 50px" empty-text="暂无数据">
@@ -38,6 +37,8 @@
               <el-table-column label="工作中心" align="center" prop="workCenter" />
               <el-table-column label="开工时间" align="center" prop="startDateTime" min-width="120" />
               <el-table-column label="完工时间" align="center" prop="endDateTime" min-width="120" />
+              <el-table-column label="标准产能" align="center" prop="standardCapacity" />
+              <el-table-column label="标准人数" align="center" prop="standardPersonNumber" />
               <el-table-column label="平均人数" align="center" prop="personNumber" />
               <el-table-column label="报工数量" align="center" prop="mesReportQty">
                 <template #default="scope">
@@ -52,18 +53,78 @@
               <el-table-column label="起迄时长" align="center" prop="totalDuration" />
               <el-table-column label="休息时长" align="center" prop="restDuration" />
               <el-table-column label="操作时长" align="center" prop="operationDuration" />
-              <el-table-column label="停止时间" align="center" prop="stopDuration" />
+<!--              <el-table-column label="停止时间" align="center" prop="stopDuration" />-->
               <el-table-column label="异常时间" align="center" prop="abnormalDuration" />
               <el-table-column label="有效时长" align="center" prop="effectiveDuration" />
               <el-table-column label="实际人时" align="center" prop="personTime" />
+              <el-table-column label="速度稼动率" align="center" prop="speedRate" width="120">
+                <template #default="scope">
+                  <el-progress type="circle" :percentage="Number(scope.row.speedRate) || 0" :width="70" :color="getProgressColor(Number(scope.row.speedRate))" class="custom-speed-progress-circle">
+                    <template #default="{ percentage }">
+                      <span class="percentage-value" :style="{ color: getProgressTextColor(percentage) }">{{ percentage }}%</span>
+                    </template>
+                  </el-progress>
+                </template>
+              </el-table-column>
+              <el-table-column label="时间稼动率" align="center" prop="timeRate" width="120">
+                <template #default="scope">
+                  <el-progress type="circle" :percentage="Number(scope.row.timeRate) || 0" :width="70" :color="getProgressColor(Number(scope.row.timeRate))" class="custom-time-progress-circle">
+                    <template #default="{ percentage }">
+                      <span class="percentage-value" :style="{ color: getProgressTextColor(percentage) }">{{ percentage }}%</span>
+                    </template>
+                  </el-progress>
+                </template>
+              </el-table-column>
+
+              <el-table-column label="良品率" align="center" prop="goodRate" width="120">
+                <template #default="scope">
+                  <el-progress type="circle" :percentage="Number(scope.row.goodRate) || 0" :width="70" :color="getProgressColor(Number(scope.row.goodRate))" class="custom-good-progress-circle">
+                    <template #default="{ percentage }">
+                      <span class="percentage-value" :style="{ color: getProgressTextColor(percentage) }">{{ percentage }}%</span>
+                    </template>
+                  </el-progress>
+                </template>
+              </el-table-column>
+              <el-table-column label="综合OEE" align="center" prop="oeeRate" width="120">
+                <template #default="scope">
+                  <el-progress type="circle" :percentage="Number(scope.row.oeeRate) || 0" :width="70" :color="getProgressColor(Number(scope.row.oeeRate))" class="custom-oee-progress-circle">
+                    <template #default="{ percentage }">
+                      <span class="percentage-value" :style="{ color: getProgressTextColor(percentage) }">{{ percentage }}%</span>
+                    </template>
+                  </el-progress>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" align="center" width="120" fixed="right">
+                <template #default="{ row }">
+                  <el-button link type="primary" icon="View" @click="handleViewDetail(row)"> 查看明细 </el-button>
+                </template>
+              </el-table-column>
             </el-table>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" align="left" min-width="200">
+          <template #default="scope">
+            <div class="status-with-detail">
+              <div class="status-indicator-inline">
+                <span v-if="scope.row.finalStatus === 0" class="indicator-dot success"></span>
+                <span v-else-if="scope.row.finalStatus === 1" class="indicator-dot warning"></span>
+                <span v-else-if="scope.row.finalStatus === 2" class="indicator-dot danger"></span>
+                <span v-else class="indicator-dot default"></span>
+                <span class="status-text">{{ scope.row.finalStatusDesc }}</span>
+              </div>
+              <div class="status-detail-content" v-if="scope.row.finalStatusDetail">
+                <div v-for="(item, index) in scope.row.finalStatusDetail.split('|')" :key="index">
+                  {{ item.trim() }}
+                </div>
+              </div>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="工单号" align="center" prop="workOrderNo" />
         <el-table-column label="工序" align="center" prop="process" />
         <el-table-column label="工序名称" align="center" prop="processShortDesc" show-overflow-tooltip />
-        <el-table-column label="产品料号" align="center" prop="material" />
-        <el-table-column label="产品描述" align="left" prop="materialDesc" show-overflow-tooltip />
+        <el-table-column label="产品料号" align="center" prop="item" />
+        <el-table-column label="产品描述" align="left" prop="itemDesc" show-overflow-tooltip />
         <el-table-column label="工作中心" align="center" prop="workCenter" />
         <el-table-column label="计划数量" align="center" prop="plannedQty" />
         <el-table-column label="报工数量" align="center" prop="mesReportQty">
@@ -77,7 +138,7 @@
         <el-table-column label="计划结束时间" align="center" prop="plannedEndDate" />
         <el-table-column label="实际开始时间" align="center" prop="actualStartDate" />
         <el-table-column label="实际结束时间" align="center" prop="actualEndDate" />
-        <el-table-column label="速度稼动率" align="center" prop="speedRate" width="120">
+        <!--        <el-table-column label="速度稼动率" align="center" prop="speedRate" width="120">
           <template #default="scope">
             <el-progress
               type="circle"
@@ -119,17 +180,73 @@
               </template>
             </el-progress>
           </template>
+        </el-table-column>-->
+
+        <el-table-column label="速度稼动率" align="center" prop="speedRate" width="120">
+          <template #default="scope">
+            <el-progress type="circle" :percentage="Number(scope.row.speedRate) || 0" :width="70" :color="getProgressColor(Number(scope.row.speedRate))" class="custom-speed-progress-circle">
+              <template #default="{ percentage }">
+                <span class="percentage-value" :style="{ color: getProgressTextColor(percentage) }">{{ percentage }}%</span>
+              </template>
+            </el-progress>
+          </template>
+        </el-table-column>
+        <el-table-column label="时间稼动率" align="center" prop="timeRate" width="120">
+          <template #default="scope">
+            <el-progress type="circle" :percentage="Number(scope.row.timeRate) || 0" :width="70" :color="getProgressColor(Number(scope.row.timeRate))" class="custom-time-progress-circle">
+              <template #default="{ percentage }">
+                <span class="percentage-value" :style="{ color: getProgressTextColor(percentage) }">{{ percentage }}%</span>
+              </template>
+            </el-progress>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="良品率" align="center" prop="goodRate" width="120">
+          <template #default="scope">
+            <el-progress type="circle" :percentage="Number(scope.row.goodRate) || 0" :width="70" :color="getProgressColor(Number(scope.row.goodRate))" class="custom-good-progress-circle">
+              <template #default="{ percentage }">
+                <span class="percentage-value" :style="{ color: getProgressTextColor(percentage) }">{{ percentage }}%</span>
+              </template>
+            </el-progress>
+          </template>
+        </el-table-column>
+        <el-table-column label="综合OEE" align="center" prop="oeeRate" width="120">
+          <template #default="scope">
+            <el-progress type="circle" :percentage="Number(scope.row.oeeRate) || 0" :width="70" :color="getProgressColor(Number(scope.row.oeeRate))" class="custom-oee-progress-circle">
+              <template #default="{ percentage }">
+                <span class="percentage-value" :style="{ color: getProgressTextColor(percentage) }">{{ percentage }}%</span>
+              </template>
+            </el-progress>
+          </template>
         </el-table-column>
       </el-table>
 
       <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
     </el-card>
+
+    <!-- 查看明细抽屉 -->
+    <el-drawer v-model="detailDrawer.visible" size="85%" direction="rtl" destroy-on-close>
+      <template #header>
+        <div class="drawer-header">
+          <div class="drawer-title-main">{{ detailDrawer.title }}</div>
+        </div>
+      </template>
+      <!-- 内容区域 -->
+      <div class="drawer-content">
+        <div class="flex gap-2">
+          <el-tag type="primary" effect="dark" size="large"> 报工工序：{{ reportDetail.shopOrder }} </el-tag>
+          <el-tag type="primary" effect="dark" size="large"> 报工时间：{{ reportDetail.startDateTime }} ~ {{ reportDetail.endDateTime }} </el-tag>
+        </div>
+        <MesReportDetail v-if="detailDrawer.visible" :reportId="reportId" />
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup name="WorkOrderReport" lang="ts">
 import { listWorkOrderReport } from '@/api/report/workOrder';
 import { WorkOrderProcessForm, WorkOrderProcessQuery } from '@/api/wms/workOrderProcess/types';
+import MesReportDetail from './MesReportDetail.vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
@@ -159,7 +276,7 @@ const data = reactive<PageData<WorkOrderProcessForm, WorkOrderProcessQuery>>({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    workOrderNo: '000130088653',
+    workOrderNo: '',
     workOrderSn: undefined,
     router: undefined,
     process: undefined,
@@ -184,6 +301,7 @@ const data = reactive<PageData<WorkOrderProcessForm, WorkOrderProcessQuery>>({
 const { queryParams, form, rules } = toRefs(data);
 
 const reportList = ref<any[]>([]);
+const reportDetail = ref<any>({});
 
 const loading = ref(false);
 const showSearch = ref(true);
@@ -193,7 +311,13 @@ const multiple = ref(true);
 const total = ref(0);
 
 const queryFormRef = ref<ElFormInstance>();
-
+const currentShopOrder = ref<string>('');
+const reportId = ref<any>(null);
+// 明细抽屉
+const detailDrawer = reactive({
+  visible: false,
+  title: '报工明细'
+});
 // 动态表格高度
 const tableHeight = ref<number>(350);
 
@@ -256,6 +380,40 @@ const handleExport = () => {
     `workOrderReport_${new Date().getTime()}.xlsx`
   );
 };
+/** 查看明细 */
+const handleViewDetail = (row: any) => {
+  currentShopOrder.value = row.shopOrder || '';
+  detailDrawer.title = `报工明细`;
+  reportDetail.value = row;
+  detailDrawer.visible = true;
+  reportId.value = row.id;
+};
+
+/** 获取进度条颜色 */
+const getProgressColor = (value: number): string => {
+  if (value >= 100) {
+    return '#67c23a'; // 绿色
+  } else if (value >= 85) {
+    return '#e6a23c'; // 橙色
+  } else if (value > 0) {
+    return '#f56c6c'; // 红色
+  } else {
+    return '#909399'; // 灰色
+  }
+};
+
+/** 获取进度条文字颜色 */
+const getProgressTextColor = (percentage: number): string => {
+  if (percentage >= 100) {
+    return '#67c23a'; // 绿色
+  } else if (percentage >= 85) {
+    return '#e6a23c'; // 橙色
+  } else if (percentage > 0) {
+    return '#f56c6c'; // 红色
+  } else {
+    return '#909399'; // 灰色
+  }
+};
 
 onMounted(() => {
   calcTableHeight();
@@ -269,7 +427,7 @@ onUnmounted(() => {
 </script>
 <style scoped lang="scss">
 // 速度稼动率 - 蓝色轨道
-:deep(.custom-speed-progress-circle .el-progress-circle__track) {
+/*:deep(.custom-speed-progress-circle .el-progress-circle__track) {
   stroke: rgba(64, 158, 255, 0.25) !important;
 }
 
@@ -286,11 +444,129 @@ onUnmounted(() => {
 // 综合OEE - 灰色轨道
 :deep(.custom-oee-progress-circle .el-progress-circle__track) {
   stroke: rgba(144, 147, 153, 0.25) !important;
+}*/
+
+// 统一修改进度条轨道的基础样式
+:deep(.el-progress-circle__track) {
+  stroke: rgba(0, 0, 0, 0.15) !important;
 }
 
+// 修改进度条路径的默认样式
+:deep(.el-progress-circle__path) {
+  transition: stroke 0.3s ease;
+}
 .percentage-value {
   display: block;
   margin-top: 0px;
   font-size: 12px;
+}
+/* 报工明细抽屉样式 */
+.drawer-header {
+  border-bottom: 1px solid #e4e7ed;
+  padding-bottom: 16px;
+
+  .drawer-title-main {
+    font-size: 18px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 12px;
+  }
+
+  .drawer-info-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+
+    .el-tag {
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+
+      .el-icon {
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+:deep(.el-drawer__header) {
+  margin-bottom: 5px !important;
+}
+/* 展开行内状态与描述合并的样式 */
+.status-with-detail {
+  /*  padding: 4px 0;*/
+
+  .status-indicator-inline {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 4px;
+
+    .indicator-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 3px;
+      box-shadow: 0 0 3px rgba(0, 0, 0, 0.15);
+
+      &.success {
+        background-color: #67c23a;
+        box-shadow: 0 0 5px rgba(103, 194, 58, 0.4);
+      }
+
+      &.warning {
+        background-color: #e6a23c;
+        box-shadow: 0 0 5px rgba(230, 162, 60, 0.4);
+      }
+
+      &.danger {
+        background-color: #f56c6c;
+        box-shadow: 0 0 5px rgba(245, 108, 108, 0.4);
+      }
+
+      &.default {
+        background-color: #909399;
+        box-shadow: 0 0 3px rgba(144, 147, 153, 0.3);
+      }
+    }
+
+    .status-info {
+      flex: 1;
+      min-width: 0;
+
+      .status-text {
+        font-size: 14px;
+        color: #303133;
+        font-weight: 500;
+        line-height: 1.6;
+        display: block;
+        margin-bottom: 6px;
+      }
+    }
+  }
+
+  .status-detail-content {
+    padding-left: 24px;
+    max-height: 200px;
+    overflow-y: auto;
+    word-break: break-word;
+    line-height: 1.8;
+    color: #606266;
+    font-size: 13px;
+
+    div {
+      padding: 2px 0;
+      position: relative;
+
+      &:before {
+        content: '•';
+        position: absolute;
+        left: -12px;
+        color: #909399;
+      }
+    }
+  }
 }
 </style>

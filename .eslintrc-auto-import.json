@@ -318,6 +318,7 @@
     "whenever": true,
     "Slot": true,
     "Slots": true,
-    "createRef": true
+    "createRef": true,
+    "ElModal": true
   }
 }

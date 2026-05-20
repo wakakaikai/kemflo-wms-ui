@@ -164,6 +164,87 @@ export interface MaterialIssueForm extends BaseEntity {
 
 }
 
+/** 发料单详情（含明细） */
+export interface MaterialIssueWithDetailsVO {
+  issue: MaterialIssueVO;
+  details: MaterialIssueDetailLineVO[];
+  pickingTask?: Record<string, unknown>;
+  progress?: {
+    totalLines: number;
+    issuedLines: number;
+    pendingLines: number;
+  };
+}
+
+export interface MaterialIssueDetailLineVO {
+  id: number | string;
+  issueId: number | string;
+  issueNo?: string;
+  workOrderNo: string;
+  materialCode: string;
+  batchCode: string;
+  locationCode: string;
+  requiredQuantity: number;
+  issuedQuantity?: number;
+  unit?: string;
+  issueStatus: string;
+  issueTime?: string;
+  remark?: string;
+}
+
+export interface MaterialIssueReceiverDTO {
+  receiverId: number | string;
+  receiverName?: string;
+  receiverDept?: string;
+}
+
+export interface ConfirmIssueDetailItemDTO {
+  detailId: number | string;
+  issuedQuantity: number;
+  remark?: string;
+}
+
+export interface ConfirmIssueDetailsRequest {
+  details: ConfirmIssueDetailItemDTO[];
+  allowShortIssue?: boolean;
+}
+
+export interface ConfirmIssueDetailsResult {
+  success?: boolean;
+  message?: string;
+  issueId?: number;
+  issueStatus?: string;
+  confirmedCount?: number;
+}
+
+export interface CompleteIssueResult {
+  success?: boolean;
+  message?: string;
+  issueId?: number;
+  issueNo?: string;
+  issueStatus?: string;
+  confirmTime?: string;
+  bomUpdatedCount?: number;
+}
+
+export interface EmergencyIssueRequest {
+  workOrderNo: string;
+  remark?: string;
+  receiverId?: number | string;
+  receiverName?: string;
+  receiverDept?: string;
+}
+
+export interface CancelIssueRequest {
+  reason?: string;
+}
+
+export interface SapSyncResult {
+  success?: boolean;
+  message?: string;
+  sapResponse?: string;
+}
+
 export interface MaterialIssueQuery extends PageQuery {
 
   /**

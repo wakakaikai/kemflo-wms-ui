@@ -3,7 +3,7 @@
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="方案编号" prop="planNo">
               <el-input v-model="queryParams.planNo" placeholder="请输入方案编号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -76,28 +76,31 @@
         <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />
         <el-table-column label="方案编号" align="center" prop="planNo" />
         <el-table-column label="方案名称" align="center" prop="planName" />
-        <el-table-column label="策略类型(FIFO_STRICT-严格FIFO, HIGH_KIT-高齐套率, EFFICIENCY-效率优先, BALANCED-平衡策略)" align="center" prop="strategyType" />
-        <el-table-column label="工单号列表(JSON数组)" align="center" prop="workOrderNos" />
+        <el-table-column label="策略类型" align="center" prop="strategyType" />
+        <el-table-column label="工单号列表" align="center" prop="workOrderNos" />
         <el-table-column label="工单数量" align="center" prop="workOrderCount" />
         <el-table-column label="总分配数量" align="center" prop="totalQuantity" />
-        <el-table-column label="拣货库位列表(JSON数组)" align="center" prop="pickLocations" />
+        <el-table-column label="拣货库位列表" align="center" prop="pickLocations" />
         <el-table-column label="拣货点数量" align="center" prop="pickLocationCount" />
         <el-table-column label="总行走距离" align="center" prop="totalDistance" />
         <el-table-column label="平均齐套率" align="center" prop="avgKitRate" />
         <el-table-column label="FIFO符合度得分" align="center" prop="fifoScore" />
         <el-table-column label="效率得分" align="center" prop="efficiencyScore" />
         <el-table-column label="综合得分" align="center" prop="totalScore" />
-        <el-table-column label="方案状态(DRAFT-草稿, CONFIRMED-已确认, EXECUTING-执行中, COMPLETED-已完成, CANCELLED-已取消)" align="center" prop="planStatus" />
+        <el-table-column label="方案状态" align="center" prop="planStatus" width="110">
+          <template #default="{ row }">
+            <el-tag :type="planStatusTag(row.planStatus)" size="small">{{ planStatusLabel(row.planStatus) }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="方案描述" align="center" prop="description" />
         <el-table-column label="备注" align="center" prop="remark" />
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <el-table-column label="操作" align="center" width="160" fixed="right">
           <template #default="scope">
-            <el-tooltip content="修改" placement="top">
-              <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:allocationPlan:edit']"></el-button>
-            </el-tooltip>
-            <el-tooltip content="删除" placement="top">
-              <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:allocationPlan:remove']"></el-button>
-            </el-tooltip>
+            <el-button v-if="['EXECUTING', 'COMPLETED'].includes(scope.row.planStatus)" link type="success" @click="openIssueByPlan(scope.row.id)" v-hasPermi="['wms:materialIssue:query']"
+              >领料</el-button
+            >
+            <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:allocationPlan:edit']"></el-button>
+            <el-button link type="danger" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:allocationPlan:remove']"></el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -114,7 +117,7 @@
           <el-input v-model="form.planName" placeholder="请输入方案名称" />
         </el-form-item>
         <el-form-item label="工单号列表(JSON数组)" prop="workOrderNos">
-            <el-input v-model="form.workOrderNos" type="textarea" placeholder="请输入内容" />
+          <el-input v-model="form.workOrderNos" type="textarea" placeholder="请输入内容" />
         </el-form-item>
         <el-form-item label="工单数量" prop="workOrderCount">
           <el-input v-model="form.workOrderCount" placeholder="请输入工单数量" />
@@ -123,7 +126,7 @@
           <el-input v-model="form.totalQuantity" placeholder="请输入总分配数量" />
         </el-form-item>
         <el-form-item label="拣货库位列表(JSON数组)" prop="pickLocations">
-            <el-input v-model="form.pickLocations" type="textarea" placeholder="请输入内容" />
+          <el-input v-model="form.pickLocations" type="textarea" placeholder="请输入内容" />
         </el-form-item>
         <el-form-item label="拣货点数量" prop="pickLocationCount">
           <el-input v-model="form.pickLocationCount" placeholder="请输入拣货点数量" />
@@ -157,14 +160,45 @@
         </div>
       </template>
     </el-dialog>
+
+    <issue-process-drawer v-model="issueDrawerVisible" :issue-id="currentIssueId" />
   </div>
 </template>
 
 <script setup name="AllocationPlan" lang="ts">
 import { listAllocationPlan, getAllocationPlan, delAllocationPlan, addAllocationPlan, updateAllocationPlan } from '@/api/wms/allocationPlan';
 import { AllocationPlanVO, AllocationPlanQuery, AllocationPlanForm } from '@/api/wms/allocationPlan/types';
+import { getMaterialIssueByPlan } from '@/api/wms/materialIssue';
+import IssueProcessDrawer from '@/views/wms/materialIssue/components/IssueProcessDrawer.vue';
+import { ElMessage } from 'element-plus';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+
+const issueDrawerVisible = ref(false);
+const currentIssueId = ref<number | string | null>(null);
+
+const planStatusLabel = (s: string) => {
+  const m: Record<string, string> = { DRAFT: '草稿', CONFIRMED: '已确认', EXECUTING: '执行中', COMPLETED: '已完成', CANCELLED: '已取消', RELEASED: '已释放' };
+  return m[s] || s;
+};
+const planStatusTag = (s: string) => {
+  const m: Record<string, string> = { DRAFT: 'info', CONFIRMED: 'warning', EXECUTING: 'primary', COMPLETED: 'success', CANCELLED: 'danger' };
+  return m[s] || 'info';
+};
+
+const openIssueByPlan = async (planId: number | string) => {
+  try {
+    const res = await getMaterialIssueByPlan(planId);
+    if (res.data?.id) {
+      currentIssueId.value = res.data.id;
+      issueDrawerVisible.value = true;
+    } else {
+      ElMessage.info('该方案暂无发料单，请先在分配工作台执行方案');
+    }
+  } catch {
+    ElMessage.error('查询发料单失败');
+  }
+};
 
 const allocationPlanList = ref<AllocationPlanVO[]>([]);
 const buttonLoading = ref(false);
@@ -200,10 +234,10 @@ const initFormData: AllocationPlanForm = {
   totalScore: undefined,
   planStatus: undefined,
   description: undefined,
-  remark: undefined,
-}
+  remark: undefined
+};
 const data = reactive<PageData<AllocationPlanForm, AllocationPlanQuery>>({
-  form: {...initFormData},
+  form: { ...initFormData },
   queryParams: {
     pageNum: 1,
     pageSize: 10,
@@ -222,61 +256,26 @@ const data = reactive<PageData<AllocationPlanForm, AllocationPlanQuery>>({
     totalScore: undefined,
     planStatus: undefined,
     description: undefined,
-    params: {
-    }
+    params: {}
   },
   rules: {
-    id: [
-      { required: true, message: "唯一ID不能为空", trigger: "blur" }
-    ],
-    planNo: [
-      { required: true, message: "方案编号不能为空", trigger: "blur" }
-    ],
-    planName: [
-      { required: true, message: "方案名称不能为空", trigger: "blur" }
-    ],
-    strategyType: [
-      { required: true, message: "策略类型(FIFO_STRICT-严格FIFO, HIGH_KIT-高齐套率, EFFICIENCY-效率优先, BALANCED-平衡策略)不能为空", trigger: "change" }
-    ],
-    workOrderNos: [
-      { required: true, message: "工单号列表(JSON数组)不能为空", trigger: "blur" }
-    ],
-    workOrderCount: [
-      { required: true, message: "工单数量不能为空", trigger: "blur" }
-    ],
-    totalQuantity: [
-      { required: true, message: "总分配数量不能为空", trigger: "blur" }
-    ],
-    pickLocations: [
-      { required: true, message: "拣货库位列表(JSON数组)不能为空", trigger: "blur" }
-    ],
-    pickLocationCount: [
-      { required: true, message: "拣货点数量不能为空", trigger: "blur" }
-    ],
-    totalDistance: [
-      { required: true, message: "总行走距离不能为空", trigger: "blur" }
-    ],
-    avgKitRate: [
-      { required: true, message: "平均齐套率不能为空", trigger: "blur" }
-    ],
-    fifoScore: [
-      { required: true, message: "FIFO符合度得分不能为空", trigger: "blur" }
-    ],
-    efficiencyScore: [
-      { required: true, message: "效率得分不能为空", trigger: "blur" }
-    ],
-    totalScore: [
-      { required: true, message: "综合得分不能为空", trigger: "blur" }
-    ],
-    planStatus: [
-      { required: true, message: "方案状态(DRAFT-草稿, CONFIRMED-已确认, EXECUTING-执行中, COMPLETED-已完成, CANCELLED-已取消)不能为空", trigger: "change" }
-    ],
-    description: [
-      { required: true, message: "方案描述不能为空", trigger: "blur" }
-    ],
-    remark: [
-      { required: true, message: "备注不能为空", trigger: "blur" }
-    ],
+    id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
+    planNo: [{ required: true, message: '方案编号不能为空', trigger: 'blur' }],
+    planName: [{ required: true, message: '方案名称不能为空', trigger: 'blur' }],
+    strategyType: [{ required: true, message: '策略类型(FIFO_STRICT-严格FIFO, HIGH_KIT-高齐套率, EFFICIENCY-效率优先, BALANCED-平衡策略)不能为空', trigger: 'change' }],
+    workOrderNos: [{ required: true, message: '工单号列表(JSON数组)不能为空', trigger: 'blur' }],
+    workOrderCount: [{ required: true, message: '工单数量不能为空', trigger: 'blur' }],
+    totalQuantity: [{ required: true, message: '总分配数量不能为空', trigger: 'blur' }],
+    pickLocations: [{ required: true, message: '拣货库位列表(JSON数组)不能为空', trigger: 'blur' }],
+    pickLocationCount: [{ required: true, message: '拣货点数量不能为空', trigger: 'blur' }],
+    totalDistance: [{ required: true, message: '总行走距离不能为空', trigger: 'blur' }],
+    avgKitRate: [{ required: true, message: '平均齐套率不能为空', trigger: 'blur' }],
+    fifoScore: [{ required: true, message: 'FIFO符合度得分不能为空', trigger: 'blur' }],
+    efficiencyScore: [{ required: true, message: '效率得分不能为空', trigger: 'blur' }],
+    totalScore: [{ required: true, message: '综合得分不能为空', trigger: 'blur' }],
+    planStatus: [{ required: true, message: '方案状态(DRAFT-草稿, CONFIRMED-已确认, EXECUTING-执行中, COMPLETED-已完成, CANCELLED-已取消)不能为空', trigger: 'change' }],
+    description: [{ required: true, message: '方案描述不能为空', trigger: 'blur' }],
+    remark: [{ required: true, message: '备注不能为空', trigger: 'blur' }]
   }
 });
 
@@ -289,55 +288,55 @@ const getList = async () => {
   allocationPlanList.value = res.rows;
   total.value = res.total;
   loading.value = false;
-}
+};
 
 /** 取消按钮 */
 const cancel = () => {
   reset();
   dialog.visible = false;
-}
+};
 
 /** 表单重置 */
 const reset = () => {
-  form.value = {...initFormData};
+  form.value = { ...initFormData };
   allocationPlanFormRef.value?.resetFields();
-}
+};
 
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
   getList();
-}
+};
 
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   handleQuery();
-}
+};
 
 /** 多选框选中数据 */
 const handleSelectionChange = (selection: AllocationPlanVO[]) => {
-  ids.value = selection.map(item => item.id);
+  ids.value = selection.map((item) => item.id);
   single.value = selection.length != 1;
   multiple.value = !selection.length;
-}
+};
 
 /** 新增按钮操作 */
 const handleAdd = () => {
   reset();
   dialog.visible = true;
-  dialog.title = "添加分配方案";
-}
+  dialog.title = '添加分配方案';
+};
 
 /** 修改按钮操作 */
 const handleUpdate = async (row?: AllocationPlanVO) => {
   reset();
-  const _id = row?.id || ids.value[0]
+  const _id = row?.id || ids.value[0];
   const res = await getAllocationPlan(_id);
   Object.assign(form.value, res.data);
   dialog.visible = true;
-  dialog.title = "修改分配方案";
-}
+  dialog.title = '修改分配方案';
+};
 
 /** 提交按钮 */
 const submitForm = () => {
@@ -345,32 +344,36 @@ const submitForm = () => {
     if (valid) {
       buttonLoading.value = true;
       if (form.value.id) {
-        await updateAllocationPlan(form.value).finally(() =>  buttonLoading.value = false);
+        await updateAllocationPlan(form.value).finally(() => (buttonLoading.value = false));
       } else {
-        await addAllocationPlan(form.value).finally(() =>  buttonLoading.value = false);
+        await addAllocationPlan(form.value).finally(() => (buttonLoading.value = false));
       }
-      proxy?.$modal.msgSuccess("操作成功");
+      proxy?.$modal.msgSuccess('操作成功');
       dialog.visible = false;
       await getList();
     }
   });
-}
+};
 
 /** 删除按钮操作 */
 const handleDelete = async (row?: AllocationPlanVO) => {
   const _ids = row?.id || ids.value;
-  await proxy?.$modal.confirm('是否确认删除分配方案编号为"' + _ids + '"的数据项？').finally(() => loading.value = false);
+  await proxy?.$modal.confirm('是否确认删除分配方案编号为"' + _ids + '"的数据项？').finally(() => (loading.value = false));
   await delAllocationPlan(_ids);
-  proxy?.$modal.msgSuccess("删除成功");
+  proxy?.$modal.msgSuccess('删除成功');
   await getList();
-}
+};
 
 /** 导出按钮操作 */
 const handleExport = () => {
-  proxy?.download('wms/allocationPlan/export', {
-    ...queryParams.value
-  }, `allocationPlan_${new Date().getTime()}.xlsx`)
-}
+  proxy?.download(
+    'wms/allocationPlan/export',
+    {
+      ...queryParams.value
+    },
+    `allocationPlan_${new Date().getTime()}.xlsx`
+  );
+};
 
 onMounted(() => {
   getList();

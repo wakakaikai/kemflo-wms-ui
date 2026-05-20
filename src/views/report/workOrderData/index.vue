@@ -42,7 +42,7 @@
 </template>
 
 <script setup name="WorkOrderReport" lang="ts">
-import { ref, reactive, toRefs } from 'vue';
+import { ref } from 'vue';
 import ProcessInfoTab from './components/WorkOrderProcessInfoTab.vue';
 import WorkOrderSummaryTab from './components/WorkOrderSummaryTab.vue';
 import CustomerOrderTab from './components/CustomerOrderTab.vue';
@@ -51,8 +51,6 @@ import WorkOrderReportTab from './components/WorkOrderReportTab.vue';
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const tabActiveName = ref('processInfo');
-const showSearch = ref(true);
-const queryFormRef = ref<ElFormInstance>();
 
 // 各tab数据统计
 const processInfoCount = ref(0);
@@ -72,32 +70,7 @@ const queryParams = ref({
 });
 
 /** Tab切换 */
-const changeTab = (activeName: string) => {
-  handleQuery();
-};
-
-/** 搜索按钮操作 */
-const handleQuery = () => {
-  queryParams.value.pageNum = 1;
-};
-
-/** 重置按钮操作 */
-const resetQuery = () => {
-  queryFormRef.value?.resetFields();
-  handleQuery();
-};
-
-/** 导出按钮操作 */
-const handleExport = () => {
-  proxy?.download(
-    'report/workOrder/export',
-    {
-      ...queryParams.value,
-      tabType: tabActiveName.value
-    },
-    `workOrder_${tabActiveName.value}_${new Date().getTime()}.xlsx`
-  );
-};
+const changeTab = (activeName: string) => {};
 </script>
 
 <style scoped>

@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/package",
   "name": "ruoyi-vue-plus",
   "version": "5.4.0-2.4.0",
-  "description": "RuoYi-Vue-Plus多租户管理系统",
-  "author": "LionLi",
+  "description": "溢泰制造智能管理系统",
+  "author": "Kevin",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -28,6 +28,7 @@
     "await-to-js": "3.0.0",
     "axios": "1.8.4",
     "crypto-js": "4.2.0",
+    "dhtmlx-gantt": "^9.1.4",
     "echarts": "5.6.0",
     "element-plus": "2.9.8",
     "file-saver": "2.0.5",

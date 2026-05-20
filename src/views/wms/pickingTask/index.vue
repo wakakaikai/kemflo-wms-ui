@@ -3,7 +3,7 @@
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="任务编号" prop="taskNo">
               <el-input v-model="queryParams.taskNo" placeholder="请输入任务编号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -89,8 +89,8 @@
         <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />
         <el-table-column label="任务编号" align="center" prop="taskNo" />
         <el-table-column label="方案ID" align="center" prop="planId" />
-        <el-table-column label="任务类型(NORMAL-正常, EMERGENCY-紧急)" align="center" prop="taskType" />
-        <el-table-column label="任务状态(PENDING-待处理, ASSIGNED-已分配, PICKING-拣货中, COMPLETED-已完成, CANCELLED-已取消)" align="center" prop="taskStatus" />
+        <el-table-column label="任务类型" align="center" prop="taskType" />
+        <el-table-column label="任务状态" align="center" prop="taskStatus" />
         <el-table-column label="拣货员ID" align="center" prop="pickerId" />
         <el-table-column label="拣货员姓名" align="center" prop="pickerName" />
         <el-table-column label="起始位置" align="center" prop="startLocation" />

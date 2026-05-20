@@ -302,7 +302,7 @@ watch(
         }
 
         .user-nickname {
-          font-size: 14px;
+          font-size: 16px;
           font-weight: bold;
           white-space: nowrap;
           overflow: hidden;

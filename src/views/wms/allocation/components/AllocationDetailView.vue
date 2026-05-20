@@ -11,6 +11,9 @@
           <el-button type="primary" size="small" @click="$emit('execute')" :disabled="plan.planStatus !== 'CONFIRMED'">
             <el-icon><Check /></el-icon>执行发料
           </el-button>
+          <el-button v-if="plan.planStatus === 'EXECUTING' || plan.planStatus === 'COMPLETED'" type="success" size="small" @click="$emit('go-issue')">
+            去领料
+          </el-button>
         </div>
       </div>
     </template>
@@ -112,7 +115,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits(['execute']);
+const emit = defineEmits(['execute', 'go-issue']);
 
 const activeTab = ref('path');
 const activeOrders = ref<string[]>([]);
