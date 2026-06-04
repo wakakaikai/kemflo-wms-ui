@@ -1,6 +1,6 @@
 <!-- views/allocation/components/WorkOrderBomDialog.vue -->
 <template>
-  <el-dialog v-model="visible" :title="`工单BOM详情 - ${workOrder?.workOrderNo}`" width="1000px" destroy-on-close>
+  <el-dialog v-model="visible" :title="`工单BOM详情 - ${workOrder?.workOrderNo}`" width="70%" destroy-on-close>
     <div class="order-bom-dialog">
       <!-- 工单基本信息 -->
       <div class="order-summary">
@@ -56,15 +56,15 @@
           <el-table-column type="index" label="序号" width="60" />
           <el-table-column prop="componentMaterial" label="物料编码" width="120" />
           <el-table-column prop="componentDesc" label="物料描述" min-width="150" />
-          <el-table-column prop="unit" label="单位" width="60" />
           <el-table-column label="需求数量" width="120">
             <template #default="{ row }">
-              {{ row.componentQty }}
+              {{ parseFloat(row.componentQty || 0) }}
             </template>
           </el-table-column>
+          <el-table-column prop="unit" label="单位" width="60" />
           <el-table-column label="已发数量" width="120">
             <template #default="{ row }">
-              {{ row.issuedQty || 0 }}
+              {{ parseFloat(row.issuedQty || 0) }}
             </template>
           </el-table-column>
           <el-table-column label="待发数量" width="120">
@@ -191,7 +191,7 @@ import { ElMessage } from 'element-plus';
 import { Search, Download } from '@element-plus/icons-vue';
 import dayjs from 'dayjs';
 import type { WorkOrderVO, WorkOrderBomVO } from '@/api/wms/allocation/types';
-import WorkOrderApi from '@/api/wms/allocation/index';
+import WorkOrderApi, { checkMaterialInventory } from '@/api/wms/allocation/index';
 import InventoryApi from '@/api/wms/allocation/index';
 import PriorityBadge from './PriorityBadge.vue';
 import InventoryStatus from './InventoryStatus.vue';
@@ -292,7 +292,11 @@ const checkInventory = async () => {
 
   try {
     const materialCodes = bomList.value.map((bom) => bom.componentMaterial);
-    const response = await InventoryApi.checkMaterialInventory(props.workOrder.workOrderNo, materialCodes);
+    const requestParams = {
+      workOrderNo: props.workOrder.workOrderNo,
+      materialCodes
+    };
+    const response = await InventoryApi.checkMaterialInventory(requestParams);
 
     if (response.code === 200) {
       inventoryAnalysis.value = response.data.analysis;

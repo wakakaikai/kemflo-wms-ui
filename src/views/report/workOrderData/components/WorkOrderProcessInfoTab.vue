@@ -57,18 +57,15 @@
         <el-table-column label="产品描述" align="center" prop="itemDesc" show-overflow-tooltip />
         <el-table-column label="客户订单" align="center" prop="salesOrderNo" />
         <el-table-column label="订单项次" align="center" prop="salesOrderItem" />
-        <el-table-column label="客户交期" align="center" prop="soDeliveryDate" />
+        <el-table-column label="客户交期" align="center" prop="soDeliveryDate" width="180">
+          <template #default="scope">
+            <span>{{ parseTime(scope.row.soDeliveryDate, '{y}-{m}-{d}') }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="工单数量" align="center" prop="plannedQty">
           <template #default="scope">
             <span>
               {{ scope.row.plannedQty ? parseFloat(scope.row.plannedQty) : '-' }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="入库数量" align="center" prop="wmsDeliveredQty">
-          <template #default="scope">
-            <span>
-              {{ scope.row.wmsDeliveredQty ? parseFloat(scope.row.wmsDeliveredQty) : '-' }}
             </span>
           </template>
         </el-table-column>
@@ -79,10 +76,20 @@
             </span>
           </template>
         </el-table-column>
-        <!--        <el-table-column label="完成数量" align="center" prop="mesDoneQty" />-->
-        <el-table-column label="预计开工" align="center" prop="plannedStartDate" />
-        <el-table-column label="预计完工" align="center" prop="plannedEndDate" />
-        <el-table-column label="预计DTD生产时长" align="center" prop="plannedD2DDurationDesc" />
+        <el-table-column label="WMS入库数量" align="center" prop="wmsDeliveredQty">
+          <template #default="scope">
+            <span>
+              {{ scope.row.wmsDeliveredQty ? parseFloat(scope.row.wmsDeliveredQty) : '-' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="SAP入库数量" align="center" prop="sapDeliveredQty">
+          <template #default="scope">
+            <span>
+              {{ scope.row.sapDeliveredQty ? parseFloat(scope.row.sapDeliveredQty) : '-' }}
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column label="标准人数" align="center" prop="standardPersonNumber">
           <template #default="scope">
             <span>
@@ -91,7 +98,10 @@
           </template>
         </el-table-column>
         <el-table-column label="标准产能" align="center" prop="standardPersonCapacity" />
+        <el-table-column label="预计开工" align="center" prop="plannedStartDate" />
+        <el-table-column label="预计完工" align="center" prop="plannedEndDate" />
         <el-table-column label="预计生产时长" align="center" prop="plannedDurationDesc" />
+        <el-table-column label="预计DTD生产时长" align="center" prop="plannedD2DDurationDesc" />
         <el-table-column label="实际开工" align="center" prop="actualStartDate" min-width="100" />
         <el-table-column label="实际完工" align="center" prop="actualEndDate" min-width="100" >
           <template #default="scope">
@@ -100,9 +110,8 @@
             </span>
           </template>
         </el-table-column>
-
-        <el-table-column label="实际DTD生产时长" align="center" prop="actualD2DDurationDesc" />
         <el-table-column label="实际生产时长" align="center" prop="actualDurationDesc" />
+        <el-table-column label="实际DTD生产时长" align="center" prop="actualD2DDurationDesc" />
         <el-table-column label="下制程工单号" align="center" prop="nextWorkOrderNo" />
         <el-table-column label="下制程工序" align="center" prop="nextProcessNo" />
         <el-table-column label="下制程工作中心" align="center" prop="nextWorkCenter" />
@@ -111,8 +120,6 @@
         <el-table-column label="前制程工单号" align="center" prop="previousWorkOrderNo" />
         <el-table-column label="前制程工序" align="center" prop="previousProcessNo" />
         <el-table-column label="前制程工作中心" align="center" prop="previousWorkCenter" />
-        <el-table-column label="前制程预计完工时间" align="center" prop="previousPlannedEndDate" min-width="100" />
-        <el-table-column label="前制程实际完工时间" align="center" prop="previousActualEndDate" min-width="100" />
         <el-table-column label="前制程已报工数量" align="center" prop="previousReportQty">
           <template #default="scope">
             <span>
@@ -120,14 +127,23 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="前制程工单入库数量" align="center" prop="previousDeliveredQty">
+        <el-table-column label="前制程WMS入库数量" align="center" prop="previousDeliveredQty">
           <template #default="scope">
             <span>
               {{ scope.row.previousDeliveredQty ? parseFloat(scope.row.previousDeliveredQty) : '-' }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="前制程入库完工时间" align="center" prop="previousActualDeliveredDate" min-width="100" />
+        <el-table-column label="前制程SAP入库数量" align="center" prop="previousSapDeliveredQty">
+          <template #default="scope">
+            <span>
+              {{ scope.row.previousSapDeliveredQty ? parseFloat(scope.row.previousSapDeliveredQty) : '-' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="前制程预计完工时间" align="center" prop="previousPlannedEndDate" min-width="100" />
+        <el-table-column label="前制程实际完工时间" align="center" prop="previousActualEndDate" min-width="100" />
+        <el-table-column label="前制程入库完成时间" align="center" prop="previousActualDeliveredDate" min-width="100" />
       </el-table>
 
       <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
@@ -138,6 +154,7 @@
 <script setup name="WorkOrderProcess" lang="ts">
 import { listWorkOrderProcess } from '@/api/report/workOrder';
 import { WorkOrderProcessVO, WorkOrderProcessQuery, WorkOrderProcessForm } from '@/api/wms/workOrderProcess/types';
+import { parseTime } from '@/utils/ruoyi';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 

@@ -7,8 +7,7 @@
         <el-form label-position="top" :model="workOrderInfo" :rules="rules" ref="settingFormRef">
           <!-- 打印机选择 -->
           <el-form-item label="选择打印机">
-            <el-select v-model="selectedPrinter" placeholder="请选择打印机" style="width: 100%" filterable
-                       @change="onPrinterChange">
+            <el-select v-model="selectedPrinter" placeholder="请选择打印机" style="width: 100%" filterable @change="onPrinterChange">
               <template #prefix>
                 <el-button text @click="refreshPrinterList" title="刷新所有设置">
                   <el-icon>
@@ -27,8 +26,7 @@
 
           <!-- 纸张选择 -->
           <el-form-item label="选择纸张">
-            <el-select v-model="selectedPaper" placeholder="请先选择打印机" style="width: 100%" filterable
-                       :disabled="!selectedPrinter" @change="onPaperChange">
+            <el-select v-model="selectedPaper" placeholder="请先选择打印机" style="width: 100%" filterable :disabled="!selectedPrinter" @change="onPaperChange">
               <template #prefix>
                 <el-button text @click="refreshPapers" icon="Refresh" title="刷新所有设置"></el-button>
               </template>
@@ -51,8 +49,7 @@
 
           <!-- 扫描条码输入 -->
           <el-form-item label="扫描条码">
-            <el-input ref="scanInputRef" v-model="scanInput" placeholder="请扫描条码"
-                      @keydown.enter.prevent="keyDownTab" @keydown.tab.prevent="keyDownTab" autofocus clearable />
+            <el-input ref="scanInputRef" v-model="scanInput" placeholder="请扫描条码" @keydown.enter.prevent="keyDownTab" @keydown.tab.prevent="keyDownTab" autofocus clearable />
           </el-form-item>
 
           <!-- 打印份数 -->
@@ -79,7 +76,7 @@
         <div class="preview-container">
           <div class="preview-header">
             <div class="header-left">
-              <h4>瑞幸即扫即打预览(30mm*20mm)</h4>
+              <h4>瑞幸即扫即打预览(50mm*25mm)</h4>
             </div>
           </div>
           <!-- 标签模板 -->
@@ -88,7 +85,7 @@
               <div class="luckin-print-sn-template" ref="printContent">
                 <div class="sn-row">
                   <canvas ref="previewQrCodeCanvas"></canvas>
-                  <div class="sn-content">{{ workOrderInfo.sfc }}</div>
+                  <div class="sn-content">MAC:{{ workOrderInfo.sfc }}</div>
                 </div>
               </div>
             </div>
@@ -170,7 +167,6 @@ const rules = {
 // 显示工单选择对话框
 const showShopOrderDialog = () => {
   podConfig.value.statusList = ['NEW', 'RELEASABLE', 'RELEASED', 'ACTIVE'];
-  podConfig.value.shopOrderTypeList = ['PRODUCTION', 'PRODUCTION-ZZ', 'REWORK', 'REWORK-CJ'];
   shopOrderDialogRef.value.openDialog();
 };
 
@@ -268,8 +264,7 @@ const getPaperList = (printerName: string) => {
       LODOP.PRINT_INIT('');
 
       return papers;
-    } catch (error) {
-    }
+    } catch (error) {}
   } catch (error) {
     console.error('获取纸张列表失败:', error);
     return [];
@@ -312,7 +307,7 @@ const generateBarcode = () => {
   // 生成二维码
   QRCode.toCanvas(previewQrCodeCanvas.value, content, {
     errorCorrectionLevel: 'H',
-    width: 40,
+    width: 50,
     margin: 1,
     color: { dark: '#000000', light: '#ffffff' }
   });
@@ -368,16 +363,17 @@ const keyDownTab = async () => {
       LODOP.SET_PRINT_PAGESIZE(1, '', '', selectedPaper.value);
     } else {
       // 设置默认纸张大小
-      LODOP.SET_PRINT_PAGESIZE(0, 0, 0, '30mm 20mm'); // 设置纸张大小
+      LODOP.SET_PRINT_PAGESIZE(0, 0, 0, '50mm 25mm'); // 设置纸张大小
     }
 
     // 设置默认字体
-    LODOP.ADD_PRINT_BARCODE('2.01mm', '9.5mm', '12.99mm', '12.99mm', 'QRCode', `${workOrderInfo.value.sfc}`);
-    LODOP.ADD_PRINT_TEXT('14mm', '3.81mm', '30mm', '5mm', `${workOrderInfo.value.sfc}`);
+    LODOP.ADD_PRINT_BARCODE('4mm', '20mm', '17.99mm', '17.99mm', 'QRCode', `${workOrderInfo.value.sfc}`);
+    LODOP.ADD_PRINT_TEXT('17.01mm', '7.99mm', '40mm', '6.01mm', `MAC:${workOrderInfo.value.sfc}`);
     LODOP.SET_PRINT_STYLEA(0, 'FontName', 'Arial');
+    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10);
 
     // ========== 预览或打印 ==========
-    // LODOP.PRINT_DESIGN(); // 设计模式，调试时使用
+    // LODOP.PRINT_DESIGN();
     // LODOP.PREVIEW(); // 预览
     LODOP.PRINT(); // 直接打印
   } finally {
@@ -495,20 +491,22 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   padding: 15px;
-  background: linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
-  linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
+  background:
+    linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
+    linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
   background-size: 20px 20px;
-  background-position: 0 0,
-  0 10px,
-  10px -10px,
-  -10px 0px;
+  background-position:
+    0 0,
+    0 10px,
+    10px -10px,
+    -10px 0px;
   border-radius: 8px;
 }
 
 /* 标签模板样式 */
 .luckin-print-sn-template {
-  width: 30mm;
-  height: 20mm;
+  width: 50mm;
+  height: 25mm;
   padding: 2mm;
   background: #ffffff;
   display: flex;
@@ -527,23 +525,25 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 1mm;
   width: 100%;
 }
 
 .sn-row canvas {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: 46mm;
+  height: 10mm;
   flex-shrink: 0;
   object-fit: contain;
 }
 
 .sn-content {
-  flex: 1;
-  font-size: 12px;
-  text-align: left;
-  max-width: 24mm;
+  font-size: 14px;
+  text-align: center;
+  max-width: 46mm;
+  word-break: break-all;
+  font-family: Arial, sans-serif;
+  font-weight: 500;
 }
 
 /* 历史扫码记录 */

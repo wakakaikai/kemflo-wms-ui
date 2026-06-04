@@ -33,7 +33,7 @@
         <el-table-column type="expand">
           <template #default="scope">
             <el-table :data="scope.row.mesShopOrderReportVoList" style="width: calc(100% - 50px); margin: 10px 0 10px 50px" empty-text="暂无数据">
-              <el-table-column label="工单号" align="center" prop="shopOrder" />
+<!--              <el-table-column label="工单号" align="center" prop="shopOrder" />-->
               <el-table-column label="工作中心" align="center" prop="workCenter" />
               <el-table-column label="开工时间" align="center" prop="startDateTime" min-width="120" />
               <el-table-column label="完工时间" align="center" prop="endDateTime" min-width="120" />

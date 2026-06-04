@@ -53,6 +53,26 @@ export const constantRoutes: RouteRecordRaw[] = [
     hidden: true
   },
   {
+    path: '/wms/print-template',
+    component: Layout,
+    hidden: true,
+    redirect: '/wms/print-template/index',
+    children: [
+      {
+        path: 'index',
+        component: () => import('@/views/wms/printTemplate/index.vue'),
+        name: 'PrintTemplateIndex',
+        meta: { title: 'printTemplateManage', icon: 'documentation' }
+      },
+      {
+        path: 'designer',
+        component: () => import('@/views/wms/printTemplate/designer.vue'),
+        name: 'PrintTemplateDesigner',
+        meta: { title: 'printTemplateDesign', activeMenu: '/wms/print-template/index', icon: '' }
+      }
+    ]
+  },
+  {
     path: '/:pathMatch(.*)*',
     component: () => import('@/views/error/404.vue'),
     hidden: true

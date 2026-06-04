@@ -17,11 +17,17 @@
             <!-- 默认显示的搜索项 -->
             <el-form-item label="物料凭证号" prop="sapMaterialOrderNo">
               <!--                <el-input v-model="queryParams.sapMaterialOrderNo" placeholder="请输入物料凭证号" clearable @keyup.enter="handleQuery" />-->
-              <HistoryInput v-model="queryParams.sapMaterialOrderNo" :config="sapMaterialOrderNoConfig" placeholder="请输入物料凭证号" @keyup.enter="handleQuery" />
+              <HistoryInput
+                v-model="queryParams.sapMaterialOrderNo"
+                :config="sapMaterialOrderNoConfig"
+                placeholder="请输入物料凭证号"
+                @keydown.tab.prevent="handleQuery"
+                @keydown.enter.prevent="handleQuery"
+              />
             </el-form-item>
-            <el-form-item label="物料凭证项次" prop="sapMaterialItem">
+            <!--            <el-form-item label="物料凭证项次" prop="sapMaterialItem">
               <HistoryInput v-model="queryParams.sapMaterialItem" :config="sapMaterialItemConfig" placeholder="请输入物料凭证项次" @keyup.enter="handleQuery" />
-            </el-form-item>
+            </el-form-item>-->
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery" :loading="loading">搜索</el-button>
               <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -31,7 +37,7 @@
           <!-- 搜索结果列表 -->
           <div class="search-result">
             <el-table ref="inventoryTableRef" :data="inventoryDetailList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
-              <el-table-column type="selection" width="55" align="center" />
+<!--              <el-table-column type="selection" width="55" align="center" />-->
               <el-table-column v-if="columns[0].visible" label="物料凭证号" align="left" prop="sapMaterialOrderNo" />
               <el-table-column v-if="columns[1].visible" label="凭证项次" align="left" prop="sapMaterialItem" />
               <el-table-column v-if="columns[2].visible" label="采购单号" align="left" prop="sourceDocCode" />
@@ -69,10 +75,10 @@
             <div class="transfer-header">
               <span class="header-title">物料凭证冲销列表</span>
               <div class="header-actions">
-                <el-radio-group v-model="transferMode" @change="handleTransferModeChange">
+                <!--                <el-radio-group v-model="transferMode" @change="handleTransferModeChange">
                   <el-radio-button label="fixed">固定库位</el-radio-button>
                   <el-radio-button label="multiple">多库位</el-radio-button>
-                </el-radio-group>
+                </el-radio-group>-->
                 <el-button type="danger" @click="clearTransferList" :disabled="transferList.length === 0">清空列表</el-button>
               </div>
             </div>
@@ -262,8 +268,8 @@ const data = reactive<PageData<InventoryMovementForm, InventoryMovementQuery>>({
   form: { ...initFormData },
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
-    moveType: '101',
+    pageSize: 1000,
+    moveType: '',
     itemCode: undefined,
     itemName: undefined,
     batchCode: undefined,
@@ -297,62 +303,6 @@ const { queryParams, form, rules } = toRefs(data);
 
 const sapMaterialOrderNoConfig: HistoryConfig = {
   key: 'sapMaterialOrderNo',
-  storage: 'indexedDB',
-  maxSize: 10,
-  page: 'inventoryReturn',
-  autoSave: true,
-  component: {
-    showDropdown: true,
-    showTime: false,
-    showDelete: true,
-    dropdownMaxHeight: '300px'
-  }
-};
-
-const sapMaterialItemConfig: HistoryConfig = {
-  key: 'sapMaterialItem',
-  storage: 'indexedDB',
-  maxSize: 10,
-  page: 'inventoryReturn',
-  autoSave: true,
-  component: {
-    showDropdown: true,
-    showTime: false,
-    showDelete: true,
-    dropdownMaxHeight: '300px'
-  }
-};
-
-const sourceDocCodeConfig: HistoryConfig = {
-  key: 'sourceDocCode',
-  storage: 'indexedDB',
-  maxSize: 10,
-  page: 'inventoryReturn',
-  autoSave: true,
-  component: {
-    showDropdown: true,
-    showTime: false,
-    showDelete: true,
-    dropdownMaxHeight: '300px'
-  }
-};
-
-const itemNoConfig: HistoryConfig = {
-  key: 'itemNo',
-  storage: 'indexedDB',
-  maxSize: 10,
-  page: 'inventoryReturn',
-  autoSave: true,
-  component: {
-    showDropdown: true,
-    showTime: false,
-    showDelete: true,
-    dropdownMaxHeight: '300px'
-  }
-};
-
-const locationCodeConfig: HistoryConfig = {
-  key: 'locationCode',
   storage: 'indexedDB',
   maxSize: 10,
   page: 'inventoryReturn',
@@ -432,6 +382,9 @@ const toggleAdvancedSearch = () => {
 
 /** 查询库存明细记录列表 */
 const getList = async () => {
+  if (!queryParams.value.sapMaterialOrderNo) {
+    return;
+  }
   loading.value = true;
   const res = await listInventoryMovement(queryParams.value);
   inventoryDetailList.value = res.rows;
@@ -460,12 +413,8 @@ const handleSelectionChange = (selection: InventoryMovementVO[]) => {
 
 /** 添加选中项到移转列表 */
 const addSelectedToTransferList = () => {
-  if (selectedSearchItems.value.length === 0) {
-    proxy.$modal.msgWarning('请先选择要退货的记录');
-    return;
-  }
-
-  const newItems = selectedSearchItems.value.map((item) => ({
+  transferList.value = [];
+  const newItems = inventoryDetailList.value.map((item) => ({
     ...item,
     currentQuantity: item.availableQuantity || 0,
     availableQuantity: item.availableQuantity,

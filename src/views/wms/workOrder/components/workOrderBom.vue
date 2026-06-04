@@ -43,16 +43,17 @@
         <el-table-column v-if="columns[0].visible" label="工单号" align="center" prop="workOrderNo" min-width="130" />
         <el-table-column v-if="columns[1].visible" label="组件料号" align="center" prop="componentMaterial" min-width="150" />
         <el-table-column v-if="columns[2].visible" label="组件描述" align="left" prop="componentDesc" show-overflow-tooltip min-width="300" />
-        <el-table-column v-if="columns[3].visible" label="组件数量" align="center" prop="componentQty" min-width="120" />
-        <el-table-column v-if="columns[4].visible" label="发料数量" align="center" prop="issuedQty" min-width="120" />
-        <el-table-column v-if="columns[5].visible" label="单位" align="center" prop="unit" />
-        <el-table-column v-if="columns[6].visible" label="换算比例" align="center" prop="conversionRatio" />
-        <el-table-column v-if="columns[7].visible" label="库存单位" align="center" prop="inventoryUnit" />
-        <el-table-column v-if="columns[8].visible" label="创建时间" align="center" prop="createTime" />
-        <el-table-column v-if="columns[9].visible" label="创建者" align="center" prop="createByName" />
-        <el-table-column v-if="columns[10].visible" label="更新时间" align="center" prop="updateTime" />
-        <el-table-column v-if="columns[11].visible" label="更新者" align="center" prop="updateByName" />
-        <el-table-column v-if="columns[12].visible" label="备注" align="center" prop="remark" />
+        <el-table-column v-if="columns[3].visible" label="需求数量" align="center" prop="componentQty" min-width="120" />
+        <el-table-column v-if="columns[4].visible" label="基本单位" align="center" prop="inventoryUnit" />
+        <el-table-column v-if="columns[5].visible" label="数量" align="center" prop="issueUomQty" min-width="120" />
+        <el-table-column v-if="columns[6].visible" label="单位" align="center" prop="unit" />
+        <el-table-column v-if="columns[7].visible" label="已发料数量" align="center" prop="issuedQty" min-width="120" />
+        <el-table-column v-if="columns[8].visible" label="换算比例" align="center" prop="conversionRatio" />
+        <el-table-column v-if="columns[9].visible" label="创建时间" align="center" prop="createTime" />
+        <el-table-column v-if="columns[10].visible" label="创建者" align="center" prop="createByName" />
+        <el-table-column v-if="columns[11].visible" label="更新时间" align="center" prop="updateTime" />
+        <el-table-column v-if="columns[12].visible" label="更新者" align="center" prop="updateByName" />
+        <el-table-column v-if="columns[13].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -88,8 +89,8 @@
         <el-form-item label="换算比例" prop="conversionRatio">
           <el-input v-model="form.conversionRatio" placeholder="请输入换算比例" />
         </el-form-item>
-        <el-form-item label="库存单位" prop="inventoryUnit">
-          <el-input v-model="form.inventoryUnit" placeholder="请输入库存单位" />
+        <el-form-item label="基本单位" prop="inventoryUnit">
+          <el-input v-model="form.inventoryUnit" placeholder="请输入基本单位" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" placeholder="请输入备注" />
@@ -170,16 +171,17 @@ const columns = ref<FieldOption[]>([
   { key: 0, label: `工单号`, visible: true, children: [] },
   { key: 1, label: `组件料号`, visible: true, children: [] },
   { key: 2, label: `组件描述`, visible: true, children: [] },
-  { key: 3, label: `组件数量`, visible: true, children: [] },
-  { key: 4, label: `发料数量`, visible: true, children: [] },
-  { key: 5, label: `单位`, visible: true, children: [] },
-  { key: 6, label: `换算比例`, visible: true, children: [] },
-  { key: 7, label: `库存单位`, visible: true, children: [] },
-  { key: 8, label: `创建时间`, visible: false, children: [] },
-  { key: 9, label: `创建者`, visible: false, children: [] },
-  { key: 10, label: `更新时间`, visible: false, children: [] },
-  { key: 11, label: `更新者`, visible: false, children: [] },
-  { key: 12, label: `备注`, visible: false, children: [] }
+  { key: 3, label: `需求数量`, visible: true, children: [] },
+  { key: 4, label: `基本单位`, visible: true, children: [] },
+  { key: 5, label: `数量`, visible: true, children: [] },
+  { key: 6, label: `单位`, visible: true, children: [] },
+  { key: 7, label: `已发料数量`, visible: true, children: [] },
+  { key: 8, label: `换算比例`, visible: true, children: [] },
+  { key: 9, label: `创建时间`, visible: false, children: [] },
+  { key: 10, label: `创建者`, visible: false, children: [] },
+  { key: 11, label: `更新时间`, visible: false, children: [] },
+  { key: 12, label: `更新者`, visible: false, children: [] },
+  { key: 13, label: `备注`, visible: false, children: [] }
 ]);
 
 /** 查询工单BOM列表 */

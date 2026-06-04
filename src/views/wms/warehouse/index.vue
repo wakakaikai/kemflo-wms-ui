@@ -32,6 +32,9 @@
             <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['wms:warehouse:remove']">删除</el-button>
           </el-col>
           <el-col :span="1.5">
+            <el-button type="info" plain icon="Upload" v-hasPermi="['wms:warehouse:import']" @click="handleImport">导入</el-button>
+          </el-col>
+          <el-col :span="1.5">
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:warehouse:export']">导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
@@ -100,13 +103,46 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 导入对话框 -->
+    <el-dialog v-model="upload.open" :title="upload.title" width="400px" append-to-body>
+      <el-upload
+        ref="uploadRef"
+        :limit="1"
+        accept=".xlsx, .xls"
+        :headers="upload.headers"
+        :action="upload.url + '?updateSupport=' + upload.updateSupport"
+        :disabled="upload.isUploading"
+        :on-progress="handleFileUploadProgress"
+        :on-success="handleFileSuccess"
+        :auto-upload="false"
+        drag
+      >
+        <el-icon class="el-icon--upload">
+          <i-ep-upload-filled />
+        </el-icon>
+        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+        <template #tip>
+          <div class="text-center el-upload__tip">
+            <span>仅允许导入xls、xlsx格式文件。</span>
+            <el-link type="primary" :underline="false" style="font-size: 12px; vertical-align: baseline" @click="importTemplate">下载模板</el-link>
+          </div>
+        </template>
+      </el-upload>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="upload.open = false">取 消</el-button>
+          <el-button type="primary" @click="submitFileForm">确 定</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup warehouseName="Warehouse" lang="ts">
 import { pageWarehouse, getWarehouse, delWarehouse, addWarehouse, updateWarehouse } from '@/api/wms/warehouse';
 import { WarehouseVO, WarehouseQuery, WarehouseForm } from '@/api/wms/warehouse/types';
-
+import { globalHeaders } from '@/utils/request';
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { sys_yes_no } = toRefs<any>(proxy?.useDict('sys_yes_no'));
 
@@ -121,6 +157,7 @@ const total = ref(0);
 
 const queryFormRef = ref<ElFormInstance>();
 const warehouseFormRef = ref<ElFormInstance>();
+const uploadRef = ref<ElUploadInstance>();
 
 const dialog = reactive<DialogOption>({
   visible: false,
@@ -151,6 +188,21 @@ const data = reactive<PageData<WarehouseForm, WarehouseQuery>>({
     warehouseCode: [{ required: true, message: '仓库编码不能为空', trigger: 'blur' }],
     warehouseName: [{ required: true, message: '仓库名称不能为空', trigger: 'blur' }]
   }
+});
+/*** 出货通知导入参数 */
+const upload = reactive<ImportOption>({
+  // 是否显示弹出层（用户导入）
+  open: false,
+  // 弹出层标题（用户导入）
+  title: '',
+  // 是否禁用上传
+  isUploading: false,
+  // 是否更新已经存在的用户数据
+  updateSupport: 0,
+  // 设置上传的请求头部
+  headers: globalHeaders(),
+  // 上传的地址
+  url: import.meta.env.VITE_APP_BASE_API + '/wms/warehouse/import'
 });
 
 const { queryParams, form, rules } = toRefs(data);
@@ -251,6 +303,37 @@ const handleExport = () => {
     `warehouse_${new Date().getTime()}.xlsx`
   );
 };
+/** 导入按钮操作 */
+const handleImport = () => {
+  upload.title = '仓库导入';
+  upload.open = true;
+};
+
+/** 下载模板操作 */
+const importTemplate = () => {
+  proxy?.download('wms/warehouse/importTemplate', {}, `warehouse_template_${new Date().getTime()}.xlsx`);
+};
+
+/** 文件上传中处理 */
+const handleFileUploadProgress = () => {
+  upload.isUploading = true;
+};
+
+/** 文件上传成功处理 */
+const handleFileSuccess = (response: any, file: UploadFile) => {
+  upload.open = false;
+  upload.isUploading = false;
+  uploadRef.value?.handleRemove(file);
+  ElMessageBox.alert("<div style='overflow: auto;overflow-x: hidden;max-height: 70vh;padding: 10px 20px 0;'>" + response.msg + '</div>', '导入结果', {
+    dangerouslyUseHTMLString: true
+  });
+  getList();
+};
+
+/** 提交上传文件 */
+function submitFileForm() {
+  uploadRef.value?.submit();
+}
 
 onMounted(() => {
   getList();

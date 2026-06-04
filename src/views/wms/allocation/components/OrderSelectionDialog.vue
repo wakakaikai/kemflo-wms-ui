@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="visible" title="选择工单" width="1200px" @close="handleClose">
+  <el-dialog v-model="visible" title="选择工单" width="80%" @close="handleClose">
     <div class="order-selection-dialog">
       <!-- 搜索区域 -->
       <el-card shadow="hover">
@@ -24,7 +24,7 @@
       <div class="order-list">
         <el-table ref="orderTableRef" :data="workOrderList" border height="400" @selection-change="handleSelectionChange" row-key="id">
           <el-table-column type="selection" width="55" :reserve-selection="true" />
-          <el-table-column prop="workOrderNo" label="工单号" width="120" fixed>
+          <el-table-column prop="workOrderNo" label="工单号" fixed>
             <template #default="{ row }">
               <el-tooltip v-if="row.isUrgent" content="紧急工单" placement="top">
                 <el-tag type="danger" size="small">急</el-tag>
@@ -32,54 +32,29 @@
               <span>{{ row.workOrderNo }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="item" label="产品料号" width="120" />
+          <el-table-column prop="item" label="产品料号" />
           <el-table-column prop="itemDesc" label="产品描述" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="plannedQty" label="计划数量" width="100">
-            <template #default="{ row }"> {{ row.plannedQty }} {{ row.unit }} </template>
-          </el-table-column>
-          <el-table-column prop="issuedQty" label="已发料" width="100">
-            <template #default="{ row }"> {{ row.issuedQty }} {{ row.unit }} </template>
-          </el-table-column>
-          <el-table-column prop="remainingQty" label="待发料" width="100">
-            <template #default="{ row }">
-              <span
-                :class="{
-                  'text-warning': row.remainingQty > 0,
-                  'text-success': row.remainingQty === 0
-                }"
-              >
-                {{ row.remainingQty }} {{ row.unit }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="plannedStartDate" label="计划开始" width="120">
-            <template #default="{ row }">
-              {{ formatDate(row.plannedStartDate) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="plannedEndDate" label="计划完成" width="120">
-            <template #default="{ row }">
-              {{ formatDate(row.plannedEndDate) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="soDeliveryDate" label="交货日期" width="120">
+          <el-table-column prop="plannedQty" label="计划数量" />
+          <el-table-column prop="plannedStartDate" label="计划开始" />
+          <el-table-column prop="plannedEndDate" label="计划完成" />
+          <el-table-column prop="soDeliveryDate" label="交货日期">
             <template #default="{ row }">
               {{ formatDate(row.soDeliveryDate) }}
             </template>
           </el-table-column>
-          <el-table-column prop="status" label="状态" width="100">
+          <el-table-column prop="status" label="状态">
             <template #default="{ row }">
               <el-tag :type="getStatusTagType(row.status)" size="small">
                 {{ getStatusText(row.status) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="priority" label="优先级" width="80">
+          <el-table-column prop="priority" label="优先级" align="center" >
             <template #default="{ row }">
               <priority-badge :priority="row.priority" />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="80" fixed="right">
+          <el-table-column label="操作" fixed="right" align="center" >
             <template #default="{ row }">
               <el-button type="primary" link @click="viewBom(row)"> 查看BOM </el-button>
             </template>
@@ -247,7 +222,8 @@ watch(visible, (val) => {
 
 // 格式化日期
 const formatDate = (dateStr: string) => {
-  return dayjs(dateStr).format('MM/DD');
+  if (!dateStr) return '-';
+  return dayjs(dateStr).format('YYYY-MM-DD');
 };
 
 // 获取状态文本

@@ -16,6 +16,9 @@
             <el-form-item label="物料组" prop="itemGroup">
               <el-input v-model="queryParams.itemGroup" placeholder="请输入物料组" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="质检标识" prop="inspectionFlag">
+              <DictRadio v-model="queryParams.inspectionFlag" :radio-data="sys_yes_no" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
+            </el-form-item>
             <el-form-item label="质检检查" prop="checkEnable">
               <DictRadio v-model="queryParams.checkEnable" :radio-data="wms_boolean_type" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
             </el-form-item>
@@ -181,6 +184,7 @@ const initFormData: ItemForm = {
   oldItem: undefined,
   itemGroup: undefined,
   unit: undefined,
+  inspectionFlag: undefined,
   checkEnable: undefined,
   palletCheckFlag: undefined,
   remark: undefined
@@ -195,6 +199,7 @@ const data = reactive<PageData<ItemForm, ItemQuery>>({
     oldItem: undefined,
     itemGroup: undefined,
     unit: undefined,
+    inspectionFlag: null,
     checkEnable: null,
     palletCheckFlag: null,
     params: {}

@@ -12,8 +12,10 @@ import { getConfigKey, updateConfigByKey } from '@/api/system/config';
 import { parseTime, addDateRange, handleTree, selectDictLabel, selectDictLabels } from '@/utils/ruoyi';
 
 import { App } from 'vue';
+import { lodopPrint } from '@/components/print-designer';
 
 export default function installPlugin(app: App) {
+  app.config.globalProperties.$lodop = lodopPrint;
   // 页签操作
   app.config.globalProperties.$tab = tab;
 

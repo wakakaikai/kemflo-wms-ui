@@ -9,6 +9,7 @@ import { handleTree, addDateRange, selectDictLabel, selectDictLabels, parseTime 
 import { getConfigKey, updateConfigByKey } from '@/api/system/config';
 import { download as rd } from '@/utils/request';
 import type { LanguageType } from '@/lang';
+import type { lodopPrint } from '@/components/print-designer/libs/lodop';
 
 export {};
 
@@ -36,6 +37,7 @@ declare module '@vue/runtime-core' {
     selectDictLabel: typeof selectDictLabel;
     selectDictLabels: typeof selectDictLabels;
     parseTime: typeof parseTime;
+    $lodop: typeof lodopPrint;
   }
 }
 

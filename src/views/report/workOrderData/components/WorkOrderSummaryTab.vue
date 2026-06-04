@@ -68,30 +68,28 @@
             </el-table-column>
             <el-table-column label="工单号" align="center" prop="workOrderNo" />
             <el-table-column label="工序" align="center" prop="process" />
-            <!--            <el-table-column label="状态描述" align="left" prop="finalStatusDetail" min-width="200">-->
-            <!--              <template #default="scope">-->
-            <!--                <div class="status-detail">-->
-            <!--                  <div class="status-detail-content">-->
-            <!--                    <div v-for="(item, index) in scope.row.finalStatusDetail.split('|')" :key="index">-->
-            <!--                      {{ item.trim() }}-->
-            <!--                    </div>-->
-            <!--                  </div>-->
-            <!--                </div>-->
-            <!--              </template>-->
-            <!--            </el-table-column>-->
             <el-table-column label="工序描述" align="center" prop="processShortDesc" />
-            <el-table-column label="计划工作中心" align="center" prop="workCenter" />
-            <el-table-column label="工单报工数量" align="center" prop="mesReportQty">
+            <el-table-column label="工作中心" align="center" prop="workCenter" />
+            <el-table-column label="报工数量" align="center" prop="mesReportQty">
               <template #default="scope">
                 {{ scope.row.mesReportQty ? parseFloat(scope.row.mesReportQty) : '--' }}
               </template>
             </el-table-column>
+            <el-table-column label="标准人数" align="center" prop="standardPersonNumber">
+              <template #default="scope">
+                <span>
+                  {{ scope.row.standardPersonNumber ? parseFloat(scope.row.standardPersonNumber) : '-' }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="标准产能" align="center" prop="standardPersonCapacity" />
             <el-table-column label="预计开工" align="center" prop="plannedStartDate" />
             <el-table-column label="预计完工" align="center" prop="plannedEndDate" />
-            <el-table-column label="预计DTD生产时长" align="left" prop="plannedD2DDurationDesc" />
             <el-table-column label="预计生产时长" align="left" prop="plannedDurationDesc" />
+            <el-table-column label="预计DTD生产时长" align="left" prop="plannedD2DDurationDesc" />
             <el-table-column label="实际开工" align="center" prop="actualStartDate" />
             <el-table-column label="实际完工" align="center" prop="actualEndDate" />
+            <el-table-column label="实际生产时长" align="center" prop="actualDurationDesc" />
             <el-table-column label="实际DTD生产时长" align="left" prop="actualD2DDurationDesc">
               <template #default="scope">
                 <span>{{ parseFloat(scope.row.actualD2DDuration) > 0 ? scope.row.actualD2DDurationDesc : '' }}</span>
@@ -100,6 +98,38 @@
             <el-table-column label="实际生产时长" align="left" prop="actualDurationDesc">
               <template #default="scope">
                 <span>{{ parseFloat(scope.row.actualDuration) > 0 ? scope.row.actualDurationDesc : '' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="下制程工单号" align="center" prop="nextWorkOrderNo" />
+            <el-table-column label="下制程工序" align="center" prop="nextProcessNo" />
+            <el-table-column label="下制程工作中心" align="center" prop="nextWorkCenter" />
+            <el-table-column label="下制程预计开工时间" align="center" prop="nextPlannedStartDate" min-width="100" />
+            <el-table-column label="下制程实际开工时间" align="center" prop="nextActualStartDate" min-width="100" />
+            <el-table-column label="前制程工单号" align="center" prop="previousWorkOrderNo" />
+            <el-table-column label="前制程工序" align="center" prop="previousProcessNo" />
+            <el-table-column label="前制程工作中心" align="center" prop="previousWorkCenter" />
+            <el-table-column label="前制程预计完工时间" align="center" prop="previousPlannedEndDate" min-width="100" />
+            <el-table-column label="前制程实际完工时间" align="center" prop="previousActualEndDate" min-width="100" />
+            <el-table-column label="前制程入库完成时间" align="center" prop="previousActualDeliveredDate" min-width="100" />
+            <el-table-column label="前制程已报工数量" align="center" prop="previousReportQty">
+              <template #default="scope">
+                <span>
+                  {{ scope.row.previousReportQty ? parseFloat(scope.row.previousReportQty) : '-' }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="前制程WMS入库数量" align="center" prop="previousDeliveredQty">
+              <template #default="scope">
+                <span>
+                  {{ scope.row.previousDeliveredQty ? parseFloat(scope.row.previousDeliveredQty) : '-' }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="前制程SAP入库数量" align="center" prop="previousSapDeliveredQty">
+              <template #default="scope">
+                <span>
+                  {{ scope.row.previousSapDeliveredQty ? parseFloat(scope.row.previousSapDeliveredQty) : '-' }}
+                </span>
               </template>
             </el-table-column>
           </el-table>
@@ -132,7 +162,7 @@
       <el-table-column label="单位" align="center" prop="unit" />
       <el-table-column label="销售订单号" align="center" prop="salesOrderNo" min-width="120" />
       <el-table-column label="销售订单项次" align="center" prop="salesOrderItem" min-width="120" />
-      <el-table-column label="销售订单交货日" align="center" prop="soDeliveryDate" width="180">
+      <el-table-column label="客户交期" align="center" prop="soDeliveryDate" width="180">
         <template #default="scope">
           <span>{{ parseTime(scope.row.soDeliveryDate, '{y}-{m}-{d}') }}</span>
         </template>
@@ -542,7 +572,7 @@ onUnmounted(() => {
 
 /* 展开行内状态与描述合并的样式 */
 .status-with-detail {
-/*  padding: 4px 0;*/
+  /*  padding: 4px 0;*/
 
   .status-indicator-inline {
     display: flex;

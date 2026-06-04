@@ -54,7 +54,8 @@ const formatProgress = (percentage: number) => {
     return '充足';
   }
 
-  return `${percentage}% (${available}/${required})`;
+  // return `${percentage}% (${available}/${required})`;
+  return `${percentage}%`;
 };
 </script>
 

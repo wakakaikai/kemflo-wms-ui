@@ -13,7 +13,7 @@
         @contextmenu.prevent="openMenu(tag, $event)"
       >
         <svg-icon v-if="tagsIcon && tag.meta && tag.meta.icon && tag.meta.icon !== '#'" :icon-class="tag.meta.icon"/>
-        {{ tag.title }}
+        {{ tag.title ? translateRouteTitle(String(tag.title)) : '' }}
         <span v-if="!isAffix(tag)" @click.prevent.stop="closeSelectedTag(tag)">
           <close class="el-icon-close" style="width: 1em; height: 1em; vertical-align: middle" />
         </span>
@@ -36,7 +36,7 @@ import { getNormalPath } from '@/utils/ruoyi';
 import { useSettingsStore } from '@/store/modules/settings';
 import { usePermissionStore } from '@/store/modules/permission';
 import { useTagsViewStore } from '@/store/modules/tagsView';
-import { RouteRecordRaw, RouteLocationNormalized } from 'vue-router';
+import { translateRouteTitle } from '@/utils/i18n';
 
 const visible = ref(false);
 const top = ref(0);

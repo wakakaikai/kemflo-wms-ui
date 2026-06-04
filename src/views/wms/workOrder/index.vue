@@ -59,43 +59,48 @@
             </router-link>
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[1].visible" label="产品料号" align="left" prop="item" fixed="left" min-width="150" />
-        <el-table-column v-if="columns[2].visible" label="产品描述" align="left" prop="itemDesc" show-overflow-tooltip fixed="left" min-width="300" />
-        <el-table-column v-if="columns[3].visible" label="计划开工日期" align="center" prop="plannedStartDate" width="180" />
-        <el-table-column v-if="columns[4].visible" label="计划完工日期" align="center" prop="plannedEndDate" width="180" />
-        <el-table-column v-if="columns[5].visible" label="计划数量" align="center" prop="plannedQty" />
-        <el-table-column v-if="columns[6].visible" label="已交货数量" align="center" prop="deliveredQty" min-width="100" />
-        <el-table-column v-if="columns[7].visible" label="单位" align="center" prop="unit" />
-        <el-table-column v-if="columns[8].visible" label="销售订单号" align="center" prop="salesOrderNo" min-width="120" />
-        <el-table-column v-if="columns[9].visible" label="销售订单项次" align="center" prop="salesOrderItem" min-width="120" />
-        <el-table-column v-if="columns[10].visible" label="销售订数量" align="center" prop="salesOrderQty" min-width="120" />
-        <el-table-column v-if="columns[11].visible" label="销售订单单位" align="center" prop="salesOrderUnit" min-width="120" />
-        <el-table-column v-if="columns[12].visible" label="溯源工单号" align="center" prop="traceOrderNo" min-width="120" />
-        <el-table-column v-if="columns[13].visible" label="销售订单交货日" align="center" prop="soDeliveryDate" width="180">
+        <el-table-column v-if="columns[1].visible" label="状态" align="center" prop="status">
+          <template #default="scope">
+            <dict-tag :options="wms_work_order_status" :value="scope.row.status" />
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columns[2].visible" label="产品料号" align="left" prop="item" min-width="150" />
+        <el-table-column v-if="columns[3].visible" label="产品描述" align="left" prop="itemDesc" show-overflow-tooltip min-width="300" />
+        <el-table-column v-if="columns[4].visible" label="计划开工日期" align="center" prop="plannedStartDate" width="180" />
+        <el-table-column v-if="columns[5].visible" label="计划完工日期" align="center" prop="plannedEndDate" width="180" />
+        <el-table-column v-if="columns[6].visible" label="计划数量" align="center" prop="plannedQty" />
+        <el-table-column v-if="columns[7].visible" label="已交货数量" align="center" prop="deliveredQty" min-width="100" />
+        <el-table-column v-if="columns[8].visible" label="单位" align="center" prop="unit" />
+        <el-table-column v-if="columns[9].visible" label="销售订单号" align="center" prop="salesOrderNo" min-width="120" />
+        <el-table-column v-if="columns[10].visible" label="销售订单项次" align="center" prop="salesOrderItem" min-width="120" />
+        <el-table-column v-if="columns[11].visible" label="销售订数量" align="center" prop="salesOrderQty" min-width="120" />
+        <el-table-column v-if="columns[12].visible" label="销售订单单位" align="center" prop="salesOrderUnit" min-width="120" />
+        <el-table-column v-if="columns[13].visible" label="溯源工单号" align="center" prop="traceOrderNo" min-width="120" />
+        <el-table-column v-if="columns[14].visible" label="销售订单交货日" align="center" prop="soDeliveryDate" width="180">
           <template #default="scope">
             <span>{{ parseTime(scope.row.soDeliveryDate, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[14].visible" label="生产模式" align="center" prop="productionMode" min-width="120">
+        <el-table-column v-if="columns[15].visible" label="生产模式" align="center" prop="productionMode" min-width="120">
           <template #default="scope">
             <dict-tag :options="wms_production_mode" :value="scope.row.productionMode" />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[15].visible" label="集约生产标识" align="center" prop="intensiveProductionFlag">
+        <el-table-column v-if="columns[16].visible" label="集约生产标识" align="center" prop="intensiveProductionFlag">
           <template #default="scope">
             <el-checkbox v-model="scope.row.intensiveProductionFlag" disabled />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[16].visible" label="尾数工单标识" align="center" prop="mantissaOrderFlag">
+        <el-table-column v-if="columns[17].visible" label="尾数工单标识" align="center" prop="mantissaOrderFlag">
           <template #default="scope">
             <el-checkbox v-model="scope.row.mantissaOrderFlag" disabled />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[17].visible" label="创建时间" align="center" prop="createTime" />
-        <el-table-column v-if="columns[18].visible" label="创建者" align="center" prop="createByName" />
-        <el-table-column v-if="columns[19].visible" label="更新时间" align="center" prop="updateTime" />
-        <el-table-column v-if="columns[20].visible" label="更新者" align="center" prop="updateByName" />
-        <el-table-column v-if="columns[21].visible" label="备注" align="center" prop="remark" />
+        <el-table-column v-if="columns[18].visible" label="创建时间" align="center" prop="createTime" />
+        <el-table-column v-if="columns[19].visible" label="创建者" align="center" prop="createByName" />
+        <el-table-column v-if="columns[20].visible" label="更新时间" align="center" prop="updateTime" />
+        <el-table-column v-if="columns[21].visible" label="更新者" align="center" prop="updateByName" />
+        <el-table-column v-if="columns[22].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -209,7 +214,7 @@
                   <!-- 印章效果的集字和尾字 -->
                   <div class="seal-stamp-container">
                     <div class="seal-stamp seal-intensive" v-if="workOrderInfo.intensiveProductionFlag">集</div>
-                    <!--                    <div class="seal-stamp seal-mantissa" v-if="workOrderInfo.mantissaOrderFlag">尾</div>-->
+                    <div class="seal-stamp seal-mantissa" v-if="workOrderInfo.mantissaOrderFlag">尾</div>
                   </div>
                 </div>
               </div>
@@ -404,7 +409,7 @@ import { listWorkOrder, getWorkOrder, delWorkOrder, addWorkOrder, updateWorkOrde
 import { WorkOrderVO, WorkOrderQuery, WorkOrderForm } from '@/api/wms/workOrder/types';
 import { TableColumns } from '@/api/types';
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_production_mode, wms_work_order_check_enable } = toRefs<any>(proxy?.useDict('wms_production_mode', 'wms_work_order_check_enable'));
+const { wms_production_mode, wms_work_order_check_enable, wms_work_order_status } = toRefs<any>(proxy?.useDict('wms_production_mode', 'wms_work_order_check_enable', 'wms_work_order_status'));
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { nextTick, ref } from 'vue';
@@ -491,27 +496,28 @@ const { queryParams, form, rules } = toRefs(data);
 
 const columns = ref<TableColumns[]>([
   { key: 1, label: '工单号', visible: true },
-  { key: 2, label: '产品料号', visible: true },
-  { key: 3, label: '产品描述', visible: true },
-  { key: 4, label: '计划开工日期', visible: true },
-  { key: 5, label: '计划完工日期', visible: true },
-  { key: 6, label: '计划数量', visible: true },
-  { key: 7, label: '已交货数量', visible: true },
-  { key: 8, label: '单位', visible: true },
-  { key: 9, label: '销售订单号', visible: true },
-  { key: 10, label: '销售订单项次', visible: true },
-  { key: 11, label: '销售订数量', visible: true },
-  { key: 12, label: '销售订单单位', visible: true },
-  { key: 13, label: '溯源工单号', visible: true },
-  { key: 14, label: '销售订单交货日', visible: true },
-  { key: 15, label: '生产模式', visible: true },
-  { key: 16, label: '集约生产标识', visible: false },
-  { key: 17, label: '尾数工单标识', visible: false },
-  { key: 18, label: '创建时间', visible: false },
-  { key: 19, label: '创建者', visible: false },
-  { key: 20, label: '更新时间', visible: false },
-  { key: 21, label: '更新者', visible: false },
-  { key: 22, label: '备注', visible: false }
+  { key: 2, label: '状态', visible: true },
+  { key: 3, label: '产品料号', visible: true },
+  { key: 4, label: '产品描述', visible: true },
+  { key: 5, label: '计划开工日期', visible: true },
+  { key: 6, label: '计划完工日期', visible: true },
+  { key: 7, label: '计划数量', visible: true },
+  { key: 8, label: '已交货数量', visible: true },
+  { key: 9, label: '单位', visible: true },
+  { key: 10, label: '销售订单号', visible: true },
+  { key: 11, label: '销售订单项次', visible: true },
+  { key: 12, label: '销售订数量', visible: true },
+  { key: 13, label: '销售订单单位', visible: true },
+  { key: 14, label: '溯源工单号', visible: true },
+  { key: 15, label: '销售订单交货日', visible: true },
+  { key: 16, label: '生产模式', visible: true },
+  { key: 17, label: '集约生产标识', visible: false },
+  { key: 18, label: '尾数工单标识', visible: false },
+  { key: 19, label: '创建时间', visible: false },
+  { key: 20, label: '创建者', visible: false },
+  { key: 21, label: '更新时间', visible: false },
+  { key: 22, label: '更新者', visible: false },
+  { key: 23, label: '备注', visible: false }
 ]);
 
 // 工单信息
@@ -812,11 +818,28 @@ const updatePreviewTemplate = () => {
   }
 };
 // 打印方法
-const handlePrintWorkOrderCard = () => {
+const handlePrintWorkOrderCard = async () => {
   if (selectedRecords.value.length === 0) {
     proxy?.$modal.msgWarning('请至少选择一条记录进行打印');
     return;
   }
+
+  const crtdOrders = selectedRecords.value.filter((order) => order.status === 'CRTD');
+
+  if (crtdOrders.length > 0) {
+    const orderNos = crtdOrders.map((order) => order.workOrderNo).join('、');
+    try {
+      await ElMessageBox.confirm(`选中的 <span style="color: #f56c6c; font-weight: bold;">工单 ${orderNos}未核发</span>，是否确认继续打印工单卡？`, '警告', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: true
+      });
+    } catch {
+      return;
+    }
+  }
+
   getWorkOrderProcessList();
 
   // 默认使用模式A
@@ -834,6 +857,7 @@ const handlePrintWorkOrderCard = () => {
     generateQRCode();
   });
 };
+
 // 关闭打印工单卡弹框
 const cancelPrint = () => {
   printDialog.visible = false;

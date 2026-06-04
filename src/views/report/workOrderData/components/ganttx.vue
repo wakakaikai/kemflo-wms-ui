@@ -739,7 +739,8 @@ const customTooltipText = (start: any, end: any, task: any) => {
         <div class="fix-width"><span>工单号:</span> ${task.workOrderNo || '-'}</div>
         <div class="fix-width"><span>计划时间:</span> ${formatDateStr(task.start_date)} ~ ${formatDateStr(task.end_date)}</div>
         <div class="fix-width"><span>计划数量:</span> ${task.planQuantity}</div>
-        <div class="fix-width"><span>交货数量:</span> ${task.planQuantity}</div>
+        <div class="fix-width"><span>WMS入库:</span> ${task.wmsDeliveredQty? parseFloat(task.wmsDeliveredQty) : ''}</div>
+        <div class="fix-width"><span>SAP入库:</span> ${task.sapDeliveredQty ? parseFloat(task.sapDeliveredQty) : ''}</div>
         <div class="fix-width"><span>工单进度:</span> ${progress}%</div>
       </div>`;
   }
@@ -838,10 +839,15 @@ const customTooltipText = (start: any, end: any, task: any) => {
           <div class="grid-four">
             <span>计划数量:</span>
             <div>${task.planQuantity ? parseFloat(task.planQuantity) : ''}</div>
-            <span>完成数量:</span>
+            <span>MES报工:</span>
             <div>${task.mesCompleteQuantity ? parseFloat(task.mesCompleteQuantity) : ''}</div>
           </div>
-
+          <div class="grid-four">
+            <span>WMS入库:</span>
+            <div>${task.wmsDeliveredQty ? parseFloat(task.wmsDeliveredQty) : ''}</div>
+            <span>SAP入库:</span>
+            <div>${task.sapDeliveredQty ? parseFloat(task.sapDeliveredQty) : ''}</div>
+          </div>
 
           <hr class="tip-item" />
           <div class="fix-width"><span>计划时间:</span><div>${formatDateStr(plan.start_date)} ~ ${formatDateStr(plan.end_date)}</div></div>
@@ -851,7 +857,7 @@ const customTooltipText = (start: any, end: any, task: any) => {
           <div class="fix-width"><span>状态详情:</span><div>${formatStatusDetail(task)}</div></div>
 
           <hr class="tip-item" />
-           <div class="grid-four">
+          <div class="grid-four">
             <span>客户订单:</span>
             <div>${task.salesOrderNo || ''}-${task.salesOrderItem ? Number(task.salesOrderItem) : ''}</div>
             <span>客户交期:</span>
@@ -1963,7 +1969,7 @@ defineExpose({
 /* 四列布局：前一制程/下一制程 */
 .grid-four {
   display: grid;
-  grid-template-columns: 70px minmax(120px, 1fr) 70px 1fr;
+  grid-template-columns: 80px minmax(120px, 1fr) 80px 1fr;
   gap: 8px;
   align-items: center;
   margin-bottom: 4px;

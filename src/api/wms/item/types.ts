@@ -35,6 +35,11 @@ export interface ItemVO {
   sfcRegular: string;
 
   /**
+   * 质检标识
+   */
+  inspectionFlag: number | string;
+
+  /**
    * 启用质检结果：0: 正常 1: 停用
    */
   checkEnable: number | string;
@@ -87,6 +92,11 @@ export interface ItemForm extends BaseEntity {
   unit?: string;
 
   /**
+   * 质检标识
+   */
+  inspectionFlag: number | string;
+
+  /**
    * 启用质检结果：0: 正常 1: 停用
    */
   checkEnable?: number | string;
@@ -132,6 +142,11 @@ export interface ItemQuery extends PageQuery {
    * 计量单位
    */
   unit?: string;
+
+  /**
+   * 质检标识
+   */
+  inspectionFlag: number | string;
 
   /**
    * 启用质检结果：0: 正常 1: 停用

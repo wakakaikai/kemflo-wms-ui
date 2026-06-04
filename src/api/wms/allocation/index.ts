@@ -70,11 +70,11 @@ export function handleEmergencyOrder(data: EmergencyAllocationRequest) {
 }
 
 /** 检查物料库存 */
-export function checkMaterialInventory(workOrderNo: string, materialCodes?: string[]) {
+export function checkMaterialInventory(data: any) {
   return request({
-    url: `/wms/allocation/checkInventory/${workOrderNo}`,
-    method: 'get',
-    params: { materialCodes }
+    url: `/wms/allocation/checkInventory`,
+    method: 'post',
+    data
   });
 }
 

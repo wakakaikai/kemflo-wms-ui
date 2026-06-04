@@ -7,15 +7,15 @@
             <el-form-item label="销售订单" prop="salesOrderNo">
               <el-input v-model="queryParams.salesOrderNo" placeholder="请输入销售订单" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="销售单项次" prop="salesOrderItem">
+<!--            <el-form-item label="销售单项次" prop="salesOrderItem">
               <el-input v-model="queryParams.salesOrderItem" placeholder="请输入销售订单项次" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
+            </el-form-item>-->
             <el-form-item label="工单号" prop="workOrderNo">
               <el-input v-model="queryParams.workOrderNo" placeholder="请输入工单编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="物料编码" prop="item">
+<!--            <el-form-item label="物料编码" prop="item">
               <el-input v-model="queryParams.item" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
+            </el-form-item>-->
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
               <el-button icon="Refresh" @click="resetQuery">重置</el-button>

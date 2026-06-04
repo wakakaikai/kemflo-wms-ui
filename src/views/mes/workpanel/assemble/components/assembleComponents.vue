@@ -59,11 +59,14 @@ const querySfcProcessList = async () => {
     sfc: form.value.sfc
   });
   form.value.steps = res.data;
-  const index = res.data.findIndex((item: any) => {
+  let index = res.data.findIndex((item: any) => {
     return parseInt(item.qtyInQueue) === 1;
   });
+  if (index === -1) {
+    index = res.data.length;
+  }
+
   form.value.stepActive = index;
-  form.value.stepName = res.data[index];
 };
 
 const querySfcBomComponentList = async () => {
