@@ -1,13 +1,12 @@
 <template>
-  <el-dialog v-model="visible" title="执行分配方案" width="520px" @close="handleClose">
+  <el-dialog v-model="visible" title="执行发料" width="520px" @close="handleClose">
     <div v-if="plan" class="execute-confirm">
-      <el-alert type="info" :closable="false" show-icon title="执行后将生成发料单，库存按方案锁定结果出库" class="mb-4" />
+      <el-alert type="info" :closable="false" show-icon title="执行后将生成发料单，库存按备料结果出库" class="mb-4" />
       <el-descriptions :column="2" border size="small">
-        <el-descriptions-item label="方案名称" :span="2">{{ plan.planName }}</el-descriptions-item>
-        <el-descriptions-item label="策略">{{ plan.strategyTypeDesc || plan.strategyType }}</el-descriptions-item>
+        <el-descriptions-item label="备料单号">{{ plan.planNo }}</el-descriptions-item>
         <el-descriptions-item label="工单数">{{ plan.workOrderCount }} 个</el-descriptions-item>
         <el-descriptions-item label="拣货点">{{ plan.pickLocationCount }} 个</el-descriptions-item>
-        <el-descriptions-item label="综合评分">{{ plan.totalScore?.toFixed(1) }}</el-descriptions-item>
+        <el-descriptions-item label="齐套率">{{ ((plan.avgKitRate || 0) * 100).toFixed(1) }}%</el-descriptions-item>
       </el-descriptions>
       <el-form class="mt-4" label-width="80px">
         <el-form-item label="执行人">
@@ -18,7 +17,7 @@
         </el-form-item>
       </el-form>
     </div>
-    <el-empty v-else description="未选择方案" />
+    <el-empty v-else description="未选择备料单" />
     <template #footer>
       <el-button @click="handleClose">取消</el-button>
       <el-button type="primary" :loading="executing" :disabled="!plan" @click="handleConfirm">确认执行</el-button>

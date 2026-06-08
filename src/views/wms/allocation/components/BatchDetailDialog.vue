@@ -163,7 +163,7 @@ const loadBatchData = async () => {
 const simulateAllocation = () => {
   if (!props.material || batchList.value.length === 0) return;
 
-  const requiredQty = props.material.componentQty;
+  const requiredQty = props.material.issueQty ?? props.material.componentQty;
   let remainingQty = requiredQty;
   const details: any[] = [];
 

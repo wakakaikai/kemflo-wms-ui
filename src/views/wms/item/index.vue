@@ -55,7 +55,13 @@
 
       <el-table v-loading="loading" :data="itemList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="物料" align="center" prop="item" />
+        <el-table-column label="物料" align="center" prop="item">
+          <template #default="scope">
+            <router-link :to="'/warehouse/item/itemDetail/' + scope.row.item" class="link-type">
+              <span>{{ scope.row.item }}</span>
+            </router-link>
+          </template>
+        </el-table-column>
         <el-table-column label="描述" align="center" prop="itemDesc" min-width="200" show-overflow-tooltip />
         <el-table-column label="旧料号" align="center" prop="oldItem" />
         <el-table-column label="物料组" align="center" prop="itemGroup" />

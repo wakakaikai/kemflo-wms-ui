@@ -11,6 +11,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { getOrderRequiredQty } from '../utils/workOrderMaterialIssue';
 
 interface Props {
   material: any;
@@ -29,7 +30,8 @@ const inventoryStatus = computed(() => {
     return 'UNKNOWN';
   }
 
-  if (material.availableQty >= material.componentQty) {
+  const required = getOrderRequiredQty(material);
+  if (material.availableQty >= required) {
     return 'SUFFICIENT';
   } else if (material.availableQty > 0) {
     return 'PARTIAL';
@@ -67,7 +69,7 @@ const tooltipText = computed(() => {
     return '库存未检查';
   }
 
-  const required = material.componentQty;
+  const required = getOrderRequiredQty(material);
   const available = material.availableQty || 0;
   const shortage = required - available;
 

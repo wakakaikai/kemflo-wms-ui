@@ -7,12 +7,17 @@ import type {
   EmergencyAllocationRequest
 } from '@/api/wms/allocation/types';
 
-/** 生成单一分配方案 */
+/** 生成单一分配方案（工作台：直接返回 plan 对象） */
 export function generateAllocation(data: AllocationRequest) {
   return request({
-    url: '/wms/allocation/generate',
+    url: '/wms/allocation/workbench/generate',
     method: 'post',
     data
+  }).then((res: any) => {
+    if (res.code === 200 && res.data?.plan) {
+      return { ...res, data: res.data.plan };
+    }
+    return res;
   });
 }
 
@@ -108,12 +113,15 @@ export async function getPlanDetailList(planId: number | string) {
   return res;
 }
 
-/** 兼容：生成分配（多方案走 generateMultiplePlans） */
+/** 兼容：默认单一备料；仅当 generateMultiple === true 时生成多份 */
 export function generateAllocationCompat(data: AllocationRequest) {
-  if (data.generateMultiple !== false) {
+  if (data.generateMultiple === true) {
     return generateMultiplePlans(data);
   }
-  return generateAllocation(data);
+  return generateAllocation({
+    ...data,
+    generateMultiple: false
+  });
 }
 
 /** 兼容旧方法名 */

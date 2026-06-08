@@ -6,6 +6,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { getOrderRequiredQty } from '../utils/workOrderMaterialIssue';
 
 interface Props {
   material: any;
@@ -21,11 +22,12 @@ const kitRate = computed(() => {
     return 0;
   }
 
-  if (!material.componentQty || material.componentQty === 0) {
+  const required = getOrderRequiredQty(material);
+  if (!required || required === 0) {
     return 1;
   }
 
-  return Math.min(material.availableQty / material.componentQty, 1);
+  return Math.min(material.availableQty / required, 1);
 });
 
 // 齐套率百分比
@@ -48,7 +50,7 @@ const formatProgress = (percentage: number) => {
   }
 
   const available = material.availableQty || 0;
-  const required = material.componentQty;
+  const required = getOrderRequiredQty(material);
 
   if (percentage === 100) {
     return '充足';

@@ -40,7 +40,7 @@
 
       <el-table v-loading="loading" :data="messageTitleRecipientList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <!--        <el-table-column label="主键ID" align="center" prop="id" v-if="true" />-->
+        <!--        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />-->
         <el-table-column label="消息主题" align="center" prop="messageTitle" />
         <el-table-column label="接收者" align="center" prop="recipientUserName" />
         <!--        <el-table-column label="备注" align="center" prop="remark" />-->
@@ -131,7 +131,7 @@ const data = reactive<PageData<MessageTitleRecipientForm, MessageTitleRecipientQ
     params: {}
   },
   rules: {
-    id: [{ required: true, message: '主键ID不能为空', trigger: 'blur' }],
+    id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
     messageTitle: [{ required: true, message: '关联的消息主题不能为空', trigger: 'blur' }]
     // recipientId: [{ required: true, message: '接收者用户ID不能为空', trigger: 'blur' }]
   }

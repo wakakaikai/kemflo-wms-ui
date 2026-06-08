@@ -5,7 +5,7 @@
         <div class="workbench-header">
           <div>
             <h2 class="title">工单发料工作台</h2>
-            <p class="subtitle">选择工单 → 智能分配 → 确认执行 → 现场领料</p>
+            <p class="subtitle">选择工单 → 生成备料 → 确认执行 → 现场领料</p>
           </div>
           <div class="header-actions">
             <el-button type="warning" plain @click="showEmergencyDialog">
@@ -17,7 +17,7 @@
 
       <el-steps :active="activeStep" finish-status="success" align-center class="workbench-steps">
         <el-step title="选择工单" description="勾选待发料工单" />
-        <el-step title="分配方案" description="生成并确认方案" />
+        <el-step title="备料清单" description="工单明细与备料汇总" />
         <el-step title="执行领料" description="生成发料单并领料" />
       </el-steps>
 
@@ -27,8 +27,8 @@
           <el-button type="primary" @click="showOrderSelection">
             <el-icon><Plus /></el-icon>选择工单
           </el-button>
-          <el-button type="success" :disabled="selectedOrders.length === 0" @click="generatePlansAndNext">
-            <el-icon><MagicStick /></el-icon>智能分配
+          <el-button type="success" :disabled="selectedOrders.length === 0" :loading="generating" @click="generatePickingAndNext">
+            <el-icon><MagicStick /></el-icon>生成备料
           </el-button>
           <span v-if="selectedOrders.length" class="hint">已选 {{ selectedOrders.length }} 个工单</span>
         </div>
@@ -48,43 +48,58 @@
         <el-empty v-else description="请点击「选择工单」添加待发料工单" />
       </div>
 
-      <!-- Step 2 -->
+      <!-- Step 2：备料清单 -->
       <div v-show="activeStep === 1" class="step-body">
         <div class="step-toolbar">
           <el-button @click="activeStep = 0">上一步</el-button>
-          <el-button v-if="allocationPlans.length >= 2" type="info" plain @click="showComparison">
-            <el-icon><TrendCharts /></el-icon>方案对比
+          <el-button v-if="currentPlan?.planStatus === 'DRAFT'" type="success" :disabled="!currentPlan" @click="confirmCurrentPlan">
+            确认备料
+          </el-button>
+          <el-button v-if="currentPlan?.planStatus === 'CONFIRMED'" type="primary" @click="showExecuteDialog">
+            执行发料
           </el-button>
         </div>
-        <el-empty v-if="allocationPlans.length === 0" description="请返回上一步生成方案" />
-        <el-row v-else :gutter="16">
-          <el-col v-for="plan in allocationPlans" :key="plan.id" :xs="24" :sm="12" :lg="8">
-            <allocation-plan-card
-              :plan="plan"
-              :selected="selectedPlanId === plan.id"
-              @select="selectPlan"
-              @view-detail="viewPlanDetail"
-              @confirm="confirmPlan"
-              @execute="onPlanCardExecute"
-            />
-          </el-col>
-        </el-row>
-        <div v-if="selectedPlanDetail" class="plan-detail-panel">
-          <div class="panel-title">方案明细</div>
+
+        <el-empty v-if="!currentPlan" description="请返回上一步生成备料清单" />
+
+        <template v-else>
+          <el-alert
+            v-if="selectedOrders.length > 1"
+            type="info"
+            :closable="false"
+            show-icon
+            class="picking-hint"
+            title="已合并多个工单"
+          >
+            请查看「工单明细」了解各工单用料，「备料清单」可按物料或仓别汇总现场拣货。
+          </el-alert>
+
+          <el-descriptions :column="4" border size="small" class="plan-summary">
+            <el-descriptions-item label="备料单号">{{ currentPlan.planNo }}</el-descriptions-item>
+            <el-descriptions-item label="工单数">{{ currentPlan.workOrderCount }} 个</el-descriptions-item>
+            <el-descriptions-item label="拣货点">{{ currentPlan.pickLocationCount }} 个</el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag :type="planStatusTag(currentPlan.planStatus)" size="small">{{ planStatusText(currentPlan.planStatus) }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="齐套率">{{ ((currentPlan.avgKitRate || 0) * 100).toFixed(1) }}%</el-descriptions-item>
+            <el-descriptions-item label="总距离">{{ (currentPlan.totalDistance || 0).toFixed(1) }} m</el-descriptions-item>
+          </el-descriptions>
+
           <allocation-detail-view
-            :plan="selectedPlanDetail"
+            :plan="currentPlan"
             :details="planDetails"
+            @confirm="confirmCurrentPlan"
             @execute="showExecuteDialog"
             @go-issue="goToMaterialIssue"
           />
-        </div>
+        </template>
       </div>
 
-      <!-- Step 3 hint -->
+      <!-- Step 3 -->
       <div v-show="activeStep === 2" class="step-body step-done">
         <el-result icon="success" title="发料单已就绪" sub-title="请在右侧抽屉完成领料登记与明细确认">
           <template #extra>
-            <el-button @click="activeStep = 1">返回方案</el-button>
+            <el-button @click="activeStep = 1">返回备料清单</el-button>
             <el-button v-if="currentIssueId" type="primary" @click="issueDrawerVisible = true">继续领料</el-button>
           </template>
         </el-result>
@@ -92,9 +107,8 @@
     </el-card>
 
     <order-selection-dialog v-model="showOrderDialog" :selected-orders="selectedOrders" @confirm="handleOrderSelection" />
-    <plan-comparison-dialog v-model="showComparisonDialog" :plans="allocationPlans" />
     <emergency-order-dialog v-model="showEmergencyDialogVisible" @confirm="handleEmergencyOrder" />
-    <execute-confirm-dialog v-model="showExecuteDialogVisible" :plan="selectedPlanDetail" @confirm="executeAllocation" />
+    <execute-confirm-dialog v-model="showExecuteDialogVisible" :plan="currentPlan" @confirm="executeAllocation" />
     <issue-process-drawer v-model="issueDrawerVisible" :issue-id="currentIssueId" />
   </div>
 </template>
@@ -102,35 +116,61 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, MagicStick, Warning, TrendCharts } from '@element-plus/icons-vue';
+import { Plus, MagicStick, Warning } from '@element-plus/icons-vue';
 
 import OrderSelectionDialog from './components/OrderSelectionDialog.vue';
-import AllocationPlanCard from './components/AllocationPlanCard.vue';
 import AllocationDetailView from './components/AllocationDetailView.vue';
-import PlanComparisonDialog from './components/PlanComparisonDialog.vue';
 import EmergencyOrderDialog from './components/EmergencyOrderDialog.vue';
 import ExecuteConfirmDialog from './components/ExecuteConfirmDialog.vue';
 import IssueProcessDrawer from '@/views/wms/materialIssue/components/IssueProcessDrawer.vue';
 import AllocationApi, { getPlanDetail } from '@/api/wms/allocation/index';
 import { getMaterialIssueByPlan as fetchIssueByPlan } from '@/api/wms/materialIssue';
 import type { WorkOrderVO, AllocationPlanVO, AllocationDetailVO } from '@/api/wms/allocation/types';
+import { buildAllocationMaterialIssueItems } from './utils/workOrderMaterialIssue';
 import { useUserStore } from '@/store/modules/user';
 
 const userStore = useUserStore();
 const activeStep = ref(0);
+const generating = ref(false);
 
 const showOrderDialog = ref(false);
-const showComparisonDialog = ref(false);
 const showEmergencyDialogVisible = ref(false);
 const showExecuteDialogVisible = ref(false);
 const issueDrawerVisible = ref(false);
 const currentIssueId = ref<number | string | null>(null);
 
 const selectedOrders = ref<WorkOrderVO[]>([]);
-const allocationPlans = ref<AllocationPlanVO[]>([]);
-const selectedPlanId = ref<number | null>(null);
-const selectedPlanDetail = ref<AllocationPlanVO | null>(null);
+const currentPlan = ref<AllocationPlanVO | null>(null);
+const currentPlanId = ref<number | null>(null);
 const planDetails = ref<AllocationDetailVO[]>([]);
+
+function normalizePlans(data: unknown): AllocationPlanVO[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data as AllocationPlanVO[];
+  return [data as AllocationPlanVO];
+}
+
+const planStatusText = (status: string) => {
+  const map: Record<string, string> = {
+    DRAFT: '草稿',
+    CONFIRMED: '已确认',
+    EXECUTING: '执行中',
+    COMPLETED: '已完成',
+    CANCELLED: '已取消'
+  };
+  return map[status] || status;
+};
+
+const planStatusTag = (status: string) => {
+  const map: Record<string, string> = {
+    DRAFT: 'info',
+    CONFIRMED: 'success',
+    EXECUTING: 'warning',
+    COMPLETED: 'primary',
+    CANCELLED: 'danger'
+  };
+  return map[status] || 'info';
+};
 
 const showOrderSelection = () => {
   showOrderDialog.value = true;
@@ -145,65 +185,63 @@ const removeOrder = (workOrderNo: string) => {
   selectedOrders.value = selectedOrders.value.filter((o) => o.workOrderNo !== workOrderNo);
 };
 
-const generatePlansAndNext = async () => {
-  if (selectedOrders.value.length === 0) {
-    ElMessage.warning('请先选择工单');
-    return;
-  }
-  try {
-    const workOrderNos = selectedOrders.value.map((o) => o.workOrderNo);
-    const response = await AllocationApi.generateAllocation({ workOrderNos, generateMultiple: true });
-    if (response.code === 200) {
-      allocationPlans.value = response.data;
-      ElMessage.success(`已生成 ${response.data.length} 个方案`);
-      activeStep.value = 1;
-      if (response.data.length > 0) {
-        const best = response.data.reduce((a, b) => (a.totalScore > b.totalScore ? a : b));
-        selectPlan(best.id);
-      }
-    }
-  } catch {
-    ElMessage.error('生成分配方案失败');
-  }
-};
-
-const selectPlan = async (planId: number) => {
-  selectedPlanId.value = planId;
+const loadPlanDetail = async (planId: number) => {
+  currentPlanId.value = planId;
   try {
     const response = await getPlanDetail(planId);
     if (response.code === 200) {
       const data = response.data;
-      planDetails.value = data?.allocationDetails || data || [];
-      selectedPlanDetail.value = data?.planInfo || allocationPlans.value.find((p) => p.id === planId) || null;
+      planDetails.value = data?.allocationDetails || (Array.isArray(data) ? data : []) || [];
+      currentPlan.value = data?.planInfo || currentPlan.value;
     }
   } catch {
-    ElMessage.error('获取方案详情失败');
+    ElMessage.error('获取备料明细失败');
   }
 };
 
-const viewPlanDetail = (planId: number) => selectPlan(planId);
-
-const confirmPlan = async (planId: number) => {
+const generatePickingAndNext = async () => {
+  if (selectedOrders.value.length === 0) {
+    ElMessage.warning('请先选择工单');
+    return;
+  }
+  generating.value = true;
   try {
-    await ElMessageBox.confirm('确认后将锁定库存，不可再改方案。', '确认分配方案', { type: 'warning' });
-    const response = await AllocationApi.confirmAllocation(planId, userStore.nickname || 'system');
+    const workOrderNos = selectedOrders.value.map((o) => o.workOrderNo);
+    const response = await AllocationApi.generateAllocation({
+      workOrderNos,
+      generateMultiple: false,
+      materialIssueItems: buildAllocationMaterialIssueItems(selectedOrders.value)
+    });
     if (response.code === 200) {
-      ElMessage.success('方案已确认');
-      const plan = allocationPlans.value.find((p) => p.id === planId);
-      if (plan) plan.planStatus = 'CONFIRMED';
-      if (selectedPlanDetail.value?.id === planId) selectedPlanDetail.value.planStatus = 'CONFIRMED';
+      const plans = normalizePlans(response.data);
+      if (plans.length === 0) {
+        ElMessage.warning('未生成备料清单');
+        return;
+      }
+      currentPlan.value = plans[0];
+      ElMessage.success('备料清单已生成');
+      activeStep.value = 1;
+      await loadPlanDetail(plans[0].id);
+    }
+  } catch {
+    ElMessage.error('生成备料清单失败');
+  } finally {
+    generating.value = false;
+  }
+};
+
+const confirmCurrentPlan = async () => {
+  if (!currentPlanId.value) return;
+  try {
+    await ElMessageBox.confirm('确认后将锁定库存，不可再改备料清单。', '确认备料', { type: 'warning' });
+    const response = await AllocationApi.confirmAllocation(currentPlanId.value, userStore.nickname || 'system');
+    if (response.code === 200) {
+      ElMessage.success('备料已确认');
+      if (currentPlan.value) currentPlan.value.planStatus = 'CONFIRMED';
     }
   } catch {
     /* cancelled */
   }
-};
-
-const showComparison = () => {
-  if (allocationPlans.value.length < 2) {
-    ElMessage.warning('需要至少 2 个方案才能对比');
-    return;
-  }
-  showComparisonDialog.value = true;
 };
 
 const showEmergencyDialog = () => {
@@ -215,9 +253,11 @@ const handleEmergencyOrder = async (emergencyData: unknown) => {
     const response = await AllocationApi.handleEmergency(emergencyData);
     if (response.code === 200) {
       ElMessage.success('紧急插单已处理');
-      allocationPlans.value.push(response.data);
+      const plans = normalizePlans(response.data);
+      const plan = Array.isArray(plans) ? plans[0] : (response.data as AllocationPlanVO);
+      currentPlan.value = plan;
       activeStep.value = 1;
-      selectPlan(response.data.id);
+      if (plan?.id) await loadPlanDetail(plan.id);
       showEmergencyDialogVisible.value = false;
     }
   } catch {
@@ -226,18 +266,18 @@ const handleEmergencyOrder = async (emergencyData: unknown) => {
 };
 
 const showExecuteDialog = () => {
-  if (!selectedPlanDetail.value) return;
-  if (selectedPlanDetail.value.planStatus !== 'CONFIRMED') {
-    ElMessage.warning('请先确认分配方案');
+  if (!currentPlan.value) return;
+  if (currentPlan.value.planStatus !== 'CONFIRMED') {
+    ElMessage.warning('请先确认备料清单');
     return;
   }
   showExecuteDialogVisible.value = true;
 };
 
 const executeAllocation = async (operator: string) => {
-  if (!selectedPlanId.value) return;
+  if (!currentPlanId.value) return;
   try {
-    const response = await AllocationApi.executeAllocation(selectedPlanId.value, operator);
+    const response = await AllocationApi.executeAllocation(currentPlanId.value, operator);
     if (response.code === 200) {
       ElMessage.success('已生成发料单');
       const issueId = response.data?.issueOrder?.id;
@@ -246,28 +286,23 @@ const executeAllocation = async (operator: string) => {
         issueDrawerVisible.value = true;
         activeStep.value = 2;
       }
-      if (selectedPlanDetail.value) selectedPlanDetail.value.planStatus = 'EXECUTING';
+      if (currentPlan.value) currentPlan.value.planStatus = 'EXECUTING';
     }
   } catch {
     ElMessage.error('执行失败');
   }
 };
 
-const onPlanCardExecute = (planId: number) => {
-  selectPlan(planId);
-  showExecuteDialog();
-};
-
 const goToMaterialIssue = async () => {
-  if (!selectedPlanId.value) return;
+  if (!currentPlanId.value) return;
   try {
-    const res = await fetchIssueByPlan(selectedPlanId.value);
+    const res = await fetchIssueByPlan(currentPlanId.value);
     if (res.data?.id) {
       currentIssueId.value = res.data.id;
       issueDrawerVisible.value = true;
       activeStep.value = 2;
     } else {
-      ElMessage.info('未找到发料单，请先执行方案');
+      ElMessage.info('未找到发料单，请先执行备料');
     }
   } catch {
     ElMessage.error('查询发料单失败');
@@ -307,15 +342,11 @@ const goToMaterialIssue = async () => {
   font-size: 13px;
   color: var(--el-text-color-secondary);
 }
-.plan-detail-panel {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--el-border-color-lighter);
+.picking-hint {
+  margin-bottom: 16px;
 }
-.panel-title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 12px;
+.plan-summary {
+  margin-bottom: 16px;
 }
 .step-done {
   padding: 24px 0;

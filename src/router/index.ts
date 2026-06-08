@@ -338,6 +338,21 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         hidden: true
       }
     ]
+  },
+  {
+    path: '/warehouse/item',
+    component: Layout,
+    hidden: true,
+    permissions: ['wms:workOrder:list'],
+    children: [
+      {
+        path: 'itemDetail/:materialCode',
+        component: () => import('@/views/wms/item/components/itemDetail.vue'),
+        name: 'itemDetail',
+        meta: { title: '物料明细', activeMenu: '/basic/warehouse/item', icon: '' },
+        hidden: true
+      }
+    ]
   }
 ];
 

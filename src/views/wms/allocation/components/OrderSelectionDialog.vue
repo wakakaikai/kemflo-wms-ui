@@ -71,7 +71,10 @@
           <el-button type="danger" size="small" :disabled="selectedOrders.length === 0" @click="clearSelection"> 清空选择 </el-button>
         </div>
         <div class="selected-list">
-          <el-tag v-for="order in selectedOrders" :key="order.id" closable @close="removeSelectedOrder(order)" class="selected-tag"> {{ order.workOrderNo }} </el-tag>
+          <el-tag v-for="order in selectedOrders" :key="order.id" closable @close="removeSelectedOrder(order)" class="selected-tag">
+            {{ order.workOrderNo }}
+            <span v-if="order.materialIssues?.length" class="partial-badge">部分发料</span>
+          </el-tag>
         </div>
       </div>
     </div>
@@ -85,14 +88,19 @@
   </el-dialog>
 
   <!-- BOM详情对话框 -->
-  <work-order-bom-dialog v-model="showBomDialog" :work-order="currentWorkOrder" />
+  <work-order-bom-dialog
+    v-model="showBomDialog"
+    :work-order="currentWorkOrder"
+    :material-issues="currentWorkOrder ? orderMaterialIssues[currentWorkOrder.workOrderNo] : undefined"
+    @save="onBomMaterialIssuesSave"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, watch, nextTick } from 'vue';
 import WorkOrderBomDialog from './WorkOrderBomDialog.vue';
 import dayjs from 'dayjs';
-import type { WorkOrderVO } from '@/api/wms/allocation/types';
+import type { WorkOrderVO, WorkOrderMaterialIssueLine } from '@/api/wms/allocation/types';
 
 import PriorityBadge from './PriorityBadge.vue';
 import { listWorkOrder } from '@/api/wms/workOrder';
@@ -113,6 +121,8 @@ const visible = ref(false);
 const queryFormRef = ref<ElFormInstance>();
 const orderTableRef = ref();
 const showBomDialog = ref(false);
+/** 工单号 -> 部分发料明细 */
+const orderMaterialIssues = ref<Record<string, WorkOrderMaterialIssueLine[]>>({});
 
 const loading = ref(true);
 const currentWorkOrder = ref<WorkOrderVO | null>(null);
@@ -209,7 +219,12 @@ watch(
     if (val) {
       // 初始化已选工单
       selectedOrders.value = [...props.selectedOrders];
-      // 加载数据
+      orderMaterialIssues.value = {};
+      props.selectedOrders.forEach((o) => {
+        if (o.materialIssues?.length) {
+          orderMaterialIssues.value[o.workOrderNo] = [...o.materialIssues];
+        }
+      });
       getList();
     }
   }
@@ -271,7 +286,10 @@ const resetQuery = () => {
 
 // 表格选择变化
 const handleSelectionChange = (rows: WorkOrderVO[]) => {
-  selectedOrders.value = rows;
+  selectedOrders.value = rows.map((row) => ({
+    ...row,
+    materialIssues: orderMaterialIssues.value[row.workOrderNo] ?? row.materialIssues
+  }));
   selectedIds.value = rows.map((item: any) => item.id);
 };
 
@@ -302,9 +320,22 @@ const handleClose = () => {
   visible.value = false;
 };
 
+const onBomMaterialIssuesSave = (payload: { workOrderNo: string; materialIssues: WorkOrderMaterialIssueLine[] }) => {
+  orderMaterialIssues.value[payload.workOrderNo] = payload.materialIssues;
+  if (selectedOrders.value.some((o) => o.workOrderNo === payload.workOrderNo)) {
+    selectedOrders.value = selectedOrders.value.map((o) =>
+      o.workOrderNo === payload.workOrderNo ? { ...o, materialIssues: payload.materialIssues } : o
+    );
+  }
+};
+
 // 确认选择
 const handleConfirm = () => {
-  emit('confirm', selectedOrders.value);
+  const orders = selectedOrders.value.map((o) => ({
+    ...o,
+    materialIssues: orderMaterialIssues.value[o.workOrderNo] ?? o.materialIssues
+  }));
+  emit('confirm', orders);
   handleClose();
 };
 </script>
@@ -353,10 +384,15 @@ const handleConfirm = () => {
 }
 
 .selected-tag {
-  max-width: 200px;
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.partial-badge {
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--el-color-warning);
 }
 
 .text-warning {

@@ -12,6 +12,15 @@ export interface WorkOrderVO {
   soDeliveryDate: string;
   status: string;
   remark?: string;
+  priority?: number;
+  /** 部分发料：各物料本次发料数量（由 BOM 弹窗保存） */
+  materialIssues?: WorkOrderMaterialIssueLine[];
+}
+
+/** 工单物料本次发料行 */
+export interface WorkOrderMaterialIssueLine {
+  materialCode: string;
+  issueQty: number;
 }
 
 export interface WorkOrderBomVO {
@@ -23,6 +32,20 @@ export interface WorkOrderBomVO {
   issuedQty: number;
   unit: string;
   inventoryUnit: string;
+  /** 待发 = componentQty - issuedQty */
+  pendingQty?: number;
+  /** 用户填写的本次发料数量 */
+  issueQty?: number;
+  availableQty?: number;
+  batchCount?: number;
+  locationCount?: number;
+  inventoryStatus?: string;
+}
+
+export interface AllocationMaterialIssueItem {
+  workOrderNo: string;
+  materialCode: string;
+  issueQty: number;
 }
 
 export interface AllocationRequest {
@@ -32,6 +55,8 @@ export interface AllocationRequest {
   isEmergency?: boolean;
   emergencyLevel?: number;
   emergencyReason?: string;
+  /** 部分发料明细，不传则按 BOM 待发满额分配 */
+  materialIssueItems?: AllocationMaterialIssueItem[];
 }
 
 export interface EmergencyAllocationRequest {

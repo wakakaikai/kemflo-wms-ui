@@ -53,13 +53,6 @@
           <el-date-picker v-model="formData.expectedFinishTime" type="datetime" placeholder="选择期望完成时间" value-format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
         </el-form-item>
 
-        <!-- 策略选择 -->
-        <el-form-item label="分配策略" prop="strategyType">
-          <el-select v-model="formData.strategyType" placeholder="请选择分配策略" style="width: 100%">
-            <el-option v-for="strategy in emergencyStrategies" :key="strategy.value" :label="strategy.label" :value="strategy.value" />
-          </el-select>
-        </el-form-item>
-
         <!-- 影响分析 -->
         <el-form-item label="影响分析">
           <div v-if="impactAnalysis" class="impact-analysis">
@@ -142,13 +135,6 @@ const showOrderSelectDialog = ref(false);
 const analyzing = ref(false);
 const submitting = ref(false);
 
-// 紧急策略选项
-const emergencyStrategies = [
-  { value: 'EMERGENCY_PRIORITY', label: '优先级抢占' },
-  { value: 'EMERGENCY_RESERVE', label: '预留库存' },
-  { value: 'EMERGENCY_EXPEDITE', label: '加急处理' }
-];
-
 // 表单数据
 const formData = reactive({
   workOrderNo: '',
@@ -174,7 +160,6 @@ const formRules: FormRules = {
     { min: 5, message: '紧急原因至少5个字符', trigger: 'blur' }
   ],
   expectedFinishTime: [{ required: true, message: '请选择期望完成时间', trigger: 'change' }],
-  strategyType: [{ required: true, message: '请选择分配策略', trigger: 'change' }],
   approver: [{ required: true, message: '请输入审批人', trigger: 'blur' }]
 };
 

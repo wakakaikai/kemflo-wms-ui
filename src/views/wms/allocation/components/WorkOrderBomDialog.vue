@@ -41,8 +41,25 @@
       <!-- BOM物料列表 -->
       <div class="bom-list">
         <div class="bom-header">
-          <span class="header-title">BOM物料清单</span>
+          <div>
+            <span class="header-title">BOM物料清单</span>
+            <span class="header-hint">支持部分发料，可修改「本次发料」数量（0 ~ 待发）</span>
+          </div>
+          <div class="header-toolbar">
+            <el-switch
+              v-model="showFullyIssued"
+              inline-prompt
+              active-text="显示已全部发料"
+              inactive-text="仅待发物料"
+            />
+            <span v-if="fullyIssuedCount > 0" class="hidden-hint">
+              已隐藏 {{ fullyIssuedCount }} 条已全部发料
+            </span>
+            <span class="selection-hint">已选 {{ selectedBomRows.length }} / 待发 {{ issuableCount }} 种</span>
+          </div>
           <div class="header-actions">
+            <el-button size="small" @click="fillAllPending">填满待发</el-button>
+            <el-button size="small" @click="clearAllIssue">本次清零</el-button>
             <el-button size="small" @click="checkInventory">
               <el-icon><Search /></el-icon>库存检查
             </el-button>
@@ -52,31 +69,62 @@
           </div>
         </div>
 
-        <el-table :data="bomList" border stripe :max-height="400" size="small">
+        <el-table
+          ref="bomTableRef"
+          :data="displayBomList"
+          border
+          stripe
+          :max-height="400"
+          size="small"
+          row-key="componentMaterial"
+          @selection-change="onBomSelectionChange"
+          @select="onBomRowSelect"
+          @select-all="onBomSelectAll"
+          @deselect="onBomRowDeselect"
+        >
+          <el-table-column type="selection" width="48" :selectable="isRowSelectable" />
           <el-table-column type="index" label="序号" width="60" />
           <el-table-column prop="componentMaterial" label="物料编码" width="120" />
           <el-table-column prop="componentDesc" label="物料描述" min-width="150" />
-          <el-table-column label="需求数量" width="120">
+          <el-table-column label="需求数量" width="100" align="right">
             <template #default="{ row }">
-              {{ parseFloat(row.componentQty || 0) }}
+              {{ formatQty(row.componentQty) }}
             </template>
           </el-table-column>
-          <el-table-column prop="unit" label="单位" width="60" />
-          <el-table-column label="已发数量" width="120">
+          <el-table-column prop="inventoryUnit" label="基本单位" width="80" />
+          <el-table-column label="已扣账数量" width="88" align="right">
             <template #default="{ row }">
-              {{ parseFloat(row.issuedQty || 0) }}
+              {{ formatQty(row.issuedQty) }}
             </template>
           </el-table-column>
-          <el-table-column label="待发数量" width="120">
+          <el-table-column label="待发数量" width="88" align="right">
             <template #default="{ row }">
-              <span
-                :class="{
-                  'text-warning': row.pendingQty > 0,
-                  'text-success': row.pendingQty === 0
-                }"
-              >
-                {{ row.pendingQty }}
+              <span :class="row.pendingQty > 0 ? 'text-warning' : 'text-success'">
+                {{ formatQty(row.pendingQty) }}
               </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="本次发料" width="140">
+            <template #default="{ row }">
+              <el-input-number
+                v-model="row.issueQty"
+                :min="0"
+                :max="row.pendingQty"
+                :precision="4"
+                :step="1"
+                :disabled="!canEditIssueQty(row)"
+                controls-position="right"
+                size="small"
+                class="issue-qty-input"
+                @change="(val: number | undefined) => onIssueQtyChange(row, val)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="88" align="center">
+            <template #default="{ row }">
+              <el-tag v-if="row.pendingQty <= 0" type="info" size="small">已发完</el-tag>
+              <el-tag v-else-if="isRowSelected(row)" type="success" size="small">待发料</el-tag>
+              <el-tag v-else type="info" size="small" effect="plain">未勾选</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="库存状态" width="120">
@@ -168,10 +216,16 @@
     </div>
 
     <template #footer>
-      <span class="dialog-footer">
-        <el-button @click="handleClose">关闭</el-button>
-        <el-button type="primary" @click="showAllocationPreview"> 分配预览 </el-button>
-      </span>
+      <div class="bom-dialog-footer">
+        <span v-if="totalIssueQty > 0" class="footer-summary">本次发料 {{ totalIssueQty }} 种物料</span>
+        <div class="dialog-footer">
+          <el-button @click="handleClose">关闭</el-button>
+          <el-button type="success" :disabled="!workOrder?.workOrderNo" @click="saveMaterialIssues">保存发料数量</el-button>
+          <el-button type="primary" :disabled="!workOrder?.workOrderNo || totalIssueQty <= 0" @click="openAllocationPreview">
+            分配预览
+          </el-button>
+        </div>
+      </div>
     </template>
   </el-dialog>
 
@@ -183,36 +237,62 @@
 
   <!-- 物料详情对话框 -->
   <material-detail-dialog v-model="showMaterialDialog" :material="selectedMaterial" :work-order="workOrder" />
+
+  <allocation-preview-dialog
+    v-model="showPreviewDialog"
+    :work-order-no="workOrder?.workOrderNo"
+    :material-issue-items="previewMaterialIssueItems"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
+import type { TableInstance } from 'element-plus';
 import { ElMessage } from 'element-plus';
 import { Search, Download } from '@element-plus/icons-vue';
 import dayjs from 'dayjs';
-import type { WorkOrderVO, WorkOrderBomVO } from '@/api/wms/allocation/types';
+import type { WorkOrderVO, WorkOrderBomVO, WorkOrderMaterialIssueLine } from '@/api/wms/allocation/types';
 import WorkOrderApi, { checkMaterialInventory } from '@/api/wms/allocation/index';
 import InventoryApi from '@/api/wms/allocation/index';
+import {
+  bomRowsToIssueLines,
+  clampIssueQty,
+  getOrderRequiredQty,
+  initBomIssueRow,
+  issueLineMap,
+  needsIssue
+} from '../utils/workOrderMaterialIssue';
 import PriorityBadge from './PriorityBadge.vue';
 import InventoryStatus from './InventoryStatus.vue';
 import KitRateIndicator from './KitRateIndicator.vue';
 import BatchDetailDialog from './BatchDetailDialog.vue';
 import LocationDetailDialog from './LocationDetailDialog.vue';
+import AllocationPreviewDialog from './AllocationPreviewDialog.vue';
 // import MaterialDetailDialog from './MaterialDetailDialog.vue';
 
 interface Props {
   modelValue: boolean;
   workOrder: WorkOrderVO | null;
+  /** 已保存的部分发料数量 */
+  materialIssues?: WorkOrderMaterialIssueLine[];
 }
 
 const props = defineProps<Props>();
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits<{
+  'update:modelValue': [boolean];
+  save: [{ workOrderNo: string; materialIssues: WorkOrderMaterialIssueLine[] }];
+}>();
 
 const visible = ref(false);
 const showBatchDialog = ref(false);
 const showLocationDialog = ref(false);
 const showMaterialDialog = ref(false);
+const showPreviewDialog = ref(false);
+const bomTableRef = ref<TableInstance>();
+/** 默认隐藏已全部发料的行 */
+const showFullyIssued = ref(false);
+const selectedBomRows = ref<WorkOrderBomVO[]>([]);
 
 // BOM列表
 const bomList = ref<WorkOrderBomVO[]>([]);
@@ -227,20 +307,208 @@ const remainingQty = computed(() => {
   return props.workOrder.plannedQty - (props.workOrder.issuedQty || 0);
 });
 
-// 计算缺料物料
-const shortageMaterials = computed(() => {
-  return bomList.value
-    .filter((material) => {
-      return material.pendingQty > 0 && material.availableQty !== undefined;
-    })
-    .map((material) => ({
-      componentMaterial: material.componentMaterial,
-      componentDesc: material.componentDesc,
-      requiredQty: material.componentQty,
-      availableQty: material.availableQty || 0,
-      shortageQty: material.componentQty - (material.availableQty || 0)
-    }));
+const displayBomList = computed(() => {
+  if (showFullyIssued.value) return bomList.value;
+  return bomList.value.filter((row) => needsIssue(row));
 });
+
+const fullyIssuedCount = computed(() => bomList.value.filter((row) => !needsIssue(row)).length);
+
+const issuableCount = computed(() => bomList.value.filter((row) => needsIssue(row)).length);
+
+const selectedMaterialCodes = computed(() => new Set(selectedBomRows.value.map((r) => r.componentMaterial)));
+
+/** 仅待发>0 可勾选；已全部发料（本次发料必为 0）禁用 */
+const isRowSelectable = (row: WorkOrderBomVO) => needsIssue(row);
+
+const isRowSelected = (row: WorkOrderBomVO) => selectedMaterialCodes.value.has(row.componentMaterial);
+
+const canEditIssueQty = (row: WorkOrderBomVO) => needsIssue(row) && isRowSelected(row);
+
+const totalIssueQty = computed(() =>
+  bomList.value.filter((row) => isRowSelected(row) && Number(row.issueQty) > 0).length
+);
+
+const previewMaterialIssueItems = computed(() => {
+  if (!props.workOrder?.workOrderNo) return undefined;
+  const lines = bomRowsToIssueLines(bomList.value, selectedMaterialCodes.value);
+  if (lines.length === 0) return undefined;
+  return lines.map((l) => ({
+    workOrderNo: props.workOrder!.workOrderNo,
+    materialCode: l.materialCode,
+    issueQty: l.issueQty
+  }));
+});
+
+const shortageMaterials = computed(() => {
+  const scope = selectedBomRows.value.length > 0 ? selectedBomRows.value : bomList.value.filter(needsIssue);
+  return scope
+    .filter((material) => {
+      const req = getOrderRequiredQty(material);
+      return req > 0 && material.availableQty !== undefined;
+    })
+    .map((material) => {
+      const requiredQty = getOrderRequiredQty(material);
+      const availableQty = material.availableQty || 0;
+      return {
+        componentMaterial: material.componentMaterial,
+        componentDesc: material.componentDesc,
+        requiredQty,
+        availableQty,
+        shortageQty: Math.max(0, requiredQty - availableQty)
+      };
+    })
+    .filter((m) => m.shortageQty > 0);
+});
+
+const formatQty = (val?: number) => {
+  const n = Number(val ?? 0);
+  return Number.isNaN(n) ? '0' : n;
+};
+
+const onIssueQtyChange = (row: WorkOrderBomVO, val?: number) => {
+  if (!needsIssue(row)) {
+    row.issueQty = 0;
+    return;
+  }
+  if (!isRowSelected(row)) {
+    row.issueQty = 0;
+    return;
+  }
+  const qty = clampIssueQty(val ?? 0, row.pendingQty ?? 0);
+  row.issueQty = qty;
+  if (qty <= 0) {
+    nextTick(() => {
+      bomTableRef.value?.toggleRowSelection(row, false);
+      purgeInvalidSelection();
+    });
+  }
+};
+
+const onBomSelectionChange = (rows: WorkOrderBomVO[]) => {
+  const valid = rows.filter((r) => needsIssue(r) && Number(r.issueQty) > 0);
+  selectedBomRows.value = valid;
+  const selectedCodes = new Set(valid.map((r) => r.componentMaterial));
+  bomList.value.forEach((row) => {
+    if (!needsIssue(row)) {
+      row.issueQty = 0;
+    } else if (!selectedCodes.has(row.componentMaterial)) {
+      row.issueQty = 0;
+    }
+  });
+  if (valid.length !== rows.length) {
+    nextTick(() => purgeInvalidSelection());
+  }
+};
+
+const onBomRowSelect = (row: WorkOrderBomVO) => {
+  if (!needsIssue(row)) return;
+  if ((row.issueQty ?? 0) <= 0) {
+    row.issueQty = row.pendingQty ?? 0;
+  }
+};
+
+const onBomRowDeselect = (row: WorkOrderBomVO) => {
+  row.issueQty = 0;
+};
+
+const onBomSelectAll = (rows: WorkOrderBomVO[]) => {
+  if (rows.length === 0) {
+    bomList.value.filter(needsIssue).forEach((row) => {
+      row.issueQty = 0;
+    });
+    return;
+  }
+  rows.forEach((row) => onBomRowSelect(row));
+};
+
+/** 取消已全部发料、本次发料为 0 等无效勾选 */
+const purgeInvalidSelection = () => {
+  const table = bomTableRef.value;
+  bomList.value.forEach((row) => {
+    const invalid = !needsIssue(row) || Number(row.issueQty) <= 0;
+    if (invalid) {
+      if (!needsIssue(row)) row.issueQty = 0;
+      table?.toggleRowSelection(row, false);
+    }
+  });
+  selectedBomRows.value = selectedBomRows.value.filter(
+    (r) => needsIssue(r) && Number(r.issueQty) > 0
+  );
+};
+
+const syncBomTableSelection = async () => {
+  await nextTick();
+  const table = bomTableRef.value;
+  if (!table) return;
+  table.clearSelection();
+  selectedBomRows.value = [];
+
+  let toSelect: WorkOrderBomVO[];
+  if (props.materialIssues?.length) {
+    const savedCodes = new Set(
+      props.materialIssues.filter((l) => l.issueQty > 0).map((l) => l.materialCode)
+    );
+    toSelect = bomList.value.filter((r) => savedCodes.has(r.componentMaterial) && needsIssue(r));
+    toSelect.forEach((row) => {
+      const saved = props.materialIssues!.find((l) => l.materialCode === row.componentMaterial);
+      if (saved && saved.issueQty > 0) {
+        row.issueQty = clampIssueQty(saved.issueQty, row.pendingQty ?? 0);
+      }
+    });
+  } else {
+    toSelect = bomList.value.filter(needsIssue);
+    toSelect.forEach((row) => {
+      row.issueQty = row.pendingQty ?? 0;
+    });
+  }
+
+  toSelect = toSelect.filter((r) => Number(r.issueQty) > 0);
+  toSelect.forEach((row) => table.toggleRowSelection(row, true));
+  selectedBomRows.value = [...toSelect];
+  purgeInvalidSelection();
+};
+
+const fillAllPending = () => {
+  const targets =
+    selectedBomRows.value.length > 0
+      ? selectedBomRows.value.filter(needsIssue)
+      : displayBomList.value.filter(needsIssue);
+  if (targets.length === 0) {
+    ElMessage.warning('请先勾选需要发料的物料');
+    return;
+  }
+  targets.forEach((row) => {
+    row.issueQty = row.pendingQty ?? 0;
+  });
+  nextTick(() => {
+    targets.forEach((row) => bomTableRef.value?.toggleRowSelection(row, true));
+    selectedBomRows.value = [...targets];
+  });
+};
+
+const clearAllIssue = () => {
+  const targets = selectedBomRows.value.length > 0 ? selectedBomRows.value : bomList.value.filter(needsIssue);
+  targets.forEach((row) => {
+    row.issueQty = 0;
+  });
+  nextTick(() => purgeInvalidSelection());
+};
+
+const saveMaterialIssues = () => {
+  if (!props.workOrder?.workOrderNo) return;
+  if (selectedBomRows.value.length === 0) {
+    ElMessage.warning('请勾选需要发料的物料');
+    return;
+  }
+  const materialIssues = bomRowsToIssueLines(bomList.value, selectedMaterialCodes.value);
+  if (materialIssues.length === 0) {
+    ElMessage.warning('请为已勾选物料填写本次发料数量');
+    return;
+  }
+  emit('save', { workOrderNo: props.workOrder.workOrderNo, materialIssues });
+  ElMessage.success('发料数量已保存');
+};
 
 // 监听props变化
 watch(
@@ -248,10 +516,16 @@ watch(
   async (val) => {
     visible.value = val;
     if (val && props.workOrder) {
+      showFullyIssued.value = false;
+      selectedBomRows.value = [];
       await loadBomData();
     }
   }
 );
+
+watch(showFullyIssued, () => {
+  nextTick(() => purgeInvalidSelection());
+});
 
 // 监听visible变化
 watch(visible, (val) => {
@@ -270,12 +544,12 @@ const loadBomData = async () => {
 
   try {
     // 加载BOM清单
+    const savedMap = issueLineMap(props.materialIssues);
     const bomResponse = await WorkOrderApi.getWorkOrderBom(props.workOrder.workOrderNo);
     if (bomResponse.code === 200) {
-      bomList.value = bomResponse.data.map((bom: any) => ({
-        ...bom,
-        pendingQty: bom.componentQty - (bom.issuedQty || 0)
-      }));
+      bomList.value = bomResponse.data.map((bom: WorkOrderBomVO) =>
+        initBomIssueRow(bom, savedMap.get(bom.componentMaterial))
+      );
     }
 
     // 检查库存
@@ -317,6 +591,7 @@ const checkInventory = async () => {
           inventoryStatus: inventory?.status || 'UNKNOWN'
         };
       });
+      await syncBomTableSelection();
     }
   } catch (error) {
     ElMessage.error('库存检查失败');
@@ -354,9 +629,20 @@ const exportBom = () => {
   ElMessage.success('BOM导出功能开发中...');
 };
 
-// 显示分配预览
-const showAllocationPreview = () => {
-  ElMessage.info('分配预览功能开发中...');
+const openAllocationPreview = () => {
+  if (!props.workOrder?.workOrderNo) {
+    ElMessage.warning('请先选择工单');
+    return;
+  }
+  if (selectedBomRows.value.length === 0) {
+    ElMessage.warning('请勾选需要发料的物料');
+    return;
+  }
+  if (totalIssueQty.value <= 0) {
+    ElMessage.warning('请为已勾选物料填写本次发料数量');
+    return;
+  }
+  showPreviewDialog.value = true;
 };
 
 // 关闭对话框
@@ -386,8 +672,28 @@ const handleClose = () => {
 
 .bom-header {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 10px;
+}
+.bom-header > div:first-child {
+  width: 100%;
+}
+.header-toolbar {
+  display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.hidden-hint,
+.selection-hint {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
 .header-title {
@@ -395,9 +701,31 @@ const handleClose = () => {
   font-weight: bold;
 }
 
-.header-actions {
+.header-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: normal;
+  color: var(--el-text-color-secondary);
+}
+.issue-qty-input {
+  width: 120px;
+}
+.bom-dialog-footer {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+.footer-summary {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .inventory-analysis {
@@ -465,12 +793,6 @@ const handleClose = () => {
   font-weight: bold;
   margin-bottom: 12px;
   color: #f56c6c;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
 }
 
 :deep(.el-descriptions__label) {
