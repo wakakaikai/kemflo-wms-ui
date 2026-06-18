@@ -14,16 +14,16 @@
             <el-date-picker v-model="queryParams.plannedStartDateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button type="primary" icon="Search" :loading="loading" @click="handleQuery">搜索</el-button>
+            <el-button icon="Refresh" :disabled="loading" @click="resetQuery">重置</el-button>
           </el-form-item>
         </el-form>
       </el-card>
 
       <!-- 工单列表 -->
-      <div class="order-list">
+      <div class="order-list" v-loading="loading">
         <el-table ref="orderTableRef" :data="workOrderList" border height="400" @selection-change="handleSelectionChange" row-key="id">
-          <el-table-column type="selection" width="55" :reserve-selection="true" />
+          <el-table-column type="selection" width="55" />
           <el-table-column prop="workOrderNo" label="工单号" fixed>
             <template #default="{ row }">
               <el-tooltip v-if="row.isUrgent" content="紧急工单" placement="top">
@@ -37,26 +37,16 @@
           <el-table-column prop="plannedQty" label="计划数量" />
           <el-table-column prop="plannedStartDate" label="计划开始" />
           <el-table-column prop="plannedEndDate" label="计划完成" />
-          <el-table-column prop="soDeliveryDate" label="交货日期">
+          <el-table-column prop="status" label="状态" align="center">
             <template #default="{ row }">
-              {{ formatDate(row.soDeliveryDate) }}
+              <dict-tag :options="wms_work_order_status" :value="row.status" />
             </template>
           </el-table-column>
-          <el-table-column prop="status" label="状态">
+          <el-table-column v-if="showBomAction" label="操作" fixed="right" align="center">
             <template #default="{ row }">
-              <el-tag :type="getStatusTagType(row.status)" size="small">
-                {{ getStatusText(row.status) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="priority" label="优先级" align="center" >
-            <template #default="{ row }">
-              <priority-badge :priority="row.priority" />
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" fixed="right" align="center" >
-            <template #default="{ row }">
-              <el-button type="primary" link @click="viewBom(row)"> 查看BOM </el-button>
+              <el-button type="primary" link @click="viewBom(row)">
+                {{ bomMode === 'prep' ? '填写备料' : '查看领料' }}
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -67,13 +57,13 @@
       <!-- 已选工单 -->
       <div class="selected-orders">
         <div class="selected-title">
-          <span>已选工单 ({{ selectedOrders.length }})</span>
-          <el-button type="danger" size="small" :disabled="selectedOrders.length === 0" @click="clearSelection"> 清空选择 </el-button>
+          <span>已选工单 ({{ pickedOrders.length }})</span>
+          <el-button type="danger" size="small" :disabled="pickedOrders.length === 0" @click="clearSelection"> 清空选择 </el-button>
         </div>
         <div class="selected-list">
-          <el-tag v-for="order in selectedOrders" :key="order.id" closable @close="removeSelectedOrder(order)" class="selected-tag">
+          <el-tag v-for="order in pickedOrders" :key="order.id" closable @close="removeSelectedOrder(order)" class="selected-tag">
             {{ order.workOrderNo }}
-            <span v-if="order.materialIssues?.length" class="partial-badge">部分发料</span>
+            <span v-if="order.materialIssues?.length" class="partial-badge">{{ bomMode === 'prep' ? '部分备料' : '部分领料' }}</span>
           </el-tag>
         </div>
       </div>
@@ -82,40 +72,52 @@
     <template #footer>
       <span class="dialog-footer">
         <el-button @click="handleClose">取消</el-button>
-        <el-button type="primary" @click="handleConfirm" :disabled="selectedOrders.length === 0"> 确认选择 ({{ selectedOrders.length }}个工单) </el-button>
+        <el-button type="primary" @click="handleConfirm" :disabled="pickedOrders.length === 0"> 确认选择 ({{ pickedOrders.length }}个工单) </el-button>
       </span>
     </template>
   </el-dialog>
 
   <!-- BOM详情对话框 -->
   <work-order-bom-dialog
+    v-if="showBomAction"
     v-model="showBomDialog"
     :work-order="currentWorkOrder"
     :material-issues="currentWorkOrder ? orderMaterialIssues[currentWorkOrder.workOrderNo] : undefined"
+    :mode="bomMode"
     @save="onBomMaterialIssuesSave"
   />
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, nextTick } from 'vue';
+import { ref, reactive, watch, getCurrentInstance, toRefs, nextTick } from 'vue';
 import WorkOrderBomDialog from './WorkOrderBomDialog.vue';
-import dayjs from 'dayjs';
 import type { WorkOrderVO, WorkOrderMaterialIssueLine } from '@/api/wms/allocation/types';
 
-import PriorityBadge from './PriorityBadge.vue';
 import { listWorkOrder } from '@/api/wms/workOrder';
 import { WorkOrderForm, WorkOrderQuery } from '@/api/wms/workOrder/types';
 import { TableColumns } from '@/api/types';
 interface Props {
   modelValue: boolean;
   selectedOrders?: WorkOrderVO[];
+  /** issue=261领料；prep=平面仓备料需求 */
+  bomMode?: 'issue' | 'prep';
+  /** 是否显示列表内 BOM 快捷操作（统一工作台选单时关闭） */
+  showBomAction?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  selectedOrders: () => []
+  selectedOrders: () => [],
+  bomMode: 'issue',
+  showBomAction: true
 });
 
+const bomMode = computed(() => props.bomMode);
+const showBomAction = computed(() => props.showBomAction);
+
 const emit = defineEmits(['update:modelValue', 'confirm']);
+
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const { wms_work_order_status } = toRefs<any>(proxy?.useDict('wms_work_order_status'));
 
 const visible = ref(false);
 const queryFormRef = ref<ElFormInstance>();
@@ -124,7 +126,7 @@ const showBomDialog = ref(false);
 /** 工单号 -> 部分发料明细 */
 const orderMaterialIssues = ref<Record<string, WorkOrderMaterialIssueLine[]>>({});
 
-const loading = ref(true);
+const loading = ref(false);
 const currentWorkOrder = ref<WorkOrderVO | null>(null);
 
 const initFormData: WorkOrderForm = {
@@ -208,24 +210,45 @@ const total = ref(0);
 
 // 工单列表
 const workOrderList = ref<WorkOrderVO[]>([]);
-// 已选工单
-const selectedOrders = ref<WorkOrderVO[]>([]);
+// 已选工单（本地状态，避免与 props.selectedOrders 重名）
+const pickedOrders = ref<WorkOrderVO[]>([]);
 const selectedIds = ref<number[]>([]);
+const syncingSelection = ref(false);
+
+const initPickedOrdersFromProps = () => {
+  pickedOrders.value = [...props.selectedOrders];
+  orderMaterialIssues.value = {};
+  props.selectedOrders.forEach((o) => {
+    if (o.materialIssues?.length) {
+      orderMaterialIssues.value[o.workOrderNo] = [...o.materialIssues];
+    }
+  });
+};
+
+/** 按 pickedOrders 同步当前页表格勾选（与外部列表保持一致） */
+const syncTableSelection = async (clearAll = false) => {
+  await nextTick();
+  const table = orderTableRef.value;
+  if (!table) return;
+  syncingSelection.value = true;
+  if (clearAll) table.clearSelection();
+  const pickedWoNos = new Set(pickedOrders.value.map((o) => o.workOrderNo));
+  workOrderList.value.forEach((row) => {
+    table.toggleRowSelection(row, pickedWoNos.has(row.workOrderNo));
+  });
+  await nextTick();
+  syncingSelection.value = false;
+};
+
 // 监听props变化
 watch(
   () => props.modelValue,
-  (val) => {
+  async (val) => {
     visible.value = val;
     if (val) {
-      // 初始化已选工单
-      selectedOrders.value = [...props.selectedOrders];
-      orderMaterialIssues.value = {};
-      props.selectedOrders.forEach((o) => {
-        if (o.materialIssues?.length) {
-          orderMaterialIssues.value[o.workOrderNo] = [...o.materialIssues];
-        }
-      });
-      getList();
+      initPickedOrdersFromProps();
+      await getList();
+      await syncTableSelection(true);
     }
   }
 );
@@ -235,41 +258,19 @@ watch(visible, (val) => {
   emit('update:modelValue', val);
 });
 
-// 格式化日期
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-';
-  return dayjs(dateStr).format('YYYY-MM-DD');
-};
-
-// 获取状态文本
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    'DRAFT': '草稿',
-    'PENDING': '待发料',
-    'PARTIAL_ISSUED': '部分发料',
-    'FULL_ISSUED': '全部发料',
-    'CLOSED': '关闭'
-  };
-  return statusMap[status] || status;
-};
-
-// 获取状态标签类型
-const getStatusTagType = (status: string) => {
-  const typeMap: Record<string, string> = {
-    'PENDING': 'warning',
-    'PARTIAL_ISSUED': 'info',
-    'FULL_ISSUED': 'success',
-    'CLOSED': 'primary'
-  };
-  return typeMap[status] || 'info';
-};
 /** 查询工单信息列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await listWorkOrder(queryParams.value);
-  workOrderList.value = res.rows;
-  total.value = res.total;
-  loading.value = false;
+  try {
+    const res = await listWorkOrder(queryParams.value);
+    workOrderList.value = res.rows;
+    total.value = res.total;
+    if (visible.value) {
+      await syncTableSelection();
+    }
+  } finally {
+    loading.value = false;
+  }
 };
 
 /** 搜索按钮操作 */
@@ -284,54 +285,67 @@ const resetQuery = () => {
   handleQuery();
 };
 
-// 表格选择变化
+/** 表格勾选变化：合并当前页选择，保留其他页已选工单 */
 const handleSelectionChange = (rows: WorkOrderVO[]) => {
-  selectedOrders.value = rows.map((row) => ({
-    ...row,
-    materialIssues: orderMaterialIssues.value[row.workOrderNo] ?? row.materialIssues
-  }));
-  selectedIds.value = rows.map((item: any) => item.id);
+  if (syncingSelection.value) return;
+  const currentPageWoNos = new Set(workOrderList.value.map((r) => r.workOrderNo));
+  const selectedOnPage = new Set(rows.map((r) => r.workOrderNo));
+  const kept = pickedOrders.value.filter((o) => !currentPageWoNos.has(o.workOrderNo) || selectedOnPage.has(o.workOrderNo));
+  const keptWoNos = new Set(kept.map((o) => o.workOrderNo));
+  rows.forEach((row) => {
+    if (keptWoNos.has(row.workOrderNo)) return;
+    kept.push({
+      ...row,
+      materialIssues: orderMaterialIssues.value[row.workOrderNo] ?? row.materialIssues
+    });
+    keptWoNos.add(row.workOrderNo);
+  });
+  pickedOrders.value = kept;
+  selectedIds.value = pickedOrders.value.map((item) => item.id);
 };
 
-// 移除已选工单
+/** 从已选列表移除工单并取消表格勾选 */
 const removeSelectedOrder = (order: WorkOrderVO) => {
-  selectedOrders.value = selectedOrders.value.filter((o) => o.id !== order.id);
-  if (orderTableRef.value) {
-    orderTableRef.value.toggleRowSelection(order, false);
+  pickedOrders.value = pickedOrders.value.filter((o) => o.workOrderNo !== order.workOrderNo);
+  const tableRow = workOrderList.value.find((r) => r.workOrderNo === order.workOrderNo);
+  if (orderTableRef.value && tableRow) {
+    orderTableRef.value.toggleRowSelection(tableRow, false);
   }
 };
 
-// 清空选择
+/** 清空全部已选工单 */
 const clearSelection = () => {
-  selectedOrders.value = [];
+  pickedOrders.value = [];
   if (orderTableRef.value) {
     orderTableRef.value.clearSelection();
   }
 };
 
-// 查看BOM
+/** 打开工单 BOM 领料/备料弹窗 */
 const viewBom = (order: WorkOrderVO) => {
   currentWorkOrder.value = order;
   showBomDialog.value = true;
 };
 
-// 关闭对话框
+/** 关闭工单选择弹窗 */
 const handleClose = () => {
+  orderTableRef.value?.clearSelection();
   visible.value = false;
 };
 
+/** BOM 保存回调：缓存并同步工单的部分发料/备料明细 */
 const onBomMaterialIssuesSave = (payload: { workOrderNo: string; materialIssues: WorkOrderMaterialIssueLine[] }) => {
   orderMaterialIssues.value[payload.workOrderNo] = payload.materialIssues;
-  if (selectedOrders.value.some((o) => o.workOrderNo === payload.workOrderNo)) {
-    selectedOrders.value = selectedOrders.value.map((o) =>
+  if (pickedOrders.value.some((o) => o.workOrderNo === payload.workOrderNo)) {
+    pickedOrders.value = pickedOrders.value.map((o) =>
       o.workOrderNo === payload.workOrderNo ? { ...o, materialIssues: payload.materialIssues } : o
     );
   }
 };
 
-// 确认选择
+/** 确认选择：合并发料明细并提交给父组件 */
 const handleConfirm = () => {
-  const orders = selectedOrders.value.map((o) => ({
+  const orders = pickedOrders.value.map((o) => ({
     ...o,
     materialIssues: orderMaterialIssues.value[o.workOrderNo] ?? o.materialIssues
   }));

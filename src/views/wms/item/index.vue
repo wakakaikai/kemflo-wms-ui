@@ -97,6 +97,7 @@
             <dict-tag :options="wms_boolean_type" :value="scope.row.palletCheckFlag" />
           </template>
         </el-table-column>
+        <el-table-column label="反冲标识" align="center" prop="backFlush" />
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">

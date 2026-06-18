@@ -108,6 +108,20 @@ export const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '个人中心', icon: 'user' }
       }
     ]
+  },
+  {
+    path: '/wms/issueTaskDemand',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: 'detail/:demandNo',
+        component: () => import('@/views/wms/issueTask/detail.vue'),
+        name: 'IssueTaskDemandDetail',
+        meta: { title: '发料任务明细', activeMenu: '/wms/issueTask', noCache: true },
+        hidden: true
+      }
+    ]
   }
 ];
 

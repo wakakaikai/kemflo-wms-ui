@@ -80,6 +80,7 @@ export const useUserStore = defineStore('user', () => {
     userId,
     tenantId,
     token,
+    name,
     nickname,
     avatar,
     roles,

@@ -17,8 +17,6 @@ const isWhiteList = (path: string) => {
   return whiteList.some((pattern) => isPathMatch(pattern, path));
 };
 
-import { translateRouteTitle } from '@/utils/i18n';
-
 router.beforeEach(async (to, from, next) => {
   NProgress.start();
   if (getToken()) {

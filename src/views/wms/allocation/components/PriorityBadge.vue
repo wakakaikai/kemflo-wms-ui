@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<Props>(), {
   size: 'small'
 });
 
+/** 根据优先级数值映射标签类型 */
 const priorityType = computed(() => {
   if (props.priority >= 9) return 'danger';
   if (props.priority >= 7) return 'warning';
@@ -28,6 +29,7 @@ const priorityType = computed(() => {
   return 'success';
 });
 
+/** 优先级展示文本（P 前缀） */
 const priorityText = computed(() => {
   return `P${props.priority}`;
 });

@@ -1,12 +1,18 @@
 <template>
   <div class="kit-rate-indicator">
-    <el-progress :percentage="kitRatePercentage" :stroke-width="16" :color="progressColor" :show-text="true" :format="formatProgress" />
+    <el-progress
+      :text-inside="true"
+      :stroke-width="20"
+      :percentage="displayPercentage"
+      :status="progressStatus"
+      :format="formatProgress"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { getOrderRequiredQty } from '../utils/workOrderMaterialIssue';
+import { calcRowKitRate } from '@/api/wms/allocation/index';
 
 interface Props {
   material: any;
@@ -14,55 +20,56 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// 计算齐套率
-const kitRate = computed(() => {
+/** 库存是否尚未检查 */
+const isUnchecked = computed(() => {
   const material = props.material;
+  const available = material?.effectiveAvailableQty ?? material?.availableQty;
+  return available === undefined || available === null;
+});
 
-  if (!material.availableQty && material.availableQty !== 0) {
+/** 行级齐套率（0~1） */
+const kitRate = computed(() => {
+  if (isUnchecked.value) {
     return 0;
   }
+  return calcRowKitRate(props.material);
+});
 
-  const required = getOrderRequiredQty(material);
-  if (!required || required === 0) {
-    return 1;
+/** 齐套率整数百分比 */
+const kitRatePercentage = computed(() => Math.round(kitRate.value * 100));
+
+/** 进度条展示用百分比 */
+const displayPercentage = computed(() => (isUnchecked.value ? 0 : kitRatePercentage.value));
+
+/** 进度条状态色（成功/警告/异常） */
+const progressStatus = computed(() => {
+  if (isUnchecked.value) {
+    return undefined;
   }
-
-  return Math.min(material.availableQty / required, 1);
+  if (kitRatePercentage.value >= 100) {
+    return 'success';
+  }
+  if (kitRatePercentage.value >= 80) {
+    return 'warning';
+  }
+  return 'exception';
 });
 
-// 齐套率百分比
-const kitRatePercentage = computed(() => {
-  return Math.round(kitRate.value * 100);
-});
-
-// 进度条颜色
-const progressColor = computed(() => {
-  if (kitRatePercentage.value >= 100) return '#67c23a';
-  if (kitRatePercentage.value >= 70) return '#e6a23c';
-  return '#f56c6c';
-});
-
-// 格式化进度文本
-const formatProgress = (percentage: number) => {
-  const material = props.material;
-  if (!material.availableQty && material.availableQty !== 0) {
+/** 格式化进度条内文案 */
+const formatProgress = () => {
+  if (isUnchecked.value) {
     return '未检查';
   }
-
-  const available = material.availableQty || 0;
-  const required = getOrderRequiredQty(material);
-
-  if (percentage === 100) {
-    return '充足';
-  }
-
-  // return `${percentage}% (${available}/${required})`;
-  return `${percentage}%`;
+  return `${kitRatePercentage.value}%`;
 };
 </script>
 
 <style scoped>
 .kit-rate-indicator {
-  min-width: 100px;
+  min-width: 88px;
+}
+
+.kit-rate-indicator :deep(.el-progress-bar__innerText) {
+  font-size: 12px;
 }
 </style>

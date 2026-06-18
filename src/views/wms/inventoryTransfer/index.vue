@@ -1,247 +1,278 @@
 <template>
-  <div class="p-2">
-    <el-card shadow="never">
-      <el-row :gutter="20">
-        <!-- 上方搜索区域 -->
-        <el-col :span="24">
-          <el-card shadow="never" class="search-card">
-            <template #header>
-              <el-row :gutter="10" class="mb8">
-                <el-col :span="1.5">
-                  <span>库存明细</span>
-                </el-col>
-                <right-toolbar v-model:showSearch="showSearch" :columns="columns" @queryTable="getList"></right-toolbar>
-              </el-row>
-            </template>
+  <div class="transfer-page p-2">
+    <el-card shadow="never" class="inventory-card">
+      <template #header>
+        <div class="inventory-card-header">
+          <div class="inventory-header-left" @click="inventoryExpanded = !inventoryExpanded">
+            <el-icon class="inventory-collapse-icon" :class="{ 'is-expanded': inventoryExpanded }">
+              <ArrowRight />
+            </el-icon>
+            <span class="inventory-header-title">库存明细</span>
+          </div>
+          <right-toolbar v-model:showSearch="showSearch" :columns="columns" @queryTable="getList" />
+        </div>
+      </template>
 
-            <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
-              <!-- 默认显示的搜索项 -->
-              <el-form-item label="物料编码" prop="itemCode">
-                <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
-              </el-form-item>
+      <div v-show="inventoryExpanded" class="inventory-card-body">
+        <el-form v-show="showSearch" ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto" class="compact-form">
+          <el-form-item label="物料编码" prop="itemCode">
+            <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
+          </el-form-item>
+          <el-form-item label="库位编码" prop="locationCode">
+            <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
+          </el-form-item>
+          <div v-show="showAdvancedSearch">
+            <el-form-item label="物料名称" prop="itemName">
+              <el-input v-model="queryParams.itemName" placeholder="请输入物料名称" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="批次号" prop="batchCode">
+              <el-input v-model="queryParams.batchCode" placeholder="请输入批次号" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="仓库编码" prop="warehouseCode">
+              <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
+              <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable>
+                <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
+              </el-select>
+            </el-form-item>
+          </div>
+          <el-form-item>
+            <el-button type="primary" icon="Search" @click="handleQuery" :loading="loading">搜索</el-button>
+            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button link type="primary" @click="toggleAdvancedSearch">
+              {{ showAdvancedSearch ? '收起' : '高级搜索' }}
+              <el-icon class="el-icon--right">
+                <ArrowDown v-if="!showAdvancedSearch" />
+                <ArrowUp v-else />
+              </el-icon>
+            </el-button>
+          </el-form-item>
+        </el-form>
 
-              <el-form-item label="库位编码" prop="locationCode">
-                <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
-              </el-form-item>
+        <div class="search-result">
+          <el-table ref="inventoryTableRef" :data="inventoryDetailList" height="180" border v-loading="loading" @selection-change="handleSelectionChange">
+            <el-table-column type="selection" width="40" align="center" />
+            <el-table-column v-if="columns[0].visible" label="物料编码" align="left" prop="itemCode" min-width="100" show-overflow-tooltip />
+            <el-table-column v-if="columns[1].visible" label="物料名称" align="left" prop="itemName" min-width="120" show-overflow-tooltip />
+            <el-table-column v-if="columns[2].visible" label="批次号" align="center" prop="batchCode" min-width="90" show-overflow-tooltip />
+            <el-table-column v-if="columns[3].visible" label="非限制数量" align="left" min-width="90">
+              <template #default="scope">{{ formatQty(scope.row.availableQuantity) }}</template>
+            </el-table-column>
+            <el-table-column v-if="columns[4].visible" label="质检数量" align="left" min-width="80">
+              <template #default="scope">{{ formatQty(scope.row.inspectionQuantity) }}</template>
+            </el-table-column>
+            <el-table-column v-if="columns[5].visible" label="冻结数量" align="left" min-width="80">
+              <template #default="scope">{{ formatQty(scope.row.blockedQuantity) }}</template>
+            </el-table-column>
+            <el-table-column v-if="columns[6].visible" label="在途" align="right" prop="transitQuantity" min-width="70">
+              <template #default="scope">{{ formatQty(scope.row.transitQuantity) }}</template>
+            </el-table-column>
+            <el-table-column v-if="columns[7].visible" label="特殊库存" align="center" prop="specialInventoryFlag" min-width="80">
+              <template #default="scope">
+                <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
+              </template>
+            </el-table-column>
+            <el-table-column v-if="columns[8].visible && showInventoryBusinessPartnerColumn" label="业务伙伴" align="center" min-width="90">
+              <template #default="scope">
+                <span v-if="scope.row.specialInventoryFlag && scope.row.specialInventoryFlag !== 'N'">{{ scope.row.businessCode }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="columns[9].visible && showInventoryBusinessPartnerColumn" label="伙伴名称" align="center" min-width="100" show-overflow-tooltip>
+              <template #default="scope">
+                <span v-if="scope.row.specialInventoryFlag && scope.row.specialInventoryFlag !== 'N'">{{ scope.row.businessName }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="columns[10].visible" label="单位" align="center" prop="unit" width="80" />
+            <el-table-column v-if="columns[11].visible" label="仓库" align="left" prop="warehouseCode" min-width="70" show-overflow-tooltip />
+            <el-table-column v-if="columns[12].visible" label="库区" align="left" prop="areaCode" min-width="70" show-overflow-tooltip />
+            <el-table-column v-if="columns[13].visible" label="库位" align="left" prop="locationCode" min-width="90" show-overflow-tooltip />
+          </el-table>
+          <pagination
+            v-show="total > 0"
+            :total="total"
+            v-model:page="queryParams.pageNum"
+            v-model:limit="queryParams.pageSize"
+            @pagination="getList"
+            class="compact-pagination"
+          />
+        </div>
+      </div>
+    </el-card>
 
-              <!-- 高级搜索项，默认隐藏 -->
-              <div v-show="showAdvancedSearch">
-                <el-form-item label="物料名称" prop="itemName">
-                  <el-input v-model="queryParams.itemName" placeholder="请输入物料名称" clearable @keyup.enter="handleQuery" />
-                </el-form-item>
-                <el-form-item label="批次号" prop="batchCode">
-                  <el-input v-model="queryParams.batchCode" placeholder="请输入批次号" clearable @keyup.enter="handleQuery" />
-                </el-form-item>
-                <el-form-item label="仓库编码" prop="warehouseCode">
-                  <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
-                </el-form-item>
-                <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
-                  <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable>
-                    <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
-                  </el-select>
-                </el-form-item>
-              </div>
+    <div class="add-transfer-bar">
+      <el-button type="primary" @click="addSelectedToTransferList" circle class="rotate-button">
+        <el-icon><Switch /></el-icon>
+      </el-button>
+    </div>
 
-              <el-form-item>
-                <el-button type="primary" icon="Search" @click="handleQuery" :loading="loading">搜索</el-button>
-                <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-                <el-button link type="primary" @click="toggleAdvancedSearch">
-                  {{ showAdvancedSearch ? '收起' : '高级搜索' }}
-                  <el-icon class="el-icon--right">
-                    <ArrowDown v-if="!showAdvancedSearch" />
-                    <ArrowUp v-else />
-                  </el-icon>
-                </el-button>
+    <!-- 移转列表：主操作区 -->
+    <el-card shadow="never" class="transfer-main-card">
+      <template #header>
+        <div class="transfer-header">
+          <span class="header-title">移转列表</span>
+          <div class="header-actions">
+            <el-form :inline="true" class="move-type-form">
+              <el-form-item label="移动类型">
+                <el-select v-model="moveType" style="width: 100px" @change="handleMoveTypeChange">
+                  <el-option v-for="item in moveTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+                <span class="move-type-desc">{{ moveTypeDesc }}</span>
               </el-form-item>
             </el-form>
-
-            <!-- 搜索结果列表 -->
-            <div class="search-result">
-              <el-table ref="inventoryTableRef" :data="inventoryDetailList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
-                <el-table-column type="selection" width="55" align="center" />
-                <el-table-column v-if="columns[0].visible" label="物料编码" align="left" prop="itemCode" fixed="left" min-width="160" />
-                <el-table-column v-if="columns[1].visible" label="物料名称" align="left" prop="itemName" max-width="150" fixed="left" show-overflow-tooltip />
-                <el-table-column v-if="columns[2].visible" label="批次号" align="center" prop="batchCode" min-width="110" fixed="left" />
-                <el-table-column v-if="columns[3].visible" label="非限制数量" align="center" prop="availableQuantity" fixed="left" min-width="90" />
-                <el-table-column v-if="columns[4].visible" label="质检数量" align="center" prop="inspectionQuantity" fixed="left" />
-                <el-table-column v-if="columns[5].visible" label="冻结数量" align="center" prop="blockedQuantity" fixed="left" />
-                <el-table-column v-if="columns[6].visible" label="在途数量" align="center" prop="transitQuantity" fixed="left" />
-                <el-table-column v-if="columns[7].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
-                  <template #default="scope">
-                    <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
-                  </template>
-                </el-table-column>
-                <el-table-column v-if="columns[8].visible" label="业务伙伴" align="center" prop="businessCode" />
-                <el-table-column v-if="columns[9].visible" label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
-                <el-table-column v-if="columns[10].visible" label="单位" align="center" prop="unit" />
-                <el-table-column v-if="columns[11].visible" label="仓库编码" align="center" prop="warehouseCode" />
-                <el-table-column v-if="columns[12].visible" label="库区编码" align="center" prop="areaCode" />
-                <el-table-column v-if="columns[13].visible" label="库位编码" align="center" prop="locationCode" fixed="right" />
-              </el-table>
-
-              <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
-            </div>
-          </el-card>
-        </el-col>
-        <div style="margin: 20px 0; text-align: center; width: 100%">
-          <el-button type="primary" @click="addSelectedToTransferList" circle class="rotate-button">
-            <el-icon><Switch /></el-icon>
-          </el-button>
+            <el-radio-group v-if="needsTargetLocationMove" v-model="transferMode" @change="handleTransferModeChange">
+              <el-radio-button label="fixed">固定库位</el-radio-button>
+              <el-radio-button label="multiple">多库位</el-radio-button>
+            </el-radio-group>
+            <el-button type="danger" @click="clearTransferList" :disabled="transferList.length === 0">清空</el-button>
+            <right-toolbar :search="false" :columns="transferColumns" />
+          </div>
         </div>
-        <!-- 下方移转列表 -->
-        <el-col :span="24">
-          <el-card shadow="never">
-            <template #header>
-              <div class="transfer-header">
-                <span class="header-title">移转列表</span>
-                <div class="header-actions">
-                  <el-radio-group v-model="transferMode" @change="handleTransferModeChange">
-                    <el-radio-button label="fixed">固定库位</el-radio-button>
-                    <el-radio-button label="multiple">多库位</el-radio-button>
-                  </el-radio-group>
-                  <el-button type="danger" @click="clearTransferList" :disabled="transferList.length === 0">清空列表</el-button>
-                </div>
-              </div>
+      </template>
+
+      <div class="transfer-form-bar">
+        <el-form :model="fixedTransferForm" ref="fixedTransferFormRef" label-width="auto" :inline="true">
+          <el-row :gutter="12">
+            <el-col :sm="24" :md="8" :lg="8" v-if="needsTargetLocationMove && transferMode === 'fixed'">
+              <el-form-item label="目标库位" prop="targetLocationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
+                <el-input
+                  v-model.trim="fixedTransferForm.targetLocationCode"
+                  placeholder="请输入目标库位编码"
+                  clearable
+                  @keydown.tab.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)"
+                  @keydown.enter.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)"
+                >
+                  <template #append>
+                    <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
+                  </template>
+                </el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :sm="24" :md="8" :lg="8">
+              <el-form-item label="接收方">
+                <el-input v-model="fixedTransferForm.targetUserName" placeholder="请输入接收方">
+                  <template #append>
+                    <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
+                  </template>
+                </el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :sm="24" :md="8" :lg="8">
+              <el-form-item label="过账日期" prop="postingDate">
+                <el-date-picker clearable v-model="fixedTransferForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+      </div>
+      <div v-if="resultMessage" class="result-alert">
+        <el-alert show-icon :title="resultMessage" :type="resultStatus ? 'success' : 'error'" :closable="false">
+          <template #icon>
+            <Bell />
+          </template>
+        </el-alert>
+      </div>
+
+      <el-table :data="transferList" border class="transfer-table" v-loading="tableLoading" :max-height="transferTableHeight">
+        <el-table-column type="index" width="40" align="center" />
+        <el-table-column v-if="transferColumns[0].visible" label="物料编码" prop="itemCode" min-width="100" show-overflow-tooltip />
+        <el-table-column v-if="transferColumns[1].visible" label="物料名称" prop="itemName" min-width="120" show-overflow-tooltip />
+        <el-table-column v-if="transferColumns[2].visible" label="批次号" prop="batchCode" min-width="90" show-overflow-tooltip />
+        <el-table-column v-if="transferColumns[3].visible" label="源库位信息" width="180">
+          <template #default="scope">
+            <div>
+              <div>仓库: {{ scope.row.sourceWarehouseCode }}</div>
+              <div>库区: {{ scope.row.sourceAreaCode }}</div>
+              <div>库位: {{ scope.row.sourceLocationCode }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="transferColumns[4].visible" label="数量" min-width="180">
+          <template #default="scope">
+            <div>
+              <div>非限制数量: {{ formatQty(scope.row.availableQuantity) }}</div>
+              <div>质 检 数 量: {{ formatQty(scope.row.inspectionQuantity) }}</div>
+              <div>冻 结 数 量: {{ formatQty(scope.row.blockedQuantity) }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="transferColumns[5].visible" label="单位" prop="unit" align="center" width="80" />
+        <el-table-column v-if="transferColumns[6].visible" label="库存标识" align="center" prop="specialInventoryFlag" min-width="90">
+          <template #default="scope">
+            <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
+          </template>
+        </el-table-column>
+        <el-table-column v-if="transferColumns[7].visible && showBusinessPartnerColumn" label="业务伙伴" align="center" min-width="110">
+          <template #default="scope">
+            <template v-if="scope.row.specialInventoryFlag && scope.row.specialInventoryFlag !== 'N'">
+              <el-input v-model="scope.row.supplierCode" placeholder="供应商寄售编码" v-if="scope.row.specialInventoryFlag === 'K'" />
+              <el-input v-model="scope.row.customerCode" placeholder="客户寄售编码" v-else-if="scope.row.specialInventoryFlag === 'W'" />
+              <span v-else-if="scope.row.specialInventoryFlag === 'E'">{{ scope.row.businessCode }}</span>
+              <span v-else>{{ scope.row.businessCode || '-' }}</span>
             </template>
+          </template>
+        </el-table-column>
 
-            <!-- 固定库位模式下的统一目标库位输入 -->
-            <div style="padding: 10px; background-color: #f5f7fa; border-radius: 4px">
-              <el-form :model="fixedTransferForm" ref="fixedTransferFormRef" label-width="auto" :inline="true">
-                <el-row :gutter="20">
-                  <el-col :sm="24" :md="8" :lg="8" v-if="transferMode === 'fixed'">
-                    <el-form-item label="目标库位" prop="targetLocationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
-                      <el-input
-                        v-model.trim="fixedTransferForm.targetLocationCode"
-                        placeholder="请输入目标库位编码"
-                        clearable
-                        @keydown.tab.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)"
-                        @keydown.enter.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)"
-                      >
-                        <template #append>
-                          <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
-                        </template>
-                      </el-input>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :sm="24" :md="8" :lg="8">
-                    <el-form-item label="接收方">
-                      <el-input v-model="fixedTransferForm.targetUserName" placeholder="请输入接收方">
-                        <template #append>
-                          <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
-                        </template>
-                      </el-input>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :sm="24" :md="8" :lg="8">
-                    <el-form-item label="过账日期" prop="postingDate">
-                      <el-date-picker clearable v-model="fixedTransferForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-              </el-form>
-            </div>
-            <div v-if="resultMessage" class="m-y-2">
-              <el-alert show-icon center :title="resultMessage" :type="resultStatus ? 'success' : 'error'">
-                <template #icon>
-                  <Bell />
-                </template>
-              </el-alert>
-            </div>
+        <el-table-column v-if="transferColumns[8].visible" :label="isStockStatusMove ? '源类型' : '库存类型'" prop="inventoryType" align="center" min-width="110">
+          <template #default="scope">
+            <el-select v-model="scope.row.inventoryType" placeholder="请选择库存类型" style="width: 100%" :disabled="isStockStatusMove" @change="handleInventoryTypeChange(scope.$index, scope.row)">
+              <el-option label="非限制库存" value="N"></el-option>
+              <el-option label="质检库存" value="X"></el-option>
+              <el-option label="冻结库存" value="S"></el-option>
+            </el-select>
+          </template>
+        </el-table-column>
 
-            <el-table :data="transferList" border style="width: 100%" v-loading="tableLoading" max-height="400">
-              <el-table-column type="index" width="50" align="center" />
-              <el-table-column label="物料编码" prop="itemCode" />
-              <el-table-column label="物料名称" prop="itemName" show-overflow-tooltip />
-              <el-table-column label="批次号" prop="batchCode" show-overflow-tooltip />
-              <el-table-column label="源库位信息" width="180">
-                <template #default="scope">
-                  <div>
-                    <div>仓库: {{ scope.row.sourceWarehouseCode }}</div>
-                    <div>库区: {{ scope.row.sourceAreaCode }}</div>
-                    <div>库位: {{ scope.row.sourceLocationCode }}</div>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column label="数量" min-width="180">
-                <template #default="scope">
-                  <div>
-                    <div>非限制数量: {{ scope.row.availableQuantity }}</div>
-                    <div>质 检 数 量: {{ scope.row.inspectionQuantity }}</div>
-                    <div>冻 结 数 量: {{ scope.row.blockedQuantity }}</div>
-                  </div>
-                </template>
-              </el-table-column>
-              <!--              <el-table-column label="非限制数量" prop="availableQuantity" align="center" min-width="90" />-->
-              <!--              <el-table-column label="质检数量" prop="inspectionQuantity" align="center" />-->
-              <!--              <el-table-column label="冻结数量" prop="blockedQuantity" align="center" />-->
-              <el-table-column label="单位" prop="unit" align="center" />
-              <el-table-column label="库存标识" align="center" prop="specialInventoryFlag" min-width="100">
-                <template #default="scope">
-                  <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
-                </template>
-              </el-table-column>
-              <el-table-column label="业务伙伴编码" align="center" min-width="130">
-                <template #default="scope">
-                  <el-input v-model="scope.row.supplierCode" placeholder="供应商寄售编码" v-if="scope.row.specialInventoryFlag == 'K'" />
-                  <el-input v-model="scope.row.customerCode" placeholder="客户寄售编码" v-else-if="scope.row.specialInventoryFlag == 'W'" />
-                  <span v-else-if="scope.row.specialInventoryFlag == 'E'">{{ scope.row.businessCode }}</span>
-                  <span v-else />
-                </template>
-              </el-table-column>
+        <el-table-column v-if="transferColumns[9].visible && isStockStatusMove" label="目标类型" prop="targetInventoryType" align="center" min-width="110">
+          <template #default="scope">
+            <el-select v-model="scope.row.targetInventoryType" placeholder="请选择目标库存类型" style="width: 100%">
+              <el-option label="非限制库存" value="N"></el-option>
+              <el-option label="质检库存" value="X"></el-option>
+              <el-option label="冻结库存" value="S"></el-option>
+            </el-select>
+          </template>
+        </el-table-column>
 
-              <el-table-column label="库存类型" prop="inventoryType" align="center" min-width="130">
-                <template #default="scope">
-                  <el-select v-model="scope.row.inventoryType" placeholder="请选择库存类型" style="width: 100%" @change="handleInventoryTypeChange(scope.$index, scope.row)">
-                    <el-option label="非限制库存" value="N"></el-option>
-                    <el-option label="质检库存" value="X"></el-option>
-                    <el-option label="冻结库存" value="S"></el-option>
-                  </el-select>
-                </template>
-              </el-table-column>
+        <el-table-column v-if="transferColumns[10].visible && needsTargetLocationMove && transferMode === 'multiple'" label="目标库位" min-width="160">
+          <template #default="scope">
+            <el-input
+              v-model.trim="scope.row.targetLocationCode"
+              placeholder="请输入目标库位编码"
+              clearable
+              @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)"
+              @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)"
+            >
+              <template #append>
+                <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
+              </template>
+            </el-input>
+          </template>
+        </el-table-column>
 
-              <!-- 多库位模式下显示独立的目标库位设置 -->
-              <el-table-column label="目标库位" width="220" v-if="transferMode === 'multiple'">
-                <template #default="scope">
-                  <el-input
-                    v-model.trim="scope.row.targetLocationCode"
-                    placeholder="请输入目标库位编码"
-                    clearable
-                    @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)"
-                    @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)"
-                  >
-                    <template #append>
-                      <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
-                    </template>
-                  </el-input>
-                </template>
-              </el-table-column>
+        <el-table-column v-if="transferColumns[11].visible" label="移转数量" width="115">
+          <template #default="scope">
+            <el-input-number
+              v-model="scope.row.transferQuantity"
+              :min="0"
+              :max="scope.row.currentQuantity ? parseFloat(scope.row.currentQuantity) : scope.row.currentQuantity"
+              :precision="3"
+              controls-position="right"
+              style="width: 100%"
+            />
+          </template>
+        </el-table-column>
 
-              <el-table-column label="移转数量" width="130">
-                <template #default="scope">
-                  <el-input-number
-                    v-model="scope.row.transferQuantity"
-                    :min="0"
-                    :max="scope.row.currentQuantity ? parseFloat(scope.row.currentQuantity) : scope.row.currentQuantity"
-                    :precision="3"
-                    controls-position="right"
-                    style="width: 100%"
-                  />
-                </template>
-              </el-table-column>
+        <el-table-column label="操作" width="50" align="center" fixed="right">
+          <template #default="scope">
+            <el-button type="danger" link icon="Delete" @click="removeFromTransferList(scope.$index)"></el-button>
+          </template>
+        </el-table-column>
+      </el-table>
 
-              <el-table-column label="操作" width="80" align="center">
-                <template #default="scope">
-                  <el-button type="danger" link icon="Delete" @click="removeFromTransferList(scope.$index)"></el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-
-            <div style="margin-top: 20px; text-align: center">
-              <el-button :loading="buttonLoading" type="primary" @click="submitTransfer" :disabled="transferList.length === 0">311移转</el-button>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
+      <div class="submit-bar">
+        <el-button :loading="buttonLoading" type="primary" @click="submitTransfer" :disabled="transferList.length === 0">{{ moveType }} 移转</el-button>
+        <span class="transfer-count">共 {{ transferList.length }} 条</span>
+      </div>
     </el-card>
     <!-- 库位选择对话框 -->
     <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
@@ -251,11 +282,11 @@
 </template>
 
 <script setup name="InventoryTransfer" lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { computed, ref, reactive, onMounted } from 'vue';
 import { listInventoryDetail } from '@/api/wms/inventoryDetail';
 import { InventoryDetailForm, InventoryDetailQuery, InventoryDetailVO } from '@/api/wms/inventoryDetail/types';
 // 导入图标组件
-import { ArrowDown, ArrowUp, Bell, Switch } from '@element-plus/icons-vue';
+import { ArrowDown, ArrowRight, ArrowUp, Bell, Switch } from '@element-plus/icons-vue';
 
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
@@ -263,17 +294,32 @@ import { transferInventory } from '@/api/wms/inventoryDetail';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { listUserCollections } from '@/api/wms/userCollections';
+import {
+  DEFAULT_TRANSFER_MOVE_TYPE,
+  getDefaultSourceInventoryType,
+  getDefaultTargetInventoryType,
+  getTransferMoveTypeDesc,
+  INVENTORY_TRANSFER_MOVE_TYPES,
+  isStockStatusTransfer,
+  needsTargetLocation
+} from './utils/transferMoveConfig';
+
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 const userCollectionsDialogRef = ref<InstanceType<typeof UserCollectionsDialog>>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_type, wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_type', 'wms_inventory_special_flag'));
 
 const showSearch = ref(true);
+/** 库存明细展开状态，默认收起 */
+const inventoryExpanded = ref(true);
+const transferTableHeight = 'calc(100vh - 320px)';
 // 响应式数据
 const loading = ref(false);
 const tableLoading = ref(false);
 const buttonLoading = ref(false);
 const inventoryDetailList = ref<InventoryDetailVO[]>([]);
+/** 库存明细中存在非一般库存时显示业务伙伴列 */
+const showInventoryBusinessPartnerColumn = computed(() => inventoryDetailList.value.some((item) => item.specialInventoryFlag && item.specialInventoryFlag !== 'N'));
 const selectedSearchItems = ref<InventoryDetailVO[]>([]);
 const transferList = ref<any[]>([]);
 const showAdvancedSearch = ref(false); // 控制高级搜索显示状态
@@ -284,6 +330,13 @@ const resultStatus = ref(false);
 
 // 移转模式：fixed-固定库位，multiple-多库位
 const transferMode = ref<'fixed' | 'multiple'>('fixed');
+const moveType = ref(DEFAULT_TRANSFER_MOVE_TYPE);
+const moveTypeOptions = INVENTORY_TRANSFER_MOVE_TYPES;
+const moveTypeDesc = computed(() => getTransferMoveTypeDesc(moveType.value));
+const needsTargetLocationMove = computed(() => needsTargetLocation(moveType.value));
+const isStockStatusMove = computed(() => isStockStatusTransfer(moveType.value));
+/** 移转列表中存在非一般库存时显示业务伙伴编码列 */
+const showBusinessPartnerColumn = computed(() => transferList.value.some((item) => item.specialInventoryFlag && item.specialInventoryFlag !== 'N'));
 
 // 固定库位模式下的表单数据
 const fixedTransferForm = ref({
@@ -347,22 +400,38 @@ const data = reactive<PageData<InventoryDetailForm, InventoryDetailQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 
-// 列显隐信息
+// 库存明细列显隐
 const columns = ref<FieldOption[]>([
   { key: 0, label: `物料编码`, visible: true, children: [] },
   { key: 1, label: `物料名称`, visible: true, children: [] },
   { key: 2, label: `批次号`, visible: true, children: [] },
   { key: 3, label: `非限制数量`, visible: true, children: [] },
   { key: 4, label: `质检数量`, visible: true, children: [] },
-  { key: 5, label: `冻结数量`, visible: false, children: [] },
+  { key: 5, label: `冻结数量`, visible: true, children: [] },
   { key: 6, label: `在途数量`, visible: false, children: [] },
-  { key: 7, label: `特殊库存`, visible: false, children: [] },
-  { key: 8, label: `业务伙伴`, visible: false, children: [] },
+  { key: 7, label: `特殊库存`, visible: true, children: [] },
+  { key: 8, label: `业务伙伴`, visible: true, children: [] },
   { key: 9, label: `伙伴名称`, visible: false, children: [] },
   { key: 10, label: `单位`, visible: true, children: [] },
   { key: 11, label: `仓库编码`, visible: false, children: [] },
   { key: 12, label: `库区编码`, visible: false, children: [] },
   { key: 13, label: `库位编码`, visible: true, children: [] }
+]);
+
+// 移转列表列显隐
+const transferColumns = ref<FieldOption[]>([
+  { key: 0, label: `物料编码`, visible: true, children: [] },
+  { key: 1, label: `物料名称`, visible: true, children: [] },
+  { key: 2, label: `批次号`, visible: true, children: [] },
+  { key: 3, label: `源库位信息`, visible: true, children: [] },
+  { key: 4, label: `数量`, visible: true, children: [] },
+  { key: 5, label: `单位`, visible: true, children: [] },
+  { key: 6, label: `库存标识`, visible: true, children: [] },
+  { key: 7, label: `业务伙伴`, visible: true, children: [] },
+  { key: 8, label: `库存类型`, visible: true, children: [] },
+  { key: 9, label: `目标类型`, visible: true, children: [] },
+  { key: 10, label: `目标库位`, visible: true, children: [] },
+  { key: 11, label: `移转数量`, visible: true, children: [] }
 ]);
 
 // 禁用未来的时间
@@ -417,28 +486,33 @@ const addSelectedToTransferList = () => {
     return;
   }
 
-  const newItems = selectedSearchItems.value.map((item) => ({
-    id: item.id,
-    itemCode: item.itemCode,
-    itemName: item.itemName,
-    batchCode: item.batchCode,
-    currentQuantity: item.availableQuantity || 0,
-    availableQuantity: item.availableQuantity,
-    inspectionQuantity: item.inspectionQuantity,
-    blockedQuantity: item.blockedQuantity,
-    unit: item.unit,
-    sourceWarehouseCode: item.warehouseCode,
-    sourceAreaCode: item.areaCode,
-    sourceLocationCode: item.locationCode,
-    targetWarehouseCode: '',
-    targetAreaCode: '',
-    targetLocationCode: '',
-    specialInventoryFlag: item.specialInventoryFlag,
-    inventoryType: 'N',
-    transferQuantity: null,
-    businessCode: item.businessCode,
-    remark: ''
-  }));
+  const sourceInventoryType = getDefaultSourceInventoryType(moveType.value);
+  const newItems = selectedSearchItems.value.map((item) => {
+    const currentQuantity = sourceInventoryType === 'S' ? item.blockedQuantity || 0 : sourceInventoryType === 'X' ? item.inspectionQuantity || 0 : item.availableQuantity || 0;
+    return {
+      id: item.id,
+      itemCode: item.itemCode,
+      itemName: item.itemName,
+      batchCode: item.batchCode,
+      currentQuantity,
+      availableQuantity: item.availableQuantity,
+      inspectionQuantity: item.inspectionQuantity,
+      blockedQuantity: item.blockedQuantity,
+      unit: item.unit,
+      sourceWarehouseCode: item.warehouseCode,
+      sourceAreaCode: item.areaCode,
+      sourceLocationCode: item.locationCode,
+      targetWarehouseCode: isStockStatusMove.value ? item.warehouseCode : '',
+      targetAreaCode: isStockStatusMove.value ? item.areaCode : '',
+      targetLocationCode: isStockStatusMove.value ? item.locationCode : '',
+      specialInventoryFlag: item.specialInventoryFlag,
+      inventoryType: sourceInventoryType,
+      targetInventoryType: getDefaultTargetInventoryType(moveType.value),
+      transferQuantity: null,
+      businessCode: item.businessCode,
+      remark: ''
+    };
+  });
 
   // 避免重复添加
   let addedCount = 0;
@@ -562,14 +636,42 @@ const targetUserNameKeyDownTab = async () => {
   }
 };
 
-const handleInventoryTypeChange = (index: number, value: any) => {
-  const item = transferList.value[index];
+const syncCurrentQuantity = (item: any) => {
   if (item.inventoryType === 'N') {
     item.currentQuantity = item.availableQuantity || 0;
   } else if (item.inventoryType === 'X') {
     item.currentQuantity = item.inspectionQuantity || 0;
   } else if (item.inventoryType === 'S') {
     item.currentQuantity = item.blockedQuantity || 0;
+  }
+};
+
+const handleInventoryTypeChange = (index: number) => {
+  syncCurrentQuantity(transferList.value[index]);
+};
+
+const handleMoveTypeChange = () => {
+  resultMessage.value = '';
+  const sourceInventoryType = getDefaultSourceInventoryType(moveType.value);
+  const targetInventoryType = getDefaultTargetInventoryType(moveType.value);
+  transferList.value.forEach((item) => {
+    item.inventoryType = sourceInventoryType;
+    item.targetInventoryType = targetInventoryType;
+    syncCurrentQuantity(item);
+    if (isStockStatusMove.value) {
+      item.targetWarehouseCode = item.sourceWarehouseCode;
+      item.targetAreaCode = item.sourceAreaCode;
+      item.targetLocationCode = item.sourceLocationCode;
+    } else {
+      item.targetWarehouseCode = '';
+      item.targetAreaCode = '';
+      item.targetLocationCode = '';
+    }
+  });
+  if (!needsTargetLocationMove.value) {
+    fixedTransferForm.value.targetLocationCode = '';
+    fixedTransferForm.value.targetWarehouseCode = '';
+    fixedTransferForm.value.targetAreaCode = '';
   }
 };
 
@@ -584,33 +686,40 @@ const submitTransfer = async () => {
     return;
   }
 
-  if (transferMode.value === 'fixed') {
-    // 固定库位模式验证
-    if (!fixedTransferForm.value.targetLocationCode) {
-      resultMessage.value = '请输入目标库位编码';
-      resultStatus.value = false;
-      return;
+  if (needsTargetLocationMove.value) {
+    if (transferMode.value === 'fixed') {
+      if (!fixedTransferForm.value.targetLocationCode) {
+        resultMessage.value = '请输入目标库位编码';
+        resultStatus.value = false;
+        return;
+      }
+      validTransfers.forEach((item) => {
+        item.targetLocationCode = fixedTransferForm.value.targetLocationCode;
+        item.targetWarehouseCode = fixedTransferForm.value.targetWarehouseCode || '';
+        item.targetAreaCode = fixedTransferForm.value.targetAreaCode || '';
+        item.targetUserName = fixedTransferForm.value.targetUserName || '';
+        item.postingDate = fixedTransferForm.value.postingDate ? fixedTransferForm.value.postingDate + ' 00:00:00' : '';
+        item.remark = fixedTransferForm.value.remark;
+      });
+    } else {
+      const invalidItems = validTransfers.filter((item) => !item.targetLocationCode);
+      if (invalidItems.length > 0) {
+        resultMessage.value = '请填写所有移转记录的目标库位';
+        resultStatus.value = false;
+        return;
+      }
+      validTransfers.forEach((item) => {
+        item.targetUserName = fixedTransferForm.value.targetUserName || '';
+        item.postingDate = fixedTransferForm.value.postingDate ? fixedTransferForm.value.postingDate + ' 00:00:00' : '';
+        item.remark = fixedTransferForm.value.remark;
+      });
     }
-
-    // 为所有记录设置统一的目标库位、接收方、过账日期、备注
-    validTransfers.forEach((item) => {
-      item.targetLocationCode = fixedTransferForm.value.targetLocationCode;
-      item.targetWarehouseCode = fixedTransferForm.value.targetWarehouseCode || '';
-      item.targetAreaCode = fixedTransferForm.value.targetAreaCode || '';
-      item.targetUserName = fixedTransferForm.value.targetUserName || '';
-      item.postingDate = fixedTransferForm.value.postingDate ? fixedTransferForm.value.postingDate + ' 00:00:00' : '';
-      item.remark = fixedTransferForm.value.remark;
-    });
   } else {
-    // 多库位模式验证
-    const invalidItems = validTransfers.filter((item) => !item.targetLocationCode);
-    if (invalidItems.length > 0) {
-      resultMessage.value = '请填写所有移转记录的目标库位';
-      resultStatus.value = false;
-      return;
-    }
-    // 为所有记录设置统一的接收方、过账日期、备注
     validTransfers.forEach((item) => {
+      item.targetWarehouseCode = item.sourceWarehouseCode;
+      item.targetAreaCode = item.sourceAreaCode;
+      item.targetLocationCode = item.sourceLocationCode;
+      item.targetInventoryType = item.targetInventoryType || getDefaultTargetInventoryType(moveType.value);
       item.targetUserName = fixedTransferForm.value.targetUserName || '';
       item.postingDate = fixedTransferForm.value.postingDate ? fixedTransferForm.value.postingDate + ' 00:00:00' : '';
       item.remark = fixedTransferForm.value.remark;
@@ -631,9 +740,11 @@ const submitTransfer = async () => {
     const transferRequests = validTransfers.map((item) => ({
       ...item,
       inventoryDetailId: item.id,
+      moveType: moveType.value,
       targetWarehouseCode: item.targetWarehouseCode,
       targetAreaCode: item.targetAreaCode,
       targetLocationCode: item.targetLocationCode,
+      targetInventoryType: item.targetInventoryType,
       transferQuantity: item.transferQuantity,
       specialInventoryFlag: item.specialInventoryFlag,
       remark: item.remark
@@ -641,7 +752,8 @@ const submitTransfer = async () => {
 
     const res: any = await transferInventory({
       inventoryTransferBoList: transferRequests,
-      transferType: 0
+      transferType: 0,
+      moveType: moveType.value
     });
 
     if (res.code !== HttpStatus.SUCCESS) {
@@ -672,59 +784,179 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.search-card {
+.transfer-page {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 300px;
+  gap: 6px;
+  min-height: calc(100vh - 100px);
+}
+
+.inventory-card {
+  flex: 0 0 auto;
+}
+
+.inventory-card :deep(.el-card__header) {
+  padding: 10px 16px;
+}
+
+.inventory-card :deep(.el-card__body) {
+  padding: 0;
+}
+
+.inventory-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.inventory-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.inventory-collapse-icon {
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+  transition: transform 0.2s;
+}
+
+.inventory-collapse-icon.is-expanded {
+  transform: rotate(90deg);
+}
+
+.inventory-header-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.inventory-card-body {
+  padding: 12px 16px 16px;
+}
+
+.compact-form :deep(.el-form-item) {
+  margin-bottom: 6px;
+  margin-right: 10px;
 }
 
 .search-result {
-  flex: 1;
-  overflow: auto;
-  min-height: 200px;
+  margin-top: 4px;
 }
 
-.vertical-layout {
+.compact-pagination :deep(.el-pagination),
+.compact-pagination :deep(.el-pagination__total),
+.compact-pagination :deep(.el-pagination__jump),
+.compact-pagination :deep(.el-pagination .el-select .el-input__inner),
+.compact-pagination :deep(.el-pagination .btn-prev),
+.compact-pagination :deep(.el-pagination .btn-next),
+.compact-pagination :deep(.el-pagination .el-pager li) {
+  font-size: 12px;
+}
+
+.add-transfer-bar {
+  text-align: center;
+  padding: 4px 0;
+}
+
+.rotate-button {
+  transform: rotate(90deg);
+}
+
+.transfer-main-card {
+  flex: 1 1 auto;
+  display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .search-card {
-    min-height: 250px;
-  }
-
-  .search-result {
-    min-height: 150px;
-  }
+.transfer-main-card :deep(.el-card__header) {
+  padding: 8px 12px;
 }
+
+.transfer-main-card :deep(.el-card__body) {
+  padding: 8px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .transfer-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .header-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.rotate-button {
-  transform: rotate(90deg);
-  margin: 0 auto;
+.move-type-form {
+  margin-bottom: 0;
 }
 
-/* 响应式调整 - 在小屏幕上的显示 */
+.move-type-form :deep(.el-form-item) {
+  margin-bottom: 0;
+  margin-right: 0;
+}
+
+.move-type-desc {
+  margin-left: 6px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.transfer-form-bar {
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  background-color: var(--el-fill-color-light);
+  border-radius: 4px;
+}
+
+.transfer-form-bar :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.result-alert {
+  margin-bottom: 6px;
+}
+
+.result-alert :deep(.el-alert) {
+  padding: 6px 10px;
+}
+
+.transfer-table {
+  flex: 1;
+}
+
+.submit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 4px;
+}
+
+.transfer-count {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
 @media (max-width: 768px) {
   .transfer-header {
     flex-direction: column;

@@ -9,7 +9,7 @@ import animate from '@/animate';
 import { download as dl } from '@/utils/request';
 import { useDict } from '@/utils/dict';
 import { getConfigKey, updateConfigByKey } from '@/api/system/config';
-import { parseTime, addDateRange, handleTree, selectDictLabel, selectDictLabels } from '@/utils/ruoyi';
+import { parseTime, formatQty, addDateRange, handleTree, selectDictLabel, selectDictLabels } from '@/utils/ruoyi';
 
 import { App } from 'vue';
 import { lodopPrint } from '@/components/print-designer';
@@ -37,6 +37,7 @@ export default function installPlugin(app: App) {
   app.config.globalProperties.updateConfigByKey = updateConfigByKey;
   app.config.globalProperties.download = dl;
   app.config.globalProperties.parseTime = parseTime;
+  app.config.globalProperties.formatQty = formatQty;
   app.config.globalProperties.handleTree = handleTree;
   app.config.globalProperties.addDateRange = addDateRange;
   app.config.globalProperties.selectDictLabel = selectDictLabel;

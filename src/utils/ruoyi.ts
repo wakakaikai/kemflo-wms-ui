@@ -231,6 +231,23 @@ export const blobValidate = (data: any) => {
   return data.type !== 'application/json';
 };
 
+/**
+ * 数量格式化：去掉末尾无意义的 0，最多保留 3 位小数
+ */
+export const formatQty = (qty: number | string | null | undefined): string => {
+  if (qty === null || qty === undefined || qty === '') {
+    return '';
+  }
+  const num = Number(qty);
+  if (isNaN(num)) {
+    return '';
+  }
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3
+  }).format(num);
+};
+
 export default {
   handleTree
 };

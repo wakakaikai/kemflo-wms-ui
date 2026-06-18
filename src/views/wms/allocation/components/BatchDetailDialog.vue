@@ -127,20 +127,20 @@ watch(visible, (val) => {
   emit('update:modelValue', val);
 });
 
-// 格式化日期
+/** 格式化日期为 YYYY/MM/DD */
 const formatDate = (dateStr?: string) => {
   if (!dateStr) return '-';
   return dayjs(dateStr).format('YYYY/MM/DD');
 };
 
-// 检查是否即将过期（30天内）
+/** 判断批次是否在 30 天内过期 */
 const isExpiring = (expirationDate?: string) => {
   if (!expirationDate) return false;
   const days = dayjs(expirationDate).diff(dayjs(), 'day');
   return days >= 0 && days <= 30;
 };
 
-// 加载批次数据
+/** 加载物料批次列表 */
 const loadBatchData = async () => {
   if (!props.material) return;
 
@@ -159,7 +159,7 @@ const loadBatchData = async () => {
   }
 };
 
-// 模拟分配
+/** 按 FIFO 顺序模拟批次分配 */
 const simulateAllocation = () => {
   if (!props.material || batchList.value.length === 0) return;
 
@@ -194,13 +194,13 @@ const simulateAllocation = () => {
   allocationSimulation.value = remainingQty === 0;
 };
 
-// 分配批次
+/** 分配指定批次（预留扩展） */
 const allocateBatch = (batch: any) => {
   ElMessage.info(`分配批次 ${batch.batchCode}`);
   // 这里可以实现批次分配逻辑
 };
 
-// 确认分配
+/** 确认批次分配并关闭对话框 */
 const confirmAllocation = () => {
   ElMessage.success('批次分配确认');
   emit('confirm', {
@@ -210,7 +210,7 @@ const confirmAllocation = () => {
   handleClose();
 };
 
-// 关闭对话框
+/** 关闭批次明细对话框 */
 const handleClose = () => {
   visible.value = false;
 };
