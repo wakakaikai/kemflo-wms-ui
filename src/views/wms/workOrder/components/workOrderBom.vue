@@ -1,6 +1,6 @@
 <template>
   <div class="p-2">
-    <!--    <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
+    <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true">
@@ -17,7 +17,7 @@
           </el-form>
         </el-card>
       </div>
-    </transition>-->
+    </transition>
 
     <el-card shadow="never">
       <template #header>

@@ -30,6 +30,11 @@ export interface ItemVO {
   unit: string;
 
   /**
+   * 尺寸分类：LARGE-大件, SMALL-小件
+   */
+  sizeCategory?: string;
+
+  /**
    * 条码正则
    */
   sfcRegular: string;
@@ -92,6 +97,11 @@ export interface ItemForm extends BaseEntity {
   unit?: string;
 
   /**
+   * 尺寸分类：LARGE-大件, SMALL-小件
+   */
+  sizeCategory?: string;
+
+  /**
    * 质检标识
    */
   inspectionFlag: number | string;
@@ -142,6 +152,11 @@ export interface ItemQuery extends PageQuery {
    * 计量单位
    */
   unit?: string;
+
+  /**
+   * 尺寸分类：LARGE-大件, SMALL-小件
+   */
+  sizeCategory?: string;
 
   /**
    * 质检标识

@@ -1,6 +1,7 @@
 <template>
-  <div class="issue-qty-input" :class="{ 'is-disabled': disabled }">
+  <div class="issue-qty-input" :class="{ 'is-disabled': disabled }" @focusout="onFocusOut">
     <el-input-number
+      ref="inputRef"
       :model-value="row.issueQty"
       :min="0"
       :max="maxIssueQty"
@@ -27,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import type { WorkOrderBomVO } from '@/api/wms/allocation/types';
 import { calcMaxIssueQty, clampIssueQty, getIssueUnitOptions } from '@/api/wms/allocation/index';
 
@@ -36,16 +37,21 @@ interface Props {
   disabled?: boolean;
   /** 自定义上限（备料模式可大于待发量） */
   maxIssueQty?: number;
+  autofocus?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  disabled: false
+  disabled: false,
+  autofocus: false
 });
 
 const emit = defineEmits<{
   change: [issueQty: number];
   'unit-change': [altUnit: string];
+  blur: [];
 }>();
+
+const inputRef = ref<{ focus?: () => void } | null>(null);
 
 /** 可选发料单位列表 */
 const unitOptions = computed(() => getIssueUnitOptions(props.row));
@@ -75,6 +81,20 @@ const onUnitChange = (altUnit: string) => {
     emit('unit-change', altUnit);
   }
 };
+
+const onFocusOut = (event: FocusEvent) => {
+  const current = event.currentTarget as HTMLElement | null;
+  const related = event.relatedTarget as Node | null;
+  if (current && related && current.contains(related)) return;
+  emit('blur');
+};
+
+onMounted(() => {
+  if (!props.autofocus) return;
+  nextTick(() => {
+    inputRef.value?.focus?.();
+  });
+});
 </script>
 
 <style scoped>

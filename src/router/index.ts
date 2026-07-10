@@ -122,6 +122,19 @@ export const constantRoutes: RouteRecordRaw[] = [
         hidden: true
       }
     ]
+  },
+  {
+    path: '/scada/shortageTask',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/scada/shortageTask/index.vue'),
+        name: 'ShortageTaskScada',
+        meta: { title: '缺料看板', noCache: true }
+      }
+    ]
   }
 ];
 

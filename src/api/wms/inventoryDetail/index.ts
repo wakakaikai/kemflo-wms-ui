@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { InventoryDetailVO, InventoryDetailForm, InventoryDetailQuery } from '@/api/wms/inventoryDetail/types';
+import { InventoryDetailVO, InventoryDetailForm, InventoryDetailQuery, InventoryTransferForm } from '@/api/wms/inventoryDetail/types';
 
 /**
  * 查询库存明细记录列表
@@ -78,7 +78,7 @@ export const delInventoryDetail = (id: string | number | Array<string | number>)
  * 库存移转记录
  * @param data
  */
-export const transferInventory = (data: any) => {
+export const transferInventory = (data: InventoryTransferForm) => {
   return request({
     url: '/wms/inventoryDetail/transfer',
     method: 'post',
@@ -109,4 +109,3 @@ export const returnPurchaseInventory = (data: any) => {
     data: data
   });
 };
-

@@ -44,6 +44,8 @@ export interface MaterialDemandDetailRow {
   reserveItemNo?: string;
   issueQty: number;
   issueUnit?: string;
+  /** 本次备料数量（库存单位，库位/缺料拆分行） */
+  prepInventoryQty?: number;
   /** 库位信息中的 warehouseCode */
   recommendedWarehouse?: string;
   recommendedLocation?: string;
@@ -94,6 +96,10 @@ export interface WorkOrderMaterialIssueLine {
   salesOrderNo?: string;
   salesOrderItem?: string;
   specialInventoryFlag?: string;
+  /** 超领编码（字典 wms_material_over_pick） */
+  overPickCode?: string;
+  /** 超领原因 */
+  overPickReason?: string;
   /** 工作台：按 FIFO 推荐仓别分类后的路由 */
   warehouseRoute?: 'AUTO' | 'LINE' | 'FLAT' | 'SHORTAGE' | 'OTHER_LINE';
   /** 工作台：FIFO 推荐主仓别编码 */
@@ -131,7 +137,9 @@ export interface WorkOrderBomVO {
   batchCount?: number;
   locationCount?: number;
   inventoryStatus?: string;
-  /** 件型：大件 / 小件 */
+  /** 尺寸分类：LARGE-大件, SMALL-小件（物料主数据 sizeCategory） */
+  sizeCategory?: string;
+  /** 件型：大件 / 小件（由 sizeCategory 归一化，兼容旧字段） */
   partSizeType?: 'LARGE' | 'SMALL';
   /** 物料计量单位转换列表（发料单位可选） */
   materialUnitConversionList?: MaterialUnitConversionVO[];
@@ -175,27 +183,30 @@ export interface AllocationRequest {
   workbenchMode?: 'AUTO' | 'FLAT';
   /** 自动仓仓别编码列表 */
   autoWarehouseCodes?: string[];
-}
-
-/** 自动仓 261 直接扣料请求 */
-export interface AutoWarehouseIssueRequest {
-  workOrderNos: string[];
-  materialIssueItems?: AllocationMaterialIssueItem[];
-  warehouseCodes?: string[];
-  movementType?: string;
+  /** 按库位拆分的备料明细（工作台生成备料需求） */
+  prepItems?: import('@/api/wms/workOrderPrepDemand/types').PrepDemandLineItem[];
+  /** 单据类型：NORMAL-普通领料单, OVER_PICK-超领单 */
+  demandType?: import('@/api/wms/workOrderPrepDemand/types').PrepDemandType | string;
   /** 需求人员编码（字典 wms_material_user） */
   materialUserCode?: string;
   /** 需求人员姓名 */
   materialUserName?: string;
+  /** 平面仓目标需求库位（头表） */
+  targetDemandLocationCode?: string;
+  targetDemandWarehouseCode?: string;
+  remark?: string;
 }
 
-/** 自动仓配置 */
-export interface AutoWarehouseConfigVO {
-  warehouseCodes: string[];
-  movementType?: string;
+/** 工作台生成备料需求/分配方案接口返回 */
+export interface AllocationGenerateResult {
+  success?: boolean;
+  message?: string;
+  demand?: import('@/api/wms/workOrderPrepDemand/types').WorkOrderPrepDemandVO;
+  plan?: AllocationPlanVO;
+  inventoryCheck?: unknown;
 }
 
-/** 物料库存查询返回（/wms/allocation/materialInventory/{materialCode}） */
+/** 物料库存查询返回（/wms/inventoryDetail/materialInventory/{materialCode}） */
 export interface MaterialInventoryResultVO {
   locations?: unknown[];
   batches?: unknown[];
@@ -203,7 +214,7 @@ export interface MaterialInventoryResultVO {
   autoWarehouses?: string[];
 }
 
-/** 库存检查接口返回（/wms/allocation/checkInventory） */
+/** 库存检查接口返回（/wms/inventoryDetail/checkInventory） */
 export interface InventoryCheckResultVO {
   sufficient?: boolean;
   checkPassed?: boolean;
@@ -211,6 +222,16 @@ export interface InventoryCheckResultVO {
   totalRequired?: number;
   totalAvailable?: number;
   totalShortage?: number;
+  /** 缺料物料种类数 */
+  shortageSkuCount?: number;
+  /** 零库存缺料物料种类数 */
+  zeroStockSkuCount?: number;
+  /** 零库存断料占比 0~100 */
+  zeroStockShortageRate?: number;
+  /** 重复缺料物料种类数 */
+  repeatMaterialSkuCount?: number;
+  /** 重复物料占比 0~100 */
+  repeatMaterialRate?: number;
   analysis?: Record<string, unknown>;
   materials?: Array<{
     materialCode?: string;
@@ -222,13 +243,15 @@ export interface InventoryCheckResultVO {
     locationCount?: number;
   }>;
   lineResults?: Array<{
-    /** BOM 行 ID，与 WorkOrderBomVO.id 对应（同步后可能变化，优先用预留单号+项次匹配） */
+    /** BOM 行 ID，与 WorkOrderBomVO.id 对应（雪花 ID 须为字符串；勿用检查结果 id） */
     bomLineId?: number | string;
     id?: number | string;
     /** SAP 预留单号 */
     reserveNo?: string;
     /** SAP 预留单项次 */
     reserveItemNo?: string;
+    salesOrderNo?: string;
+    salesOrderItem?: string;
     materialCode?: string;
     componentMaterial?: string;
     pendingQty?: number;
@@ -247,8 +270,6 @@ export interface InventoryCheckResultVO {
       isLineWarehouse?: boolean;
       isUserLineWarehouse?: boolean;
       isAutoWarehouse?: boolean;
-      /** @deprecated 请使用 isLineWarehouse */
-      isOtherLineWarehouse?: boolean;
     }>;
   }>;
   /** 自动仓编码列表（字典 wms_warehouse_auto） */
@@ -258,6 +279,8 @@ export interface InventoryCheckResultVO {
 export interface InventoryCheckRequest {
   workOrderNo: string;
   materialCodes?: string[];
+  /** 缺料行数按物料编码统计（SCADA 重复物料占比） */
+  materialShortageLineCounts?: Record<string, number>;
   /** 需求人工号 */
   demandUserNo?: string;
   /** 销售订单库存检查 */
@@ -356,8 +379,7 @@ export interface AutoWarehouseConfig {
 
 export const AUTO_ISSUE_MOVEMENT_TYPE = '261';
 
-export const WORKBENCH_SUBTITLE =
-  '选择工单并勾选备料清单，为物料分配库位后确认分类，按库位拆分自动仓与平面仓需求';
+export const WORKBENCH_SUBTITLE = '选择工单并勾选备料清单，为物料分配库位后确认分类，按库位拆分自动仓、线边仓、平面仓、缺料需求';
 
 export type DemandAggregateMode = 'material' | 'warehouse' | 'area' | 'location';
 

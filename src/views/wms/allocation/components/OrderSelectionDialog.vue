@@ -155,7 +155,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
     pageNum: 1,
     pageSize: 10,
     workOrderNo: undefined,
-    status: 'RELEASABLE',
+    status: '',
     item: undefined,
     itemDesc: undefined,
     checkEnable: undefined,

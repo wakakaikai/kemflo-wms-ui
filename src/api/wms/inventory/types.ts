@@ -94,6 +94,11 @@ export interface InventoryVO {
    */
   remark: string;
 
+  /**
+   * WMS 汇总库存（非限制 + 质检 + 冻结）
+   */
+  totalQuantity?: number;
+
 }
 
 export interface InventoryForm extends BaseEntity {
@@ -285,6 +290,11 @@ export interface InventoryQuery extends PageQuery {
      * 日期范围参数
      */
     params?: any;
+}
+
+/** 多料号库存总量查询 */
+export interface InventoryTotalQuery {
+  itemCodes: string[];
 }
 
 

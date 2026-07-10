@@ -88,14 +88,7 @@
             <el-table-column v-if="columns[12].visible" label="库区" align="left" prop="areaCode" min-width="70" show-overflow-tooltip />
             <el-table-column v-if="columns[13].visible" label="库位" align="left" prop="locationCode" min-width="90" show-overflow-tooltip />
           </el-table>
-          <pagination
-            v-show="total > 0"
-            :total="total"
-            v-model:page="queryParams.pageNum"
-            v-model:limit="queryParams.pageSize"
-            @pagination="getList"
-            class="compact-pagination"
-          />
+          <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" class="compact-pagination" />
         </div>
       </div>
     </el-card>
@@ -135,13 +128,7 @@
           <el-row :gutter="12">
             <el-col :sm="24" :md="8" :lg="8" v-if="needsTargetLocationMove && transferMode === 'fixed'">
               <el-form-item label="目标库位" prop="targetLocationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
-                <el-input
-                  v-model.trim="fixedTransferForm.targetLocationCode"
-                  placeholder="请输入目标库位编码"
-                  clearable
-                  @keydown.tab.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)"
-                  @keydown.enter.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)"
-                >
+                <el-input v-model.trim="fixedTransferForm.targetLocationCode" placeholder="请输入目标库位编码" clearable @keydown.tab.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)">
                   <template #append>
                     <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
                   </template>
@@ -149,14 +136,27 @@
               </el-form-item>
             </el-col>
             <el-col :sm="24" :md="8" :lg="8">
-              <el-form-item label="接收方">
-                <el-input v-model="fixedTransferForm.targetUserName" placeholder="请输入接收方">
-                  <template #append>
-                    <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
-                  </template>
-                </el-input>
+              <el-form-item label="物料单">
+                <HistoryInput v-model="fixedTransferForm.mtsnr" :config="mtsnrConfig" placeholder="请输入物料单" />
               </el-form-item>
             </el-col>
+            <el-col :sm="24" :md="7" :lg="7">
+              <el-form-item label="凭证抬头文本">
+                <HistoryInput v-model="fixedTransferForm.bktxt" :config="bktxtConfig" placeholder="请输入凭证抬头文本" />
+              </el-form-item>
+            </el-col>
+            <el-col :sm="24" :md="1" :lg="1" class="transfer-more-toggle-col">
+              <el-form-item label-width="0">
+                <el-button link type="primary" @click="showTransferMore = !showTransferMore">
+                  <el-icon class="el-icon--right">
+                    <ArrowDown v-if="!showTransferMore" />
+                    <ArrowUp v-else />
+                  </el-icon>
+                </el-button>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row v-show="showTransferMore" :gutter="12" class="transfer-form-more">
             <el-col :sm="24" :md="8" :lg="8">
               <el-form-item label="过账日期" prop="postingDate">
                 <el-date-picker clearable v-model="fixedTransferForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
@@ -166,7 +166,7 @@
         </el-form>
       </div>
       <div v-if="resultMessage" class="result-alert">
-        <el-alert show-icon :title="resultMessage" :type="resultStatus ? 'success' : 'error'" :closable="false">
+        <el-alert show-icon center :title="resultMessage" :type="resultStatus ? 'success' : 'error'" :closable="false">
           <template #icon>
             <Bell />
           </template>
@@ -213,7 +213,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column v-if="transferColumns[8].visible" :label="isStockStatusMove ? '源类型' : '库存类型'" prop="inventoryType" align="center" min-width="110">
+        <el-table-column v-if="transferColumns[8].visible && showInventoryTypeColumn" :label="isStockStatusMove ? '源类型' : '库存类型'" prop="inventoryType" align="center" min-width="110">
           <template #default="scope">
             <el-select v-model="scope.row.inventoryType" placeholder="请选择库存类型" style="width: 100%" :disabled="isStockStatusMove" @change="handleInventoryTypeChange(scope.$index, scope.row)">
               <el-option label="非限制库存" value="N"></el-option>
@@ -223,9 +223,9 @@
           </template>
         </el-table-column>
 
-        <el-table-column v-if="transferColumns[9].visible && isStockStatusMove" label="目标类型" prop="targetInventoryType" align="center" min-width="110">
+        <el-table-column v-if="transferColumns[9].visible && showTargetInventoryTypeColumn" label="目标类型" prop="targetInventoryType" align="center" min-width="110">
           <template #default="scope">
-            <el-select v-model="scope.row.targetInventoryType" placeholder="请选择目标库存类型" style="width: 100%">
+            <el-select v-model="scope.row.targetInventoryType" placeholder="请选择目标库存类型" style="width: 100%" :disabled="moveType === '413' || moveType === '321' || moveType === '343' || moveType === '344'">
               <el-option label="非限制库存" value="N"></el-option>
               <el-option label="质检库存" value="X"></el-option>
               <el-option label="冻结库存" value="S"></el-option>
@@ -233,15 +233,19 @@
           </template>
         </el-table-column>
 
+        <el-table-column v-if="moveType === '413'" label="目标销售订单" min-width="180">
+          <template #default="scope">
+            <el-input v-model="scope.row.targetBusinessCode" placeholder="请选择销售订单明细" readonly>
+              <template #append>
+                <el-button icon="Search" @click="showSalesOrderDetailDialog(scope.$index)"></el-button>
+              </template>
+            </el-input>
+          </template>
+        </el-table-column>
+
         <el-table-column v-if="transferColumns[10].visible && needsTargetLocationMove && transferMode === 'multiple'" label="目标库位" min-width="160">
           <template #default="scope">
-            <el-input
-              v-model.trim="scope.row.targetLocationCode"
-              placeholder="请输入目标库位编码"
-              clearable
-              @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)"
-              @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)"
-            >
+            <el-input v-model.trim="scope.row.targetLocationCode" placeholder="请输入目标库位编码" clearable @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)">
               <template #append>
                 <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
               </template>
@@ -251,18 +255,11 @@
 
         <el-table-column v-if="transferColumns[11].visible" label="移转数量" width="115">
           <template #default="scope">
-            <el-input-number
-              v-model="scope.row.transferQuantity"
-              :min="0"
-              :max="scope.row.currentQuantity ? parseFloat(scope.row.currentQuantity) : scope.row.currentQuantity"
-              :precision="3"
-              controls-position="right"
-              style="width: 100%"
-            />
+            <el-input-number v-model="scope.row.transferQuantity" :min="0" :max="scope.row.currentQuantity ? parseFloat(scope.row.currentQuantity) : scope.row.currentQuantity" :precision="3" controls-position="right" style="width: 100%" />
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="50" align="center" fixed="right">
+        <el-table-column label="操作" width="80" align="center" fixed="right">
           <template #default="scope">
             <el-button type="danger" link icon="Delete" @click="removeFromTransferList(scope.$index)"></el-button>
           </template>
@@ -270,14 +267,14 @@
       </el-table>
 
       <div class="submit-bar">
-        <el-button :loading="buttonLoading" type="primary" @click="submitTransfer" :disabled="transferList.length === 0">{{ moveType }} 移转</el-button>
+        <el-button :loading="buttonLoading" type="primary" @click="submitTransfer" :disabled="transferList.length === 0">{{ moveType }} {{ moveTypeDesc }}</el-button>
         <span class="transfer-count">共 {{ transferList.length }} 条</span>
       </div>
     </el-card>
     <!-- 库位选择对话框 -->
     <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
-    <!-- 用户收藏 -->
-    <UserCollectionsDialog ref="userCollectionsDialogRef" @user-collections-call-back="userCollectionsSelectCallBack" />
+    <!-- 销售订单明细选择 -->
+    <SalesOrderDetailDialog ref="salesOrderDetailDialogRef" @sales-order-detail-select-call-back="salesOrderDetailSelectCallBack" />
   </div>
 </template>
 
@@ -289,23 +286,17 @@ import { InventoryDetailForm, InventoryDetailQuery, InventoryDetailVO } from '@/
 import { ArrowDown, ArrowRight, ArrowUp, Bell, Switch } from '@element-plus/icons-vue';
 
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
-import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
+import SalesOrderDetailDialog from '@/views/wms/salesOrderDetail/components/SalesOrderDetailDialog.vue';
+import HistoryInput from '@/components/HistoryInput/index.vue';
+import { HistoryConfig } from '@/types/history';
 import { transferInventory } from '@/api/wms/inventoryDetail';
+import { SalesOrderDetailVO } from '@/api/wms/salesOrderDetail/types';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
-import { listUserCollections } from '@/api/wms/userCollections';
-import {
-  DEFAULT_TRANSFER_MOVE_TYPE,
-  getDefaultSourceInventoryType,
-  getDefaultTargetInventoryType,
-  getTransferMoveTypeDesc,
-  INVENTORY_TRANSFER_MOVE_TYPES,
-  isStockStatusTransfer,
-  needsTargetLocation
-} from './utils/transferMoveConfig';
+import { DEFAULT_TRANSFER_MOVE_TYPE, getDefaultSourceInventoryType, getDefaultTargetInventoryType, getTransferMoveTypeDesc, INVENTORY_TRANSFER_MOVE_TYPES, isStockStatusTransfer, needsTargetLocation } from './utils/transferMoveConfig';
 
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
-const userCollectionsDialogRef = ref<InstanceType<typeof UserCollectionsDialog>>();
+const salesOrderDetailDialogRef = ref<InstanceType<typeof SalesOrderDetailDialog>>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_type, wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_type', 'wms_inventory_special_flag'));
 
@@ -323,6 +314,7 @@ const showInventoryBusinessPartnerColumn = computed(() => inventoryDetailList.va
 const selectedSearchItems = ref<InventoryDetailVO[]>([]);
 const transferList = ref<any[]>([]);
 const showAdvancedSearch = ref(false); // 控制高级搜索显示状态
+const showTransferMore = ref(false);
 const total = ref(0);
 const currenIndex = ref(0);
 const resultMessage = ref('');
@@ -335,20 +327,69 @@ const moveTypeOptions = INVENTORY_TRANSFER_MOVE_TYPES;
 const moveTypeDesc = computed(() => getTransferMoveTypeDesc(moveType.value));
 const needsTargetLocationMove = computed(() => needsTargetLocation(moveType.value));
 const isStockStatusMove = computed(() => isStockStatusTransfer(moveType.value));
+const showInventoryTypeColumn = computed(() => moveType.value !== '413');
+const showTargetInventoryTypeColumn = computed(() => isStockStatusMove.value && moveType.value !== '413');
 /** 移转列表中存在非一般库存时显示业务伙伴编码列 */
 const showBusinessPartnerColumn = computed(() => transferList.value.some((item) => item.specialInventoryFlag && item.specialInventoryFlag !== 'N'));
 
 // 固定库位模式下的表单数据
 const fixedTransferForm = ref({
   targetLocationCode: '',
-  targetUserName: '',
-  postingDate: null,
-  remark: ''
+  targetWarehouseCode: '',
+  targetAreaCode: '',
+  mtsnr: '',
+  bktxt: '',
+  postingDate: null as string | null
 });
 
 // 表单引用
 const queryFormRef = ref<any>(null);
 const fixedTransferFormRef = ref<any>(null);
+
+const mtsnrConfig: HistoryConfig = {
+  key: 'mtsnr',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryTransfer',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const bktxtConfig: HistoryConfig = {
+  key: 'bktxt',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryTransfer',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+function formatPostingDate(postingDate?: string | null): string | undefined {
+  if (!postingDate) {
+    return undefined;
+  }
+  return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
+}
+
+function resolveBatchBktxt(bktxt?: string | null): string | undefined {
+  const value = bktxt?.trim();
+  return value || undefined;
+}
+
+function resolveMtsnr(mtsnr?: string | null): string | undefined {
+  const value = mtsnr?.trim();
+  return value || undefined;
+}
 
 const inventoryTableRef = ref(null);
 
@@ -510,7 +551,9 @@ const addSelectedToTransferList = () => {
       targetInventoryType: getDefaultTargetInventoryType(moveType.value),
       transferQuantity: null,
       businessCode: item.businessCode,
-      remark: ''
+      targetBusinessCode: '',
+      targetSalesOrderNo: '',
+      targetSalesOrderItem: ''
     };
   });
 
@@ -539,7 +582,8 @@ const clearTransferList = () => {
   transferList.value = [];
   if (transferMode.value === 'fixed') {
     fixedTransferForm.value.targetLocationCode = '';
-    fixedTransferForm.value.remark = '';
+    fixedTransferForm.value.targetWarehouseCode = '';
+    fixedTransferForm.value.targetAreaCode = '';
   }
 };
 
@@ -568,15 +612,13 @@ const showStorageLocationDialog = (index: number) => {
 /** 处理移转模式切换 */
 const handleTransferModeChange = (mode: 'fixed' | 'multiple') => {
   if (mode === 'fixed') {
-    // 切换到固定库位模式时，清空所有行的目标库位
     transferList.value.forEach((item) => {
       item.targetLocationCode = '';
-      item.remark = '';
     });
   } else {
-    // 切换到多库位模式时，清空固定库位的目标库位
     fixedTransferForm.value.targetLocationCode = '';
-    fixedTransferForm.value.remark = '';
+    fixedTransferForm.value.targetWarehouseCode = '';
+    fixedTransferForm.value.targetAreaCode = '';
   }
 };
 
@@ -598,42 +640,22 @@ const storageLocationSelectCallBack = (record: any) => {
   }
 };
 
-/** 显示用户收藏选择对话框 */
-const showUserCollectionsDialog = (index: number) => {
-  userCollectionsDialogRef.value.openDialog();
-  userCollectionsDialogRef.value.handleQuery();
+/** 显示销售订单明细选择对话框 */
+const showSalesOrderDetailDialog = (index: number) => {
   currenIndex.value = index;
+  salesOrderDetailDialogRef.value?.openDialog({});
+  salesOrderDetailDialogRef.value?.handleQuery();
 };
 
-/** 用户收藏回调 **/
-const userCollectionsSelectCallBack = (record: any) => {
-  console.log(record);
-  if (transferMode.value === 'fixed') {
-    // 固定库位模式，设置统一的目标用户
-    fixedTransferForm.value.targetUserName = record.nickName;
-  } else {
-    // 多库位模式，设置对应行的目标用户
-    if (currenIndex.value >= 0 && currenIndex.value < transferList.value.length) {
-      const currentItem = transferList.value[currenIndex.value];
-      currentItem.targetUserName = record.nickName;
-    }
+/** 销售订单明细选择回调 */
+const salesOrderDetailSelectCallBack = (record: SalesOrderDetailVO) => {
+  if (currenIndex.value < 0 || currenIndex.value >= transferList.value.length) {
+    return;
   }
-};
-
-const targetUserNameKeyDownTab = async () => {
-  if (fixedTransferForm.value.targetUserName) {
-    fixedTransferForm.value.targetUserName = fixedTransferForm.value.targetUserName.trim();
-    const res = await listUserCollections({
-      pageNum: 1,
-      pageSize: 10,
-      nickName: fixedTransferForm.value.targetUserName
-    });
-    resultMessage.value = '';
-    if ((res.rows || []).length == 0) {
-      resultMessage.value = `收藏用户${fixedTransferForm.value.targetUserName}不存在`;
-      resultStatus.value = false;
-    }
-  }
+  const currentItem = transferList.value[currenIndex.value];
+  currentItem.targetBusinessCode = `${record.salesOrderNo}-${record.salesItemNo}`;
+  currentItem.targetSalesOrderNo = record.salesOrderNo;
+  currentItem.targetSalesOrderItem = record.salesItemNo;
 };
 
 const syncCurrentQuantity = (item: any) => {
@@ -658,6 +680,11 @@ const handleMoveTypeChange = () => {
     item.inventoryType = sourceInventoryType;
     item.targetInventoryType = targetInventoryType;
     syncCurrentQuantity(item);
+    if (moveType.value !== '413') {
+      item.targetBusinessCode = '';
+      item.targetSalesOrderNo = '';
+      item.targetSalesOrderItem = '';
+    }
     if (isStockStatusMove.value) {
       item.targetWarehouseCode = item.sourceWarehouseCode;
       item.targetAreaCode = item.sourceAreaCode;
@@ -686,6 +713,15 @@ const submitTransfer = async () => {
     return;
   }
 
+  if (moveType.value === '413') {
+    const missingTargetSo = validTransfers.filter((item) => !String(item.targetBusinessCode || '').trim());
+    if (missingTargetSo.length > 0) {
+      resultMessage.value = '413 移转须选择目标销售订单';
+      resultStatus.value = false;
+      return;
+    }
+  }
+
   if (needsTargetLocationMove.value) {
     if (transferMode.value === 'fixed') {
       if (!fixedTransferForm.value.targetLocationCode) {
@@ -697,9 +733,6 @@ const submitTransfer = async () => {
         item.targetLocationCode = fixedTransferForm.value.targetLocationCode;
         item.targetWarehouseCode = fixedTransferForm.value.targetWarehouseCode || '';
         item.targetAreaCode = fixedTransferForm.value.targetAreaCode || '';
-        item.targetUserName = fixedTransferForm.value.targetUserName || '';
-        item.postingDate = fixedTransferForm.value.postingDate ? fixedTransferForm.value.postingDate + ' 00:00:00' : '';
-        item.remark = fixedTransferForm.value.remark;
       });
     } else {
       const invalidItems = validTransfers.filter((item) => !item.targetLocationCode);
@@ -708,11 +741,6 @@ const submitTransfer = async () => {
         resultStatus.value = false;
         return;
       }
-      validTransfers.forEach((item) => {
-        item.targetUserName = fixedTransferForm.value.targetUserName || '';
-        item.postingDate = fixedTransferForm.value.postingDate ? fixedTransferForm.value.postingDate + ' 00:00:00' : '';
-        item.remark = fixedTransferForm.value.remark;
-      });
     }
   } else {
     validTransfers.forEach((item) => {
@@ -720,9 +748,6 @@ const submitTransfer = async () => {
       item.targetAreaCode = item.sourceAreaCode;
       item.targetLocationCode = item.sourceLocationCode;
       item.targetInventoryType = item.targetInventoryType || getDefaultTargetInventoryType(moveType.value);
-      item.targetUserName = fixedTransferForm.value.targetUserName || '';
-      item.postingDate = fixedTransferForm.value.postingDate ? fixedTransferForm.value.postingDate + ' 00:00:00' : '';
-      item.remark = fixedTransferForm.value.remark;
     });
   }
 
@@ -745,15 +770,18 @@ const submitTransfer = async () => {
       targetAreaCode: item.targetAreaCode,
       targetLocationCode: item.targetLocationCode,
       targetInventoryType: item.targetInventoryType,
+      targetBusinessCode: item.targetBusinessCode,
       transferQuantity: item.transferQuantity,
-      specialInventoryFlag: item.specialInventoryFlag,
-      remark: item.remark
+      specialInventoryFlag: item.specialInventoryFlag
     }));
 
     const res: any = await transferInventory({
       inventoryTransferBoList: transferRequests,
       transferType: 0,
-      moveType: moveType.value
+      moveType: moveType.value,
+      mtsnr: resolveMtsnr(fixedTransferForm.value.mtsnr),
+      bktxt: resolveBatchBktxt(fixedTransferForm.value.bktxt),
+      postingDate: formatPostingDate(fixedTransferForm.value.postingDate)
     });
 
     if (res.code !== HttpStatus.SUCCESS) {
@@ -765,9 +793,11 @@ const submitTransfer = async () => {
     resultStatus.value = true;
     transferList.value = [];
     fixedTransferForm.value.targetLocationCode = '';
-    fixedTransferForm.value.targetUserName = '';
+    fixedTransferForm.value.targetWarehouseCode = '';
+    fixedTransferForm.value.targetAreaCode = '';
+    fixedTransferForm.value.mtsnr = '';
+    fixedTransferForm.value.bktxt = '';
     fixedTransferForm.value.postingDate = null;
-    fixedTransferForm.value.remark = '';
     handleQuery();
   } catch (error) {
     loading.value = false;
@@ -928,6 +958,21 @@ onMounted(() => {
 }
 
 .transfer-form-bar :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.transfer-more-toggle-col {
+  display: flex;
+  align-items: center;
+}
+
+.transfer-form-more {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--el-border-color-lighter);
+}
+
+.transfer-form-more :deep(.el-form-item) {
   margin-bottom: 0;
 }
 

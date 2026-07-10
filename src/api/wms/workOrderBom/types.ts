@@ -15,6 +15,36 @@ export interface WorkOrderBomVO {
   componentMaterial: string;
 
   /**
+   * 组件描述
+   */
+  componentDesc?: string;
+
+  /**
+   * 预留单号
+   */
+  reserveNo?: string;
+
+  /**
+   * 预留单项次
+   */
+  reserveItemNo?: string;
+
+  /**
+   * 销售订单号
+   */
+  salesOrderNo?: string;
+
+  /**
+   * 销售订单项次
+   */
+  salesOrderItem?: string;
+
+  /**
+   * 特殊库存标识
+   */
+  specialInventoryFlag?: string;
+
+  /**
    * 组件数量
    */
   componentQty: number;

@@ -248,6 +248,17 @@ export const formatQty = (qty: number | string | null | undefined): string => {
   }).format(num);
 };
 
+/** 数量 + 单位展示（数量带千分位，最多 3 位小数） */
+export const formatQtyWithUnit = (qty: number | string | null | undefined, unit?: string): string => {
+  if (qty === null || qty === undefined || qty === '' || Number.isNaN(Number(qty))) {
+    return '-';
+  }
+  const formatted = formatQty(qty);
+  if (!formatted) return '-';
+  const u = String(unit ?? '').trim();
+  return u ? `${formatted} ${u}` : formatted;
+};
+
 export default {
   handleTree
 };

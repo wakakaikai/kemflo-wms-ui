@@ -1,60 +1,24 @@
 import request from '@/utils/request';
 import { getDicts } from '@/api/system/dict/data';
 import { useDictStore } from '@/store/modules/dict';
-import { mapLocationSourceToRecommendationReason, PREP_LOCATION_REC_SYSTEM_RECOMMENDED } from '@/api/wms/workOrderPrepDemand/locationSource';
+import { mapLocationSourceToRecommendationSource, PREP_LOCATION_REC_SYSTEM_RECOMMENDED } from '@/api/wms/workOrderPrepDemand/locationSource';
 import type { MaterialUnitConversionVO } from '@/api/wms/materialUnitConversion/types';
-import type {
-  AllocationRequest,
-  AllocationPlanVO,
-  AllocationDetailVO,
-  AllocationPlanDetailVO,
-  BomIssueRow,
-  BomRecommendPickItem,
-  BomLineResult,
-  ClassifiedMaterialRow,
-  ClassifyWorkOrdersResult,
-  InventoryCheckRequest,
-  InventoryCheckResultVO,
-  InventoryCheckStatus,
-  InventoryTreeNode,
-  IssueUnitOption,
-  LocationRec,
-  MaterialDemandDetailRow,
-  MaterialLocationRow,
-  PartSizeType,
-  SalesOrderInventoryConstraint,
-  WarehouseRoute,
-  WarehouseRouteContext,
-  WorkOrderMaterialIssueLine,
-  WorkOrderVO
-} from './types';
+import type { AllocationRequest, AllocationGenerateResult, AllocationPlanVO, AllocationDetailVO, AllocationPlanDetailVO, BomIssueRow, BomRecommendPickItem, BomLineResult, ClassifiedMaterialRow, ClassifyWorkOrdersResult, InventoryCheckRequest, InventoryCheckResultVO, InventoryCheckStatus, InventoryTreeNode, IssueUnitOption, LocationRec, MaterialDemandDetailRow, MaterialLocationRow, PartSizeType, SalesOrderInventoryConstraint, WarehouseRoute, WarehouseRouteContext, WorkOrderMaterialIssueLine, WorkOrderVO } from './types';
 
-/** @deprecated 自动仓列表改由物料库存查询接口 autoWarehouses 返回，请勿再调用 */
-export function getAutoWarehouseConfig() {
-  return request({
-    url: '/wms/allocation/workbench/autoWarehouseConfig',
-    method: 'get'
-  });
-}
-
-/** 自动仓：直接 261 扣料 */
-export function executeAutoWarehouseIssue(data: import('./types').AutoWarehouseIssueRequest) {
-  return request({
-    url: '/wms/allocation/workbench/autoIssue',
-    method: 'post',
-    data
-  });
-}
-
-/** 生成单一分配方案（工作台：直接返回 plan 对象） */
+/** 生成单一分配方案 / 备料需求（工作台） */
 export function generateAllocation(data: AllocationRequest) {
-  return request({
-    url: '/wms/allocation/workbench/generate',
+  return request<AllocationGenerateResult | AllocationPlanVO>({
+    url: '/wms/materialIssueWorkbench/generate',
     method: 'post',
     data
   }).then((res: any) => {
-    if (res.code === 200 && res.data?.plan) {
-      return { ...res, data: res.data.plan };
+    if (res.code === 200 && res.data) {
+      if (res.data.demand != null || res.data.success != null) {
+        return { ...res, data: res.data as AllocationGenerateResult };
+      }
+      if (res.data.plan) {
+        return { ...res, data: res.data.plan as AllocationPlanVO };
+      }
     }
     return res;
   });
@@ -107,7 +71,7 @@ export function preCheckExecution(data: Record<string, unknown>) {
 /** 检查物料库存 */
 export function checkMaterialInventory(data: InventoryCheckRequest) {
   return request<InventoryCheckResultVO>({
-    url: `/wms/allocation/checkInventory`,
+    url: `/wms/inventoryDetail/checkInventory`,
     method: 'post',
     data
   });
@@ -160,7 +124,7 @@ export const executeAllocation = executeAllocationPlan;
 
 export function getMaterialInventory(materialCode: string) {
   return request({
-    url: `/wms/allocation/materialInventory/${materialCode}`,
+    url: `/wms/inventoryDetail/materialInventory/${materialCode}`,
     method: 'get'
   });
 }
@@ -201,9 +165,7 @@ const AllocationApi = {
   getMaterialLocations,
   getMaterialBatches,
   getWorkOrderBom,
-  getWorkOrderByNo,
-  getAutoWarehouseConfig,
-  executeAutoWarehouseIssue
+  getWorkOrderByNo
 };
 
 export default AllocationApi;
@@ -216,10 +178,7 @@ export type { AllocationPlanDetailVO, AllocationDetailVO, AllocationPlanVO };
 /**
  * 从库位编码或推荐行解析仓库、库区信息
  */
-export function resolveLocationMeta(
-  locationCode?: string,
-  rec?: { warehouseCode?: string; areaCode?: string; locationName?: string }
-) {
+export function resolveLocationMeta(locationCode?: string, rec?: { warehouseCode?: string; areaCode?: string; locationName?: string }) {
   if (rec?.warehouseCode) {
     return {
       warehouseCode: rec.warehouseCode,
@@ -264,6 +223,16 @@ function pickBool(...values: unknown[]): boolean | undefined {
 
 export function buildRowKey(row: Record<string, unknown>, index: number) {
   const parts = [row.warehouseCode, row.areaCode, row.locationCode, row.batchCode].map((v) => String(v ?? '').trim()).filter(Boolean);
+  const flag = String(row.specialInventoryFlag ?? '')
+    .trim()
+    .toUpperCase();
+  if (flag && flag !== 'N') {
+    const businessCode = String(row.businessCode ?? '').trim();
+    const businessName = String(row.businessName ?? '').trim();
+    if (businessCode) parts.push(businessCode);
+    if (businessName) parts.push(businessName);
+    parts.push(flag);
+  }
   return parts.length ? parts.join('|') : `row-${index}`;
 }
 
@@ -304,11 +273,7 @@ export function cloneMaterialLocationRows(rows: MaterialLocationRow[]): Material
     blockedQty: Number(r.blockedQty ?? 0),
     recommendedQty: undefined,
     isRecommended: false,
-    systemRecommendedQty: r.fromCheckInventory
-      ? r.systemRecommendedQty !== undefined
-        ? r.systemRecommendedQty
-        : r.recommendedQty
-      : undefined
+    systemRecommendedQty: r.fromCheckInventory ? (r.systemRecommendedQty !== undefined ? r.systemRecommendedQty : r.recommendedQty) : undefined
   }));
 }
 
@@ -348,12 +313,10 @@ export function normalizeMaterialInventoryResponse(data: unknown): MaterialLocat
   return normalizeMaterialLocationRows(extractMaterialInventoryList(data));
 }
 
-function inferSpecialInventoryFlag(fields: {
-  specialInventoryFlag?: string;
-  businessCode?: string;
-  salesOrderNo?: string;
-}): string | undefined {
-  const existing = String(fields.specialInventoryFlag ?? '').trim().toUpperCase();
+function inferSpecialInventoryFlag(fields: { specialInventoryFlag?: string; businessCode?: string; salesOrderNo?: string }): string | undefined {
+  const existing = String(fields.specialInventoryFlag ?? '')
+    .trim()
+    .toUpperCase();
   if (existing) return existing;
   if (fields.salesOrderNo) return 'E';
   const code = String(fields.businessCode ?? '').trim();
@@ -367,15 +330,15 @@ export function normalizeMaterialLocationRows(raw: unknown): MaterialLocationRow
     const row = item as Record<string, unknown>;
     const availableQuantity = pickNum(row.availableQuantity, row.availableQty, row.qty, row.onHandQty);
     const stock = splitStockQty(row, availableQuantity);
-    const businessCode = pickStr(row.businessCode, row.businessPartner, row.vendorCode, row.customerCode) || undefined;
-    const businessName = pickStr(row.businessName) || undefined;
-    const specialInventoryFlagRaw =
-      pickStr(row.specialInventoryFlag, row.inventorySpecialFlag) || undefined;
+    const businessCode = pickStr(row.businessCode, row.vendorCode, row.customerCode) || undefined;
+    const businessName = pickStr(row.businessName, row.businessPartner) || undefined;
+    const specialInventoryFlagRaw = pickStr(row.specialInventoryFlag, row.inventorySpecialFlag) || undefined;
     const soFields = resolveSalesOrderFieldsFromLocation({
       salesOrderNo: pickStr(row.salesOrderNo) || undefined,
       salesOrderItem: pickStr(row.salesOrderItem, row.salesOrderLine, row.soItem) || undefined,
       businessCode,
       businessName,
+      businessPartner: pickStr(row.businessPartner) || undefined,
       specialInventoryFlag: specialInventoryFlagRaw
     });
     const specialInventoryFlag =
@@ -384,11 +347,19 @@ export function normalizeMaterialLocationRows(raw: unknown): MaterialLocationRow
         businessCode,
         salesOrderNo: soFields.salesOrderNo
       }) || undefined;
-    const recommendedQtyRaw =
-      row.recommendedQty ?? row.recommendedQuantity ?? row.allocatedQuantity ?? row.allocateQty ?? row.pickQty;
+    const recommendedQtyRaw = row.recommendedQty ?? row.recommendedQuantity ?? row.allocatedQuantity ?? row.allocateQty ?? row.pickQty;
     const recommendedQty = recommendedQtyRaw != null ? pickNum(recommendedQtyRaw) : undefined;
+    const normalizedRow = {
+      warehouseCode: pickStr(row.warehouseCode, row.whCode) || undefined,
+      areaCode: pickStr(row.areaCode) || undefined,
+      locationCode: pickStr(row.locationCode, row.location) || undefined,
+      batchCode: pickStr(row.batchCode, row.batchNo) || undefined,
+      specialInventoryFlag,
+      businessCode,
+      businessName
+    };
     return {
-      rowKey: buildRowKey(row, index),
+      rowKey: buildRowKey(normalizedRow, index),
       warehouseCode: pickStr(row.warehouseCode, row.whCode) || undefined,
       warehouseName: pickStr(row.warehouseName, row.warehouseDesc) || undefined,
       areaCode: pickStr(row.areaCode) || undefined,
@@ -456,11 +427,7 @@ export function sumAllocatablePoolQty(rows: MaterialLocationRow[]): number {
 }
 
 /** 按 checkInventory 推荐库位顺序及 API 推荐数量分配 */
-export function recommendLocationsFromCheckApi(
-  rows: MaterialLocationRow[],
-  demandQty: number,
-  options?: { canAllocate?: (row: MaterialLocationRow) => boolean }
-) {
+export function recommendLocationsFromCheckApi(rows: MaterialLocationRow[], demandQty: number, options?: { canAllocate?: (row: MaterialLocationRow) => boolean }) {
   const canAllocate = options?.canAllocate ?? (() => true);
   const demand = Math.max(0, Number(demandQty));
   let remaining = demand;
@@ -496,8 +463,7 @@ export function recommendLocationsFromCheckApi(
       continue;
     }
 
-    const pickQty =
-      apiQty != null && apiQty > 0 ? Math.min(remaining, apiQty, available > 0 ? available : apiQty) : Math.min(remaining, available);
+    const pickQty = apiQty != null && apiQty > 0 ? Math.min(remaining, apiQty, available > 0 ? available : apiQty) : Math.min(remaining, available);
     row.recommendedQty = pickQty;
     row.isRecommended = pickQty > 0;
     if (pickQty > 0) {
@@ -519,12 +485,48 @@ export function recommendLocationsFromCheckApi(
     }
   });
 
+  if (useApiQty && !recommendedRows.length && demand > 0) {
+    const fallback = buildCheckInventoryFifoFallback(rows, demand, options);
+    fallback.forEach((row) => {
+      recommendedKeys.add(row.rowKey);
+      recommendedRows.push(row);
+      remaining = Math.max(0, remaining - Number(row.recommendedQty ?? 0));
+    });
+  }
+
   return {
     recommendedKeys,
     recommendedRows,
     otherLineDisplayRows: [],
     shortageQty: Math.max(0, remaining)
   };
+}
+
+/** checkInventory 已返回推荐量但二次分配为空时，直接按 API 推荐量回填 FIFO */
+function buildCheckInventoryFifoFallback(
+  rows: MaterialLocationRow[],
+  cap: number,
+  options?: { canAllocate?: (row: MaterialLocationRow) => boolean }
+): MaterialLocationRow[] {
+  const canAllocate = options?.canAllocate ?? (() => true);
+  let remaining = Math.max(0, Number(cap));
+  const result: MaterialLocationRow[] = [];
+  rows.forEach((row) => {
+    if (remaining <= 0) return;
+    if (!canAllocate(row)) return;
+    const apiQty = resolveCheckApiRecommendedQty(row);
+    if (!apiQty || apiQty <= 0) return;
+    const pickQty = Math.min(remaining, apiQty);
+    if (pickQty <= 0) return;
+    result.push({
+      ...row,
+      recommendedQty: pickQty,
+      isRecommended: true,
+      systemRecommendedQty: apiQty
+    });
+    remaining -= pickQty;
+  });
+  return result;
 }
 
 export function shouldUseCheckInventoryRecommend(rows: MaterialLocationRow[]): boolean {
@@ -623,10 +625,7 @@ export function buildInventoryTree(rows: MaterialLocationRow[]): InventoryTreeNo
   return [root];
 }
 
-export function deductLocationPicksFromStock(
-  rows: MaterialLocationRow[],
-  picks: Array<{ rowKey?: string; recommendedQty?: number }>
-) {
+export function deductLocationPicksFromStock(rows: MaterialLocationRow[], picks: Array<{ rowKey?: string; recommendedQty?: number }>) {
   const pickMap = new Map<string, number>();
   picks.forEach((pick) => {
     const key = String(pick.rowKey || '').trim();
@@ -641,11 +640,7 @@ export function deductLocationPicksFromStock(
   });
 }
 
-export function recommendLocationsByFifo(
-  rows: MaterialLocationRow[],
-  demandQty: number,
-  options?: { canAllocate?: (row: MaterialLocationRow) => boolean }
-) {
+export function recommendLocationsByFifo(rows: MaterialLocationRow[], demandQty: number, options?: { canAllocate?: (row: MaterialLocationRow) => boolean }) {
   const canAllocate = options?.canAllocate ?? (() => true);
   const demand = Math.max(0, Number(demandQty));
   let remaining = demand;
@@ -753,7 +748,7 @@ export function parseSalesOrderBusinessCode(businessCode?: string): { salesOrder
   return { salesOrderNo: code };
 }
 
-/** 从库位/推荐接口字段解析销售订单号与项次（businessCode=订单号，businessName=项次） */
+/** 从库位/推荐接口字段解析销售订单号与项次（businessCode=订单号，businessName/businessPartner=项次） */
 export function resolveSalesOrderFieldsFromLocation(raw: {
   salesOrderNo?: string;
   salesOrderItem?: string;
@@ -761,19 +756,18 @@ export function resolveSalesOrderFieldsFromLocation(raw: {
   soItem?: string;
   businessCode?: string;
   businessName?: string;
+  businessPartner?: string;
   specialInventoryFlag?: string;
 }): { salesOrderNo?: string; salesOrderItem?: string } {
   const businessCode = String(raw.businessCode ?? '').trim();
-  const businessName = String(raw.businessName ?? '').trim();
+  const businessName = String(raw.businessName ?? raw.businessPartner ?? '').trim();
   const parsedSo = parseSalesOrderBusinessCode(businessCode);
-  const flag = String(raw.specialInventoryFlag ?? '').trim().toUpperCase();
+  const flag = String(raw.specialInventoryFlag ?? '')
+    .trim()
+    .toUpperCase();
 
-  let salesOrderNo =
-    String(raw.salesOrderNo ?? '').trim() || parsedSo.salesOrderNo || undefined;
-  let salesOrderItem =
-    String(raw.salesOrderItem ?? raw.salesOrderLine ?? raw.soItem ?? '').trim() ||
-    parsedSo.salesOrderItem ||
-    undefined;
+  let salesOrderNo = String(raw.salesOrderNo ?? '').trim() || parsedSo.salesOrderNo || undefined;
+  let salesOrderItem = String(raw.salesOrderItem ?? raw.salesOrderLine ?? raw.soItem ?? '').trim() || parsedSo.salesOrderItem || undefined;
 
   if (flag === 'E') {
     if (!salesOrderNo && businessCode) {
@@ -794,25 +788,51 @@ export function isSalesOrderInventoryRow(row: Pick<MaterialLocationRow, 'special
   return String(row.specialInventoryFlag ?? '').toUpperCase() === 'E';
 }
 
-/** BOM / 发料行是否需要绑定销售订单的 E 类型 */
+/** 合并 BOM 行与库存检查行上的销售订单约束（仅行级字段，不含工单头） */
+export function resolveBomSalesOrderConstraint(
+  bom?: SalesOrderInventoryConstraint | null,
+  lineResult?: SalesOrderInventoryConstraint | null
+): SalesOrderInventoryConstraint {
+  const salesOrderNo = String(bom?.salesOrderNo ?? lineResult?.salesOrderNo ?? '').trim() || undefined;
+  const salesOrderItem = String(bom?.salesOrderItem ?? lineResult?.salesOrderItem ?? '').trim() || undefined;
+  const specialInventoryFlag = String(bom?.specialInventoryFlag ?? lineResult?.specialInventoryFlag ?? '').trim() || undefined;
+  return { salesOrderNo, salesOrderItem, specialInventoryFlag };
+}
+
+/** 同一物料共享库存池的分组键（非限制库存 vs 销售订单 E 库存分开扣减） */
+export function buildBomMaterialPoolKey(row: Pick<BomIssueRow, 'componentMaterial' | 'salesOrderNo' | 'salesOrderItem' | 'specialInventoryFlag'>): string {
+  const code = String(row.componentMaterial || '').trim();
+  const so = resolveBomSalesOrderConstraint(row);
+  if (!bomRequiresSalesOrderInventory(so)) {
+    return `mat:${code}|unrestricted`;
+  }
+  const item = normalizeSalesOrderItem(so.salesOrderItem);
+  return `mat:${code}|so:${so.salesOrderNo}|${item}`;
+}
+
+export function isSameBomMaterialPoolGroup(a: BomIssueRow, b: BomIssueRow): boolean {
+  return buildBomMaterialPoolKey(a) === buildBomMaterialPoolKey(b);
+}
+
+/** BOM / 发料行是否需要绑定销售订单的 E 类型（仅当行数据同时含销售订单号与项次） */
 export function bomRequiresSalesOrderInventory(row?: SalesOrderInventoryConstraint | null): boolean {
   if (!row) return false;
-  if (String(row.specialInventoryFlag ?? '').toUpperCase() === 'E') return true;
   const so = String(row.salesOrderNo ?? '').trim();
   const item = String(row.salesOrderItem ?? '').trim();
   return !!so && !!item;
 }
 
+/** 工单是否应按销售订单库存（E）做检查（任一 BOM 行自身绑定销售订单） */
+export function orderRequiresSalesOrderInventory(_order?: SalesOrderInventoryConstraint | null, bomRows?: SalesOrderInventoryConstraint[]): boolean {
+  return !!bomRows?.some((row) => bomRequiresSalesOrderInventory(row));
+}
+
 /** 缺料行所缺的库存类型 */
-export function resolveShortageInventoryType(
-  constraint?: SalesOrderInventoryConstraint | null
-): import('./types').ShortageInventoryType {
+export function resolveShortageInventoryType(constraint?: SalesOrderInventoryConstraint | null): import('./types').ShortageInventoryType {
   return bomRequiresSalesOrderInventory(constraint) ? 'SALES_ORDER' : 'UNRESTRICTED';
 }
 
-export function formatShortageInventoryTypeLabel(
-  type?: import('./types').ShortageInventoryType | string
-): string {
+export function formatShortageInventoryTypeLabel(type?: import('./types').ShortageInventoryType | string): string {
   const normalized = String(type ?? '')
     .trim()
     .toUpperCase();
@@ -822,57 +842,56 @@ export function formatShortageInventoryTypeLabel(
 }
 
 /** 分类/备料行展示用特殊库存标识（非限制为 N） */
-export function resolveDemandRowInventoryFlag(
-  row: Pick<import('./types').MaterialDemandDetailRow, 'specialInventoryFlag' | 'shortageInventoryType'>
-): string {
-  const flag = String(row.specialInventoryFlag ?? '').trim().toUpperCase();
+export function resolveDemandRowInventoryFlag(row: Pick<import('./types').MaterialDemandDetailRow, 'specialInventoryFlag' | 'shortageInventoryType'>): string {
+  const flag = String(row.specialInventoryFlag ?? '')
+    .trim()
+    .toUpperCase();
   if (flag) return flag;
   if (row.shortageInventoryType === 'SALES_ORDER') return 'E';
   return 'N';
 }
 
-function buildShortageDemandInventoryMeta(
-  salesOrderConstraint?: SalesOrderInventoryConstraint | null,
-  shortageInventoryType?: import('./types').ShortageInventoryType
-): Pick<
-  import('./types').MaterialDemandDetailRow,
-  'shortageInventoryType' | 'specialInventoryFlag' | 'businessCode' | 'businessName'
-> {
+function buildShortageDemandInventoryMeta(salesOrderConstraint?: SalesOrderInventoryConstraint | null, shortageInventoryType?: import('./types').ShortageInventoryType): Pick<import('./types').MaterialDemandDetailRow, 'shortageInventoryType' | 'specialInventoryFlag' | 'businessCode' | 'businessName'> {
   const type = shortageInventoryType ?? resolveShortageInventoryType(salesOrderConstraint);
-  const flagRaw = String(salesOrderConstraint?.specialInventoryFlag ?? '').trim().toUpperCase();
+  const flagRaw = String(salesOrderConstraint?.specialInventoryFlag ?? '')
+    .trim()
+    .toUpperCase();
   const specialInventoryFlag = flagRaw && flagRaw !== 'N' ? flagRaw : type === 'SALES_ORDER' ? 'E' : 'N';
   const isSpecial = specialInventoryFlag !== 'N';
   return {
     shortageInventoryType: type,
     specialInventoryFlag,
-    businessCode:
-      isSpecial && specialInventoryFlag === 'E'
-        ? String(salesOrderConstraint?.salesOrderNo ?? '').trim() || undefined
-        : undefined,
-    businessName:
-      isSpecial && specialInventoryFlag === 'E'
-        ? String(salesOrderConstraint?.salesOrderItem ?? '').trim() || undefined
-        : undefined
+    businessCode: isSpecial && specialInventoryFlag === 'E' ? String(salesOrderConstraint?.salesOrderNo ?? '').trim() || undefined : undefined,
+    businessName: isSpecial && specialInventoryFlag === 'E' ? String(salesOrderConstraint?.salesOrderItem ?? '').trim() || undefined : undefined
   };
 }
 
-export function resolveLocationSalesOrder(
-  loc: Pick<MaterialLocationRow, 'salesOrderNo' | 'salesOrderItem' | 'businessCode' | 'businessName' | 'specialInventoryFlag'>
-) {
+export function resolveLocationSalesOrder(loc: Pick<MaterialLocationRow, 'salesOrderNo' | 'salesOrderItem' | 'businessCode' | 'businessName' | 'specialInventoryFlag'>) {
   return resolveSalesOrderFieldsFromLocation(loc);
 }
 
 /** 库存行是否匹配 BOM 绑定的销售订单 */
-export function matchesSalesOrderInventory(
-  bom: SalesOrderInventoryConstraint,
-  loc: Pick<MaterialLocationRow, 'specialInventoryFlag' | 'businessCode' | 'businessName' | 'salesOrderNo' | 'salesOrderItem'>
-): boolean {
+export function matchesSalesOrderInventory(bom: SalesOrderInventoryConstraint, loc: Pick<MaterialLocationRow, 'specialInventoryFlag' | 'businessCode' | 'businessName' | 'salesOrderNo' | 'salesOrderItem'>): boolean {
   const bomSo = String(bom.salesOrderNo ?? '').trim();
   const bomItem = normalizeSalesOrderItem(bom.salesOrderItem);
   if (!bomSo) return false;
 
+  const locSoNo = String(loc.salesOrderNo ?? '').trim();
+  const locSoItem = normalizeSalesOrderItem(loc.salesOrderItem);
+  if (locSoNo === bomSo) {
+    if (!bomItem) return true;
+    if (locSoItem && locSoItem === bomItem) return true;
+  }
+
   const flag = String(loc.specialInventoryFlag ?? '').toUpperCase();
   if (flag && !['E', 'N', ''].includes(flag)) return false;
+
+  const locCode = String(loc.businessCode ?? '').trim();
+  const locItemRaw = String(loc.businessName ?? '').trim();
+  if (locCode === bomSo) {
+    if (!bomItem) return true;
+    if (locItemRaw && normalizeSalesOrderItem(locItemRaw) === bomItem) return true;
+  }
 
   const locSo = resolveLocationSalesOrder(loc);
   if (locSo.salesOrderNo !== bomSo) return false;
@@ -882,19 +901,33 @@ export function matchesSalesOrderInventory(
 }
 
 /** 推荐/操作时可选中的库位（与其他库位同一套规则，仅展示层区分线边仓） */
-export function isOperatableLocationForBom(
-  bom: SalesOrderInventoryConstraint,
-  loc: MaterialLocationRow
-): boolean {
+export function isOperatableLocationForBom(bom: SalesOrderInventoryConstraint, loc: MaterialLocationRow): boolean {
   if (!bomRequiresSalesOrderInventory(bom)) return true;
+  const flag = String(loc.specialInventoryFlag ?? '').toUpperCase();
+  if (flag === 'N') return false;
   return matchesSalesOrderInventory(bom, loc);
 }
 
+/** 从库存检查行结果解析本行可用库存池（库存单位） */
+export function resolveBomRowPoolQtyFromCheck(
+  soConstraint: SalesOrderInventoryConstraint,
+  checkRows: MaterialLocationRow[] | undefined,
+  lineResult?: Pick<InventoryCheckLineResult, 'availableQty'>,
+  inventory?: { availableQty?: number }
+): number {
+  if (checkRows?.length) {
+    const summed = bomRequiresSalesOrderInventory(soConstraint)
+      ? sumSalesOrderAllocatablePoolQty(soConstraint, checkRows)
+      : sumAllocatablePoolQty(checkRows);
+    if (summed > 0) return summed;
+  }
+  const lineAvailable = Number(lineResult?.availableQty);
+  if (Number.isFinite(lineAvailable) && lineAvailable >= 0) return lineAvailable;
+  return Number(inventory?.availableQty ?? 0);
+}
+
 /** 实时查库存：补全销售订单行的 E 标识 */
-export function enrichLocationRowsWithSalesOrderDefaults(
-  rows: MaterialLocationRow[],
-  bom: SalesOrderInventoryConstraint
-): MaterialLocationRow[] {
+export function enrichLocationRowsWithSalesOrderDefaults(rows: MaterialLocationRow[], bom: SalesOrderInventoryConstraint): MaterialLocationRow[] {
   const bomSo = String(bom.salesOrderNo ?? '').trim();
   const bomItem = normalizeSalesOrderItem(bom.salesOrderItem);
   if (!bomSo) return rows;
@@ -903,15 +936,13 @@ export function enrichLocationRowsWithSalesOrderDefaults(
     ...row,
     specialInventoryFlag: row.specialInventoryFlag || 'E',
     salesOrderNo: row.salesOrderNo || bomSo,
-    salesOrderItem: row.salesOrderItem || bomItem || row.salesOrderItem,
-    businessCode: row.businessCode || defaultBusinessCode
+    salesOrderItem: row.salesOrderItem || String(bom.salesOrderItem ?? '').trim() || bomItem || row.salesOrderItem,
+    businessCode: row.businessCode || defaultBusinessCode,
+    businessName: row.businessName || (bomItem ? String(bom.salesOrderItem ?? '').trim() || bomItem : row.businessName)
   }));
 }
 
-export function sumSalesOrderAllocatablePoolQty(
-  bom: SalesOrderInventoryConstraint,
-  rows: MaterialLocationRow[]
-): number {
+export function sumSalesOrderAllocatablePoolQty(bom: SalesOrderInventoryConstraint, rows: MaterialLocationRow[]): number {
   return rows.reduce((sum, row) => {
     if (!isOperatableLocationForBom(bom, row)) return sum;
     return sum + resolveLocationPickAvailableQty(row);
@@ -928,10 +959,7 @@ export function formatSalesOrderInventoryLabel(bom: SalesOrderInventoryConstrain
 // ----- workOrderMaterialIssue.ts -----
 
 /** SAP 预留单号+项次稳定行键（BOM 同步后 bomLineId 会变，预留键不变） */
-export function getReserveLineKey(
-  row: { workOrderNo?: string; reserveNo?: string; reserveItemNo?: string },
-  options?: { includeWorkOrder?: boolean }
-): string | undefined {
+export function getReserveLineKey(row: { workOrderNo?: string; reserveNo?: string; reserveItemNo?: string }, options?: { includeWorkOrder?: boolean }): string | undefined {
   const reserveNo = String(row.reserveNo || '').trim();
   const reserveItemNo = String(row.reserveItemNo || '').trim();
   if (!reserveNo || !reserveItemNo) return undefined;
@@ -964,9 +992,7 @@ export function getIssueLineKey(line: WorkOrderMaterialIssueLine): string {
   return `mat:${String(line.materialCode || '').trim()}`;
 }
 
-export function getDemandDetailLineKey(
-  detail: Pick<MaterialDemandDetailRow, 'reserveNo' | 'reserveItemNo' | 'bomLineId' | 'materialCode'>
-): string {
+export function getDemandDetailLineKey(detail: Pick<MaterialDemandDetailRow, 'reserveNo' | 'reserveItemNo' | 'bomLineId' | 'materialCode'>): string {
   const reserveKey = getReserveLineKey(detail);
   if (reserveKey) return reserveKey;
   if (detail.bomLineId != null && detail.bomLineId !== '') {
@@ -977,11 +1003,7 @@ export function getDemandDetailLineKey(
 
 /** 用户已勾选且数量>0 的备料行键集合 */
 export function buildSelectedIssueLineKeySet(order: WorkOrderVO): Set<string> {
-  return new Set(
-    (order.materialIssues || [])
-      .filter((line) => Number(line.issueQty) > 0)
-      .map((line) => getIssueLineKey(line))
-  );
+  return new Set((order.materialIssues || []).filter((line) => Number(line.issueQty) > 0).map((line) => getIssueLineKey(line)));
 }
 
 /** 分类拆分行是否属于用户勾选的备料行 */
@@ -991,10 +1013,7 @@ export function isSelectedDemandDetail(order: WorkOrderVO, detail: MaterialDeman
   return selected.has(getDemandDetailLineKey(detail));
 }
 
-function forEachSelectedDemandDetail(
-  orders: WorkOrderVO[],
-  visitor: (order: WorkOrderVO, line: MaterialDemandDetailRow) => void
-) {
+function forEachSelectedDemandDetail(orders: WorkOrderVO[], visitor: (order: WorkOrderVO, line: MaterialDemandDetailRow) => void) {
   orders.forEach((order) => {
     order.materialDemandDetails?.forEach((line) => {
       if (Number(line.issueQty) > 0 && isSelectedDemandDetail(order, line)) {
@@ -1019,7 +1038,7 @@ export function getPeerReservedInventoryQty(rows: BomIssueRow[], rowIndex: numbe
   let sum = 0;
   rows.forEach((row, idx) => {
     if (idx >= rowIndex) return;
-    if (row.componentMaterial !== current.componentMaterial) return;
+    if (!isSameBomMaterialPoolGroup(row, current)) return;
     sum += getRowAllocatedInventoryQty(row);
   });
   return sum;
@@ -1048,7 +1067,7 @@ export function collectPeerLocationPicks(rows: BomIssueRow[], rowIndex: number):
   const picks: Array<Record<string, unknown>> = [];
   rows.forEach((row, idx) => {
     if (idx >= rowIndex) return;
-    if (row.componentMaterial !== current.componentMaterial) return;
+    if (!isSameBomMaterialPoolGroup(row, current)) return;
     const manual = row.manualLocationSelections?.filter((loc) => Number(loc.recommendedQty ?? 0) > 0);
     if (manual?.length) {
       picks.push(...manual);
@@ -1064,16 +1083,18 @@ export function collectPeerLocationPicks(rows: BomIssueRow[], rowIndex: number):
 }
 
 export function refreshBomMaterialPoolMetrics<T extends BomIssueRow>(rows: T[]): T[] {
-  const poolByMaterial = new Map<string, number>();
+  const poolByKey = new Map<string, number>();
   rows.forEach((row) => {
     const pool = Number(row.materialPoolQty ?? row.availableQty ?? 0);
-    const prev = poolByMaterial.get(row.componentMaterial);
+    const key = buildBomMaterialPoolKey(row);
+    const prev = poolByKey.get(key);
     if (prev === undefined || pool > prev) {
-      poolByMaterial.set(row.componentMaterial, pool);
+      poolByKey.set(key, pool);
     }
   });
   return rows.map((row, index) => {
-    const pool = poolByMaterial.get(row.componentMaterial) ?? Number(row.availableQty ?? 0);
+    const key = buildBomMaterialPoolKey(row);
+    const pool = poolByKey.get(key) ?? Number(row.materialPoolQty ?? row.availableQty ?? 0);
     const peerReserved = getPeerReservedInventoryQty(rows, index);
     return {
       ...row,
@@ -1088,33 +1109,28 @@ function sumLocationPickInventoryQty(locations?: Array<Record<string, unknown>> 
   return locations.reduce((sum, loc) => sum + Number(loc.recommendedQty ?? 0), 0);
 }
 
+/** 本行可用于齐套/状态展示的库存量（库存单位，非本次推荐分配量） */
 export function resolveRowAvailableQty(material: {
   manualLocationSelections?: Array<Record<string, unknown>>;
-  fifoRecommendedLocations?: Array<Record<string, unknown>>;
   effectiveAvailableQty?: number;
+  materialPoolQty?: number;
   availableQty?: number;
-}) {
+}): number | undefined {
   const manualPicked = sumLocationPickInventoryQty(material.manualLocationSelections);
-  if (material.manualLocationSelections?.length) {
+  if (manualPicked > 0) {
     return manualPicked;
   }
-  const fifoPicked = sumLocationPickInventoryQty(material.fifoRecommendedLocations);
-  if (fifoPicked > 0) {
-    return fifoPicked;
+  if (material.effectiveAvailableQty !== undefined && material.effectiveAvailableQty !== null) {
+    return Math.max(0, Number(material.effectiveAvailableQty));
   }
-  const effective = material.effectiveAvailableQty;
-  if (effective !== undefined && effective !== null) return effective;
-  return material.availableQty;
+  const pool = material.materialPoolQty ?? material.availableQty;
+  if (pool !== undefined && pool !== null) {
+    return Math.max(0, Number(pool));
+  }
+  return undefined;
 }
 
-export function calcRowKitRate(material: {
-  effectiveAvailableQty?: number;
-  availableQty?: number;
-  issueQty?: number;
-  componentQty?: number;
-  issuedQty?: number;
-  conversionRatio?: number;
-}) {
+export function calcRowKitRate(material: { effectiveAvailableQty?: number; availableQty?: number; issueQty?: number; componentQty?: number; issuedQty?: number; conversionRatio?: number }) {
   const available = resolveRowAvailableQty(material);
   if (available === undefined || available === null) return 0;
   const required = getOrderRequiredQty(material);
@@ -1143,14 +1159,7 @@ export function buildInventoryAnalysisFromRows(rows: BomIssueRow[]) {
   };
 }
 
-export function resolveRowInventoryStatus(material: {
-  effectiveAvailableQty?: number;
-  availableQty?: number;
-  issueQty?: number;
-  componentQty?: number;
-  issuedQty?: number;
-  conversionRatio?: number;
-}): InventoryCheckStatus {
+export function resolveRowInventoryStatus(material: { effectiveAvailableQty?: number; availableQty?: number; issueQty?: number; componentQty?: number; issuedQty?: number; conversionRatio?: number }): InventoryCheckStatus {
   const available = resolveRowAvailableQty(material);
   if (available === undefined || available === null) return 'UNKNOWN';
   const required = getOrderRequiredQty(material);
@@ -1170,11 +1179,7 @@ export function computeRecommendCapInventoryQty(row: BomIssueRow, peerReservedIn
   return rowDemand;
 }
 
-export function computeFifoRecommendedLocations(
-  flatRows: MaterialLocationRow[],
-  row: BomIssueRow,
-  peerReservedInventoryQty = 0
-): MaterialLocationRow[] {
+export function computeFifoRecommendedLocations(flatRows: MaterialLocationRow[], row: BomIssueRow, peerReservedInventoryQty = 0): MaterialLocationRow[] {
   const cap = computeRecommendCapInventoryQty(row, peerReservedInventoryQty);
   if (cap <= 0 || !flatRows.length) return [];
   const fifoInput = flatRows.map((r) => ({ ...r }));
@@ -1184,8 +1189,67 @@ export function computeFifoRecommendedLocations(
 
 export type InventoryCheckLineResult = NonNullable<InventoryCheckResultVO['lineResults']>[number];
 
+export function normalizeInventoryCheckMaterialCode(code?: string): string {
+  return String(code ?? '').trim();
+}
+
+/** 在 checkInventory 返回物料编码中解析 BOM 行可命中的键（兼容 13014818601-05 / 13014818601） */
+export function resolveInventoryCheckMaterialKey(materialCode: string, knownCodes: Iterable<string>): string {
+  const code = normalizeInventoryCheckMaterialCode(materialCode);
+  if (!code) return code;
+  const codes = [...new Set([...knownCodes].map(normalizeInventoryCheckMaterialCode).filter(Boolean))];
+  if (codes.includes(code)) return code;
+  const dashIdx = code.lastIndexOf('-');
+  if (dashIdx > 0) {
+    const base = code.slice(0, dashIdx);
+    if (codes.includes(base)) return base;
+    const baseHit = codes.find((candidate) => candidate.startsWith(`${base}-`));
+    if (baseHit) return baseHit;
+  }
+  const fuzzyHit = codes.find((candidate) => candidate === code || candidate.startsWith(`${code}-`) || code.startsWith(`${candidate}-`));
+  return fuzzyHit || code;
+}
+
+export function buildInventoryCheckMaterialMap(
+  materials?: Array<Record<string, unknown> & { materialCode?: string }>
+): Map<string, Record<string, unknown>> {
+  const map = new Map<string, Record<string, unknown>>();
+  if (!materials?.length) return map;
+  const payloadCodes = materials.map((mat) => normalizeInventoryCheckMaterialCode(mat.materialCode)).filter(Boolean);
+  materials.forEach((mat) => {
+    const payloadCode = normalizeInventoryCheckMaterialCode(mat.materialCode);
+    if (!payloadCode) return;
+    payloadCodes.forEach((requestCode) => {
+      const resolved = resolveInventoryCheckMaterialKey(requestCode, [payloadCode]);
+      if (resolved === payloadCode && !map.has(requestCode)) {
+        map.set(requestCode, mat);
+      }
+    });
+    if (!map.has(payloadCode)) {
+      map.set(payloadCode, mat);
+    }
+  });
+  return map;
+}
+
+function resolveInventoryCheckLineResultsByMaterial(
+  materialCode: string,
+  indexMaps: ReturnType<typeof buildInventoryCheckLineResultIndex>
+): InventoryCheckLineResult[] | undefined {
+  const code = normalizeInventoryCheckMaterialCode(materialCode);
+  if (!code) return undefined;
+  const direct = indexMaps.byMaterial.get(code);
+  if (direct?.length) return direct;
+  const alias = resolveInventoryCheckMaterialKey(code, indexMaps.byMaterial.keys());
+  if (alias !== code) {
+    return indexMaps.byMaterial.get(alias);
+  }
+  return undefined;
+}
+
 export function buildInventoryCheckLineResultIndex(lineResults?: InventoryCheckLineResult[]) {
   const byReserveKey = new Map<string, InventoryCheckLineResult>();
+  const byMaterialReserveKey = new Map<string, InventoryCheckLineResult>();
   const byBomLineId = new Map<string, InventoryCheckLineResult>();
   const byMaterial = new Map<string, InventoryCheckLineResult[]>();
   lineResults?.forEach((line) => {
@@ -1193,10 +1257,13 @@ export function buildInventoryCheckLineResultIndex(lineResults?: InventoryCheckL
     const reserveKey = getReserveLineKey(line);
     if (reserveKey) {
       byReserveKey.set(reserveKey, line);
+      if (code) {
+        byMaterialReserveKey.set(`${code}|${reserveKey}`, line);
+      }
     }
-    const bomLineId = line.bomLineId ?? line.id;
+    const bomLineId = line.bomLineId;
     if (bomLineId != null && bomLineId !== '') {
-      byBomLineId.set(String(bomLineId), line);
+      byBomLineId.set(String(bomLineId).trim(), line);
     }
     if (code) {
       const list = byMaterial.get(code) || [];
@@ -1204,29 +1271,68 @@ export function buildInventoryCheckLineResultIndex(lineResults?: InventoryCheckL
       byMaterial.set(code, list);
     }
   });
-  return { byReserveKey, byBomLineId, byMaterial };
+  return { byReserveKey, byMaterialReserveKey, byBomLineId, byMaterial };
+}
+
+function matchInventoryCheckLineByReserve(bom: BomIssueRow, lines: InventoryCheckLineResult[]): InventoryCheckLineResult | undefined {
+  const reserveNo = String(bom.reserveNo ?? '').trim();
+  const reserveItemNo = String(bom.reserveItemNo ?? '').trim();
+  if (!reserveNo || !reserveItemNo) return undefined;
+  const code = String(bom.componentMaterial || '').trim();
+  return lines.find((line) => {
+    if (String(line.reserveNo ?? '').trim() !== reserveNo) return false;
+    if (String(line.reserveItemNo ?? '').trim() !== reserveItemNo) return false;
+    if (!code) return true;
+    return String(line.materialCode || line.componentMaterial || '').trim() === code;
+  });
 }
 
 export function resolveInventoryCheckLineResultForBom(
   bom: BomIssueRow,
   index: number,
   indexMaps: ReturnType<typeof buildInventoryCheckLineResultIndex>,
-  materialUseIndex: Map<string, number>
+  materialUseIndex: Map<string, number>,
+  lineResults?: InventoryCheckLineResult[]
 ): InventoryCheckLineResult | undefined {
   const reserveKey = getReserveLineKey(bom);
+  const code = String(bom.componentMaterial || '').trim();
   if (reserveKey) {
     const byRsv = indexMaps.byReserveKey.get(reserveKey);
     if (byRsv) return byRsv;
+    if (code) {
+      const byMaterialReserve = indexMaps.byMaterialReserveKey.get(`${code}|${reserveKey}`);
+      if (byMaterialReserve) return byMaterialReserve;
+    }
   }
   if (bom.id != null && bom.id !== '') {
-    const byId = indexMaps.byBomLineId.get(String(bom.id));
+    const byId = indexMaps.byBomLineId.get(String(bom.id).trim());
     if (byId) return byId;
   }
-  const code = String(bom.componentMaterial || '').trim();
   if (!code) return undefined;
-  const list = indexMaps.byMaterial.get(code);
-  if (!list?.length) return undefined;
+  const list = resolveInventoryCheckLineResultsByMaterial(code, indexMaps);
+  if (!list?.length) {
+    if (!lineResults?.length) return undefined;
+    const byReserve = matchInventoryCheckLineByReserve(bom, lineResults);
+    if (byReserve) return byReserve;
+    const withRecommendations = lineResults.filter(
+      (line) => String(line.materialCode || line.componentMaterial || '').trim() === code && line.recommendedLocations?.length
+    );
+    return withRecommendations.length === 1 ? withRecommendations[0] : undefined;
+  }
   if (list.length === 1) return list[0];
+  const soConstraint = resolveBomSalesOrderConstraint(bom);
+  if (bomRequiresSalesOrderInventory(soConstraint)) {
+    const bySo = list.find((line) => {
+      const lineSo = resolveBomSalesOrderConstraint(line);
+      return (
+        lineSo.salesOrderNo === soConstraint.salesOrderNo &&
+        normalizeSalesOrderItem(lineSo.salesOrderItem) === normalizeSalesOrderItem(soConstraint.salesOrderItem)
+      );
+    });
+    if (bySo) return bySo;
+  }
+  const byReserve = matchInventoryCheckLineByReserve(bom, list);
+  if (byReserve) return byReserve;
   const useIdx = materialUseIndex.get(code) ?? 0;
   const line = list[Math.min(useIdx, list.length - 1)];
   materialUseIndex.set(code, useIdx + 1);
@@ -1258,46 +1364,17 @@ export function applyBomRowCheckInventoryRecommendations<T extends BomIssueRow>(
   const peerPicks = collectPeerLocationPicks(updated, rowIndex);
   let working = cloneMaterialLocationRows(flatRows);
   deductLocationPicksFromStock(working, peerPicks);
-  if (bomRequiresSalesOrderInventory(row)) {
-    working = enrichLocationRowsWithSalesOrderDefaults(working, row);
+  const soConstraint = resolveBomSalesOrderConstraint(row);
+  if (bomRequiresSalesOrderInventory(soConstraint)) {
+    working = enrichLocationRowsWithSalesOrderDefaults(working, soConstraint);
   }
 
-  const allocateOptions = { canAllocate: (loc: MaterialLocationRow) => isOperatableLocationForBom(row, loc) };
-  const hasExplicitApiQty = working.some((r) => {
-    const qty = resolveCheckApiRecommendedQty(r);
-    return qty != null && qty > 0;
-  });
+  const allocateOptions = { canAllocate: (loc: MaterialLocationRow) => isOperatableLocationForBom(soConstraint, loc) };
 
-  let recommended: MaterialLocationRow[] = [];
-  const demand = issueQtyToInventoryQty(Number(row.issueQty ?? 0), row.conversionRatio);
-
-  if (hasExplicitApiQty) {
-    for (const loc of working) {
-      if (!allocateOptions.canAllocate(loc)) continue;
-      const apiQty = resolveCheckApiRecommendedQty(loc);
-      if (apiQty === 0) continue;
-      const available = resolveLocationPickAvailableQty(loc);
-      const pickQty =
-        apiQty != null && apiQty > 0
-          ? Math.min(apiQty, available > 0 ? available : apiQty)
-          : available > 0
-            ? Math.min(demand - sumLocationPickInventoryQty(recommended), available)
-            : 0;
-      if (pickQty > 0) {
-        recommended.push({
-          ...loc,
-          recommendedQty: pickQty,
-          isRecommended: true,
-          systemRecommendedQty: apiQty ?? pickQty
-        });
-      }
-    }
-  } else {
-    const peerReserved = getPeerReservedInventoryQty(updated, rowIndex);
-    const cap = computeRecommendCapInventoryQty(row, peerReserved);
-    const checkResult = recommendLocationsFromCheckApi(working, cap, allocateOptions);
-    recommended = checkResult.recommendedRows.filter((loc) => Number(loc.recommendedQty ?? 0) > 0);
-  }
+  const peerReserved = getPeerReservedInventoryQty(updated, rowIndex);
+  const cap = computeRecommendCapInventoryQty(row, peerReserved);
+  const checkResult = recommendLocationsFromCheckApi(working, cap, allocateOptions);
+  const recommended = checkResult.recommendedRows.filter((loc) => Number(loc.recommendedQty ?? 0) > 0);
 
   updated[rowIndex] = {
     ...row,
@@ -1336,11 +1413,7 @@ export function refreshBomRowRecommendations<T extends BomIssueRow>(rows: T[], m
 }
 
 /** 对指定物料的全部 BOM 行批量刷新 FIFO 推荐（含同行占用扣减） */
-export function applyFifoRecommendationsForMaterial<T extends BomIssueRow>(
-  allRows: T[],
-  materialCode: string,
-  flatRows: MaterialLocationRow[]
-): T[] {
+export function applyFifoRecommendationsForMaterial<T extends BomIssueRow>(allRows: T[], materialCode: string, flatRows: MaterialLocationRow[]): T[] {
   const updated = [...allRows];
   const working = flatRows.map((r) => ({
     ...r,
@@ -1360,9 +1433,7 @@ export function applyFifoRecommendationsForMaterial<T extends BomIssueRow>(
       return;
     }
 
-    const manualPicks = updated[index].manualLocationSelections?.filter(
-      (loc) => Number(loc.recommendedQty ?? 0) > 0
-    );
+    const manualPicks = updated[index].manualLocationSelections?.filter((loc) => Number(loc.recommendedQty ?? 0) > 0);
     if (manualPicks?.length) {
       deductLocationPicksFromStock(working, manualPicks);
       updated[index] = {
@@ -1375,12 +1446,13 @@ export function applyFifoRecommendationsForMaterial<T extends BomIssueRow>(
     const peerReserved = getPeerReservedInventoryQty(updated, index);
     const cap = computeRecommendCapInventoryQty(updated[index], peerReserved);
     const bomRow = updated[index];
+    const soConstraint = resolveBomSalesOrderConstraint(bomRow);
     let fifoInput = working.map((r) => ({ ...r }));
-    if (bomRequiresSalesOrderInventory(bomRow)) {
-      fifoInput = enrichLocationRowsWithSalesOrderDefaults(fifoInput, bomRow);
+    if (bomRequiresSalesOrderInventory(soConstraint)) {
+      fifoInput = enrichLocationRowsWithSalesOrderDefaults(fifoInput, soConstraint);
     }
     const useCheckOrder = shouldUseCheckInventoryRecommend(flatRows);
-    const allocateOptions = { canAllocate: (loc: MaterialLocationRow) => isOperatableLocationForBom(bomRow, loc) };
+    const allocateOptions = { canAllocate: (loc: MaterialLocationRow) => isOperatableLocationForBom(soConstraint, loc) };
     let recommended: MaterialLocationRow[] = [];
     if (useCheckOrder) {
       const checkResult = recommendLocationsFromCheckApi(fifoInput, cap, allocateOptions);
@@ -1400,7 +1472,6 @@ export function applyFifoRecommendationsForMaterial<T extends BomIssueRow>(
 
   return updated;
 }
-
 
 type LineWarehouseFlags = Pick<MaterialLocationRow, 'isLineWarehouse' | 'isUserLineWarehouse'>;
 
@@ -1441,11 +1512,7 @@ function collectPeerOtherLinePickQtyByKey(rows: BomIssueRow[], rowIndex: number)
   return totals;
 }
 
-function resolveRemainingOtherLineDisplayRows(
-  row: BomIssueRow,
-  peerPickedByKey: Map<string, number>,
-  currentOtherLinePicks: Array<Record<string, unknown>>
-): Array<Record<string, unknown>> {
+function resolveRemainingOtherLineDisplayRows(row: BomIssueRow, peerPickedByKey: Map<string, number>, currentOtherLinePicks: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
   const usedByKey = new Map(peerPickedByKey);
   currentOtherLinePicks.forEach((loc) => {
     const qty = Number(loc.recommendedQty ?? 0);
@@ -1499,11 +1566,7 @@ function resolveOwnWarehouseAllocatedQty(row: BomIssueRow): number {
   return Math.min(pool, required);
 }
 
-function buildBomRecommendPickItems(
-  row: BomIssueRow,
-  locations?: Array<Record<string, unknown>> | null,
-  options?: { displayOnly?: boolean }
-): BomRecommendPickItem[] {
+function buildBomRecommendPickItems(row: BomIssueRow, locations?: Array<Record<string, unknown>> | null, options?: { displayOnly?: boolean }): BomRecommendPickItem[] {
   if (!locations?.length) return [];
   /** 库位分配数量均为库存单位（与系统推荐弹窗一致） */
   const unit = String(row.inventoryUnit || row.unit || '').trim();
@@ -1524,47 +1587,61 @@ export function resolveAllocatableAllocatedQty(row: BomIssueRow): number {
   return resolveOwnWarehouseAllocatedQty(row);
 }
 
-export function shouldShowOtherLineWarehouseInfo(
-  row: BomIssueRow,
-  contextRows?: BomIssueRow[],
-  rowIndex?: number
-): boolean {
+export function shouldShowOtherLineWarehouseInfo(row: BomIssueRow, contextRows?: BomIssueRow[], rowIndex?: number): boolean {
   const rows = contextRows?.length ? contextRows : [row];
   const index = rowIndex ?? rows.findIndex((candidate) => candidate === row);
   const required = getOrderRequiredQty(row);
   if (required <= 0) return false;
   if (!row.otherLineWarehouseLocations?.length) return false;
   if (resolveOwnWarehouseAllocatedQty(row) >= required) return false;
-  const { otherLineAllocated } = splitLocationPicks(
-    row.manualLocationSelections?.some((loc) => Number(loc.recommendedQty ?? 0) > 0)
-      ? row.manualLocationSelections
-      : row.fifoRecommendedLocations
-  );
-  const remaining = resolveRemainingOtherLineDisplayRows(
-    row,
-    collectPeerOtherLinePickQtyByKey(rows, index >= 0 ? index : 0),
-    otherLineAllocated
-  );
+  const { otherLineAllocated } = splitLocationPicks(row.manualLocationSelections?.some((loc) => Number(loc.recommendedQty ?? 0) > 0) ? row.manualLocationSelections : row.fifoRecommendedLocations);
+  const remaining = resolveRemainingOtherLineDisplayRows(row, collectPeerOtherLinePickQtyByKey(rows, index >= 0 ? index : 0), otherLineAllocated);
   return remaining.length > 0;
 }
 
-export function getBomRecommendInfoItems(
-  row: BomIssueRow,
-  contextRows?: BomIssueRow[],
-  rowIndex?: number
-): BomRecommendPickItem[] {
+export function resolveBomRecommendPickLocations(row: BomIssueRow): Array<Record<string, unknown>> | null {
+  const demand = getOrderRequiredQty(row);
+  if (demand <= 0) return null;
+
+  const manual = row.manualLocationSelections?.filter((loc) => Number(loc.recommendedQty ?? 0) > 0);
+  if (manual?.length) {
+    return capBomRecommendPickLocations(manual, demand);
+  }
+  const fifo = row.fifoRecommendedLocations?.filter((loc) => Number(loc.recommendedQty ?? 0) > 0);
+  if (fifo?.length) {
+    return capBomRecommendPickLocations(fifo, demand);
+  }
+  const check = row.checkInventoryRecommendedLocations;
+  if (!check?.length) return null;
+
+  const soConstraint = resolveBomSalesOrderConstraint(row);
+  const working = cloneMaterialLocationRows(check);
+  const allocateOptions = { canAllocate: (loc: MaterialLocationRow) => isOperatableLocationForBom(soConstraint, loc) };
+  const result = recommendLocationsFromCheckApi(working, demand, allocateOptions);
+  const recommended = result.recommendedRows.filter((loc) => Number(loc.recommendedQty ?? 0) > 0);
+  return recommended.length ? recommended : null;
+}
+
+function capBomRecommendPickLocations(locations: Array<Record<string, unknown>>, demandInventoryQty: number): Array<Record<string, unknown>> {
+  let remaining = Math.max(0, Number(demandInventoryQty));
+  const result: Array<Record<string, unknown>> = [];
+  locations.forEach((loc) => {
+    if (remaining <= 0) return;
+    const maxQty = Number(loc.recommendedQty ?? 0);
+    if (maxQty <= 0) return;
+    const pickQty = Math.min(remaining, maxQty);
+    result.push({ ...loc, recommendedQty: pickQty });
+    remaining -= pickQty;
+  });
+  return result;
+}
+
+export function getBomRecommendInfoItems(row: BomIssueRow, contextRows?: BomIssueRow[], rowIndex?: number): BomRecommendPickItem[] {
   const rows = contextRows?.length ? contextRows : [row];
-  const index =
-    rowIndex ??
-    rows.findIndex((candidate, i) => candidate === row || getBomRowKey(candidate, i) === getBomRowKey(row));
+  const index = rowIndex ?? rows.findIndex((candidate, i) => candidate === row || getBomRowKey(candidate, i) === getBomRowKey(row));
   const effectiveIndex = index >= 0 ? index : 0;
 
-  const hasManual = row.manualLocationSelections?.some((loc) => Number(loc.recommendedQty ?? 0) > 0);
-  const pickSource = hasManual
-    ? row.manualLocationSelections
-    : row.fifoRecommendedLocations?.length
-      ? row.fifoRecommendedLocations
-      : null;
+  const pickSource = resolveBomRecommendPickLocations(row);
 
   const result: BomRecommendPickItem[] = [];
 
@@ -1580,24 +1657,16 @@ export function getBomRecommendInfoItems(
   return result;
 }
 
-export function formatBomLocationRecommendLines(
-  row: BomIssueRow,
-  locations?: Array<Record<string, unknown>> | null
-): string[] {
-  return buildBomRecommendPickItems(row, locations).map((item) =>
-    item.unit ? `${item.location} ${item.batch} ${item.qty}${item.unit}` : `${item.location} ${item.batch} ${item.qty}`
-  );
+export function formatBomRecommendPickLine(item: BomRecommendPickItem): string {
+  return item.unit ? `${item.location} ${item.batch} ${item.qty}${item.unit}` : `${item.location} ${item.batch} ${item.qty}`;
 }
 
-export function getBomRecommendInfoLines(row: BomIssueRow): string[] {
-  return formatBomLocationRecommendLines(row, resolveBomRecommendLocations(row));
+export function formatBomLocationRecommendLines(row: BomIssueRow, locations?: Array<Record<string, unknown>> | null): string[] {
+  return buildBomRecommendPickItems(row, locations).map((item) => formatBomRecommendPickLine(item));
 }
 
-function resolveBomRecommendLocations(row: BomIssueRow) {
-  const hasManual = row.manualLocationSelections?.some((loc) => Number(loc.recommendedQty ?? 0) > 0);
-  if (hasManual) return row.manualLocationSelections;
-  if (row.fifoRecommendedLocations?.length) return row.fifoRecommendedLocations;
-  return null;
+export function getBomRecommendInfoLines(row: BomIssueRow, contextRows?: BomIssueRow[], rowIndex?: number): string[] {
+  return getBomRecommendInfoItems(row, contextRows, rowIndex).map((item) => formatBomRecommendPickLine(item));
 }
 
 export function buildSavedIssueLineMatcher(lines?: WorkOrderMaterialIssueLine[]) {
@@ -1639,11 +1708,7 @@ export function buildSavedIssueLineMatcher(lines?: WorkOrderMaterialIssueLine[])
   };
 }
 
-export function calcConversionRate(conversion?: {
-  numerator?: number | string;
-  denominator?: number | string;
-  conversionRate?: number | string;
-}) {
+export function calcConversionRate(conversion?: { numerator?: number | string; denominator?: number | string; conversionRate?: number | string }) {
   if (!conversion) return 1;
   const rate = Number(conversion.conversionRate);
   if (rate > 0 && !Number.isNaN(rate)) return rate;
@@ -1667,10 +1732,7 @@ export function resolveBomBaseUnit(row: BomIssueRow) {
 export function findUnitConversion(row: BomIssueRow, altUnit: string) {
   const list = row.materialUnitConversionList;
   if (!list?.length || !altUnit) return undefined;
-  return (
-    list.find((item) => item.altUnit === altUnit) ||
-    list.find((item) => item.altUnit === item.baseUnit && item.baseUnit === altUnit)
-  );
+  return list.find((item) => item.altUnit === altUnit) || list.find((item) => item.altUnit === item.baseUnit && item.baseUnit === altUnit);
 }
 
 export function getIssueUnitOptions(row: BomIssueRow): IssueUnitOption[] {
@@ -1781,10 +1843,7 @@ export function calcBomRequiredInventoryQty(row: Pick<BomIssueRow, 'componentQty
 }
 
 /** 解析发货单位换算比例：库存单位数量 = 发货单位数量 × ratio */
-export function resolveBomIssueConversionRatio(
-  row: Pick<BomIssueRow, 'conversionRatio' | 'componentQty' | 'issueUomQty' | 'materialUnitConversionList' | 'unit' | 'inventoryUnit'>,
-  issueUnit?: string
-) {
+export function resolveBomIssueConversionRatio(row: Pick<BomIssueRow, 'conversionRatio' | 'componentQty' | 'issueUomQty' | 'materialUnitConversionList' | 'unit' | 'inventoryUnit'>, issueUnit?: string) {
   const unit = issueUnit || resolveDefaultIssueUnit(row as BomIssueRow);
   const baseUnit = resolveBomBaseUnit(row as BomIssueRow);
   if (unit && baseUnit && unit === baseUnit) return 1;
@@ -1803,9 +1862,7 @@ export function resolveBomIssueConversionRatio(
 }
 
 /** 待发数量（基本单位）= 需求数量 - 已发料数量 */
-export function calcBomPendingInventoryQty(
-  row: Pick<BomIssueRow, 'componentQty' | 'issuedQty'>
-) {
+export function calcBomPendingInventoryQty(row: Pick<BomIssueRow, 'componentQty' | 'issuedQty'>) {
   return Math.max(0, calcBomRequiredInventoryQty(row) - calcIssuedInventoryQty(row));
 }
 
@@ -1864,11 +1921,7 @@ function calcIssueQtyBySetForRowUnit(row: BomIssueRow, issueSetCount: number, pl
 }
 
 /** 备料模式本次发料上限：待发与套数计算取较大值（默认库存单位） */
-export function calcPrepMaxIssueQty(
-  row: BomIssueRow,
-  issueSetCount?: number,
-  plannedQty?: number
-): number {
+export function calcPrepMaxIssueQty(row: BomIssueRow, issueSetCount?: number, plannedQty?: number): number {
   const pendingMax = calcDefaultPrepIssueQty(row);
   const planned = Number(plannedQty ?? 0);
   const setCount = Number(issueSetCount ?? 0);
@@ -1894,19 +1947,17 @@ export function initBomIssueRow<T extends BomIssueRow>(bom: T, savedIssueQty?: n
   const withUnit = savedIssueUnit ? applyIssueUnitSelection({ ...bom, issueQty: savedIssueQty ?? bom.issueQty ?? 0 }, savedIssueUnit) : syncBomUnitConversion(bom);
   const pendingQty = calcBomPendingInventoryQty(withUnit);
   const maxIssueQty = calcMaxIssueQty(withUnit);
-  const defaultQty = maxIssueQty <= 0 ? 0 : savedIssueQty ?? maxIssueQty;
+  const defaultQty = maxIssueQty <= 0 ? 0 : (savedIssueQty ?? maxIssueQty);
   const issueQty = clampIssueQty(defaultQty, maxIssueQty);
   return { ...withUnit, pendingQty, issueQty };
 }
 
 /** 备料模式初始化 BOM 行：默认库存单位与待发数量（库存单位） */
 export function initBomPrepIssueRow<T extends BomIssueRow>(bom: T, savedIssueQty?: number, savedIssueUnit?: string): T {
-  const withUnit = savedIssueUnit
-    ? applyIssueUnitSelection({ ...bom, issueQty: savedIssueQty ?? bom.issueQty ?? 0 }, savedIssueUnit)
-    : syncBomPrepUnitConversion(bom);
+  const withUnit = savedIssueUnit ? applyIssueUnitSelection({ ...bom, issueQty: savedIssueQty ?? bom.issueQty ?? 0 }, savedIssueUnit) : syncBomPrepUnitConversion(bom);
   const pendingQty = calcBomPendingInventoryQty(withUnit);
   const maxIssueQty = calcDefaultPrepIssueQty(withUnit);
-  const defaultQty = maxIssueQty <= 0 ? 0 : savedIssueQty ?? maxIssueQty;
+  const defaultQty = maxIssueQty <= 0 ? 0 : (savedIssueQty ?? maxIssueQty);
   const issueQty = clampIssueQty(defaultQty, maxIssueQty);
   return { ...withUnit, pendingQty, issueQty };
 }
@@ -1949,10 +2000,7 @@ export function bomRowsToIssueLines(rows: BomIssueRow[], selectedKeys?: Set<stri
 }
 
 /** 将勾选的 BOM 行按工单拆分为发料行（合并备料保存） */
-export function bomRowsToIssueLinesByWorkOrder(
-  rows: BomIssueRow[],
-  selectedKeys?: Set<string> | string[]
-): Record<string, WorkOrderMaterialIssueLine[]> {
+export function bomRowsToIssueLinesByWorkOrder(rows: BomIssueRow[], selectedKeys?: Set<string> | string[]): Record<string, WorkOrderMaterialIssueLine[]> {
   const keySet = selectedKeys instanceof Set ? selectedKeys : selectedKeys ? new Set(selectedKeys) : null;
   const result: Record<string, WorkOrderMaterialIssueLine[]> = {};
 
@@ -2046,37 +2094,45 @@ export function buildLineSideWarehouseIssueItems(orders: WorkOrderVO[]) {
   return items.length > 0 ? items : undefined;
 }
 
-function toPrepDemandLineItem(
-  order: WorkOrderVO,
-  line: MaterialDemandDetailRow
-): import('@/api/wms/workOrderPrepDemand/types').PrepDemandLineItem {
+function toPrepDemandLineItem(order: WorkOrderVO, line: MaterialDemandDetailRow): import('@/api/wms/workOrderPrepDemand/types').PrepDemandLineItem {
   const item: import('@/api/wms/workOrderPrepDemand/types').PrepDemandLineItem = {
     workOrderNo: order.workOrderNo,
     materialCode: line.materialCode,
     bomLineId: line.bomLineId,
     reserveNo: line.reserveNo,
     reserveItemNo: line.reserveItemNo,
-    prepQty: line.issueQty,
-    prepUnit: line.issueUnit,
+    prepQty: line.prepInventoryQty ?? line.issueQty,
     warehouseRoute: line.warehouseRoute,
     lineType: line.lineType
   };
   if (line.lineType === 'LOCATION') {
     item.warehouseCode = line.recommendedWarehouse;
     item.locationCode = line.recommendedLocation;
-    item.recommendationReason =
-      mapLocationSourceToRecommendationReason(line.locationSource) ?? PREP_LOCATION_REC_SYSTEM_RECOMMENDED;
-    const remark = String(line.locationOverrideReason ?? '').trim();
-    if (remark) item.remark = remark;
+    item.recommendationSource = mapLocationSourceToRecommendationSource(line.locationSource) ?? PREP_LOCATION_REC_SYSTEM_RECOMMENDED;
+    const reason = String(line.locationOverrideReason ?? '').trim();
+    if (reason) item.recommendationReason = reason;
   }
   const targetLoc = String(line.targetDemandLocationCode || '').trim();
   if (targetLoc) {
     item.targetDemandLocationCode = targetLoc;
     item.targetDemandWarehouseCode = line.targetDemandWarehouseCode;
-    item.targetDemandLocationName = line.targetDemandLocationName;
   }
   item.specialInventoryFlag = resolveDemandRowInventoryFlag(line);
   return item;
+}
+
+/** 从备料明细中提取头表目标需求库位 */
+export function resolvePrepDemandTargetLocationFromItems(
+  prepItems: import('@/api/wms/workOrderPrepDemand/types').PrepDemandLineItem[]
+): { targetDemandLocationCode?: string; targetDemandWarehouseCode?: string } {
+  const flat = prepItems.find(
+    (item) => item.warehouseRoute === 'FLAT' && String(item.targetDemandLocationCode || '').trim()
+  );
+  if (!flat) return {};
+  return {
+    targetDemandLocationCode: String(flat.targetDemandLocationCode || '').trim() || undefined,
+    targetDemandWarehouseCode: String(flat.targetDemandWarehouseCode || '').trim() || undefined
+  };
 }
 
 /** 由按库位拆分的需求行构建自动仓备料明细 */
@@ -2125,11 +2181,6 @@ export function buildFlatPrepDemandItems(orders: WorkOrderVO[]) {
   return items;
 }
 
-/** @deprecated 缺料已合并，请使用 buildShortagePrepDemandItems */
-export function buildOtherLinePrepDemandItems(orders: WorkOrderVO[]) {
-  return buildShortagePrepDemandItems(orders);
-}
-
 /** 由分类后的缺料/紧急需求行构建备料明细 */
 export function buildShortagePrepDemandItems(orders: WorkOrderVO[]) {
   const items: import('@/api/wms/workOrderPrepDemand/types').PrepDemandLineItem[] = [];
@@ -2143,12 +2194,7 @@ export function buildShortagePrepDemandItems(orders: WorkOrderVO[]) {
 
 /** 构建完整备料计划：自动仓 + 线边仓 + 平面仓 + 缺料（单次请求） */
 export function buildPrepDemandItems(orders: WorkOrderVO[]) {
-  return [
-    ...buildAutoPrepDemandItems(orders),
-    ...buildLinePrepDemandItems(orders),
-    ...buildFlatPrepDemandItems(orders),
-    ...buildShortagePrepDemandItems(orders)
-  ];
+  return [...buildAutoPrepDemandItems(orders), ...buildLinePrepDemandItems(orders), ...buildFlatPrepDemandItems(orders), ...buildShortagePrepDemandItems(orders)];
 }
 
 /** BOM 待发需求（基本单位）= 需求数量 - 已发料数量 */
@@ -2160,12 +2206,7 @@ export function getPendingDemandQty(material: { componentQty?: number; issuedQty
 }
 
 /** 本次发料检查用需求（库存单位）；未填写则回退待发需求 */
-export function getOrderRequiredQty(material: {
-  issueQty?: number;
-  componentQty?: number;
-  issuedQty?: number;
-  conversionRatio?: number;
-}) {
+export function getOrderRequiredQty(material: { issueQty?: number; componentQty?: number; issuedQty?: number; conversionRatio?: number }) {
   const issue = Number(material.issueQty);
   if (issue > 0) {
     return issueQtyToInventoryQty(issue, material.conversionRatio);
@@ -2186,11 +2227,7 @@ export function calcKitRate(material: { availableQty?: number; componentQty?: nu
   return Math.min(Number(available) / pending, 1);
 }
 
-export function resolveInventoryStatus(material: {
-  availableQty?: number;
-  componentQty?: number;
-  issuedQty?: number;
-}): InventoryCheckStatus {
+export function resolveInventoryStatus(material: { availableQty?: number; componentQty?: number; issuedQty?: number }): InventoryCheckStatus {
   const available = material.availableQty;
   if (available === undefined || available === null) {
     return 'UNKNOWN';
@@ -2213,7 +2250,7 @@ export function isInventorySufficient(material: BomIssueRow) {
 }
 
 export function normalizePartSizeType(source: Record<string, unknown>): PartSizeType | undefined {
-  const raw = source.partSizeType ?? source.materialSizeType ?? source.sizeType ?? source.partType;
+  const raw = source.sizeCategory;
   if (raw === undefined || raw === null || raw === '') {
     return undefined;
   }
@@ -2260,10 +2297,6 @@ export function issueLineMap(lines?: WorkOrderMaterialIssueLine[]) {
 
 // ----- workbenchClassify.ts -----
 
-
-
-
-
 export function parseInventoryCheckPayload(data: unknown): InventoryCheckResultVO | null {
   if (!data || typeof data !== 'object') return null;
   const record = data as Record<string, unknown>;
@@ -2286,14 +2319,9 @@ function normalizeLocationRec(raw: unknown): LocationRec | null {
     areaCode: record.areaCode as string | undefined,
     locationName: record.locationName as string | undefined
   });
-  const warehouseCode =
-    String(record.warehouseCode ?? record.warehouse ?? record.whCode ?? '').trim() ||
-    (meta.warehouseCode !== '-' ? meta.warehouseCode : undefined);
-  const availableQty = Number(
-    record.availableQty ?? record.availableQuantity ?? record.qty ?? record.stockQty ?? record.onHandQty ?? record.quantity ?? 0
-  );
-  const recommendedQtyRaw =
-    record.recommendedQty ?? record.recommendedQuantity ?? record.allocatedQuantity ?? record.allocateQty ?? record.pickQty;
+  const warehouseCode = String(record.warehouseCode ?? record.warehouse ?? record.whCode ?? '').trim() || (meta.warehouseCode !== '-' ? meta.warehouseCode : undefined);
+  const availableQty = Number(record.availableQty ?? record.availableQuantity ?? record.qty ?? record.stockQty ?? record.onHandQty ?? record.quantity ?? 0);
+  const recommendedQtyRaw = record.recommendedQty ?? record.recommendedQuantity ?? record.allocatedQuantity ?? record.allocateQty ?? record.pickQty;
   const recommendedQty = recommendedQtyRaw != null ? Number(recommendedQtyRaw) : undefined;
   const businessCode = String(record.businessCode ?? record.vendorCode ?? record.customerCode ?? '').trim() || undefined;
   const businessName = String(record.businessName ?? '').trim() || undefined;
@@ -2355,16 +2383,10 @@ function parseBoolFlag(value: unknown): boolean | undefined {
 type LocationWarehouseRoute = Exclude<WarehouseRoute, 'SHORTAGE' | 'OTHER_LINE'>;
 
 function hasOtherLineWarehouseStockInList(locations: LocationRec[]): boolean {
-  return locations.some(
-    (loc) => loc.isLineWarehouse === true && loc.isUserLineWarehouse === false && Number(loc.availableQty ?? 0) > 0
-  );
+  return locations.some((loc) => loc.isLineWarehouse === true && loc.isUserLineWarehouse === false && Number(loc.availableQty ?? 0) > 0);
 }
 
-export function resolveRouteByWarehouse(
-  warehouseCode: string | undefined,
-  ctx: WarehouseRouteContext,
-  loc?: Pick<LocationRec, 'isLineWarehouse' | 'isUserLineWarehouse' | 'isAutoWarehouse'>
-): LocationWarehouseRoute {
+export function resolveRouteByWarehouse(warehouseCode: string | undefined, ctx: WarehouseRouteContext, loc?: Pick<LocationRec, 'isLineWarehouse' | 'isUserLineWarehouse' | 'isAutoWarehouse'>): LocationWarehouseRoute {
   if (loc?.isAutoWarehouse) return 'AUTO';
   if (loc?.isLineWarehouse && loc?.isUserLineWarehouse !== false) return 'LINE';
   if (!warehouseCode) return 'FLAT';
@@ -2379,8 +2401,7 @@ export function resolveRouteByWarehouse(
 function resolveWarehouseAndLocation(loc: LocationRec) {
   const locationCode = String(loc.locationCode || '').trim() || undefined;
   const meta = resolveLocationMeta(locationCode, loc);
-  const warehouseCode =
-    String(loc.warehouseCode || '').trim() || (meta.warehouseCode !== '-' ? meta.warehouseCode : undefined);
+  const warehouseCode = String(loc.warehouseCode || '').trim() || (meta.warehouseCode !== '-' ? meta.warehouseCode : undefined);
   const areaCode = String(loc.areaCode || '').trim() || (meta.areaCode !== '-' ? meta.areaCode : undefined);
   return { warehouseCode, locationCode, areaCode };
 }
@@ -2407,13 +2428,32 @@ function locationRecToFifoInput(loc: LocationRec, index: number): MaterialLocati
 }
 
 /** 分类时解析可分配库位：优先已保存推荐量，否则按 FIFO 在可用库存上拆分 */
-function resolveClassifyLocationPicks(
-  locations: LocationRec[],
-  demandInventoryQty: number,
-  salesOrderConstraint?: SalesOrderInventoryConstraint
-): LocationRec[] {
+function capLocationPicksToInventoryDemand(picks: LocationRec[], demandInventoryQty: number): LocationRec[] {
+  const demand = Math.max(0, Number(demandInventoryQty));
+  if (demand <= 0 || !picks.length) return [];
+
+  const ordered = [...picks].sort((a, b) => Number(a.fifoSequence ?? 999) - Number(b.fifoSequence ?? 999));
+  let remaining = demand;
+  const result: LocationRec[] = [];
+
+  for (const loc of ordered) {
+    if (remaining <= 0) break;
+    const qty = Number(loc.recommendedQty ?? 0);
+    if (qty <= 0) continue;
+    const pick = Math.min(qty, remaining);
+    result.push({ ...loc, recommendedQty: pick });
+    remaining -= pick;
+  }
+
+  return result;
+}
+
+/** 分类时解析可分配库位：优先已保存推荐量，否则按 FIFO 在可用库存上拆分 */
+function resolveClassifyLocationPicks(locations: LocationRec[], demandInventoryQty: number, salesOrderConstraint?: SalesOrderInventoryConstraint): LocationRec[] {
   const explicit = locations.filter((loc) => Number(loc.recommendedQty ?? 0) > 0);
-  if (explicit.length) return explicit;
+  if (explicit.length) {
+    return capLocationPicksToInventoryDemand(explicit, demandInventoryQty);
+  }
 
   const stockLocs = locations.filter((loc) => Number(loc.availableQty ?? 0) > 0);
   if (!stockLocs.length || demandInventoryQty <= 0) return [];
@@ -2461,6 +2501,7 @@ function appendLocationDemandRows(
         workOrderNo: ctx.workOrderNo,
         materialCode: ctx.materialCode,
         issueQty: pickIssue,
+        prepInventoryQty: pickInventory,
         issueUnit: ctx.issueUnit,
         recommendedWarehouse: warehouseCode,
         recommendedLocation: locationCode,
@@ -2480,26 +2521,11 @@ function appendLocationDemandRows(
   return allocatedInventory;
 }
 
-export function isClassifiedShortageRow(
-  row: Pick<import('./types').MaterialDemandDetailRow, 'lineType' | 'warehouseRoute'>
-): boolean {
+export function isClassifiedShortageRow(row: Pick<import('./types').MaterialDemandDetailRow, 'lineType' | 'warehouseRoute'>): boolean {
   return row.lineType === 'SHORTAGE' || row.warehouseRoute === 'SHORTAGE';
 }
 
-export function expandMaterialToDemandRows(
-  workOrderNo: string,
-  materialCode: string,
-  issueQty: number,
-  issueUnit: string | undefined,
-  bomLine: BomLineResult | undefined,
-  routeCtx: WarehouseRouteContext,
-  conversionRatio?: number,
-  salesOrderConstraint?: SalesOrderInventoryConstraint,
-  bomLineId?: number | string,
-  reserveNo?: string,
-  reserveItemNo?: string,
-  locationOverrideReason?: string
-): MaterialDemandDetailRow[] {
+export function expandMaterialToDemandRows(workOrderNo: string, materialCode: string, issueQty: number, issueUnit: string | undefined, bomLine: BomLineResult | undefined, routeCtx: WarehouseRouteContext, conversionRatio?: number, salesOrderConstraint?: SalesOrderInventoryConstraint, bomLineId?: number | string, reserveNo?: string, reserveItemNo?: string, locationOverrideReason?: string): MaterialDemandDetailRow[] {
   const rows: MaterialDemandDetailRow[] = [];
   const totalIssueQty = Number(issueQty);
   if (totalIssueQty <= 0) return rows;
@@ -2537,6 +2563,7 @@ export function expandMaterialToDemandRows(
           workOrderNo,
           materialCode,
           issueQty: inventoryQtyToIssueQty(shortageInventory, conversionRatio),
+          prepInventoryQty: shortageInventory,
           issueUnit,
           recommendedWarehouse: undefined,
           recommendedLocation: undefined,
@@ -2554,6 +2581,7 @@ export function expandMaterialToDemandRows(
       workOrderNo,
       materialCode,
       issueQty: totalIssueQty,
+      prepInventoryQty: demandInventoryQty,
       issueUnit,
       recommendedWarehouse: undefined,
       recommendedLocation: undefined,
@@ -2602,24 +2630,11 @@ function buildMaterialLocationContextForOrder(materialIssues: WorkOrderMaterialI
   return lineResultMap;
 }
 
-function resolveIssueLineSalesOrderConstraint(
-  line: WorkOrderMaterialIssueLine,
-  order?: Pick<WorkOrderVO, 'salesOrderNo' | 'salesOrderItem'>
-): SalesOrderInventoryConstraint {
-  return {
-    salesOrderNo: line.salesOrderNo ?? order?.salesOrderNo,
-    salesOrderItem: line.salesOrderItem ?? order?.salesOrderItem,
-    specialInventoryFlag: line.specialInventoryFlag
-  };
+function resolveIssueLineSalesOrderConstraint(line: WorkOrderMaterialIssueLine, _order?: Pick<WorkOrderVO, 'salesOrderNo' | 'salesOrderItem'>): SalesOrderInventoryConstraint {
+  return resolveBomSalesOrderConstraint(line);
 }
 
-function classifyMaterialIssues(
-  materialIssues: WorkOrderMaterialIssueLine[],
-  lineResultMap: Map<string, BomLineResult>,
-  routeCtx: WarehouseRouteContext,
-  workOrderNo: string,
-  order?: Pick<WorkOrderVO, 'salesOrderNo' | 'salesOrderItem'>
-): { materialIssues: WorkOrderMaterialIssueLine[]; materialDemandDetails: MaterialDemandDetailRow[] } {
+function classifyMaterialIssues(materialIssues: WorkOrderMaterialIssueLine[], lineResultMap: Map<string, BomLineResult>, routeCtx: WarehouseRouteContext, workOrderNo: string, order?: Pick<WorkOrderVO, 'salesOrderNo' | 'salesOrderItem'>): { materialIssues: WorkOrderMaterialIssueLine[]; materialDemandDetails: MaterialDemandDetailRow[] } {
   const allDetails: MaterialDemandDetailRow[] = [];
 
   const updatedIssues = materialIssues.map((line) => {
@@ -2627,20 +2642,7 @@ function classifyMaterialIssues(
       return { ...line, warehouseRoute: undefined, recommendedWarehouse: undefined };
     }
     const bomLine = lineResultMap.get(getIssueLineKey(line));
-    const details = expandMaterialToDemandRows(
-      workOrderNo,
-      line.materialCode,
-      Number(line.issueQty),
-      line.issueUnit,
-      bomLine,
-      routeCtx,
-      line.conversionRatio,
-      resolveIssueLineSalesOrderConstraint(line, order),
-      line.bomLineId,
-      line.reserveNo,
-      line.reserveItemNo,
-      line.locationOverrideReason
-    );
+    const details = expandMaterialToDemandRows(workOrderNo, line.materialCode, Number(line.issueQty), line.issueUnit, bomLine, routeCtx, line.conversionRatio, resolveIssueLineSalesOrderConstraint(line, order), line.bomLineId, line.reserveNo, line.reserveItemNo, line.locationOverrideReason);
     allDetails.push(...details);
 
     const primaryWh = details.find((d) => d.lineType === 'LOCATION')?.recommendedWarehouse;
@@ -2673,10 +2675,7 @@ async function loadDictCodes(dictType: string): Promise<string[]> {
 }
 
 export async function loadWarehouseRouteContext(): Promise<WarehouseRouteContext> {
-  const [autoWarehouseCodes, lineSideWarehouseCodes] = await Promise.all([
-    loadDictCodes('wms_warehouse_auto'),
-    loadDictCodes('wms_warehouse_line')
-  ]);
+  const [autoWarehouseCodes, lineSideWarehouseCodes] = await Promise.all([loadDictCodes('wms_warehouse_auto'), loadDictCodes('wms_warehouse_line')]);
   return { autoWarehouseCodes, lineSideWarehouseCodes };
 }
 
@@ -2693,16 +2692,8 @@ function classifySingleOrder(order: WorkOrderVO, routeCtx: WarehouseRouteContext
   }
 
   const lineResultMap = buildMaterialLocationContextForOrder(materialIssues);
-  const { materialIssues: updatedIssues, materialDemandDetails } = classifyMaterialIssues(
-    materialIssues,
-    lineResultMap,
-    routeCtx,
-    order.workOrderNo,
-    order
-  );
-  const recommendedWarehouses = [
-    ...new Set(materialDemandDetails.map((line) => line.recommendedWarehouse).filter((code): code is string => !!code))
-  ];
+  const { materialIssues: updatedIssues, materialDemandDetails } = classifyMaterialIssues(materialIssues, lineResultMap, routeCtx, order.workOrderNo, order);
+  const recommendedWarehouses = [...new Set(materialDemandDetails.map((line) => line.recommendedWarehouse).filter((code): code is string => !!code))];
 
   return {
     ...order,
@@ -2732,3 +2723,24 @@ export function flattenClassifiedMaterials(orders: WorkOrderVO[]): ClassifiedMat
   return rows;
 }
 
+export function findIssueLineForDemandDetail(order: Pick<WorkOrderVO, 'materialIssues'>, row: Pick<MaterialDemandDetailRow, 'reserveNo' | 'reserveItemNo' | 'materialCode'>): WorkOrderMaterialIssueLine | undefined {
+  const issues = order.materialIssues || [];
+  const reserveNo = String(row.reserveNo ?? '').trim();
+  const reserveItemNo = String(row.reserveItemNo ?? '').trim();
+  if (reserveNo && reserveItemNo) {
+    const matched = issues.find((line) => String(line.reserveNo ?? '').trim() === reserveNo && String(line.reserveItemNo ?? '').trim() === reserveItemNo);
+    if (matched) return matched;
+  }
+  return issues.find((line) => line.materialCode === row.materialCode);
+}
+
+/** 分类行本次备料数量（库存单位） */
+export function resolveDemandDetailPrepQty(row: Pick<MaterialDemandDetailRow, 'issueQty'>, issueLine?: Pick<WorkOrderMaterialIssueLine, 'conversionRatio'>): number {
+  return issueQtyToInventoryQty(Number(row.issueQty ?? 0), issueLine?.conversionRatio);
+}
+
+export function formatDemandDetailPrepQty(row: Pick<MaterialDemandDetailRow, 'issueQty' | 'issueUnit'>, issueLine?: Pick<WorkOrderMaterialIssueLine, 'conversionRatio' | 'issueUnit'>): string {
+  const qty = resolveDemandDetailPrepQty(row, issueLine);
+  const unit = String(row.issueUnit || issueLine?.issueUnit || '').trim();
+  return unit ? `${qty} ${unit}` : String(qty);
+}

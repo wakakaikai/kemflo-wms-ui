@@ -55,7 +55,8 @@
             >
             <el-tag
               v-else
-              :type="scope.row.listClass === 'primary' || scope.row.listClass === 'default' ? 'primary' : scope.row.listClass"
+              effect="light"
+              :type="resolveDictTagType({ elTagType: scope.row.listClass, elTagClass: scope.row.cssClass })"
               :class="scope.row.cssClass"
               >{{ scope.row.dictLabel }}</el-tag
             >
@@ -96,7 +97,45 @@
           <el-input v-model="form.dictValue" placeholder="请输入数据键值" />
         </el-form-item>
         <el-form-item label="样式属性" prop="cssClass">
-          <el-input v-model="form.cssClass" placeholder="请输入样式属性" />
+          <el-select
+            v-model="form.cssClass"
+            class="css-class-select"
+            clearable
+            filterable
+            allow-create
+            default-first-option
+            placeholder="无（仅使用回显样式）"
+          >
+            <el-option label="无（仅使用回显样式）" value="" />
+            <el-option
+              v-for="item in cssClassOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            >
+              <div class="css-class-option">
+                <span>{{ item.label }}</span>
+                <el-tag effect="light" type="info" :class="item.value">
+                  {{ previewLabel }}
+                </el-tag>
+              </div>
+            </el-option>
+          </el-select>
+          <div class="css-class-preview">
+            <span class="preview-label">效果预览</span>
+            <span
+              v-if="isPlainDictLabelPreview"
+              class="preview-plain"
+            >{{ previewLabel }}</span>
+            <el-tag
+              v-else
+              effect="light"
+              :type="resolveDictTagType({ elTagType: form.listClass, elTagClass: form.cssClass })"
+              :class="form.cssClass"
+            >
+              {{ previewLabel }}
+            </el-tag>
+          </div>
         </el-form-item>
         <el-form-item label="显示排序" prop="dictSort">
           <el-input-number v-model="form.dictSort" controls-position="right" :min="0" />
@@ -127,6 +166,7 @@
 
 <script setup name="Data" lang="ts">
 import { useDictStore } from '@/store/modules/dict';
+import { DICT_TAG_CLASS_OPTIONS, resolveDictTagType } from '@/utils/dict';
 import { optionselect as getDictOptionselect, getType } from '@/api/system/dict/type';
 import { listData, getData, delData, addData, updateData } from '@/api/system/dict/data';
 import { DictTypeVO } from '@/api/system/dict/type/types';
@@ -190,6 +230,14 @@ const data = reactive<PageData<DictDataForm, DictDataQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const cssClassOptions = DICT_TAG_CLASS_OPTIONS;
+const previewLabel = computed(() => String(form.value.dictLabel || '').trim() || '字典标签');
+const isPlainDictLabelPreview = computed(() => {
+  const listClass = String(form.value.listClass || '');
+  const cssClass = String(form.value.cssClass || '').trim();
+  return (listClass === '' || listClass === 'default') && !cssClass;
+});
 
 /** 查询字典类型详细 */
 const getTypes = async (dictId: string | number) => {
@@ -307,3 +355,38 @@ onMounted(() => {
   getTypeList();
 });
 </script>
+
+<style scoped lang="scss">
+.css-class-select {
+  width: 100%;
+}
+
+.css-class-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.css-class-preview {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--el-fill-color-light);
+}
+
+.preview-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.preview-plain {
+  font-size: 14px;
+  color: var(--el-text-color-regular);
+}
+</style>

@@ -6,9 +6,12 @@ export interface TransferMoveOption {
 
 /** 库存移转支持的移动类型 */
 export const INVENTORY_TRANSFER_MOVE_TYPES: TransferMoveOption[] = [
-  { value: '311', label: '311', desc: '库存地点转帐 (一步)' },
-  { value: '411', label: '411', desc: 'TF 库存地到库存地' },
-  { value: '344', label: '344', desc: 'TR 冻结到非限制' }
+  { value: '311', label: '311 库存地点转帐 (一步)', desc: '库存地点转帐 (一步)' },
+  { value: '411', label: '411 E 销售库存->非限制', desc: '销售库存->非限制' },
+  { value: '413', label: '413 非限制->销售库存', desc: '非限制->销售库存' },
+  { value: '343', label: '343 冻结->非限制', desc: '冻结->非限制' },
+  // { value: '321', label: '321 质检->非限制', desc: '质检->非限制' },
+  { value: '344', label: '344 非限制->冻结', desc: '非限制->冻结' }
 ];
 
 export const DEFAULT_TRANSFER_MOVE_TYPE = '311';
@@ -19,18 +22,34 @@ export const getTransferMoveTypeDesc = (moveType: string): string => {
 
 /** 需要选择目标库位的移动类型 */
 export const needsTargetLocation = (moveType: string): boolean => {
-  return moveType === '311' || moveType === '411';
+  return moveType === '311' || moveType === '411' || moveType === '413';
 };
 
-/** 库存状态转换（同库位，源/目标库存类型不同） */
+/** 同库位库存状态/特殊库存转换（无需选择目标库位） */
 export const isStockStatusTransfer = (moveType: string): boolean => {
-  return moveType === '344';
+  return ['321', '343', '344', '413'].includes(moveType);
 };
 
 export const getDefaultSourceInventoryType = (moveType: string): string => {
-  return isStockStatusTransfer(moveType) ? 'S' : 'N';
+  switch (moveType) {
+    case '321':
+      return 'X';
+    case '343':
+      return 'S';
+    case '344':
+    case '411':
+    case '413':
+      return 'N';
+    default:
+      return 'N';
+  }
 };
 
 export const getDefaultTargetInventoryType = (moveType: string): string => {
-  return isStockStatusTransfer(moveType) ? 'N' : 'N';
+  switch (moveType) {
+    case '344':
+      return 'S';
+    default:
+      return 'N';
+  }
 };

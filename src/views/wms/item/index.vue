@@ -25,6 +25,9 @@
             <el-form-item label="栈板检查" prop="palletCheckFlag">
               <DictRadio v-model="queryParams.palletCheckFlag" :radio-data="wms_boolean_type" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
             </el-form-item>
+            <el-form-item label="尺寸分类" prop="sizeCategory">
+              <DictRadio v-model="queryParams.sizeCategory" :radio-data="wms_item_size_category" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
+            </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
               <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -81,6 +84,11 @@
           </template>
         </el-table-column>
         <el-table-column label="计量单位" align="center" prop="unit" />
+        <el-table-column label="尺寸分类" align="center" prop="sizeCategory">
+          <template #default="scope">
+            <dict-tag :options="wms_item_size_category" :value="scope.row.sizeCategory" />
+          </template>
+        </el-table-column>
         <el-table-column label="条码正则" align="center" prop="sfcRegular" />
         <el-table-column label="质检标识" align="center" prop="inspectionFlag">
           <template #default="scope">
@@ -131,6 +139,11 @@
         <el-form-item label="计量单位" prop="unit">
           <el-input v-model="form.unit" placeholder="请输入计量单位" />
         </el-form-item>
+        <el-form-item label="尺寸分类" prop="sizeCategory">
+          <el-select v-model="form.sizeCategory" placeholder="请选择尺寸分类" clearable>
+            <el-option v-for="dict in wms_item_size_category" :key="dict.value" :label="dict.label" :value="dict.value" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="条码正则" prop="sfcRegular">
           <el-input v-model="form.sfcRegular" placeholder="请输入条码正则" />
         </el-form-item>
@@ -163,8 +176,8 @@ import { listItem, getItem, delItem, addItem, updateItem } from '@/api/wms/item'
 import { ItemVO, ItemQuery, ItemForm } from '@/api/wms/item/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_purchase_type, wms_item_type, wms_special_purchase, sys_yes_no, wms_boolean_type } = toRefs<any>(
-  proxy?.useDict('wms_purchase_type', 'wms_item_type', 'wms_special_purchase', 'sys_yes_no', 'wms_boolean_type')
+const { wms_purchase_type, wms_item_type, wms_special_purchase, sys_yes_no, wms_boolean_type, wms_item_size_category } = toRefs<any>(
+  proxy?.useDict('wms_purchase_type', 'wms_item_type', 'wms_special_purchase', 'sys_yes_no', 'wms_boolean_type', 'wms_item_size_category')
 );
 
 const itemList = ref<ItemVO[]>([]);
@@ -191,6 +204,7 @@ const initFormData: ItemForm = {
   oldItem: undefined,
   itemGroup: undefined,
   unit: undefined,
+  sizeCategory: undefined,
   inspectionFlag: undefined,
   checkEnable: undefined,
   palletCheckFlag: undefined,
@@ -206,6 +220,7 @@ const data = reactive<PageData<ItemForm, ItemQuery>>({
     oldItem: undefined,
     itemGroup: undefined,
     unit: undefined,
+    sizeCategory: null,
     inspectionFlag: null,
     checkEnable: null,
     palletCheckFlag: null,

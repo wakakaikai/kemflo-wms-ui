@@ -238,3 +238,31 @@ export interface InventoryDetailQuery extends PageQuery {
    */
   params?: any;
 }
+
+/** 库存移转行项目 */
+export interface InventoryTransferLineBO {
+  inventoryDetailId?: string | number | null;
+  palletInventoryDetailId?: string | number;
+  moveType?: string;
+  targetWarehouseCode?: string;
+  targetAreaCode?: string;
+  targetLocationCode?: string;
+  targetInventoryType?: string;
+  targetBusinessCode?: string;
+  transferQuantity?: number;
+  specialInventoryFlag?: string;
+  [key: string]: unknown;
+}
+
+/** 库存移转请求 */
+export interface InventoryTransferForm {
+  inventoryTransferBoList: InventoryTransferLineBO[];
+  transferType: number;
+  moveType?: string;
+  /** 物料单 */
+  mtsnr?: string;
+  /** 凭证抬头文本 */
+  bktxt?: string;
+  /** 过账日期 */
+  postingDate?: string;
+}

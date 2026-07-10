@@ -96,13 +96,7 @@
                         <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
                       </template>
                     </el-input>-->
-                    <HistoryInput
-                      v-model.trim="fixedTransferForm.targetLocationCode"
-                      :config="locationCodeConfig"
-                      placeholder="请输入当前库位编码"
-                      @keydown.tab.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)"
-                      @keydown.enter.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)"
-                    >
+                    <HistoryInput v-model.trim="fixedTransferForm.targetLocationCode" :config="locationCodeConfig" placeholder="请输入当前库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)">
                       <template #append>
                         <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
                       </template>
@@ -185,7 +179,7 @@
             <!-- 多库位模式下显示独立的当前库位设置 -->
             <el-table-column label="当前库位" width="220" v-if="transferMode === 'multiple'">
               <template #default="scope">
-<!--                <el-input
+                <!--                <el-input
                   v-model.trim="scope.row.targetLocationCode"
                   placeholder="请输入当前库位编码"
                   clearable
@@ -196,13 +190,7 @@
                     <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
                   </template>
                 </el-input>-->
-                <TableHistoryInput
-                  v-model="scope.row.targetLocationCode"
-                  :config="locationCodeConfig"
-                  placeholder="请输入当前库位编码"
-                  @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)"
-                  @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)"
-                >
+                <TableHistoryInput v-model="scope.row.targetLocationCode" :config="locationCodeConfig" placeholder="请输入当前库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)">
                   <template #append>
                     <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
                   </template>
@@ -212,14 +200,7 @@
 
             <el-table-column label="退货数量" width="140">
               <template #default="scope">
-                <el-input-number
-                  v-model="scope.row.returnQuantity"
-                  :min="0"
-                  :max="scope.row.currentQuantity ? parseFloat(scope.row.currentQuantity) : scope.row.currentQuantity"
-                  :precision="3"
-                  controls-position="right"
-                  style="width: 100%"
-                />
+                <el-input-number v-model="scope.row.returnQuantity" :min="0" :max="scope.row.currentQuantity ? parseFloat(scope.row.currentQuantity) : scope.row.currentQuantity" :precision="3" controls-position="right" style="width: 100%" />
               </template>
             </el-table-column>
             <el-table-column label="操作" width="80" align="center">
@@ -258,6 +239,16 @@ import { listUserCollections } from '@/api/wms/userCollections';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import { HistoryConfig } from '@/types/history';
+
+const props = withDefaults(
+  defineProps<{
+    historyPage?: string;
+  }>(),
+  {
+    historyPage: 'inventoryReturn'
+  }
+);
+
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 const userCollectionsDialogRef = ref<InstanceType<typeof UserCollectionsDialog>>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -352,7 +343,7 @@ const palletCodeConfig: HistoryConfig = {
   key: 'palletCode',
   storage: 'indexedDB',
   maxSize: 10,
-  page: 'inventoryReturn',
+  page: props.historyPage,
   autoSave: true,
   component: {
     showDropdown: true,
@@ -366,7 +357,7 @@ const materialSnConfig: HistoryConfig = {
   key: 'materialSn',
   storage: 'indexedDB',
   maxSize: 10,
-  page: 'inventoryReturn',
+  page: props.historyPage,
   autoSave: true,
   component: {
     showDropdown: true,
@@ -380,7 +371,7 @@ const locationCodeConfig: HistoryConfig = {
   key: 'locationCode',
   storage: 'indexedDB',
   maxSize: 10,
-  page: 'inventoryReturn',
+  page: props.historyPage,
   autoSave: true,
   component: {
     showDropdown: true,
@@ -394,7 +385,7 @@ const targetUserNameConfig: HistoryConfig = {
   key: 'targetUserName',
   storage: 'indexedDB',
   maxSize: 10,
-  page: 'inventoryReturn',
+  page: props.historyPage,
   autoSave: true,
   component: {
     showDropdown: true,
@@ -403,7 +394,6 @@ const targetUserNameConfig: HistoryConfig = {
     dropdownMaxHeight: '300px'
   }
 };
-
 
 // 列显隐信息
 const columns = ref<FieldOption[]>([

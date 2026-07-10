@@ -1,0 +1,70 @@
+@use 'sass:color';
+@use 'sass:map';
+
+// Element Plus light tag: bg light-9, border light-8, text base
+@mixin dict-tag-tone($accent) {
+  &.el-tag.el-tag--primary,
+  &.el-tag.el-tag--success,
+  &.el-tag.el-tag--info,
+  &.el-tag.el-tag--warning,
+  &.el-tag.el-tag--danger {
+    --el-tag-bg-color: #{color.mix(#fff, $accent, 90%)};
+    --el-tag-border-color: #{color.mix(#fff, $accent, 80%)};
+    --el-tag-text-color: #{$accent};
+  }
+}
+
+$dict-tag-colors: (
+  'red': #dc2626,
+  'orange': #ea580c,
+  'amber': #d97706,
+  'yellow': #ca8a04,
+  'lime': #65a30d,
+  'green': #16a34a,
+  'emerald': #059669,
+  'teal': #0d9488,
+  'cyan': #0891b2,
+  'sky': #0284c7,
+  'blue': #2563eb,
+  'indigo': #4f46e5,
+  'violet': #7c3aed,
+  'purple': #7e22ce,
+  'fuchsia': #c026d3,
+  'pink': #db2777,
+  'rose': #e11d48,
+  'brown': #b45309,
+  'gray': #6b7280,
+  'slate': #475569,
+  'gold': #a16207
+);
+
+@each $name, $accent in $dict-tag-colors {
+  .el-tag.dict-tag-#{$name} {
+    @include dict-tag-tone($accent);
+  }
+}
+
+// Legacy semantic class names (backward compatible)
+.el-tag.dict-tag-draft,
+.el-tag.dict-tag-closed {
+  @include dict-tag-tone(map.get($dict-tag-colors, 'gray'));
+}
+
+.el-tag.dict-tag-pending {
+  @include dict-tag-tone(map.get($dict-tag-colors, 'orange'));
+}
+
+.el-tag.dict-tag-processing,
+.el-tag.dict-tag-frozen {
+  @include dict-tag-tone(map.get($dict-tag-colors, 'blue'));
+}
+
+.el-tag.dict-tag-done {
+  @include dict-tag-tone(map.get($dict-tag-colors, 'green'));
+}
+
+.el-tag.dict-tag-cancelled,
+.el-tag.dict-tag-urgent,
+.el-tag.dict-tag-shortage {
+  @include dict-tag-tone(map.get($dict-tag-colors, 'red'));
+}

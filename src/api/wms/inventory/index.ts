@@ -61,3 +61,4 @@ export const delInventory = (id: string | number | Array<string | number>) => {
     method: 'delete'
   });
 };
+

@@ -1,11 +1,19 @@
 <template>
-  <el-dialog v-model="visible" :title="dialogTitle" width="1280px" destroy-on-close append-to-body>
+  <el-drawer
+    v-if="isDrawer"
+    v-model="visible"
+    :title="dialogTitle"
+    size="85%"
+    destroy-on-close
+    append-to-body
+    class="location-detail-drawer"
+  >
     <div v-loading="loading" class="location-detail-dialog">
       <div class="material-info">
         <el-descriptions :column="isRecommendMode ? 4 : 3" border size="small">
           <el-descriptions-item label="物料编码">{{ material?.componentMaterial }}</el-descriptions-item>
           <el-descriptions-item label="物料描述">{{ material?.componentDesc }}</el-descriptions-item>
-          <el-descriptions-item v-if="isRecommendMode" label="本次备料">{{ formatQty(material?.issueQty) }} {{ issueUnit }}</el-descriptions-item>
+          <el-descriptions-item v-if="isRecommendMode" :label="issueQtyLabel">{{ formatQty(material?.issueQty) }} {{ issueUnit }}</el-descriptions-item>
           <el-descriptions-item v-if="isRecommendMode" label="需求数量(库存单位)">
             <span class="demand-qty">{{ formatQty(demandInventoryQty) }} {{ inventoryUnit }}</span>
           </el-descriptions-item>
@@ -17,15 +25,16 @@
       </div>
 
       <template v-if="isRecommendMode">
-        <el-alert v-if="demandInventoryQty <= 0" type="warning" :closable="false" show-icon class="tip-alert"> 请先填写本次备料数量后再使用系统推荐 </el-alert>
+        <el-alert v-if="readonly" type="info" :closable="false" show-icon class="tip-alert">查看缺料分析推荐结果（只读）</el-alert>
+        <el-alert v-else-if="demandInventoryQty <= 0" type="warning" :closable="false" show-icon class="tip-alert"> 请先填写本次备料数量后再使用系统推荐 </el-alert>
         <el-alert
-          v-else-if="material && bomRequiresSalesOrderInventory(material)"
+          v-else-if="materialRequiresSalesOrderInventory"
           type="warning"
           :closable="false"
           show-icon
           class="tip-alert"
         >
-          本物料需使用销售订单库存（E），仅可分配匹配的销售订单及项次：{{ formatSalesOrderInventoryLabel(material) }}
+          本物料需使用销售订单库存（E），仅可分配匹配的销售订单及项次：{{ formatSalesOrderInventoryLabel(materialSoConstraint) }}
         </el-alert>
         <el-alert v-else type="info" :closable="false" show-icon class="tip-alert"> 系统按 FIFO 自动推荐分配数量；可直接修改任意库位分配数量，与推荐不一致须填写调整原因 </el-alert>
         <el-alert v-if="isRecommendMode && allowShortageConfirm && demandInventoryQty > 0 && totalUnrestrictedQty <= 0" type="warning" :closable="false" show-icon class="tip-alert">
@@ -39,7 +48,7 @@
         <div class="header-actions">
           <el-button v-if="!isRecommendMode" size="small" :loading="loading" @click="loadLocationData">刷新</el-button>
           <template v-if="isRecommendMode">
-            <el-button size="small" :disabled="!demandInventoryQty" @click="applyRecommendation">恢复系统推荐</el-button>
+            <el-button v-if="!readonly" size="small" :disabled="!demandInventoryQty" @click="applyRecommendation">恢复系统推荐</el-button>
             <el-tag v-if="recommendedRows.length" type="success" size="small">推荐 {{ recommendedRows.length }} 项</el-tag>
             <el-tag v-if="shortageQty > 0" type="warning" size="small">缺口 {{ formatQty(shortageQty) }} {{ inventoryUnit }}</el-tag>
             <el-tag v-if="selectedLocations.length" type="primary" size="small">已选 {{ selectedLocations.length }} 项</el-tag>
@@ -61,7 +70,7 @@
         :max-height="420"
         @selection-change="onSelectionChange"
       >
-        <el-table-column v-if="isRecommendMode" type="selection" width="46" :selectable="isRowSelectable" />
+        <el-table-column v-if="isRecommendMode && !readonly" type="selection" width="46" :selectable="isRowSelectable" />
         <el-table-column prop="label" label="仓库 / 库位" min-width="220" show-overflow-tooltip />
         <el-table-column label="非限制使用" width="110" align="right">
           <template #default="{ row }">{{ formatQty(row.unrestrictedQty) }}</template>
@@ -93,11 +102,11 @@
         <el-table-column v-if="isRecommendMode" label="分配数量" width="130" align="right">
           <template #default="{ row }">
             <el-input-number
-              v-if="row.isLeaf && isPickableLeaf(row)"
+              v-if="!readonly && row.isLeaf && isPickableLeaf(row)"
               :model-value="row.recommendedQty ?? 0"
               :min="0"
               :max="row.unrestrictedQty"
-              :precision="4"
+              :precision="3"
               :step="1"
               controls-position="right"
               size="small"
@@ -113,7 +122,7 @@
           <template #default="{ row }">
             <el-tag v-if="row.isLeaf && row.sourceRow && isNonUserLineWarehouse(row.sourceRow)" type="danger" size="small">其他线边</el-tag>
             <el-tag
-              v-else-if="row.isLeaf && row.sourceRow && material && bomRequiresSalesOrderInventory(material) && !isOperatableLocationForBom(material, row.sourceRow)"
+              v-else-if="row.isLeaf && row.sourceRow && materialRequiresSalesOrderInventory && !isOperatableLocationForBom(materialSoConstraint, row.sourceRow)"
               type="info"
               size="small"
             >
@@ -153,7 +162,180 @@
         <div v-if="material?.locationOverrideReason" class="recommend-reason">数量调整原因：{{ material.locationOverrideReason }}</div>
       </div>
 
-      <div v-if="isRecommendMode && isOverride" class="override-reason">
+      <div v-if="isRecommendMode && isOverride && !readonly" class="override-reason">
+        <div class="reason-label">数量调整原因 <span class="required">*</span></div>
+        <el-input v-model="overrideReason" type="textarea" :rows="2" maxlength="200" show-word-limit placeholder="手动调整仓别/库位数量时，请说明原因" />
+      </div>
+    </div>
+    <template #footer>
+      <div class="dialog-footer">
+        <span v-if="isRecommendMode" class="selection-summary">
+          已选 {{ selectedLocations.length }} 项，已分配 {{ formatQty(selectedPickQty) }} / 需求 {{ formatQty(demandInventoryQty) }} {{ inventoryUnit }}
+          <span v-if="pickShortageQty > 0" class="shortage-hint">（缺口 {{ formatQty(pickShortageQty) }}）</span>
+        </span>
+        <span v-else class="selection-summary">实时库存查询，共 {{ flatRows.length }} 条明细</span>
+        <el-button @click="handleClose">关闭</el-button>
+        <el-button v-if="canConfirmShortage" type="warning" @click="confirmShortagePrep">缺料备料确认</el-button>
+        <el-button v-if="isRecommendMode && !readonly" type="primary" :disabled="!canConfirm" @click="confirmSelection">确认选择</el-button>
+      </div>
+    </template>
+  </el-drawer>
+  <el-dialog v-else v-model="visible" :title="dialogTitle" width="1280px" destroy-on-close append-to-body>
+    <div v-loading="loading" class="location-detail-dialog">
+      <div class="material-info">
+        <el-descriptions :column="isRecommendMode ? 4 : 3" border size="small">
+          <el-descriptions-item label="物料编码">{{ material?.componentMaterial }}</el-descriptions-item>
+          <el-descriptions-item label="物料描述">{{ material?.componentDesc }}</el-descriptions-item>
+          <el-descriptions-item v-if="isRecommendMode" :label="issueQtyLabel">{{ formatQty(material?.issueQty) }} {{ issueUnit }}</el-descriptions-item>
+          <el-descriptions-item v-if="isRecommendMode" label="需求数量(库存单位)">
+            <span class="demand-qty">{{ formatQty(demandInventoryQty) }} {{ inventoryUnit }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item v-if="!isRecommendMode" label="库存单位">{{ inventoryUnit || '-' }}</el-descriptions-item>
+          <el-descriptions-item v-if="!isRecommendMode" label="可用合计">
+            <span class="demand-qty">{{ formatQty(totalUnrestrictedQty) }} {{ inventoryUnit }}</span>
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+
+      <template v-if="isRecommendMode">
+        <el-alert v-if="readonly" type="info" :closable="false" show-icon class="tip-alert">查看缺料分析推荐结果（只读）</el-alert>
+        <el-alert v-else-if="demandInventoryQty <= 0" type="warning" :closable="false" show-icon class="tip-alert"> 请先填写本次备料数量后再使用系统推荐 </el-alert>
+        <el-alert
+          v-else-if="materialRequiresSalesOrderInventory"
+          type="warning"
+          :closable="false"
+          show-icon
+          class="tip-alert"
+        >
+          本物料需使用销售订单库存（E），仅可分配匹配的销售订单及项次：{{ formatSalesOrderInventoryLabel(materialSoConstraint) }}
+        </el-alert>
+        <el-alert v-else type="info" :closable="false" show-icon class="tip-alert"> 系统按 FIFO 自动推荐分配数量；可直接修改任意库位分配数量，与推荐不一致须填写调整原因 </el-alert>
+        <el-alert v-if="isRecommendMode && allowShortageConfirm && demandInventoryQty > 0 && totalUnrestrictedQty <= 0" type="warning" :closable="false" show-icon class="tip-alert">
+          当前无可用库存，可点击「缺料备料确认」；后续确认分类时将生成缺料需求行
+        </el-alert>
+      </template>
+      <el-alert v-else type="info" :closable="false" show-icon class="tip-alert"> 查询物料实时库存，按仓库 / 库位展示；不参与备料推荐与确认 </el-alert>
+
+      <div class="distribution-header">
+        <span class="header-title">库存明细</span>
+        <div class="header-actions">
+          <el-button v-if="!isRecommendMode" size="small" :loading="loading" @click="loadLocationData">刷新</el-button>
+          <template v-if="isRecommendMode">
+            <el-button v-if="!readonly" size="small" :disabled="!demandInventoryQty" @click="applyRecommendation">恢复系统推荐</el-button>
+            <el-tag v-if="recommendedRows.length" type="success" size="small">推荐 {{ recommendedRows.length }} 项</el-tag>
+            <el-tag v-if="shortageQty > 0" type="warning" size="small">缺口 {{ formatQty(shortageQty) }} {{ inventoryUnit }}</el-tag>
+            <el-tag v-if="selectedLocations.length" type="primary" size="small">已选 {{ selectedLocations.length }} 项</el-tag>
+            <el-tag type="info" size="small">已分配 {{ formatQty(selectedPickQty) }} / {{ formatQty(demandInventoryQty) }} {{ inventoryUnit }}</el-tag>
+          </template>
+          <el-tag v-else type="success" size="small">明细 {{ flatRows.length }} 条</el-tag>
+        </div>
+      </div>
+
+      <el-table
+        ref="tableRef"
+        :data="treeData"
+        row-key="rowKey"
+        border
+        stripe
+        size="small"
+        default-expand-all
+        :tree-props="{ children: 'children' }"
+        :max-height="420"
+        @selection-change="onSelectionChange"
+      >
+        <el-table-column v-if="isRecommendMode && !readonly" type="selection" width="46" :selectable="isRowSelectable" />
+        <el-table-column prop="label" label="仓库 / 库位" min-width="220" show-overflow-tooltip />
+        <el-table-column label="非限制使用" width="110" align="right">
+          <template #default="{ row }">{{ formatQty(row.unrestrictedQty) }}</template>
+        </el-table-column>
+        <el-table-column label="质量检验" width="100" align="right">
+          <template #default="{ row }">{{ formatQty(row.inspectionQty) }}</template>
+        </el-table-column>
+        <el-table-column label="已冻结" width="90" align="right">
+          <template #default="{ row }">{{ formatQty(row.blockedQty) }}</template>
+        </el-table-column>
+        <el-table-column label="批次号" width="120" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.isLeaf ? row.batchCode || '-' : '' }}</template>
+        </el-table-column>
+        <el-table-column label="接收时间" width="118">
+          <template #default="{ row }">{{ row.isLeaf ? row.receivedDate : '' }}</template>
+        </el-table-column>
+        <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag" width="96">
+          <template #default="scope">
+            <dict-tag v-if="scope.row.isLeaf" :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
+          </template>
+        </el-table-column>
+        <el-table-column v-if="showBusinessCodeColumn" label="业务编码" width="130" show-overflow-tooltip>
+          <template #default="scope">
+            <span v-if="scope.row.isLeaf && scope.row.specialInventoryFlag && scope.row.specialInventoryFlag !== 'N'">
+              {{ scope.row.businessCode }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="isRecommendMode" label="分配数量" width="130" align="right">
+          <template #default="{ row }">
+            <el-input-number
+              v-if="!readonly && row.isLeaf && isPickableLeaf(row)"
+              :model-value="row.recommendedQty ?? 0"
+              :min="0"
+              :max="row.unrestrictedQty"
+              :precision="3"
+              :step="1"
+              controls-position="right"
+              size="small"
+              class="pick-qty-input"
+              @click.stop
+              @change="(val: number | undefined) => onPickQtyChange(row, val)"
+            />
+            <span v-else-if="row.recommendedQty">{{ formatQty(row.recommendedQty) }}</span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="isRecommendMode" label="标记" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.isLeaf && row.sourceRow && isNonUserLineWarehouse(row.sourceRow)" type="danger" size="small">其他线边</el-tag>
+            <el-tag
+              v-else-if="row.isLeaf && row.sourceRow && materialRequiresSalesOrderInventory && !isOperatableLocationForBom(materialSoConstraint, row.sourceRow)"
+              type="info"
+              size="small"
+            >
+              不可分配
+            </el-tag>
+            <el-tag v-else-if="row.isLeaf && row.isRecommended && !isQtyOverridden(row)" type="success" size="small">推荐</el-tag>
+            <el-tag v-else-if="row.isLeaf && isQtyOverridden(row)" type="warning" size="small">已调整</el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div v-if="isRecommendMode" class="recommend-summary">
+        <div class="recommend-summary-head">
+          <span class="header-title">推荐信息</span>
+          <span v-if="!recommendInfoItems.length && demandInventoryQty > 0" class="text-muted">暂无推荐</span>
+        </div>
+        <div v-if="recommendInfoItems.length" class="recommend-picks">
+          <div class="recommend-pick-head">
+            <span class="pick-col pick-loc">库位</span>
+            <span class="pick-col pick-batch">批次</span>
+            <span class="pick-col pick-qty">数量</span>
+          </div>
+          <div
+            v-for="(pick, idx) in recommendInfoItems"
+            :key="idx"
+            class="recommend-pick-row"
+            :class="{ 'is-other-line': pick.isOtherLine }"
+          >
+            <span class="pick-col pick-loc" :title="pick.location">{{ pick.location }}</span>
+            <span class="pick-col pick-batch" :title="pick.batch">{{ pick.batch }}</span>
+            <span class="pick-col pick-qty">
+              <span v-if="pick.isOtherLine" class="qty-tag qty-tag-hint">其他线边</span>
+              {{ pick.qty }}<span v-if="pick.unit" class="pick-unit">{{ pick.unit }}</span>
+            </span>
+          </div>
+        </div>
+        <div v-if="material?.locationOverrideReason" class="recommend-reason">数量调整原因：{{ material.locationOverrideReason }}</div>
+      </div>
+
+      <div v-if="isRecommendMode && isOverride && !readonly" class="override-reason">
         <div class="reason-label">数量调整原因 <span class="required">*</span></div>
         <el-input v-model="overrideReason" type="textarea" :rows="2" maxlength="200" show-word-limit placeholder="手动调整仓别/库位数量时，请说明原因" />
       </div>
@@ -168,7 +350,7 @@
         <span v-else class="selection-summary">实时库存查询，共 {{ flatRows.length }} 条明细</span>
         <el-button @click="handleClose">关闭</el-button>
         <el-button v-if="canConfirmShortage" type="warning" @click="confirmShortagePrep">缺料备料确认</el-button>
-        <el-button v-if="isRecommendMode" type="primary" :disabled="!canConfirm" @click="confirmSelection">确认选择</el-button>
+        <el-button v-if="isRecommendMode && !readonly" type="primary" :disabled="!canConfirm" @click="confirmSelection">确认选择</el-button>
       </div>
     </template>
   </el-dialog>
@@ -201,7 +383,8 @@ import {
   bomRequiresSalesOrderInventory,
   enrichLocationRowsWithSalesOrderDefaults,
   formatSalesOrderInventoryLabel,
-  isOperatableLocationForBom
+  isOperatableLocationForBom,
+  resolveBomSalesOrderConstraint
 } from '@/api/wms/allocation/index';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -223,13 +406,22 @@ interface Props {
   baseLocationRows?: MaterialLocationRow[];
   /** 备料模式：无库存时允许缺料备料确认（不分配库位） */
   allowShortageConfirm?: boolean;
+  /** 只读查看推荐结果，隐藏确认与编辑 */
+  readonly?: boolean;
+  /** 推荐模式需求数量标签 */
+  issueQtyLabel?: string;
+  /** 展示容器：弹窗或抽屉 */
+  presentation?: 'dialog' | 'drawer';
 }
 
 const props = withDefaults(defineProps<Props>(), {
   mode: 'recommend',
   peerReservedInventoryQty: 0,
   peerLocationPicks: () => [],
-  allowShortageConfirm: false
+  allowShortageConfirm: false,
+  readonly: false,
+  issueQtyLabel: '本次备料',
+  presentation: 'dialog'
 });
 
 const emit = defineEmits<{
@@ -261,6 +453,7 @@ const selectedLeafKeys = ref<Set<string>>(new Set());
 
 /** 是否为库位推荐模式（否则为只读查库存） */
 const isRecommendMode = computed(() => props.mode === 'recommend');
+const isDrawer = computed(() => props.presentation === 'drawer');
 
 /** 由下方库存明细聚合的推荐信息（与其他库位同一逻辑，仅标记其他线边） */
 const recommendInfoItems = computed(() => {
@@ -296,6 +489,10 @@ const rowDemandInventoryQty = computed(() => issueQtyToInventoryQty(Number(props
 /** 当前分配需求量（库存单位） */
 const demandInventoryQty = computed(() => rowDemandInventoryQty.value);
 
+/** 本行销售订单库存约束（合并 BOM 行字段） */
+const materialSoConstraint = computed(() => resolveBomSalesOrderConstraint(props.material));
+const materialRequiresSalesOrderInventory = computed(() => bomRequiresSalesOrderInventory(materialSoConstraint.value));
+
 /** 推荐分配上限：与 BOM 列表推荐信息栏位共用同一 FIFO 上限算法 */
 const recommendCapInventoryQty = computed(() => {
   if (!props.material) return 0;
@@ -316,7 +513,7 @@ const showBusinessCodeColumn = computed(() =>
 /** 全部库位非限制可用量合计（销售订单绑定时仅统计可分配库存） */
 const totalUnrestrictedQty = computed(() =>
   flatRows.value.reduce((sum, row) => {
-    if (isRecommendMode.value && props.material && !isOperatableLocationForBom(props.material, row)) return sum;
+    if (isRecommendMode.value && props.material && !isOperatableLocationForBom(materialSoConstraint.value, row)) return sum;
     return sum + resolveLocationPickAvailableQty(row);
   }, 0)
 );
@@ -348,7 +545,9 @@ const canConfirm = computed(() => {
 });
 
 /** 备料模式无库存时，允许缺料备料确认 */
-const canConfirmShortage = computed(() => props.allowShortageConfirm && isRecommendMode.value && demandInventoryQty.value > 0 && totalUnrestrictedQty.value <= 0);
+const canConfirmShortage = computed(
+  () => !props.readonly && props.allowShortageConfirm && isRecommendMode.value && demandInventoryQty.value > 0 && totalUnrestrictedQty.value <= 0
+);
 
 /** 格式化数量显示 */
 const formatQty = (val?: number) => {
@@ -366,7 +565,7 @@ const formatDate = (val?: string) => {
 /** 判断库位叶子行是否可勾选/编辑（须有非限制可用量，且满足销售订单库存约束） */
 const isRowSelectable = (row: InventoryTreeNode) => {
   if (!row.isLeaf || row.unrestrictedQty <= 0 || !row.sourceRow) return false;
-  if (props.material && !isOperatableLocationForBom(props.material, row.sourceRow)) return false;
+  if (props.material && !isOperatableLocationForBom(materialSoConstraint.value, row.sourceRow)) return false;
   return true;
 };
 
@@ -467,7 +666,7 @@ function runRecommendation() {
   const cap = recommendCapInventoryQty.value;
   const useCheckOrder = shouldUseCheckInventoryRecommend(flatRows.value);
   const allocateOptions = props.material
-    ? { canAllocate: (loc: MaterialLocationRow) => isOperatableLocationForBom(props.material!, loc) }
+    ? { canAllocate: (loc: MaterialLocationRow) => isOperatableLocationForBom(materialSoConstraint.value, loc) }
     : undefined;
   const result = useCheckOrder
     ? recommendLocationsFromCheckApi(flatRows.value, cap, allocateOptions)
@@ -532,8 +731,8 @@ const loadLocationData = async () => {
       if (response.code !== 200) return;
       sourceRows = normalizeMaterialInventoryResponse(response.data);
     }
-    if (useCachedRows && props.material && bomRequiresSalesOrderInventory(props.material)) {
-      sourceRows = enrichLocationRowsWithSalesOrderDefaults(sourceRows, props.material);
+    if (useCachedRows && props.material && bomRequiresSalesOrderInventory(materialSoConstraint.value)) {
+      sourceRows = enrichLocationRowsWithSalesOrderDefaults(sourceRows, materialSoConstraint.value);
     }
     const rows = buildWorkingLocationRows(sourceRows);
     flatRows.value = rows;
@@ -550,7 +749,6 @@ const loadLocationData = async () => {
       rebuildTree(rows);
     }
   } catch (error) {
-    ElMessage.error('加载库存明细失败');
     console.error(error);
   } finally {
     loading.value = false;
@@ -625,8 +823,8 @@ const confirmSelection = () => {
     ElMessage.warning('手动调整仓别/库位数量时，请填写原因');
     return;
   }
-  if (props.material && bomRequiresSalesOrderInventory(props.material)) {
-    const invalid = selectedLocations.value.filter((loc) => !isOperatableLocationForBom(props.material!, loc));
+  if (props.material && bomRequiresSalesOrderInventory(materialSoConstraint.value)) {
+    const invalid = selectedLocations.value.filter((loc) => !isOperatableLocationForBom(materialSoConstraint.value, loc));
     if (invalid.length) {
       ElMessage.warning('只能选择匹配销售订单及项次的 E 类型库存');
       return;

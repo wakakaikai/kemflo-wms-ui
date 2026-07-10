@@ -7,7 +7,7 @@
           <template #header>
             <el-row :gutter="10" class="mb8">
               <el-col :span="1.5">
-                <span>采购入库历史</span>
+                <span>凭证记录</span>
               </el-col>
               <right-toolbar v-model:showSearch="showSearch" :columns="columns" @queryTable="getList"></right-toolbar>
             </el-row>
@@ -17,13 +17,7 @@
             <!-- 默认显示的搜索项 -->
             <el-form-item label="物料凭证号" prop="sapMaterialOrderNo">
               <!--                <el-input v-model="queryParams.sapMaterialOrderNo" placeholder="请输入物料凭证号" clearable @keyup.enter="handleQuery" />-->
-              <HistoryInput
-                v-model="queryParams.sapMaterialOrderNo"
-                :config="sapMaterialOrderNoConfig"
-                placeholder="请输入物料凭证号"
-                @keydown.tab.prevent="handleQuery"
-                @keydown.enter.prevent="handleQuery"
-              />
+              <HistoryInput v-model="queryParams.sapMaterialOrderNo" :config="sapMaterialOrderNoConfig" placeholder="请输入物料凭证号" @keydown.tab.prevent="handleQuery" @keydown.enter.prevent="handleQuery" />
             </el-form-item>
             <!--            <el-form-item label="物料凭证项次" prop="sapMaterialItem">
               <HistoryInput v-model="queryParams.sapMaterialItem" :config="sapMaterialItemConfig" placeholder="请输入物料凭证项次" @keyup.enter="handleQuery" />
@@ -37,11 +31,11 @@
           <!-- 搜索结果列表 -->
           <div class="search-result">
             <el-table ref="inventoryTableRef" :data="inventoryDetailList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
-<!--              <el-table-column type="selection" width="55" align="center" />-->
+              <!--              <el-table-column type="selection" width="55" align="center" />-->
               <el-table-column v-if="columns[0].visible" label="物料凭证号" align="left" prop="sapMaterialOrderNo" />
               <el-table-column v-if="columns[1].visible" label="凭证项次" align="left" prop="sapMaterialItem" />
-              <el-table-column v-if="columns[2].visible" label="采购单号" align="left" prop="sourceDocCode" />
-              <el-table-column v-if="columns[3].visible" label="采购项次" align="left" prop="poItemNo" />
+              <el-table-column v-if="columns[2].visible" label="单号" align="left" prop="sourceDocCode" />
+              <el-table-column v-if="columns[3].visible" label="项次" align="left" prop="poItemNo" />
               <el-table-column v-if="columns[4].visible" label="物料编码" align="left" prop="itemCode" />
               <el-table-column v-if="columns[5].visible" label="物料名称" align="left" prop="itemName" show-overflow-tooltip />
               <el-table-column v-if="columns[6].visible" label="批次号" align="center" prop="batchCode" />
@@ -73,7 +67,7 @@
         <el-card shadow="never">
           <template #header>
             <div class="transfer-header">
-              <span class="header-title">物料凭证冲销列表</span>
+              <span class="header-title">冲销列表</span>
               <div class="header-actions">
                 <!--                <el-radio-group v-model="transferMode" @change="handleTransferModeChange">
                   <el-radio-button label="fixed">固定库位</el-radio-button>
@@ -89,7 +83,7 @@
             <el-form :model="fixedTransferForm" ref="fixedTransferFormRef" label-width="auto" :inline="true">
               <el-row :gutter="20">
                 <el-col :sm="24" :md="8" :lg="8">
-                  <el-form-item label="接收方">
+                  <el-form-item label="凭证抬头文本">
                     <!--                    <el-input v-model="fixedTransferForm.targetUserName" placeholder="请输入接收方">
                       <template #append>
                         <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
@@ -171,7 +165,7 @@
           </el-table>
 
           <div style="margin-top: 20px; text-align: center">
-            <el-button :loading="buttonLoading" type="primary" @click="submitTransfer" :disabled="transferList.length === 0">采购冲销</el-button>
+            <el-button :loading="buttonLoading" type="primary" @click="submitTransfer" :disabled="transferList.length === 0">冲销</el-button>
           </div>
         </el-card>
       </el-col>
@@ -277,7 +271,7 @@ const data = reactive<PageData<InventoryMovementForm, InventoryMovementQuery>>({
     relatedMoveId: undefined,
     quantity: undefined,
     unit: undefined,
-    sourceDocType: 'PO',
+    sourceDocType: '',
     sourceDocCode: undefined,
     warehouseCode: undefined,
     warehouseName: undefined,
@@ -333,7 +327,7 @@ const targetUserNameConfig: HistoryConfig = {
 const columns = ref<FieldOption[]>([
   { key: 0, label: `物料凭证号`, visible: true, children: [] },
   { key: 1, label: `凭证项次`, visible: true, children: [] },
-  { key: 2, label: `采购单号`, visible: true, children: [] },
+  { key: 2, label: `单号`, visible: true, children: [] },
   { key: 3, label: `项次`, visible: true, children: [] },
   { key: 4, label: `物料编码`, visible: true, children: [] },
   { key: 5, label: `物料名称`, visible: true, children: [] },

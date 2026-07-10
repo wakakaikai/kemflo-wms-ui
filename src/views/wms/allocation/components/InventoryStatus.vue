@@ -37,7 +37,6 @@ const tooltipText = computed(() => {
   if (inventoryStatus.value === 'UNKNOWN') {
     return '库存未检查';
   }
-
   const required = getOrderRequiredQty(material);
   const available = resolveRowAvailableQty(material) ?? 0;
   const shortage = required - available;

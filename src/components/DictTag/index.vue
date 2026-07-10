@@ -15,15 +15,8 @@
           :key="item.value + ''"
           :disable-transitions="true"
           :index="index"
-          :type="
-            item.elTagType === 'primary' ||
-            item.elTagType === 'success' ||
-            item.elTagType === 'info' ||
-            item.elTagType === 'warning' ||
-            item.elTagType === 'danger'
-              ? item.elTagType
-              : 'primary'
-          "
+          effect="light"
+          :type="resolveDictTagType(item)"
           :class="item.elTagClass"
         >
           {{ item.label + ' ' }}
@@ -37,6 +30,8 @@
 </template>
 
 <script setup lang="ts">
+import { resolveDictTagType } from '@/utils/dict';
+
 interface Props {
   options: Array<DictDataOption>;
   value: number | string | Array<number | string>;
