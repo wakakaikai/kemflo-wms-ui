@@ -18,10 +18,11 @@
             <el-radio v-model="selectedId" :value="rowKey(row)">&nbsp;</el-radio>
           </template>
         </el-table-column>
-        <el-table-column prop="warehouseCode" label="仓别代码" min-width="120" />
-        <el-table-column label="描述" min-width="200" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.warehouseDesc || row.warehouseName || '-' }}</template>
+        <el-table-column prop="locationCode" label="库位编码" min-width="120" />
+        <el-table-column label="库位名称" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.locationName || '-' }}</template>
         </el-table-column>
+        <el-table-column prop="warehouseCode" label="仓别代码" min-width="100" show-overflow-tooltip />
       </el-table>
       <el-empty v-if="!loading && !locationList.length" description="当前需求人暂无负责库位" :image-size="72" />
     </div>
@@ -68,7 +69,7 @@ const selectedId = ref('');
 const selectedRow = ref<LineWarehouseUserVO | null>(null);
 
 const rowKey = (row: LineWarehouseUserVO) =>
-  String(row.id ?? row.warehouseCode ?? '');
+  String(row.id ?? row.locationCode ?? '');
 
 const resetSelection = () => {
   selectedId.value = '';
@@ -84,7 +85,8 @@ const loadLocations = async () => {
   loading.value = true;
   try {
     const res = await listLineWarehouseUser({ userName, pageNum: 1, pageSize: 500 });
-    locationList.value = (res.rows || res.data || []) as LineWarehouseUserVO[];
+    const rows = (res.rows || res.data || []) as LineWarehouseUserVO[];
+    locationList.value = rows.filter((row) => String(row.locationCode || '').trim());
   } catch {
     locationList.value = [];
     ElMessage.error('加载负责库位失败');
@@ -119,16 +121,15 @@ const handleClose = () => {
 
 const handleConfirm = () => {
   const row = selectedRow.value;
-  const warehouseCode = String(row?.warehouseCode || '').trim();
-  if (!warehouseCode) {
-    ElMessage.warning('请选择目标仓别');
+  const locationCode = String(row?.locationCode || '').trim();
+  if (!locationCode) {
+    ElMessage.warning('请选择目标库位');
     return;
   }
-  const locationCode = String(row?.locationCode || '').trim() || warehouseCode;
   emit('confirm', {
     locationCode,
-    warehouseCode,
-    targetDemandLocationName: String(row?.warehouseDesc || row?.warehouseName || '').trim() || undefined
+    warehouseCode: String(row?.warehouseCode || '').trim() || undefined,
+    targetDemandLocationName: String(row?.locationName || '').trim() || undefined
   });
 };
 </script>

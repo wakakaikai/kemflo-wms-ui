@@ -245,7 +245,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="upload.open = false">取 消</el-button>
-          <el-button type="primary" @click="submitFileForm">确 定</el-button>
+          <el-button type="primary" :loading="upload.isUploading" @click="submitFileForm">确 定</el-button>
         </div>
       </template>
     </el-dialog>
@@ -620,6 +620,7 @@ const handleFileSuccess = (response: any, file: UploadFile) => {
 
 /** 提交上传文件 */
 function submitFileForm() {
+  upload.isUploading = true;
   uploadRef.value?.submit();
 }
 

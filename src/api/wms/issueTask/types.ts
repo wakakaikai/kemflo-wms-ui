@@ -53,6 +53,8 @@ export interface IssueTaskLineVO {
   /** 超领原因 */
   overPickReason?: string;
   createTime?: string;
+  issueTime?: string;
+  receiveTime?: string;
 }
 
 /** 备料库位明细 261 领料单行 */
@@ -122,6 +124,11 @@ export interface IssueTaskDemandGroupVO {
   totalIssuedQty?: number | string;
   pendingPickCount?: number;
   isEmergency?: boolean;
+  /** 平面仓目标需求库位 */
+  targetDemandLocationCode?: string;
+  /** 平面仓目标需求库位描述 */
+  targetDemandLocationCodeDesc?: string;
+  targetDemandWarehouseCode?: string;
   createTime?: string;
 }
 

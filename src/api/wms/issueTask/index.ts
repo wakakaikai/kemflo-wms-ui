@@ -446,7 +446,7 @@ export function formatIssueTaskWarehouseLabel(code?: string, name?: string): str
   const warehouseCode = normalizeField(code);
   if (!warehouseCode) return '-';
   const warehouseName = normalizeField(name);
-  return warehouseName && warehouseName !== warehouseCode ? `${warehouseCode} ${warehouseName}` : warehouseCode;
+  return warehouseName && warehouseName !== warehouseCode ? `${warehouseCode} (${warehouseName})` : warehouseCode;
 }
 
 export function resolveIssueTaskCurrentWarehouseLabel(warehouseCode?: string, warehouseName?: string, listRoutePath = ISSUE_TASK_LIST_ROUTE_PATH): string {

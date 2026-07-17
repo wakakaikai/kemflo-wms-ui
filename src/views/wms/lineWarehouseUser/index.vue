@@ -4,8 +4,8 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-            <el-form-item label="仓库编码" prop="warehouseCode">
-              <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="库位编码" prop="locationCode">
+              <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="用户账号" prop="userName">
               <el-input v-model="queryParams.userName" placeholder="请输入用户账号" clearable @keyup.enter="handleQuery" />
@@ -44,8 +44,8 @@
       <el-table v-loading="loading" :data="lineWarehouseUserList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />
-        <el-table-column label="仓库编码" align="center" prop="warehouseCode" />
-        <el-table-column label="仓库名称" align="center" prop="warehouseName" />
+        <el-table-column label="库位编码" align="center" prop="locationCode" />
+        <el-table-column label="库位名称" align="center" prop="locationName" />
         <el-table-column label="用户账号" align="center" prop="userName" />
         <el-table-column label="用户昵称" align="center" prop="nickName" />
         <el-table-column label="备注" align="center" prop="remark" />
@@ -66,10 +66,10 @@
     <!-- 添加或修改线边仓负责人配置对话框 -->
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" append-to-body>
       <el-form ref="lineWarehouseUserFormRef" :model="form" :rules="rules" label-width="80px">
-        <el-form-item label="仓库编码" prop="warehouseCode">
-          <el-input v-model="form.warehouseCode" placeholder="请选择仓库" readonly>
+        <el-form-item label="库位编码" prop="locationCode">
+          <el-input v-model="form.locationCode" placeholder="请选择库位" readonly>
             <template #append>
-              <el-button icon="Search" @click="openWarehouseDialog" />
+              <el-button icon="Search" @click="openLocationDialog" />
             </template>
           </el-input>
         </el-form-item>
@@ -91,17 +91,17 @@
         </div>
       </template>
     </el-dialog>
-    <warehouse-dialog ref="warehouseDialogRef" @warehouse-select-call-back="onWarehouseSelected" />
-    <user-select ref="userSelectRef" :multiple="false" :data="form.userId ? String(form.userId) : undefined" @confirmCallBack="onUserSelected" />
+    <storage-location-dialog ref="storageLocationDialogRef" @storage-location-select-call-back="onLocationSelected" />
+    <user-select ref="userSelectRef" :multiple="false" @confirmCallBack="onUserSelected" />
   </div>
 </template>
 
 <script setup name="LineWarehouseUser" lang="ts">
 import { listLineWarehouseUser, getLineWarehouseUser, delLineWarehouseUser, addLineWarehouseUser, updateLineWarehouseUser } from '@/api/wms/lineWarehouseUser';
 import { LineWarehouseUserVO, LineWarehouseUserQuery, LineWarehouseUserForm } from '@/api/wms/lineWarehouseUser/types';
-import type { WarehouseVO } from '@/api/wms/warehouse/types';
+import type { StorageLocationVO } from '@/api/wms/storageLocation/types';
 import type { UserVO } from '@/api/system/user/types';
-import WarehouseDialog from '@/views/wms/warehouse/components/warehouseDialog.vue';
+import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import UserSelect from '@/components/UserSelect/index.vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -117,7 +117,7 @@ const total = ref(0);
 
 const queryFormRef = ref<ElFormInstance>();
 const lineWarehouseUserFormRef = ref<ElFormInstance>();
-const warehouseDialogRef = ref<InstanceType<typeof WarehouseDialog>>();
+const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 const userSelectRef = ref<InstanceType<typeof UserSelect>>();
 
 const dialog = reactive<DialogOption>({
@@ -127,9 +127,10 @@ const dialog = reactive<DialogOption>({
 
 const initFormData: LineWarehouseUserForm = {
   id: undefined,
+  locationCode: undefined,
+  locationName: undefined,
   warehouseCode: undefined,
   warehouseName: undefined,
-  userId: undefined,
   userName: undefined,
   nickName: undefined,
   remark: undefined
@@ -139,15 +140,15 @@ const data = reactive<PageData<LineWarehouseUserForm, LineWarehouseUserQuery>>({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    warehouseCode: undefined,
+    locationCode: undefined,
     userName: undefined,
     nickName: undefined,
     params: {
     }
   },
   rules: {
-    warehouseCode: [
-      { required: true, message: "仓库不能为空", trigger: "change" }
+    locationCode: [
+      { required: true, message: "库位不能为空", trigger: "change" }
     ],
     userName: [
       { required: true, message: "用户不能为空", trigger: "change" }
@@ -215,12 +216,14 @@ const handleUpdate = async (row?: LineWarehouseUserVO) => {
   dialog.title = "修改线边仓负责人配置";
 }
 
-const openWarehouseDialog = () => {
-  warehouseDialogRef.value?.openDialog();
-  warehouseDialogRef.value?.handleQuery();
+const openLocationDialog = () => {
+  storageLocationDialogRef.value?.openDialog();
+  storageLocationDialogRef.value?.handleQuery();
 };
 
-const onWarehouseSelected = (record: WarehouseVO) => {
+const onLocationSelected = (record: StorageLocationVO) => {
+  form.value.locationCode = record?.locationCode;
+  form.value.locationName = record?.locationName;
   form.value.warehouseCode = record?.warehouseCode;
   form.value.warehouseName = record?.warehouseName;
 };
@@ -232,9 +235,13 @@ const openUserSelect = () => {
 const onUserSelected = (users: UserVO[]) => {
   const selected = users?.[0];
   if (!selected) return;
-  form.value.userId = selected.userId as string | number;
   form.value.userName = selected.userName;
   form.value.nickName = selected.nickName;
+};
+
+const buildSubmitPayload = (): LineWarehouseUserForm => {
+  const { id, locationCode, locationName, warehouseCode, warehouseName, userName, nickName, remark } = form.value;
+  return { id, locationCode, locationName, warehouseCode, warehouseName, userName, nickName, remark };
 };
 
 /** 提交按钮 */
@@ -242,10 +249,11 @@ const submitForm = () => {
   lineWarehouseUserFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
       buttonLoading.value = true;
+      const payload = buildSubmitPayload();
       if (form.value.id) {
-        await updateLineWarehouseUser(form.value).finally(() =>  buttonLoading.value = false);
+        await updateLineWarehouseUser(payload).finally(() =>  buttonLoading.value = false);
       } else {
-        await addLineWarehouseUser(form.value).finally(() =>  buttonLoading.value = false);
+        await addLineWarehouseUser(payload).finally(() =>  buttonLoading.value = false);
       }
       proxy?.$modal.msgSuccess("操作成功");
       dialog.visible = false;

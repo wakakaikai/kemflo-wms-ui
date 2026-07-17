@@ -1,5 +1,8 @@
 <template>
-  <div class="issue-task-line-card" :class="{ 'is-pending': isLineIssueable }" :style="{ '--status-border-color': statusBorderColor }">
+  <div class="issue-task-line-card" :class="{ 'is-pending': isLineIssueable, 'is-selected': selected, 'has-select-box': selectable }" :style="{ '--status-border-color': statusBorderColor }">
+    <div v-if="selectable" class="card-select-box" @click.stop>
+      <el-checkbox :model-value="selected" @change="(val: boolean | string | number) => $emit('toggle-select', row, !!val)" />
+    </div>
     <div class="card-top">
       <div class="card-header-row">
         <span class="work-order-no" :title="row.workOrderNo">{{ row.workOrderNo || '-' }}</span>
@@ -86,13 +89,16 @@
       </div>
     </div>
 
-    <div v-if="canShowIssue" class="card-actions">
-      <el-tooltip v-if="!canExecute" content="缺少需求单或库位信息" placement="top">
-        <el-button link type="success" size="small" disabled v-hasPermi="['wms:materialIssue:issue']">{{ issueActionLabel }}</el-button>
-      </el-tooltip>
-      <el-button v-else-if="canExecute" type="primary" size="small" @click="$emit('issue', row)" v-hasPermi="['wms:materialIssue:issue']"> {{ issueActionLabel }} </el-button>
+    <div class="card-actions card-actions-main">
+      <el-button color="#626aef" size="small" icon="Printer" @click="$emit('print', row)">打印</el-button>
+      <template v-if="canShowIssue">
+        <el-tooltip v-if="!canExecute" content="缺少需求单或库位信息" placement="top">
+          <el-button link type="success" size="small" disabled v-hasPermi="['wms:materialIssue:issue']">{{ issueActionLabel }}</el-button>
+        </el-tooltip>
+        <el-button v-else-if="canExecute" type="primary" size="small" @click="$emit('issue', row)" v-hasPermi="['wms:materialIssue:issue']"> {{ issueActionLabel }} </el-button>
+      </template>
     </div>
-    <div v-else-if="isLineCompleted" class="card-actions card-remark">
+    <div v-if="!canShowIssue && isLineCompleted" class="card-actions card-remark">
       <span class="remark-label">备注</span>
       <span class="remark-text" :title="lineRemark">{{ lineRemark || '-' }}</span>
     </div>
@@ -105,9 +111,21 @@ import type { IssueTaskLineVO } from '@/api/wms/issueTask/types';
 import { isPrepRowSpecialInventory, resolvePrepRowBusinessPartner, resolvePrepRowInventoryFlag, resolvePrepRowLocationAdjustRemark } from '@/api/wms/workOrderPrepDemand/index';
 import { canExecuteIssueTaskLine261, canIssueTaskLine261, canEditIssueTaskLineActualIssue, getIssueTaskLineActionLabel, isIssueTaskLineCompleted, isIssueTaskLineIssueable, lineStatusBadgeColor, lineStatusLabel, lineStatusTag, resolveIssueTaskLineRemark, resolveLineActualIssueQty, resolveLineIssuedQty, syncIssueTaskLineActualIssueDefault, warehouseRouteLabel, warehouseRouteTag } from '@/api/wms/issueTask';
 
-const props = defineProps<{ row: IssueTaskLineVO }>();
+const props = withDefaults(
+  defineProps<{
+    row: IssueTaskLineVO;
+    selectable?: boolean;
+    selected?: boolean;
+  }>(),
+  {
+    selectable: false,
+    selected: false
+  }
+);
 defineEmits<{
   issue: [row: IssueTaskLineVO];
+  print: [row: IssueTaskLineVO];
+  'toggle-select': [row: IssueTaskLineVO, selected: boolean];
 }>();
 
 const { proxy } = getCurrentInstance()!;
@@ -202,6 +220,7 @@ function formatQtyWithUnit(value?: number | string, unit?: string) {
 
 <style scoped lang="scss">
 .issue-task-line-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -216,6 +235,11 @@ function formatQtyWithUnit(value?: number | string, unit?: string) {
     box-shadow 0.2s,
     transform 0.2s;
 
+  &.is-selected {
+    border-color: var(--el-color-primary);
+    box-shadow: 0 0 0 1px rgba(64, 158, 255, 0.18);
+  }
+
   &:hover {
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
     transform: translateY(-1px);
@@ -226,10 +250,21 @@ function formatQtyWithUnit(value?: number | string, unit?: string) {
   }
 }
 
+.card-select-box {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+}
+
 .card-top {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.has-select-box .card-top {
+  padding-left: 28px;
 }
 
 .card-header-row {
@@ -469,12 +504,15 @@ function formatQtyWithUnit(value?: number | string, unit?: string) {
 
 .card-actions {
   display: flex;
-  justify-content: flex-end;
   align-items: center;
   gap: 8px;
   padding-top: 10px;
   margin-top: 0;
   border-top: 1px dashed var(--el-border-color);
+}
+
+.card-actions-main {
+  justify-content: space-between;
 }
 
 .card-remark {

@@ -4,7 +4,6 @@
     v-model="visible"
     :title="dialogTitle"
     size="85%"
-    destroy-on-close
     append-to-body
     class="location-detail-drawer"
   >
@@ -60,20 +59,19 @@
 
       <el-table
         ref="tableRef"
-        :data="treeData"
+        :data="flatRows"
         row-key="rowKey"
         border
         stripe
         size="small"
-        default-expand-all
-        :tree-props="{ children: 'children' }"
         :max-height="420"
         @selection-change="onSelectionChange"
       >
         <el-table-column v-if="isRecommendMode && !readonly" type="selection" width="46" :selectable="isRowSelectable" />
-        <el-table-column prop="label" label="仓库 / 库位" min-width="220" show-overflow-tooltip />
+        <el-table-column prop="warehouseCode" label="仓库" width="110" show-overflow-tooltip />
+        <el-table-column prop="locationCode" label="库位" min-width="140" show-overflow-tooltip />
         <el-table-column label="非限制使用" width="110" align="right">
-          <template #default="{ row }">{{ formatQty(row.unrestrictedQty) }}</template>
+          <template #default="{ row }">{{ formatQty(rowPickAvailableQty(row)) }}</template>
         </el-table-column>
         <el-table-column label="质量检验" width="100" align="right">
           <template #default="{ row }">{{ formatQty(row.inspectionQty) }}</template>
@@ -82,19 +80,19 @@
           <template #default="{ row }">{{ formatQty(row.blockedQty) }}</template>
         </el-table-column>
         <el-table-column label="批次号" width="120" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.isLeaf ? row.batchCode || '-' : '' }}</template>
+          <template #default="{ row }">{{ row.batchCode || '-' }}</template>
         </el-table-column>
         <el-table-column label="接收时间" width="118">
-          <template #default="{ row }">{{ row.isLeaf ? row.receivedDate : '' }}</template>
+          <template #default="{ row }">{{ row.receivedDate || '' }}</template>
         </el-table-column>
         <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag" width="96">
           <template #default="scope">
-            <dict-tag v-if="scope.row.isLeaf" :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
+            <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
           </template>
         </el-table-column>
         <el-table-column v-if="showBusinessCodeColumn" label="业务编码" width="130" show-overflow-tooltip>
           <template #default="scope">
-            <span v-if="scope.row.isLeaf && scope.row.specialInventoryFlag && scope.row.specialInventoryFlag !== 'N'">
+            <span v-if="scope.row.specialInventoryFlag && scope.row.specialInventoryFlag !== 'N'">
               {{ scope.row.businessCode }}
             </span>
           </template>
@@ -102,10 +100,10 @@
         <el-table-column v-if="isRecommendMode" label="分配数量" width="130" align="right">
           <template #default="{ row }">
             <el-input-number
-              v-if="!readonly && row.isLeaf && isPickableLeaf(row)"
+              v-if="!readonly && isPickableLeaf(row)"
               :model-value="row.recommendedQty ?? 0"
               :min="0"
-              :max="row.unrestrictedQty"
+              :max="rowPickAvailableQty(row)"
               :precision="3"
               :step="1"
               controls-position="right"
@@ -120,16 +118,16 @@
         </el-table-column>
         <el-table-column v-if="isRecommendMode" label="标记" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.isLeaf && row.sourceRow && isNonUserLineWarehouse(row.sourceRow)" type="danger" size="small">其他线边</el-tag>
+            <el-tag v-if="isNonUserLineWarehouse(row)" type="danger" size="small">其他线边</el-tag>
             <el-tag
-              v-else-if="row.isLeaf && row.sourceRow && materialRequiresSalesOrderInventory && !isOperatableLocationForBom(materialSoConstraint, row.sourceRow)"
+              v-else-if="materialRequiresSalesOrderInventory && !isOperatableLocationForBom(materialSoConstraint, row)"
               type="info"
               size="small"
             >
               不可分配
             </el-tag>
-            <el-tag v-else-if="row.isLeaf && row.isRecommended && !isQtyOverridden(row)" type="success" size="small">推荐</el-tag>
-            <el-tag v-else-if="row.isLeaf && isQtyOverridden(row)" type="warning" size="small">已调整</el-tag>
+            <el-tag v-else-if="row.isRecommended && !isQtyOverridden(row)" type="success" size="small">推荐</el-tag>
+            <el-tag v-else-if="isQtyOverridden(row)" type="warning" size="small">已调整</el-tag>
           </template>
         </el-table-column>
       </el-table>
@@ -180,7 +178,7 @@
       </div>
     </template>
   </el-drawer>
-  <el-dialog v-else v-model="visible" :title="dialogTitle" width="1280px" destroy-on-close append-to-body>
+  <el-dialog v-else v-model="visible" :title="dialogTitle" width="1280px" append-to-body>
     <div v-loading="loading" class="location-detail-dialog">
       <div class="material-info">
         <el-descriptions :column="isRecommendMode ? 4 : 3" border size="small">
@@ -233,20 +231,19 @@
 
       <el-table
         ref="tableRef"
-        :data="treeData"
+        :data="flatRows"
         row-key="rowKey"
         border
         stripe
         size="small"
-        default-expand-all
-        :tree-props="{ children: 'children' }"
         :max-height="420"
         @selection-change="onSelectionChange"
       >
         <el-table-column v-if="isRecommendMode && !readonly" type="selection" width="46" :selectable="isRowSelectable" />
-        <el-table-column prop="label" label="仓库 / 库位" min-width="220" show-overflow-tooltip />
+        <el-table-column prop="warehouseCode" label="仓库" width="110" show-overflow-tooltip />
+        <el-table-column prop="locationCode" label="库位" min-width="140" show-overflow-tooltip />
         <el-table-column label="非限制使用" width="110" align="right">
-          <template #default="{ row }">{{ formatQty(row.unrestrictedQty) }}</template>
+          <template #default="{ row }">{{ formatQty(rowPickAvailableQty(row)) }}</template>
         </el-table-column>
         <el-table-column label="质量检验" width="100" align="right">
           <template #default="{ row }">{{ formatQty(row.inspectionQty) }}</template>
@@ -255,19 +252,19 @@
           <template #default="{ row }">{{ formatQty(row.blockedQty) }}</template>
         </el-table-column>
         <el-table-column label="批次号" width="120" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.isLeaf ? row.batchCode || '-' : '' }}</template>
+          <template #default="{ row }">{{ row.batchCode || '-' }}</template>
         </el-table-column>
         <el-table-column label="接收时间" width="118">
-          <template #default="{ row }">{{ row.isLeaf ? row.receivedDate : '' }}</template>
+          <template #default="{ row }">{{ row.receivedDate || '' }}</template>
         </el-table-column>
         <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag" width="96">
           <template #default="scope">
-            <dict-tag v-if="scope.row.isLeaf" :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
+            <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
           </template>
         </el-table-column>
         <el-table-column v-if="showBusinessCodeColumn" label="业务编码" width="130" show-overflow-tooltip>
           <template #default="scope">
-            <span v-if="scope.row.isLeaf && scope.row.specialInventoryFlag && scope.row.specialInventoryFlag !== 'N'">
+            <span v-if="scope.row.specialInventoryFlag && scope.row.specialInventoryFlag !== 'N'">
               {{ scope.row.businessCode }}
             </span>
           </template>
@@ -275,10 +272,10 @@
         <el-table-column v-if="isRecommendMode" label="分配数量" width="130" align="right">
           <template #default="{ row }">
             <el-input-number
-              v-if="!readonly && row.isLeaf && isPickableLeaf(row)"
+              v-if="!readonly && isPickableLeaf(row)"
               :model-value="row.recommendedQty ?? 0"
               :min="0"
-              :max="row.unrestrictedQty"
+              :max="rowPickAvailableQty(row)"
               :precision="3"
               :step="1"
               controls-position="right"
@@ -293,16 +290,16 @@
         </el-table-column>
         <el-table-column v-if="isRecommendMode" label="标记" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.isLeaf && row.sourceRow && isNonUserLineWarehouse(row.sourceRow)" type="danger" size="small">其他线边</el-tag>
+            <el-tag v-if="isNonUserLineWarehouse(row)" type="danger" size="small">其他线边</el-tag>
             <el-tag
-              v-else-if="row.isLeaf && row.sourceRow && materialRequiresSalesOrderInventory && !isOperatableLocationForBom(materialSoConstraint, row.sourceRow)"
+              v-else-if="materialRequiresSalesOrderInventory && !isOperatableLocationForBom(materialSoConstraint, row)"
               type="info"
               size="small"
             >
               不可分配
             </el-tag>
-            <el-tag v-else-if="row.isLeaf && row.isRecommended && !isQtyOverridden(row)" type="success" size="small">推荐</el-tag>
-            <el-tag v-else-if="row.isLeaf && isQtyOverridden(row)" type="warning" size="small">已调整</el-tag>
+            <el-tag v-else-if="row.isRecommended && !isQtyOverridden(row)" type="success" size="small">推荐</el-tag>
+            <el-tag v-else-if="isQtyOverridden(row)" type="warning" size="small">已调整</el-tag>
           </template>
         </el-table-column>
       </el-table>
@@ -360,15 +357,12 @@
 import { ref, computed, watch, nextTick, getCurrentInstance, toRefs, type ComponentInternalInstance } from 'vue';
 import type { TableInstance } from 'element-plus';
 import { ElMessage } from 'element-plus';
-import dayjs from 'dayjs';
-import type { WorkOrderBomVO, InventoryTreeNode, MaterialLocationRow } from '@/api/wms/allocation/types';
+import type { WorkOrderBomVO, MaterialLocationRow } from '@/api/wms/allocation/types';
 import InventoryApi from '@/api/wms/allocation/index';
 import { computeRecommendCapInventoryQty, issueQtyToInventoryQty, resolveBomBaseUnit } from '@/api/wms/allocation/index';
 import {
-  buildInventoryTree,
   clampPickQty,
   cloneMaterialLocationRows,
-  collectLeafNodes,
   deductLocationPicksFromStock,
   normalizeMaterialInventoryResponse,
   isNonUserLineWarehouse,
@@ -376,7 +370,6 @@ import {
   recommendLocationsFromCheckApi,
   resolveLocationPickAvailableQty,
   shouldUseCheckInventoryRecommend,
-  recalcTreePickTotals,
   sumPickQty
 } from '@/api/wms/allocation/index';
 import {
@@ -441,7 +434,6 @@ const visible = ref(false);
 const loading = ref(false);
 const tableRef = ref<TableInstance>();
 const flatRows = ref<MaterialLocationRow[]>([]);
-const treeData = ref<InventoryTreeNode[]>([]);
 const selectedLocations = ref<MaterialLocationRow[]>([]);
 const recommendedRows = ref<MaterialLocationRow[]>([]);
 const recommendedKeys = ref<Set<string>>(new Set());
@@ -455,12 +447,12 @@ const selectedLeafKeys = ref<Set<string>>(new Set());
 const isRecommendMode = computed(() => props.mode === 'recommend');
 const isDrawer = computed(() => props.presentation === 'drawer');
 
-/** 由下方库存明细聚合的推荐信息（与其他库位同一逻辑，仅标记其他线边） */
+/** 由已选库位聚合的推荐信息（与其他库位同一逻辑，仅标记其他线边） */
 const recommendInfoItems = computed(() => {
   if (!isRecommendMode.value) return [];
   const unit = inventoryUnit.value;
 
-  return flatRows.value
+  return selectedLocations.value
     .filter((row) => Number(row.recommendedQty ?? 0) > 0)
     .map((row) => ({
       location: String(row.locationCode || '-').trim() || '-',
@@ -555,50 +547,30 @@ const formatQty = (val?: number) => {
   return Number.isNaN(n) ? '0' : n;
 };
 
-/** 格式化接收日期显示 */
-const formatDate = (val?: string) => {
-  if (!val) return '-';
-  const d = dayjs(val);
-  return d.isValid() ? d.format('YYYY/MM/DD') : val;
-};
+const rowPickAvailableQty = (row: MaterialLocationRow) => resolveLocationPickAvailableQty(row);
 
-/** 判断库位叶子行是否可勾选/编辑（须有非限制可用量，且满足销售订单库存约束） */
-const isRowSelectable = (row: InventoryTreeNode) => {
-  if (!row.isLeaf || row.unrestrictedQty <= 0 || !row.sourceRow) return false;
-  if (props.material && !isOperatableLocationForBom(materialSoConstraint.value, row.sourceRow)) return false;
+/** 判断库位行是否可勾选/编辑（须有非限制可用量，且满足销售订单库存约束） */
+const isRowSelectable = (row: MaterialLocationRow) => {
+  if (rowPickAvailableQty(row) <= 0) return false;
+  if (props.material && !isOperatableLocationForBom(materialSoConstraint.value, row)) return false;
   return true;
 };
 
 const isPickableLeaf = isRowSelectable;
 
 /** 判断单行分配数量是否偏离系统推荐值 */
-const isQtyOverridden = (row: InventoryTreeNode) => {
-  if (!row.isLeaf || !row.sourceRow) return false;
-  const systemQty = row.sourceRow.systemRecommendedQty ?? systemRecommendedMap.value.get(row.sourceRow.rowKey);
+const isQtyOverridden = (row: MaterialLocationRow) => {
+  const systemQty = row.systemRecommendedQty ?? systemRecommendedMap.value.get(row.rowKey);
   if (systemQty == null) return Number(row.recommendedQty ?? 0) > 0;
   return Number(row.recommendedQty ?? 0) !== systemQty;
 };
 
-/** 将树节点分配数量同步回扁平库存行 */
-function syncFlatRowPick(rowKey: string, qty: number) {
-  const flat = flatRows.value.find((r) => r.rowKey === rowKey);
-  if (flat) flat.recommendedQty = qty;
-}
-
-/** 从树勾选状态重建已选库位列表并更新缺口 */
-function syncSelectedFromTree() {
-  const leaves = collectLeafNodes(treeData.value);
-  selectedLocations.value = leaves
-    .filter((leaf) => leaf.isLeaf && leaf.sourceRow && selectedLeafKeys.value.has(leaf.rowKey))
-    .map((leaf) => ({ ...leaf.sourceRow!, recommendedQty: Number(leaf.recommendedQty ?? 0) }));
-  recalcTreePickTotals(treeData.value);
+/** 从勾选状态重建已选库位列表并更新缺口 */
+function syncSelectedFromTable() {
+  selectedLocations.value = flatRows.value
+    .filter((row) => selectedLeafKeys.value.has(row.rowKey))
+    .map((row) => ({ ...row, recommendedQty: Number(row.recommendedQty ?? 0) }));
   shortageQty.value = pickShortageQty.value;
-}
-
-/** 由扁平库存行重建仓库/库位树形数据 */
-function rebuildTree(rows: MaterialLocationRow[]) {
-  flatRows.value = rows;
-  treeData.value = buildInventoryTree(rows);
 }
 
 /** 按 FIFO 推荐结果勾选表格对应库位行并回写分配数量 */
@@ -606,23 +578,20 @@ function applyRecommendationSelection() {
   applyingSelection.value = true;
   tableRef.value?.clearSelection();
   selectedLeafKeys.value = new Set();
-  const leaves = collectLeafNodes(treeData.value);
-  leaves.forEach((leaf) => {
-    if (!leaf.sourceRow) return;
-    const key = leaf.sourceRow.rowKey;
+  const rowsToSelect: MaterialLocationRow[] = [];
+  flatRows.value.forEach((row) => {
+    const key = row.rowKey;
     if (!recommendedKeys.value.has(key)) return;
-    const qty = systemRecommendedMap.value.get(key) ?? Number(leaf.sourceRow.recommendedQty ?? 0);
+    const qty = systemRecommendedMap.value.get(key) ?? Number(row.recommendedQty ?? 0);
     if (qty <= 0) return;
-    leaf.recommendedQty = qty;
-    leaf.isRecommended = true;
-    leaf.sourceRow.recommendedQty = qty;
-    leaf.sourceRow.isRecommended = true;
-    syncFlatRowPick(key, qty);
-    tableRef.value?.toggleRowSelection(leaf, true);
-    selectedLeafKeys.value.add(leaf.rowKey);
+    row.recommendedQty = qty;
+    row.isRecommended = true;
+    rowsToSelect.push(row);
+    selectedLeafKeys.value.add(key);
   });
+  rowsToSelect.forEach((row) => tableRef.value?.toggleRowSelection(row, true));
   applyingSelection.value = false;
-  syncSelectedFromTree();
+  syncSelectedFromTable();
 }
 
 /** 恢复已保存的手工库位选择（与 BOM 表推荐信息栏一致） */
@@ -636,20 +605,18 @@ function applyManualSelection(manual: Array<Record<string, unknown>>) {
     if (!key) return;
     pickMap.set(key, Number(loc.recommendedQty ?? 0));
   });
-  const leaves = collectLeafNodes(treeData.value);
-  leaves.forEach((leaf) => {
-    if (!leaf.sourceRow) return;
-    const qty = pickMap.get(leaf.sourceRow.rowKey);
+  const rowsToSelect: MaterialLocationRow[] = [];
+  flatRows.value.forEach((row) => {
+    const qty = pickMap.get(row.rowKey);
     if (qty == null || qty <= 0) return;
-    leaf.recommendedQty = qty;
-    leaf.sourceRow.recommendedQty = qty;
-    syncFlatRowPick(leaf.sourceRow.rowKey, qty);
-    tableRef.value?.toggleRowSelection(leaf, true);
-    selectedLeafKeys.value.add(leaf.rowKey);
+    row.recommendedQty = qty;
+    rowsToSelect.push(row);
+    selectedLeafKeys.value.add(row.rowKey);
   });
+  rowsToSelect.forEach((row) => tableRef.value?.toggleRowSelection(row, true));
   overrideReason.value = String(props.material?.locationOverrideReason ?? '').trim();
   applyingSelection.value = false;
-  syncSelectedFromTree();
+  syncSelectedFromTable();
 }
 
 /** 构建扣减前序占用后的库位明细（与 BOM 列表 FIFO 同一套库存池） */
@@ -687,7 +654,6 @@ function runRecommendation() {
   });
   const allocated = result.recommendedRows.reduce((sum, row) => sum + Number(row.recommendedQty ?? 0), 0);
   shortageQty.value = Math.max(0, rowDemandInventoryQty.value - allocated);
-  rebuildTree(flatRows.value);
 }
 
 /** 恢复系统 FIFO 推荐分配并重新勾选库位 */
@@ -710,12 +676,25 @@ watch(
       systemRecommendedMap.value = new Map();
       selectedLeafKeys.value = new Set();
       shortageQty.value = 0;
+      flatRows.value = [];
       await loadLocationData();
     }
   }
 );
 
-watch(visible, (val) => emit('update:modelValue', val));
+watch(visible, (val) => {
+  emit('update:modelValue', val);
+  if (!val) {
+    flatRows.value = [];
+    tableRef.value?.clearSelection();
+  }
+});
+
+const deferTableSelection = (task: () => void) => {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(task);
+  });
+};
 
 /** 加载物料库存明细并在推荐模式下执行 FIFO 分配 */
 const loadLocationData = async () => {
@@ -740,13 +719,10 @@ const loadLocationData = async () => {
       runRecommendation();
       await nextTick();
       const manual = props.material.manualLocationSelections?.filter((loc) => Number(loc.recommendedQty ?? 0) > 0);
-      if (manual?.length) {
-        applyManualSelection(manual);
-      } else {
-        applyRecommendationSelection();
-      }
-    } else {
-      rebuildTree(rows);
+      deferTableSelection(() => {
+        if (manual?.length) applyManualSelection(manual);
+        else applyRecommendationSelection();
+      });
     }
   } catch (error) {
     console.error(error);
@@ -755,34 +731,38 @@ const loadLocationData = async () => {
   }
 };
 
+/** 取消勾选时清空该行分配数量，避免推荐信息与表格残留旧值 */
+function clearDeselectedLeafPicks(selectedKeys: Set<string>) {
+  flatRows.value.forEach((row) => {
+    if (selectedKeys.has(row.rowKey)) return;
+    if (Number(row.recommendedQty ?? 0) <= 0) return;
+    row.recommendedQty = undefined;
+  });
+}
+
 /** 库位勾选变化：为新选行填充推荐或剩余需求量 */
-const onSelectionChange = (rows: InventoryTreeNode[]) => {
+const onSelectionChange = (rows: MaterialLocationRow[]) => {
   if (applyingSelection.value) return;
-  const leaves = rows.filter((row) => row.isLeaf && row.sourceRow);
-  selectedLeafKeys.value = new Set(leaves.map((row) => row.rowKey));
-  let allocated = sumPickQty(leaves.filter((row) => Number(row.recommendedQty) > 0));
-  leaves.forEach((row) => {
+  selectedLeafKeys.value = new Set(rows.map((row) => row.rowKey));
+  clearDeselectedLeafPicks(selectedLeafKeys.value);
+  let allocated = sumPickQty(rows.filter((row) => Number(row.recommendedQty) > 0));
+  rows.forEach((row) => {
     if (Number(row.recommendedQty) > 0) return;
-    const systemQty = row.sourceRow ? systemRecommendedMap.value.get(row.sourceRow.rowKey) : undefined;
+    const systemQty = systemRecommendedMap.value.get(row.rowKey);
     const remaining = Math.max(0, recommendCapInventoryQty.value - allocated);
-    const qty = systemQty != null && systemQty > 0 ? clampPickQty(row.unrestrictedQty, systemQty) : clampPickQty(row.unrestrictedQty, remaining);
+    const unrestricted = rowPickAvailableQty(row);
+    const qty = systemQty != null && systemQty > 0 ? clampPickQty(unrestricted, systemQty) : clampPickQty(unrestricted, remaining);
     row.recommendedQty = qty;
-    if (row.sourceRow) {
-      row.sourceRow.recommendedQty = qty;
-      syncFlatRowPick(row.sourceRow.rowKey, qty);
-    }
     allocated += qty;
   });
-  syncSelectedFromTree();
+  syncSelectedFromTable();
 };
 
 /** 手动修改单行库位分配数量并同步勾选状态 */
-const onPickQtyChange = (row: InventoryTreeNode, val: number | undefined) => {
-  if (!row.isLeaf || !row.sourceRow) return;
-  const qty = clampPickQty(row.unrestrictedQty, val);
+const onPickQtyChange = (row: MaterialLocationRow, val: number | undefined) => {
+  const unrestricted = rowPickAvailableQty(row);
+  const qty = clampPickQty(unrestricted, val);
   row.recommendedQty = qty;
-  row.sourceRow.recommendedQty = qty;
-  syncFlatRowPick(row.sourceRow.rowKey, qty);
   if (qty > 0 && !selectedLeafKeys.value.has(row.rowKey)) {
     applyingSelection.value = true;
     tableRef.value?.toggleRowSelection(row, true);
@@ -795,7 +775,7 @@ const onPickQtyChange = (row: InventoryTreeNode, val: number | undefined) => {
     applyingSelection.value = false;
     selectedLeafKeys.value.delete(row.rowKey);
   }
-  syncSelectedFromTree();
+  syncSelectedFromTable();
 };
 
 /** 无库存缺料备料：不分配库位，由分类阶段生成缺料需求行 */
@@ -843,6 +823,7 @@ const confirmSelection = () => {
 /** 关闭库位弹窗并重置选择状态 */
 const handleClose = () => {
   visible.value = false;
+  flatRows.value = [];
   selectedLocations.value = [];
   selectedLeafKeys.value = new Set();
   overrideReason.value = '';

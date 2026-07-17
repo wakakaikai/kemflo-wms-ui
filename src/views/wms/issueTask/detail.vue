@@ -21,13 +21,18 @@
             <span class="line-toolbar-meta">
               <span class="meta-item">领料人：{{ formatMaterialUser(summary) }}</span>
               <span class="meta-item">当前仓别：{{ currentWarehouseLabel }}</span>
-              <span class="meta-item">目标仓别：{{ targetWarehouseLabel }}</span>
+              <span class="meta-item">目标库位：{{ targetWarehouseLabel }}</span>
             </span>
           </div>
           <el-radio-group v-model="lineViewMode" size="small">
             <el-radio-button value="card">卡片</el-radio-button>
             <el-radio-button value="table">表格</el-radio-button>
           </el-radio-group>
+        </div>
+        <div v-if="lineViewMode === 'card'" class="card-batch-toolbar">
+          <el-checkbox :model-value="isAllCardsSelected" :indeterminate="isCardSelectionIndeterminate" @change="toggleSelectAllCards">全选当前页</el-checkbox>
+          <span class="card-batch-meta">已选 {{ selectedLineIds.size }} / {{ lineList.length }}</span>
+          <el-button color="#626aef" icon="Printer" :disabled="!selectedLineIds.size" @click="printSelectedLines">批量打印</el-button>
         </div>
       </template>
 
@@ -40,7 +45,7 @@
       </div>
 
       <div v-if="lineViewMode === 'card'" v-loading="loading" class="card-grid">
-        <issue-task-line-card v-for="row in lineList" :key="String(row.id)" :row="row" @issue="openLineIssueAction" />
+        <issue-task-line-card v-for="row in lineList" :key="String(row.id)" :row="row" selectable :selected="isLineSelected(row)" @toggle-select="toggleLineSelect" @print="printSingleLine" @issue="openLineIssueAction" />
         <el-empty v-if="!loading && !lineList.length" description="暂无备料明细" />
       </div>
 
@@ -90,6 +95,7 @@
     </el-card>
 
     <issue-task-line-issue-dialog v-model="issueDialogVisible" :row="issueDialogRow" @success="loadPage" @result="onLineIssueResult" />
+    <issue-print ref="issuePrintRef" />
   </div>
 </template>
 
@@ -98,10 +104,12 @@ import { formatQty, formatQtyWithUnit } from '@/utils/ruoyi';
 import { computed, getCurrentInstance, ref, watch } from 'vue';
 import type { ComponentInternalInstance } from 'vue';
 import { Bell, ArrowLeftBold } from '@element-plus/icons-vue';
-import { canExecuteIssueTaskLine261, canIssueTaskLine261, formatIssueTaskLineActualIssueDisplay, formatIssueTaskLineIssuedDisplay, formatIssueTaskWarehouseLabel, getIssueTaskLineActionLabel, isIssueTaskLineCompleted, lineStatusLabel, lineStatusTag, listIssueTaskDemandDetail, listIssueTaskGroup, normalizeIssueTaskGroup, normalizeIssueTaskLineListResponse, resolveIssueTaskCurrentWarehouseLabel, resolveIssueTaskLineRemark, resolveIssueTaskTargetWarehouseCode, syncIssueTaskLineActualIssueDefaults } from '@/api/wms/issueTask';
+import { ElMessage } from 'element-plus';
+import { canExecuteIssueTaskLine261, canIssueTaskLine261, formatIssueTaskLineActualIssueDisplay, getIssueTaskLineActionLabel, isIssueTaskLineCompleted, lineStatusLabel, lineStatusTag, listIssueTaskDemandDetail, listIssueTaskGroup, normalizeIssueTaskGroup, normalizeIssueTaskLineListResponse, resolveIssueTaskCurrentWarehouseLabel, resolveIssueTaskLineRemark, syncIssueTaskLineActualIssueDefaults } from '@/api/wms/issueTask';
 import type { IssueTaskDemandGroup, IssueTaskDemandGroupVO, IssueTaskLineVO, IssueTaskQuery } from '@/api/wms/issueTask/types';
 import IssueTaskLineCard from './components/IssueTaskLineCard.vue';
 import IssueTaskLineIssueDialog from './components/IssueTaskLineIssueDialog.vue';
+import IssuePrint from './components/issuePrint.vue';
 import PrepDemandInventoryColumns from '@/views/wms/allocation/components/PrepDemandInventoryColumns.vue';
 import PrepDemandLocationSourceColumn from '@/views/wms/allocation/components/PrepDemandLocationSourceColumn.vue';
 import { PREP_DEMAND_STATUS_DICT, PREP_DEMAND_TYPE_DICT } from '@/api/wms/workOrderPrepDemand/index';
@@ -120,6 +128,8 @@ const issueDialogVisible = ref(false);
 const issueDialogRow = ref<IssueTaskLineVO | null>(null);
 const resultMessage = ref('');
 const resultStatus = ref(false);
+const selectedLineIds = ref<Set<string>>(new Set());
+const issuePrintRef = ref<InstanceType<typeof IssuePrint>>();
 
 const demandNo = computed(() => {
   const fromParam = String(route.params.demandNo || '').trim();
@@ -144,7 +154,73 @@ function formatMaterialUser(row?: IssueTaskDemandGroup | null) {
 
 const currentWarehouseLabel = computed(() => resolveIssueTaskCurrentWarehouseLabel(String(route.query.warehouseCode || queryParams.value.warehouseCode || ''), String(route.query.warehouseName || '')));
 
-const targetWarehouseLabel = computed(() => formatIssueTaskWarehouseLabel(resolveIssueTaskTargetWarehouseCode(lineList.value)));
+const targetWarehouseLabel = computed(() => {
+  const code = summary.value?.targetDemandLocationCode;
+  const desc = summary.value?.targetDemandLocationCodeDesc;
+  if (!code) return desc || '-';
+  if (!desc) return code;
+  return `${code}（${desc}）`;
+});
+
+const resolveLineKey = (row: IssueTaskLineVO) => String(row.id);
+
+const isLineSelected = (row: IssueTaskLineVO) => selectedLineIds.value.has(resolveLineKey(row));
+
+const isAllCardsSelected = computed(() => lineList.value.length > 0 && lineList.value.every((row) => isLineSelected(row)));
+
+const isCardSelectionIndeterminate = computed(() => {
+  const selectedCount = lineList.value.filter((row) => isLineSelected(row)).length;
+  return selectedCount > 0 && selectedCount < lineList.value.length;
+});
+
+const buildPrintContext = () => ({
+  demandNo: demandNo.value || undefined
+});
+
+const printLines = async (rows: IssueTaskLineVO[]) => {
+  if (!rows.length) {
+    ElMessage.warning('请选择要打印的备料明细');
+    return;
+  }
+  try {
+    await issuePrintRef.value?.print(rows, buildPrintContext());
+  } catch (error) {
+    if (error instanceof Error && error.message === 'PRINT_WINDOW_BLOCKED') {
+      ElMessage.warning('浏览器拦截了打印窗口，请允许弹窗后重试');
+      return;
+    }
+    ElMessage.error('打印失败，请重试');
+  }
+};
+
+const printSingleLine = (row: IssueTaskLineVO) => {
+  printLines([row]);
+};
+
+const printSelectedLines = () => {
+  const rows = lineList.value.filter((row) => isLineSelected(row));
+  printLines(rows);
+};
+
+const toggleLineSelect = (row: IssueTaskLineVO, selected: boolean) => {
+  const key = resolveLineKey(row);
+  const next = new Set(selectedLineIds.value);
+  if (selected) next.add(key);
+  else next.delete(key);
+  selectedLineIds.value = next;
+};
+
+const toggleSelectAllCards = (checked: boolean | string | number) => {
+  if (!checked) {
+    selectedLineIds.value = new Set();
+    return;
+  }
+  selectedLineIds.value = new Set(lineList.value.map((row) => resolveLineKey(row)));
+};
+
+const resetCardSelection = () => {
+  selectedLineIds.value = new Set();
+};
 
 const restoreSummaryFromState = () => {
   const state = history.state as { issueTaskDemandSummary?: IssueTaskDemandGroup };
@@ -184,6 +260,7 @@ const getLineList = async () => {
   syncIssueTaskLineActualIssueDefaults(rows);
   lineList.value = rows;
   total.value = listTotal;
+  resetCardSelection();
 };
 
 const handlePagination = async () => {
@@ -344,6 +421,21 @@ watch(
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 12px;
   align-items: start;
+}
+
+.card-batch-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--el-border-color-lighter);
+}
+
+.card-batch-meta {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
 }
 
 .table-actual-issue-readonly {

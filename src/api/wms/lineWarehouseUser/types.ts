@@ -15,9 +15,14 @@ export interface LineWarehouseUserVO {
   warehouseName: string;
 
   /**
-   * 系统用户ID(关联员工表)
+   * 库位名称
    */
-  userId: string | number;
+  locationName: string;
+
+  /**
+   * 库位编码
+   */
+  locationCode: string;
 
   /**
    * 用户账号
@@ -33,7 +38,6 @@ export interface LineWarehouseUserVO {
    * 备注
    */
   remark: string;
-
 }
 
 export interface LineWarehouseUserForm extends BaseEntity {
@@ -53,9 +57,14 @@ export interface LineWarehouseUserForm extends BaseEntity {
   warehouseName?: string;
 
   /**
-   * 系统用户ID(关联员工表)
+   * 库位名称
    */
-  userId?: string | number;
+  locationName?: string;
+
+  /**
+   * 库位编码
+   */
+  locationCode?: string;
 
   /**
    * 用户账号
@@ -71,15 +80,28 @@ export interface LineWarehouseUserForm extends BaseEntity {
    * 备注
    */
   remark?: string;
-
 }
 
 export interface LineWarehouseUserQuery extends PageQuery {
-
   /**
    * 仓库编码
    */
   warehouseCode?: string;
+
+  /**
+   * 仓库名称
+   */
+  warehouseName?: string;
+
+  /**
+   * 库位名称
+   */
+  locationName?: string;
+
+  /**
+   * 库位编码
+   */
+  locationCode?: string;
 
   /**
    * 用户账号
@@ -91,11 +113,8 @@ export interface LineWarehouseUserQuery extends PageQuery {
    */
   nickName?: string;
 
-    /**
-     * 日期范围参数
-     */
-    params?: any;
+  /**
+   * 日期范围参数
+   */
+  params?: any;
 }
-
-
-
