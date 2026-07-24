@@ -70,7 +70,7 @@
               <el-radio-button label="LARGE">大件</el-radio-button>
               <el-radio-button label="SMALL">小件</el-radio-button>
             </el-radio-group>
-            <span class="filter-label">过滤已发料</span>
+            <span class="filter-label">过滤已发料与已预约</span>
             <el-switch v-model="hideFullyIssued" size="small" @change="onHideFullyIssuedChange" />
             <span class="selection-hint">已选 {{ selectedBomRows.length }} / 显示 {{ displayBomList.length }} 种</span>
           </div>
@@ -84,7 +84,7 @@
         </div>
 
         <el-table ref="bomTableRef" v-loading="bomLoading" element-loading-text="加载中..." :data="displayBomList" border stripe :max-height="400" size="small" :row-key="resolveBomTableRowKey" @selection-change="onBomSelectionChange">
-          <el-table-column type="selection" width="48" reserve-selection />
+          <el-table-column type="selection" width="48" reserve-selection :selectable="isRowSelectable" />
           <el-table-column label="库存" width="52" align="center" fixed="left">
             <template #default="{ row }">
               <inventory-status :material="row" />
@@ -92,19 +92,24 @@
           </el-table-column>
           <el-table-column type="index" label="序号" width="60" />
           <el-table-column v-if="isMultiWorkOrderMode" prop="workOrderNo" label="工单号" min-width="118" fixed="left" />
-          <el-table-column prop="componentMaterial" label="物料编码" min-width="120" />
+          <el-table-column prop="componentMaterial" label="物料编码" min-width="120" sortable />
           <el-table-column prop="componentDesc" label="物料描述" min-width="150" show-overflow-tooltip />
           <el-table-column label="需求数量" min-width="110" align="right">
             <template #default="{ row }">
               {{ formatQtyWithUnit(row.componentQty, row.inventoryUnit) }}
             </template>
           </el-table-column>
-          <el-table-column label="已发料" min-width="100" align="right">
+          <el-table-column label="已发料" min-width="110" align="right">
             <template #default="{ row }">
               {{ formatQtyWithUnit(row.issuedQty, row.inventoryUnit) }}
             </template>
           </el-table-column>
-          <el-table-column :label="dialogCopy.qtyColumnLabel" min-width="180" align="right">
+          <el-table-column label="已预约" min-width="110" align="right">
+            <template #default="{ row }">
+              {{ formatQtyWithUnit(row.reservedQty, row.inventoryUnit) }}
+            </template>
+          </el-table-column>
+          <el-table-column :label="dialogCopy.qtyColumnLabel" min-width="150" align="right">
             <template #default="{ row }">
               <issue-qty-dual-input v-if="isIssueQtyEditing(row)" :row="row" :disabled="!canEditIssueQty(row)" :max-issue-qty="resolveIssueQtyMax(row)" autofocus @change="(val: number) => onIssueQtyChange(row, val)" @unit-change="(altUnit: string) => onIssueUnitChange(row, altUnit)" @blur="stopIssueQtyEditing" />
               <span v-else class="issue-qty-display" :class="{ 'is-editable': canEditIssueQty(row) }" :title="canEditIssueQty(row) ? '双击编辑' : undefined" @dblclick="startIssueQtyEditing(row)">
@@ -112,12 +117,12 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="库存单位数量" width="120" align="right">
+          <!--          <el-table-column label="库存单位数量" width="120" align="right">
             <template #default="{ row }">
               {{ formatQty(calcIssueInventoryQty(row)) }}
               <span v-if="getRowBaseUnit(row)" class="unit">{{ getRowBaseUnit(row) }}</span>
             </template>
-          </el-table-column>
+          </el-table-column>-->
           <el-table-column v-if="isAutoWarehouseIssueMode" label="自动仓可用" width="110" align="right">
             <template #default="{ row }">
               <span :class="{ 'text-muted': !(row.autoWarehouseAvailableQty > 0) }">
@@ -131,7 +136,20 @@
               <kit-rate-indicator :material="row" />
             </template>
           </el-table-column>
-          <el-table-column v-if="showSpecialInventoryColumn" label="特殊库存" width="120" align="center">
+          <el-table-column label="推荐明细" min-width="300">
+            <template #default="{ row, $index }">
+              <template v-if="getRecommendItems(row, $index).length">
+                <div v-for="(pick, lineIndex) in getRecommendItems(row, $index)" :key="lineIndex" class="recommend-pick-row" :class="{ 'is-other-line': pick.isOtherLine }" :title="pick.isOtherLine ? '其他线边仓' : undefined">
+                  <span class="pick-loc" :title="pick.location">{{ pick.location }}</span>
+                  <!--                  <span class="pick-batch" :title="pick.batch">{{ pick.batch }}</span>-->
+                  <dict-tag class="pick-inventory-type" :options="wms_inventory_special_flag" :value="pick.specialInventoryFlag" />
+                  <span class="pick-qty">{{ formatQtyWithUnit(pick.qty, pick.unit) }}</span>
+                </div>
+              </template>
+              <span v-else class="text-muted">暂无推荐</span>
+            </template>
+          </el-table-column>
+          <!--          <el-table-column v-if="showSpecialInventoryColumn" label="特殊库存" width="120" align="center">
             <template #default="{ row }">
               <el-popover v-if="bomRequiresSalesOrderInventory(row)" trigger="click" width="260" placement="top">
                 <template #reference>
@@ -144,7 +162,7 @@
               </el-popover>
               <span v-else class="text-muted">-</span>
             </template>
-          </el-table-column>
+          </el-table-column>-->
           <el-table-column label="库存信息" width="160">
             <template #default="{ row }">
               <el-button type="primary" link size="small" @click="openLocationRecommend(row)">系统推荐</el-button>
@@ -262,6 +280,7 @@ import {
   refreshBomRowRecommendations,
   resolveInventoryCheckLineResultForBom,
   collectPeerLocationPicks,
+  getBomRecommendInfoItems,
   getBomRowKey,
   getOrderRequiredQty,
   getPeerReservedInventoryQty,
@@ -311,6 +330,8 @@ interface Props {
   restrictWarehouseCodes?: string[];
   /** 需求人工号（库存检查 /inventoryDetail/checkInventory） */
   demandUserNo?: string;
+  /** 打开时按物料编码预过滤 BOM 列表（单行调整） */
+  initialMaterialCode?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -318,7 +339,8 @@ const props = withDefaults(defineProps<Props>(), {
   workOrders: undefined,
   materialIssuesByWorkOrder: undefined,
   restrictWarehouseCodes: undefined,
-  demandUserNo: undefined
+  demandUserNo: undefined,
+  initialMaterialCode: undefined
 });
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -411,7 +433,7 @@ const skipIssueSetCountWatch = ref(false);
 const partSizeFilter = ref<'' | 'LARGE' | 'SMALL'>('');
 /** 物料编码关键字筛选 */
 const materialCodeKeyword = ref('');
-/** 开启时隐藏待发数量为 0 的物料（已发完） */
+/** 开启时隐藏本次发料/备料数量为 0 的物料 */
 const hideFullyIssued = ref(true);
 
 // BOM列表
@@ -467,7 +489,7 @@ const clearSameMaterialManualLocations = (materialCode: string, workOrderNo?: st
   });
 };
 
-/** 按 rowKey 恢复表格勾选（metrics/FIFO 刷新后行对象会替换） */
+/** 按 rowKey 恢复表格勾选（metrics 刷新后行对象会替换） */
 const resyncTableSelectionByKeys = async (keys: Set<string>) => {
   await nextTick();
   const table = bomTableRef.value;
@@ -522,7 +544,7 @@ const locationBaseRows = computed(() => {
   return checkInventoryLocationCache.value.get(rowKey);
 });
 
-/** 按件型、是否过滤已发料筛选后的 BOM 展示列表 */
+/** 按件型、是否过滤已发料与已预约筛选后的 BOM 展示列表 */
 const displayBomList = computed(() => {
   let list = bomList.value;
   const keyword = String(materialCodeKeyword.value || '')
@@ -545,7 +567,7 @@ const displayBomList = computed(() => {
     });
   }
   if (hideFullyIssued.value) {
-    list = list.filter((row) => needsIssue(row));
+    list = list.filter((row) => Number(row.issueQty ?? 0) > 0);
   }
   return list;
 });
@@ -556,10 +578,13 @@ const showSpecialInventoryColumn = computed(() => displayBomList.value.some((row
 /** 当前表格展示行中，指定工单的去重物料编码（库存检查仅查这些） */
 const getDisplayedMaterialCodesForOrder = (workOrderNo: string) => [...new Set(displayBomList.value.filter((bom) => bom.workOrderNo === workOrderNo).map((bom) => bom.componentMaterial))];
 
-/** 备料：有待发需求即可勾选；领料：按可发料行判断 */
+/** 备料模式：本次可备料数量（需求-已发料-已预约，负数取 0）> 0 */
+const hasPrepQty = (row: WorkOrderBomVO) => calcDefaultPrepIssueQty(row) > 0;
+
+/** 备料：可备料且本次数量 > 0 才可勾选；领料：按可发料行判断 */
 const isRowSelectable = (row: WorkOrderBomVO) => {
   if (isPrepMode.value) {
-    return needsIssue(row);
+    return hasPrepQty(row) && Number(row.issueQty ?? 0) > 0;
   }
   return isIssueRowEligible(row);
 };
@@ -578,7 +603,7 @@ const onPartSizeFilterChange = () => {
   nextTick(() => purgeInvalidSelection());
 };
 
-/** 过滤已发料开关变更后清理无效勾选 */
+/** 过滤已发料与已预约开关变更后清理无效勾选 */
 const onHideFullyIssuedChange = () => {
   nextTick(() => purgeInvalidSelection());
 };
@@ -586,10 +611,10 @@ const onHideFullyIssuedChange = () => {
 /** 判断 BOM 行是否已勾选 */
 const isRowSelected = (row: WorkOrderBomVO) => selectedBomRowKeys.value.has(resolveBomTableRowKey(row));
 
-/** 备料：有待发需求即可编辑（含缺料）；领料：须先勾选且满足发料条件 */
+/** 备料：本次备料 > 0 才可编辑；领料：须先勾选且满足发料条件 */
 const canEditIssueQty = (row: WorkOrderBomVO) => {
   if (isPrepMode.value) {
-    return needsIssue(row);
+    return hasPrepQty(row);
   }
   return isRowSelected(row) && isIssueRowEligible(row);
 };
@@ -632,7 +657,7 @@ const applyPrepDefaultIssueQtyAll = () => {
       if (row.workOrderNo !== order.workOrderNo) return;
       const saved = matchSaved(row);
       const hasSavedQty = saved?.issueQty != null && saved.issueQty > 0;
-      if (!hasSavedQty && needsIssue(row)) {
+      if (!hasSavedQty && hasPrepQty(row)) {
         row.issueQty = clampIssueQty(calcDefaultPrepIssueQty(row), resolveIssueQtyMax(row));
       }
     });
@@ -648,10 +673,10 @@ const onIssueSetCountChange = () => {
   applyMaterialPoolMetrics();
 };
 
-/** 按套数填充的作用范围：备料模式作用于全部待发物料；领料模式有勾选时仅已勾选行 */
+/** 按套数填充的作用范围：备料模式作用于本次备料 > 0 的物料；领料模式有勾选时仅已勾选行 */
 const resolveSetCountTargets = () => {
   if (isPrepMode.value) {
-    return bomList.value.filter((row) => needsIssue(row));
+    return bomList.value.filter((row) => hasPrepQty(row));
   }
   if (selectedBomRows.value.length > 0) return [...selectedBomRows.value];
   return [...bomList.value];
@@ -708,6 +733,9 @@ const formatQty = (val?: number) => {
 
 /** 本次备料/发料列默认文本展示 */
 const formatIssueQtyDisplay = (row: WorkOrderBomVO) => formatQtyWithUnit(row.issueQty, row.unit || row.inventoryUnit);
+
+/** 列表内推荐明细（与系统推荐弹窗同源，含同物料前序占用扣减） */
+const getRecommendItems = (row: WorkOrderBomVO, index: number) => getBomRecommendInfoItems(row, displayBomList.value, index);
 
 const isIssueQtyEditing = (row: WorkOrderBomVO) => editingIssueQtyRowKey.value === resolveBomTableRowKey(row);
 
@@ -958,7 +986,7 @@ watch(
       skipIssueSetCountWatch.value = true;
       issueSetCount.value = props.workOrder?.plannedQty || effectiveWorkOrders.value[0]?.plannedQty || 0;
       partSizeFilter.value = '';
-      materialCodeKeyword.value = '';
+      materialCodeKeyword.value = String(props.initialMaterialCode || '').trim();
       hideFullyIssued.value = true;
       selectedBomRows.value = [];
       await loadBomData();
@@ -1430,6 +1458,36 @@ const handleClose = () => {
   line-height: 1.5;
 }
 
+.recommend-pick-row {
+  display: grid;
+  /* 库位占满剩余空间，库存类型标签与数量按内容自适应 */
+  grid-template-columns: minmax(0, 1fr) auto minmax(72px, auto);
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--el-text-color-regular);
+}
+/* 其他线边仓：整行黄色标识 */
+.recommend-pick-row.is-other-line {
+  color: var(--el-color-warning);
+}
+.pick-loc,
+.pick-batch {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pick-qty {
+  text-align: right;
+  white-space: nowrap;
+}
+.pick-inventory-type {
+  white-space: nowrap;
+}
+.pick-unit {
+  margin-left: 2px;
+}
 .issue-qty-display {
   display: inline-block;
   min-width: 120px;

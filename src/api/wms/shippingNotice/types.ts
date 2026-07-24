@@ -41,6 +41,11 @@ export interface ShippingNoticeVO {
   customerNo: string;
 
   /**
+   * 客户参考
+   */
+  customerRef: string;
+
+  /**
    * 出货单号
    */
   shipmentNo: string;
@@ -133,6 +138,11 @@ export interface ShippingNoticeForm extends BaseEntity {
   customerNo?: string;
 
   /**
+   * 客户参考
+   */
+  customerRef?: string;
+
+  /**
    * 出货单号
    */
   shipmentNo?: string;
@@ -203,6 +213,11 @@ export interface ShippingNoticeQuery extends PageQuery {
    * 客户订单号
    */
   customerNo?: string;
+
+  /**
+   * 客户参考
+   */
+  customerRef?: string;
 
   /**
    * 出货单号

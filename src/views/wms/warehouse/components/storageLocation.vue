@@ -224,6 +224,8 @@ const handleUpdate = async (row?: StorageLocationVO) => {
   const _id = row?.id || ids.value[0];
   const res = await getStorageLocation(_id);
   Object.assign(form.value, res.data);
+  // 接口返回 enableFlag("Y"/"N") 转为 switch 使用的布尔值
+  form.value.enableFlagBoolean = res.data.enableFlag === 'Y';
   dialog.visible = true;
   dialog.title = '修改库位';
 };
@@ -233,6 +235,8 @@ const submitForm = () => {
   storageLocationFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
       buttonLoading.value = true;
+      // switch 布尔值转为接口需要的 "Y"/"N"
+      form.value.enableFlag = form.value.enableFlagBoolean ? 'Y' : 'N';
       if (form.value.id) {
         await updateStorageLocation(form.value).finally(() => (buttonLoading.value = false));
       } else {

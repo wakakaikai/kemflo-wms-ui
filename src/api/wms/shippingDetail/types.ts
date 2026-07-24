@@ -30,6 +30,16 @@ export interface ShippingDetailVO {
   customerNo: string;
 
   /**
+   * 客户参考
+   */
+  customerRef: string;
+
+  /**
+   * 条码类型（1-产品条码 2-栈板条码）
+   */
+  sfcType: number;
+
+  /**
    * 出货单号
    */
   shipmentNo: string;
@@ -63,6 +73,11 @@ export interface ShippingDetailVO {
    * 工单号
    */
   shopOrder: string;
+
+  /**
+   * 数量
+   */
+  quantity?: number;
 
   /**
    * 备注
@@ -107,6 +122,16 @@ export interface ShippingDetailForm extends BaseEntity {
   customerNo?: string;
 
   /**
+   * 客户参考
+   */
+  customerRef?: string;
+
+  /**
+   * 条码类型（1-产品条码 2-栈板条码）
+   */
+  sfcType?: number;
+
+  /**
    * 出货单号
    */
   shipmentNo?: string;
@@ -140,6 +165,11 @@ export interface ShippingDetailForm extends BaseEntity {
    * 工单号
    */
   shopOrder?: string;
+
+  /**
+   * 数量
+   */
+  quantity?: number;
 
   /**
    * 备注
@@ -177,6 +207,16 @@ export interface ShippingDetailQuery extends PageQuery {
    * 客户订单号
    */
   customerNo?: string;
+
+  /**
+   * 客户参考
+   */
+  customerRef?: string;
+
+  /**
+   * 条码类型（1-产品条码 2-栈板条码）
+   */
+  sfcType?: number;
 
   /**
    * 出货单号

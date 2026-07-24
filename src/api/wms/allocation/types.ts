@@ -123,6 +123,8 @@ export interface WorkOrderBomVO {
   componentDesc: string;
   componentQty: number;
   issuedQty: number;
+  /** 已预约数量 */
+  reservedQty?: number;
   unit: string;
   inventoryUnit: string;
   /** 发料单位数量（整单） */
@@ -407,6 +409,8 @@ export interface BomIssueRow {
   componentMaterial: string;
   componentQty: number;
   issuedQty?: number;
+  /** 已预约数量 */
+  reservedQty?: number;
   pendingQty?: number;
   issueQty?: number;
   availableQty?: number;
@@ -437,6 +441,7 @@ export interface BomRecommendPickItem {
   batch: string;
   qty: string;
   unit: string;
+  specialInventoryFlag?: string;
   isOtherLine?: boolean;
   isAllocated?: boolean;
 }

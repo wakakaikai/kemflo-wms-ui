@@ -39,6 +39,16 @@ export interface SalesOrderVO {
    */
   sellerParty: string;
 
+  /**
+   * 客户参考
+   */
+  customerRef: string;
+
+  /**
+   * 客户参考日期
+   */
+  customerRefDate: string;
+
 }
 
 export interface SalesOrderForm extends BaseEntity {
@@ -82,6 +92,16 @@ export interface SalesOrderForm extends BaseEntity {
    */
   sellerParty?: string;
 
+  /**
+   * 客户参考
+   */
+  customerRef?: string;
+
+  /**
+   * 客户参考日期
+   */
+  customerRefDate?: string;
+
 }
 
 export interface SalesOrderQuery extends PageQuery {
@@ -120,6 +140,16 @@ export interface SalesOrderQuery extends PageQuery {
    * 售达方
    */
   sellerParty?: string;
+
+  /**
+   * 客户参考
+   */
+  customerRef?: string;
+
+  /**
+   * 客户参考日期
+   */
+  customerRefDate?: string;
 
     /**
      * 日期范围参数

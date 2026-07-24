@@ -55,6 +55,11 @@ export interface WorkOrderBomVO {
   issuedQty: number;
 
   /**
+   * 已预约数量
+   */
+  reservedQty?: number;
+
+  /**
    * 单位
    */
   unit: string;

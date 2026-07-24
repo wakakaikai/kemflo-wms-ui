@@ -104,7 +104,7 @@
               <prep-demand-location-source-column show-remark :rows="autoMaterialRows" />
               <el-table-column label="操作" width="70" fixed="right">
                 <template #default="{ row }">
-                  <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo)">调整</el-button>
+                  <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -133,7 +133,7 @@
               <prep-demand-location-source-column show-remark :rows="lineMaterialRows" />
               <el-table-column label="操作" width="70" fixed="right">
                 <template #default="{ row }">
-                  <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo)">调整</el-button>
+                  <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -162,7 +162,7 @@
               <prep-demand-location-source-column show-remark :rows="flatMaterialRows" />
               <el-table-column label="操作" width="70" fixed="right">
                 <template #default="{ row }">
-                  <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo)">调整</el-button>
+                  <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -189,7 +189,7 @@
               </el-table-column>
               <el-table-column label="操作" width="70" fixed="right">
                 <template #default="{ row }">
-                  <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo)">调整</el-button>
+                  <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -262,7 +262,7 @@
                 <prep-demand-location-source-column show-remark :rows="prep261AutoDisplayRows" />
                 <el-table-column label="操作" width="70" fixed="right">
                   <template #default="{ row }">
-                    <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo)">调整</el-button>
+                    <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
                   </template>
                 </el-table-column>
               </el-table>
@@ -300,7 +300,7 @@
                 <prep-demand-location-source-column show-remark :rows="prep261LineDisplayRows" />
                 <el-table-column label="操作" width="70" fixed="right">
                   <template #default="{ row }">
-                    <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo)">调整</el-button>
+                    <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
                   </template>
                 </el-table-column>
               </el-table>
@@ -337,7 +337,7 @@
                   <template #default="{ row }">{{ row.targetDemandLocationCode || '-' }}</template>
                 </el-table-column>
                 <el-table-column label="操作" width="70" fixed="right"
-                  ><template #default="{ row }"><el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo)">调整</el-button></template></el-table-column
+                  ><template #default="{ row }"><el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button></template></el-table-column
                 >
               </el-table>
             </div>
@@ -368,7 +368,7 @@
                   ><template #default="{ row }">{{ formatClassifiedPrepQty(row) }}</template></el-table-column
                 >
                 <el-table-column label="操作" width="70" fixed="right"
-                  ><template #default="{ row }"><el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo)">调整</el-button></template></el-table-column
+                  ><template #default="{ row }"><el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button></template></el-table-column
                 >
               </el-table>
             </div>
@@ -382,8 +382,8 @@
       </el-collapse>
       <el-empty v-else-if="!currentDemand" :description="请在上一步生成备料需求" />
     </div>
-    <order-selection-dialog v-model="showOrderDialog" :selected-orders="selectedOrders" :show-bom-action="false" @confirm="handleOrderSelection" />
-    <work-order-prep-demand-dialog v-model="showPrepBomDialog" :work-orders="selectedOrders" :material-issues-by-work-order="prepMaterialIssuesMap" :demand-user-no="materialDemandUserCode" @save="onBomSave" />
+    <work-order-selection-dialog v-model="showOrderDialog" :selected-orders="selectedOrders" :show-bom-action="false" @confirm="handleOrderSelection" />
+    <work-order-prep-demand-dialog v-model="showPrepBomDialog" :work-orders="prepBomOrders" :material-issues-by-work-order="prepMaterialIssuesMap" :demand-user-no="materialDemandUserCode" :initial-material-code="prepBomFilterMaterialCode" @save="onBomSave" />
     <issue-process-drawer v-model="issueDrawerVisible" :issue-id="currentIssueId" />
     <target-demand-location-dialog v-model="showTargetLocationDialog" :user-name="materialDemandUserCode" :submitting="generatingPrep" @confirm="onTargetLocationConfirm" />
   </div>
@@ -393,7 +393,7 @@ import { ref, computed, getCurrentInstance, toRefs, watch, onMounted } from 'vue
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Check, MagicStick, Sort, Bell } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
-import OrderSelectionDialog from './OrderSelectionDialog.vue';
+import WorkOrderSelectionDialog from '@/views/wms/workOrder/components/WorkOrderSelectionDialog.vue';
 import WorkOrderPrepDemandDialog from './WorkOrderPrepDemandDialog.vue';
 import PrepDemandPlanView from './PrepDemandPlanView.vue';
 import PrepDemandLocationSourceColumn from './PrepDemandLocationSourceColumn.vue';
@@ -434,6 +434,10 @@ const submittingLine = ref(false);
 const submittingCombined = ref(false);
 const generatingPrep = ref(false);
 const showPrepBomDialog = ref(false);
+/** 备料弹窗加载的工单范围：合并填写=全部已选工单；单行调整=对应工单 */
+const prepBomOrders = ref<WorkOrderVO[]>([]);
+/** 单行调整时按物料编码预过滤 BOM 列表 */
+const prepBomFilterMaterialCode = ref('');
 const showPlanDetail = ref(false);
 const planDetailOpen = ref<string[]>([]);
 const autoWarehouseCodes = ref<string[]>([]);
@@ -656,15 +660,23 @@ const openMergedPrepBom = () => {
     activeStep.value = 0;
     return;
   }
+  prepBomOrders.value = selectedOrders.value;
+  prepBomFilterMaterialCode.value = '';
   showPrepBomDialog.value = true;
 };
 
-const openPrepBomByNo = (workOrderNo: string) => {
+/** 调整单行：仅加载对应工单 BOM，并按物料编码过滤到对应行 */
+const openPrepBomByNo = (workOrderNo: string, materialCode?: string) => {
   const order = selectedOrders.value.find((o) => o.workOrderNo === workOrderNo);
   if (!order) return;
-  const reordered = [order, ...selectedOrders.value.filter((o) => o.workOrderNo !== workOrderNo)];
-  selectedOrders.value = reordered;
-  openMergedPrepBom();
+  if (!materialDemandUserCode.value) {
+    ElMessage.warning('请先选择需求人');
+    activeStep.value = 0;
+    return;
+  }
+  prepBomOrders.value = [order];
+  prepBomFilterMaterialCode.value = String(materialCode || '').trim();
+  showPrepBomDialog.value = true;
 };
 
 const moveOrderUp = (index: number) => {

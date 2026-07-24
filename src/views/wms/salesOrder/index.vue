@@ -5,10 +5,13 @@
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="销售订单号" prop="salesOrderNo">
-              <el-input v-model="queryParams.salesOrderNo" placeholder="请输入销售订单号" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.salesOrderNo" :config="salesOrderNoConfig" placeholder="请输入销售订单号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="凭证日期" prop="voucherDate">
               <el-date-picker clearable v-model="queryParams.voucherDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择凭证日期" />
+            </el-form-item>
+            <el-form-item label="客户参考" prop="customerRef">
+              <HistoryInput v-model="queryParams.customerRef" :config="customerRefConfig" placeholder="请输入客户参考" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -34,30 +37,36 @@
           <el-col :span="1.5">
             <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:salesOrder:export']">导出</el-button>
           </el-col>
-          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+          <right-toolbar v-model:showSearch="showSearch" :columns="columns" @query-table="getList"></right-toolbar>
         </el-row>
       </template>
 
-      <el-table v-loading="loading" :data="salesOrderList" @selection-change="handleSelectionChange">
+      <el-table :key="tableKey" v-loading="loading" :data="salesOrderList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <!--        <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />-->
-        <el-table-column label="销售订单号" align="center" prop="salesOrderNo">
+        <el-table-column v-if="columns[0].visible" label="销售订单号" align="center" prop="salesOrderNo">
           <template #default="scope">
             <router-link :to="'/basic/warehouse/salesOrderDetail?salesOrderNo=' + scope.row.salesOrderNo" class="link-type">
               <span>{{ scope.row.salesOrderNo }}</span>
             </router-link>
           </template>
         </el-table-column>
-        <el-table-column label="凭证日期" align="center" prop="voucherDate" width="180">
+        <el-table-column v-if="columns[1].visible" label="凭证日期" align="center" prop="voucherDate" width="180">
           <template #default="scope">
             <span>{{ parseTime(scope.row.voucherDate, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="凭证类型" align="center" prop="voucherType" />
-        <el-table-column label="销售组织" align="center" prop="salesOrg" />
-        <el-table-column label="分销渠道" align="center" prop="salesChannel" />
-        <el-table-column label="产品组" align="center" prop="productGroup" />
-        <el-table-column label="售达方" align="center" prop="sellerParty" />
+        <el-table-column v-if="columns[2].visible" label="凭证类型" align="center" prop="voucherType" />
+        <el-table-column v-if="columns[3].visible" label="销售组织" align="center" prop="salesOrg" />
+        <el-table-column v-if="columns[4].visible" label="分销渠道" align="center" prop="salesChannel" />
+        <el-table-column v-if="columns[5].visible" label="产品组" align="center" prop="productGroup" />
+        <el-table-column v-if="columns[6].visible" label="售达方" align="center" prop="sellerParty" />
+        <el-table-column v-if="columns[7].visible" label="客户参考" align="center" prop="customerRef" />
+        <el-table-column v-if="columns[8].visible" label="客户参考日期" align="center" prop="customerRefDate" width="180">
+          <template #default="scope">
+            <span>{{ parseTime(scope.row.customerRefDate, '{y}-{m}-{d}') }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -93,6 +102,12 @@
         <el-form-item label="售达方" prop="sellerParty">
           <el-input v-model="form.sellerParty" placeholder="请输入售达方" />
         </el-form-item>
+        <el-form-item label="客户参考" prop="customerRef">
+          <el-input v-model="form.customerRef" placeholder="请输入客户参考" />
+        </el-form-item>
+        <el-form-item label="客户参考日期" prop="customerRefDate">
+          <el-date-picker clearable v-model="form.customerRefDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择客户参考日期"> </el-date-picker>
+        </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -107,6 +122,9 @@
 <script setup name="SalesOrder" lang="ts">
 import { listSalesOrder, getSalesOrder, delSalesOrder, addSalesOrder, updateSalesOrder } from '@/api/wms/salesOrder';
 import { SalesOrderVO, SalesOrderQuery, SalesOrderForm } from '@/api/wms/salesOrder/types';
+import { TableColumns } from '@/api/types';
+import HistoryInput from '@/components/HistoryInput/index.vue';
+import type { HistoryConfig } from '@/types/history';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
@@ -122,6 +140,27 @@ const total = ref(0);
 const queryFormRef = ref<ElFormInstance>();
 const salesOrderFormRef = ref<ElFormInstance>();
 
+const tableKey = ref(1);
+// 创建响应式数组对象
+const columns = ref<TableColumns[]>([
+  { key: 1, label: '销售订单号', visible: true },
+  { key: 2, label: '凭证日期', visible: true },
+  { key: 3, label: '凭证类型', visible: true },
+  { key: 4, label: '销售组织', visible: true },
+  { key: 5, label: '分销渠道', visible: true },
+  { key: 6, label: '产品组', visible: true },
+  { key: 7, label: '售达方', visible: true },
+  { key: 8, label: '客户参考', visible: true },
+  { key: 9, label: '客户参考日期', visible: true }
+]);
+watch(
+  columns,
+  () => {
+    tableKey.value = tableKey.value + 1;
+  },
+  { immediate: true }
+);
+
 const dialog = reactive<DialogOption>({
   visible: false,
   title: ''
@@ -135,7 +174,9 @@ const initFormData: SalesOrderForm = {
   salesOrg: undefined,
   salesChannel: undefined,
   productGroup: undefined,
-  sellerParty: undefined
+  sellerParty: undefined,
+  customerRef: undefined,
+  customerRefDate: undefined
 };
 const data = reactive<PageData<SalesOrderForm, SalesOrderQuery>>({
   form: { ...initFormData },
@@ -149,6 +190,8 @@ const data = reactive<PageData<SalesOrderForm, SalesOrderQuery>>({
     salesChannel: undefined,
     productGroup: undefined,
     sellerParty: undefined,
+    customerRef: undefined,
+    customerRefDate: undefined,
     params: {}
   },
   rules: {
@@ -158,6 +201,36 @@ const data = reactive<PageData<SalesOrderForm, SalesOrderQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+/** 销售订单号历史配置 */
+const salesOrderNoConfig: HistoryConfig = {
+  key: 'salesOrderNo',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'salesOrder',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+/** 客户参考历史配置 */
+const customerRefConfig: HistoryConfig = {
+  key: 'customerRef',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'salesOrder',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
 
 /** 查询销售订单列表 */
 const getList = async () => {
@@ -257,3 +330,9 @@ onMounted(() => {
   getList();
 });
 </script>
+<style lang="scss" scoped>
+/* 解决搜索区使用历史记录功能时被遮挡问题 */
+:deep(.el-card) {
+  overflow: visible !important;
+}
+</style>

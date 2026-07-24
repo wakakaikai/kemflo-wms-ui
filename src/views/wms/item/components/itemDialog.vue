@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="visible" :title="title" width="70%" append-to-body>
+  <el-dialog v-model="visible" :title="title" width="90%" append-to-body>
     <el-card>
       <template #header>
         <el-form ref="queryFormRef" :model="queryParams" :inline="true">
@@ -31,7 +31,7 @@
         <el-table-column label="描述" align="center" prop="itemDesc" />
         <el-table-column label="旧料号" align="center" prop="oldItem" />
         <el-table-column label="物料组" align="center" prop="itemGroup" />
-        <el-table-column label="计量单位" align="center" prop="unit" />
+        <el-table-column label="单位" align="center" prop="unit" />
       </el-table>
 
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />

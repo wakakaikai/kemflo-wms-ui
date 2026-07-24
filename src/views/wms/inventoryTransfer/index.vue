@@ -15,11 +15,15 @@
 
       <div v-show="inventoryExpanded" class="inventory-card-body">
         <el-form v-show="showSearch" ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto" class="compact-form">
-          <el-form-item label="物料编码" prop="itemCode">
-            <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
+          <el-form-item label="物料编码" prop="itemCodeStr">
+            <HistoryInput v-model="queryParams.itemCodeStr" :config="itemCodeConfig" placeholder="请输入物料编码" @keyup.enter="handleQuery">
+              <template #append>
+                <el-button icon="CopyDocument" @click="openBatchInputDialog" title="批量录入物料编码" />
+              </template>
+            </HistoryInput>
           </el-form-item>
           <el-form-item label="库位编码" prop="locationCode">
-            <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
+            <HistoryInput v-model="queryParams.locationCode" :config="locationCodeConfig" placeholder="请输入库位编码" @keyup.enter="handleQuery" />
           </el-form-item>
           <div v-show="showAdvancedSearch">
             <el-form-item label="物料名称" prop="itemName">
@@ -128,11 +132,11 @@
           <el-row :gutter="12">
             <el-col :sm="24" :md="8" :lg="8" v-if="needsTargetLocationMove && transferMode === 'fixed'">
               <el-form-item label="目标库位" prop="targetLocationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
-                <el-input v-model.trim="fixedTransferForm.targetLocationCode" placeholder="请输入目标库位编码" clearable @keydown.tab.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)">
+                <HistoryInput v-model.trim="fixedTransferForm.targetLocationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)">
                   <template #append>
                     <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
                   </template>
-                </el-input>
+                </HistoryInput>
               </el-form-item>
             </el-col>
             <el-col :sm="24" :md="8" :lg="8">
@@ -245,11 +249,11 @@
 
         <el-table-column v-if="transferColumns[10].visible && needsTargetLocationMove && transferMode === 'multiple'" label="目标库位" min-width="160">
           <template #default="scope">
-            <el-input v-model.trim="scope.row.targetLocationCode" placeholder="请输入目标库位编码" clearable @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)">
+            <TableHistoryInput v-model="scope.row.targetLocationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)">
               <template #append>
                 <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
               </template>
-            </el-input>
+            </TableHistoryInput>
           </template>
         </el-table-column>
 
@@ -271,6 +275,8 @@
         <span class="transfer-count">共 {{ transferList.length }} 条</span>
       </div>
     </el-card>
+    <!-- 物料编码批量输入对话框 -->
+    <BatchInputDialog ref="batchInputDialogRef" v-model="batchInputDialogVisible" title="批量录入物料编码" placeholder="请输入物料编码，支持多行粘贴" @confirm="handleBatchInputConfirm" />
     <!-- 库位选择对话框 -->
     <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
     <!-- 销售订单明细选择 -->
@@ -286,8 +292,10 @@ import { InventoryDetailForm, InventoryDetailQuery, InventoryDetailVO } from '@/
 import { ArrowDown, ArrowRight, ArrowUp, Bell, Switch } from '@element-plus/icons-vue';
 
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
+import BatchInputDialog from '@/components/BatchInputDialog/index.vue';
 import SalesOrderDetailDialog from '@/views/wms/salesOrderDetail/components/SalesOrderDetailDialog.vue';
 import HistoryInput from '@/components/HistoryInput/index.vue';
+import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import { HistoryConfig } from '@/types/history';
 import { transferInventory } from '@/api/wms/inventoryDetail';
 import { SalesOrderDetailVO } from '@/api/wms/salesOrderDetail/types';
@@ -320,6 +328,9 @@ const currenIndex = ref(0);
 const resultMessage = ref('');
 const resultStatus = ref(false);
 
+const batchInputDialogVisible = ref(false);
+const batchInputDialogRef = ref<InstanceType<typeof BatchInputDialog>>();
+
 // 移转模式：fixed-固定库位，multiple-多库位
 const transferMode = ref<'fixed' | 'multiple'>('fixed');
 const moveType = ref(DEFAULT_TRANSFER_MOVE_TYPE);
@@ -345,6 +356,34 @@ const fixedTransferForm = ref({
 // 表单引用
 const queryFormRef = ref<any>(null);
 const fixedTransferFormRef = ref<any>(null);
+
+const itemCodeConfig: HistoryConfig = {
+  key: 'itemCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryTransfer',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const locationCodeConfig: HistoryConfig = {
+  key: 'locationCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryTransfer',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
 
 const mtsnrConfig: HistoryConfig = {
   key: 'mtsnr',
@@ -418,6 +457,8 @@ const data = reactive<PageData<InventoryDetailForm, InventoryDetailQuery>>({
     pageSize: 10,
     itemType: undefined,
     itemCode: undefined,
+    itemCodeStr: undefined,
+    itemCodeList: [],
     itemName: undefined,
     batchCode: undefined,
     availableQuantity: undefined,
@@ -504,6 +545,9 @@ const getList = async () => {
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
+  // 从输入框内容解析物料编码列表（支持手动输入单个/多个，或批量录入回填）
+  const str = String(queryParams.value.itemCodeStr || '').trim();
+  queryParams.value.itemCodeList = str ? str.split(/[,;，；\s]+/).filter(Boolean) : [];
   getList();
 };
 
@@ -512,6 +556,10 @@ const resetQuery = () => {
   queryFormRef.value?.resetFields();
   // 清除表格选中状态
   inventoryTableRef.value?.clearSelection();
+  // 清空批量录入的物料编码
+  queryParams.value.itemCodeStr = undefined;
+  queryParams.value.itemCodeList = [];
+  batchInputDialogRef.value?.resetInput();
   handleQuery();
 };
 
@@ -551,6 +599,7 @@ const addSelectedToTransferList = () => {
       targetInventoryType: getDefaultTargetInventoryType(moveType.value),
       transferQuantity: null,
       businessCode: item.businessCode,
+      businessName: item.businessName,
       targetBusinessCode: '',
       targetSalesOrderNo: '',
       targetSalesOrderItem: ''
@@ -772,7 +821,9 @@ const submitTransfer = async () => {
       targetInventoryType: item.targetInventoryType,
       targetBusinessCode: item.targetBusinessCode,
       transferQuantity: item.transferQuantity,
-      specialInventoryFlag: item.specialInventoryFlag
+      specialInventoryFlag: item.specialInventoryFlag,
+      businessCode: item.businessCode,
+      businessName: item.businessName
     }));
 
     const res: any = await transferInventory({
@@ -806,6 +857,17 @@ const submitTransfer = async () => {
   } finally {
     buttonLoading.value = false;
   }
+};
+
+// 打开批量录入物料编码弹框
+const openBatchInputDialog = () => {
+  batchInputDialogVisible.value = true;
+};
+// 弹框确定的回调
+const handleBatchInputConfirm = (values: string[]) => {
+  // 将批量输入的值回填到输入框，查询时统一解析
+  queryParams.value.itemCodeStr = values.join(',');
+  handleQuery(); // 执行查询
 };
 
 onMounted(() => {

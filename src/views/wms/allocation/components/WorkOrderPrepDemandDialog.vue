@@ -1,15 +1,5 @@
 <template>
-  <work-order-bom-dialog
-    :model-value="modelValue"
-    :work-order="primaryWorkOrder"
-    :work-orders="workOrders"
-    :material-issues="materialIssues"
-    :material-issues-by-work-order="materialIssuesByWorkOrder"
-    :demand-user-no="demandUserNo"
-    mode="prep"
-    @update:model-value="emit('update:modelValue', $event)"
-    @save="emit('save', $event)"
-  />
+  <work-order-bom-dialog :model-value="modelValue" :work-order="primaryWorkOrder" :work-orders="workOrders" :material-issues="materialIssues" :material-issues-by-work-order="materialIssuesByWorkOrder" :demand-user-no="demandUserNo" :initial-material-code="initialMaterialCode" mode="prep" @update:model-value="emit('update:modelValue', $event)" @save="emit('save', $event)" />
 </template>
 
 <script setup lang="ts">
@@ -24,6 +14,8 @@ const props = defineProps<{
   materialIssues?: WorkOrderMaterialIssueLine[];
   materialIssuesByWorkOrder?: Record<string, WorkOrderMaterialIssueLine[]>;
   demandUserNo?: string;
+  /** 打开时按物料编码预过滤 BOM 列表（单行调整） */
+  initialMaterialCode?: string;
 }>();
 
 const primaryWorkOrder = computed(() => props.workOrders?.[0] ?? props.workOrder ?? null);

@@ -1577,8 +1577,9 @@ function buildBomRecommendPickItems(row: BomIssueRow, locations?: Array<Record<s
       const batch = String(loc.batchCode ?? loc.batchNo ?? '').trim() || '-';
       const invQty = Number(loc.recommendedQty ?? 0);
       const qty = formatPickInventoryQty(invQty);
+      const specialInventoryFlag = String(loc.specialInventoryFlag ?? row.specialInventoryFlag ?? 'N').trim() || 'N';
       const isOtherLine = isNonUserLineWarehouse(loc as LineWarehouseFlags);
-      return { location, batch, qty, unit, isOtherLine };
+      return { location, batch, qty, unit, specialInventoryFlag, isOtherLine };
     });
 }
 
@@ -1900,9 +1901,10 @@ export function calcDefaultIssueQty(row: BomIssueRow) {
   return inventoryQtyToIssueQty(pendingInv, ratio);
 }
 
-/** 本次备料默认数量（库存单位）= 需求数量 - 已发料数量 */
+/** 本次备料默认数量（库存单位）= 需求数量 - 已发料数量 - 已预约数量（负数取 0） */
 export function calcDefaultPrepIssueQty(row: BomIssueRow) {
-  return calcBomPendingInventoryQty(row);
+  const reserved = Math.max(0, Number(row.reservedQty ?? 0));
+  return Math.max(0, calcBomPendingInventoryQty(row) - reserved);
 }
 
 export function calcMaxIssueQty(row: BomIssueRow) {

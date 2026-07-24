@@ -124,6 +124,19 @@ export const constantRoutes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/workOrderPrepDemandLine',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/wms/workOrderPrepDemandLine/index.vue'),
+        name: 'WorkOrderPrepDemandLine',
+        meta: { title: '工单备料需求明细', activeMenu: '/wms/workOrderPrepDemand', noCache: true }
+      }
+    ]
+  },
+  {
     path: '/scada/shortageTask',
     component: Layout,
     hidden: true,
@@ -133,6 +146,20 @@ export const constantRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/scada/shortageTask/index.vue'),
         name: 'ShortageTaskScada',
         meta: { title: '缺料看板', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/dataCollection/deviceDetail',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: ':deviceId',
+        component: () => import('@/views/dataCollection/device/detail.vue'),
+        name: 'ScCollectDeviceDetail',
+        meta: { title: '设备采集配置', activeMenu: '/dataCollection/device', noCache: true },
+        hidden: true
       }
     ]
   }

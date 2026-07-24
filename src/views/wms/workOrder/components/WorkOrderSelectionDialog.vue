@@ -1,11 +1,15 @@
 <template>
-  <el-dialog v-model="visible" title="选择工单" width="80%" @close="handleClose">
+  <el-dialog v-model="visible" title="选择工单" width="100%" @close="handleClose">
     <div class="order-selection-dialog">
       <!-- 搜索区域 -->
       <el-card shadow="hover">
         <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
-          <el-form-item label="工单号" prop="workOrderNo">
-            <el-input v-model="queryParams.workOrderNo" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
+          <el-form-item label="工单号" prop="workOrderNoStr">
+            <el-input v-model="queryParams.workOrderNoStr" placeholder="请输入工单号" clearable @keyup.enter="handleQuery">
+              <template #append>
+                <el-button icon="CopyDocument" @click="openBatchInputDialog" title="批量录入工单号" />
+              </template>
+            </el-input>
           </el-form-item>
           <el-form-item label="产品料号" prop="item">
             <el-input v-model="queryParams.item" placeholder="请输入产品料号" clearable @keyup.enter="handleQuery" />
@@ -77,6 +81,9 @@
     </template>
   </el-dialog>
 
+  <!-- 批量输入对话框 -->
+  <BatchInputDialog ref="batchInputDialogRef" v-model="batchInputDialogVisible" title="批量录入工单号" placeholder="请输入工单号，支持多行粘贴" @confirm="handleBatchInputConfirm" />
+
   <!-- BOM详情对话框 -->
   <work-order-bom-dialog
     v-if="showBomAction"
@@ -90,12 +97,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, getCurrentInstance, toRefs, nextTick } from 'vue';
-import WorkOrderBomDialog from './WorkOrderBomDialog.vue';
+import WorkOrderBomDialog from '@/views/wms/allocation/components/WorkOrderBomDialog.vue';
 import type { WorkOrderVO, WorkOrderMaterialIssueLine } from '@/api/wms/allocation/types';
 
 import { listWorkOrder } from '@/api/wms/workOrder';
 import { WorkOrderForm, WorkOrderQuery } from '@/api/wms/workOrder/types';
 import { TableColumns } from '@/api/types';
+import BatchInputDialog from '@/components/BatchInputDialog/index.vue';
 interface Props {
   modelValue: boolean;
   selectedOrders?: WorkOrderVO[];
@@ -125,6 +133,9 @@ const orderTableRef = ref();
 const showBomDialog = ref(false);
 /** 工单号 -> 部分发料明细 */
 const orderMaterialIssues = ref<Record<string, WorkOrderMaterialIssueLine[]>>({});
+
+const batchInputDialogVisible = ref(false);
+const batchInputDialogRef = ref<InstanceType<typeof BatchInputDialog>>();
 
 const loading = ref(false);
 const currentWorkOrder = ref<WorkOrderVO | null>(null);
@@ -197,14 +208,6 @@ const columns = ref<TableColumns[]>([
   { key: 17, label: '备注', visible: false }
 ]);
 
-// 搜索表单
-// const queryParams = reactive({
-//   workOrderNo: '',
-//   item: '',
-//   itemDesc: '',
-//   plannedStartDateRange: []
-// });
-
 // 分页
 const total = ref(0);
 
@@ -258,6 +261,23 @@ watch(visible, (val) => {
   emit('update:modelValue', val);
 });
 
+// 打开批量录入条码弹框
+const openBatchInputDialog = () => {
+  batchInputDialogVisible.value = true;
+};
+// 补零函数：将单个工单号补足12位
+const padWorkOrder = (order) => {
+  if (!order) return order;
+  const str = String(order);
+  return str.length >= 12 ? str : str.padStart(12, '0');
+};
+// 弹框确定的回调
+const handleBatchInputConfirm = (values: string[]) => {
+  // 将批量输入的值回填到输入框，查询时统一解析
+  queryParams.value.workOrderNoStr = values.map(padWorkOrder).join(',');
+  handleQuery(); // 执行查询
+};
+
 /** 查询工单信息列表 */
 const getList = async () => {
   loading.value = true;
@@ -276,12 +296,24 @@ const getList = async () => {
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
+  // 从输入框内容解析工单号列表（支持手动输入单个/多个，或批量录入回填）
+  const str = String(queryParams.value.workOrderNoStr || '').trim();
+  queryParams.value.workOrderNoList = str
+    ? str
+        .split(/[,;，；\s]+/)
+        .filter(Boolean)
+        .map(padWorkOrder)
+    : [];
   getList();
 };
 
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
+  // 清空批量录入的工单号（workOrderNoList 未绑定表单项，resetFields 不会重置）
+  queryParams.value.workOrderNoStr = undefined;
+  queryParams.value.workOrderNoList = [];
+  batchInputDialogRef.value?.resetInput();
   handleQuery();
 };
 

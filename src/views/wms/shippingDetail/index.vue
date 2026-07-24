@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="p-2">
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
@@ -25,17 +25,13 @@
             <el-form-item label="状态" prop="status">
               <DictRadio v-model="queryParams.status" :radio-data="wms_shipping_detail_status" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
             </el-form-item>
+            <el-form-item label="条码类型" prop="sfcType">
+              <el-select v-model="queryParams.sfcType" placeholder="请选择条码类型" clearable @change="handleQuery">
+                <el-option v-for="item in sfcTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
+            </el-form-item>
             <el-form-item label="扫码时间" prop="dateTimeRange">
-              <el-date-picker
-                v-model="queryParams.dateTimeRange"
-                type="datetimerange"
-                :shortcuts="shortcuts"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                range-separator="-"
-                start-placeholder="请选择开始日期"
-                end-placeholder="请选择结束日期"
-                :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
-              />
+              <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" :shortcuts="shortcuts" value-format="YYYY-MM-DD HH:mm:ss" range-separator="-" start-placeholder="请选择开始日期" end-placeholder="请选择结束日期" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -71,21 +67,30 @@
 
       <el-table :key="tableKey" v-loading="loading" :data="shippingDetailList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column v-if="columns[0].visible" label="客户代码" width="110" align="left" prop="customerCode" />
-        <el-table-column v-if="columns[1].visible" label="客户名称" width="240" align="left" prop="customerName" />
-        <el-table-column v-if="columns[2].visible" label="条码" width="260" align="left" prop="sfc" />
-        <el-table-column v-if="columns[3].visible" label="扫码时间" align="left" prop="dateTime" width="180" />
+        <el-table-column v-if="columns[0].visible" label="客户代码" align="left" prop="customerCode" />
+        <el-table-column v-if="columns[1].visible" label="客户名称" align="left" prop="customerName" show-overflow-tooltip />
+        <el-table-column v-if="columns[2].visible" label="条码" align="left" prop="sfc" min-width="180" />
+        <el-table-column v-if="columns[3].visible" label="数量" align="right" prop="quantity" />
+        <el-table-column v-if="columns[4].visible" label="扫码时间" align="left" prop="dateTime" min-width="180" />
         <el-table-column label="状态" align="left" prop="status">
           <template #default="scope">
             <dict-tag :options="wms_shipping_detail_status" :value="scope.row.status" />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[4].visible" label="工单号" align="left" prop="shopOrder" width="140" />
-        <el-table-column v-if="columns[5].visible" label="物料" align="left" prop="item" width="120" />
-        <el-table-column v-if="columns[6].visible" label="物料描述" align="left" prop="itemDesc" width="250" />
-        <el-table-column v-if="columns[7].visible" label="客户订单号" align="left" prop="customerNo" width="120" />
-        <el-table-column v-if="columns[8].visible" label="目的地" align="left" prop="shipmentDestination" />
-        <el-table-column v-if="columns[9].visible" label="备注" align="left" prop="remark" width="200" />
+        <el-table-column v-if="columns[5].visible" label="工单号" align="left" prop="shopOrder" />
+        <el-table-column v-if="columns[6].visible" label="物料" align="left" prop="item" min-width="140" />
+        <el-table-column v-if="columns[7].visible" label="物料描述" align="left" prop="itemDesc" show-overflow-tooltip />
+        <el-table-column v-if="columns[8].visible" label="客户单号" align="left" prop="customerNo" />
+        <el-table-column v-if="columns[9].visible" label="客户参考" align="left" prop="customerRef" />
+        <el-table-column v-if="columns[10].visible" label="条码类型" align="center" prop="sfcType">
+          <template #default="scope">
+            <el-tag v-if="scope.row.sfcType === 1" type="primary" size="small">产品条码</el-tag>
+            <el-tag v-else-if="scope.row.sfcType === 2" type="success" size="small">栈板条码</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columns[11].visible" label="目的地" align="left" prop="shipmentDestination" />
+        <el-table-column v-if="columns[12].visible" label="备注" align="left" prop="remark" />
         <el-table-column label="操作" align="left" class-name="small-padding fixed-width" fixed="right">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -103,8 +108,15 @@
     <!-- 添加或修改出货明细对话框 -->
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="35%" append-to-body>
       <el-form ref="shippingDetailFormRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="条码" prop="sfc" style="width: 100%">
-          <el-input v-model="form.sfc" placeholder="请输入条码" @keydown.enter.prevent="keyDownTab" />
+        <el-form-item label="条码类型" prop="sfcType">
+          <el-radio-group v-model="form.sfcType" @change="handleSfcTypeChange">
+            <el-radio v-for="item in sfcTypeOptions" :key="item.value" :value="item.value" border>
+              {{ item.label }}
+            </el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item :label="sfcLabel" prop="sfc" style="width: 100%">
+          <el-input v-model="form.sfc" :placeholder="'请输入' + sfcLabel" @keydown.enter.prevent="keyDownTab" />
         </el-form-item>
         <el-form-item v-if="form.id" label="扫码时间" prop="dateTime">
           <el-date-picker v-model="form.dateTime" clearable type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择扫码时间"> </el-date-picker>
@@ -151,6 +163,19 @@ import { getShippingCustomerNotice } from '@/api/wms/shippingCustomerNotice';
 import { ShippingDetailVO, ShippingDetailQuery, ShippingDetailForm } from '@/api/wms/shippingDetail/types';
 import { TableColumns } from '@/api/types';
 import { ref } from 'vue';
+
+/** 条码类型选项 */
+const sfcTypeOptions = [
+  { label: '产品条码', value: 1 },
+  { label: '栈板条码', value: 2 }
+];
+/** 条码类型缓存键 */
+const SFC_TYPE_CACHE_KEY = 'shippingDetail_sfcType';
+/** 根据选中类型动态生成条码标签 */
+const sfcLabel = computed(() => {
+  const matched = sfcTypeOptions.find((item) => item.value === form.value.sfcType);
+  return matched ? matched.label : '条码';
+});
 const route = useRoute();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_shipping_detail_status } = toRefs<any>(proxy?.useDict('wms_shipping_detail_status'));
@@ -177,13 +202,16 @@ const columns = ref<TableColumns[]>([
   { key: 1, label: '客户代码', visible: true },
   { key: 2, label: '客户名称', visible: true },
   { key: 3, label: '条码', visible: true },
-  { key: 4, label: '扫码时间', visible: true },
-  { key: 5, label: '工单号', visible: true },
-  { key: 6, label: '物料', visible: true },
-  { key: 7, label: '物料描述', visible: true },
-  { key: 8, label: '客户订单号', visible: true },
-  { key: 9, label: '目的地', visible: true },
-  { key: 10, label: '备注', visible: true }
+  { key: 4, label: '数量', visible: true },
+  { key: 5, label: '扫码时间', visible: true },
+  { key: 6, label: '工单号', visible: true },
+  { key: 7, label: '物料', visible: true },
+  { key: 8, label: '物料描述', visible: true },
+  { key: 9, label: '客户单号', visible: true },
+  { key: 10, label: '客户参考', visible: true },
+  { key: 11, label: '条码类型', visible: true },
+  { key: 12, label: '目的地', visible: true },
+  { key: 13, label: '备注', visible: true }
 ]);
 watch(
   columns,
@@ -207,7 +235,8 @@ const initFormData: ShippingDetailForm = {
   dateTime: undefined,
   dateTimeRange: undefined,
   shopOrder: undefined,
-  remark: undefined
+  remark: undefined,
+  sfcType: Number(localStorage.getItem(SFC_TYPE_CACHE_KEY) || '1')
 };
 const data = reactive<PageData<ShippingDetailForm, ShippingDetailQuery>>({
   form: { ...initFormData },
@@ -227,6 +256,7 @@ const data = reactive<PageData<ShippingDetailForm, ShippingDetailQuery>>({
     status: null,
     dateTime: undefined,
     dateTimeRange: [],
+    sfcType: undefined,
     shopOrder: undefined,
     params: {}
   },
@@ -397,6 +427,10 @@ const submitForm = (ignoreError: number) => {
     }
   });
 };
+/** 条码类型变更 - 缓存用户选择 */
+const handleSfcTypeChange = (val: number) => {
+  localStorage.setItem(SFC_TYPE_CACHE_KEY, String(val));
+};
 const keyDownTab = async () => {
   shippingDetailFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
@@ -448,8 +482,11 @@ const getRouterParams = async () => {
       form.value.shipmentDestination = res.data.shipmentDestination;
       form.value.item = res.data.item;
       form.value.itemDesc = res.data.itemDesc;
+      form.value.shippingCustomerNoticeId = res.data.shippingCustomerNoticeId;
     }
   }
+  form.value.sfcType = Number(localStorage.getItem(SFC_TYPE_CACHE_KEY) || 1);
+  console.log(form.value.sfcType);
 };
 onMounted(() => {
   getRouterParams();

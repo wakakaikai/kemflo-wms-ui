@@ -55,6 +55,16 @@ export interface ItemVO {
   palletCheckFlag?: number | string;
 
   /**
+   * 出货数量校验
+   */
+  outboundQuantityCheck?: number | string;
+
+  /**
+   * 客户参考检查
+   */
+  customerRefCheck?: number | string;
+
+  /**
    * 备注
    */
   remark: string;
@@ -117,6 +127,16 @@ export interface ItemForm extends BaseEntity {
   palletCheckFlag?: number | string;
 
   /**
+   * 出货数量校验
+   */
+  outboundQuantityCheck?: number | string;
+
+  /**
+   * 客户参考检查
+   */
+  customerRefCheck?: number | string;
+
+  /**
    * 备注
    */
   remark?: string;
@@ -172,6 +192,11 @@ export interface ItemQuery extends PageQuery {
    * 栈板检查：0: 正常 1: 停用
    */
   palletCheckFlag?: number | string;
+
+  /**
+   * 客户参考检查
+   */
+  customerRefCheck?: number | string;
 
   /**
    * 日期范围参数

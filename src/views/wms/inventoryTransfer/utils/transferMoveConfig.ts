@@ -8,7 +8,7 @@ export interface TransferMoveOption {
 export const INVENTORY_TRANSFER_MOVE_TYPES: TransferMoveOption[] = [
   { value: '311', label: '311 库存地点转帐 (一步)', desc: '库存地点转帐 (一步)' },
   { value: '411', label: '411 E 销售库存->非限制', desc: '销售库存->非限制' },
-  { value: '413', label: '413 非限制->销售库存', desc: '非限制->销售库存' },
+  { value: '413', label: '413 转销售订单库存', desc: '非限制转销售订单库存' },
   { value: '343', label: '343 冻结->非限制', desc: '冻结->非限制' },
   // { value: '321', label: '321 质检->非限制', desc: '质检->非限制' },
   { value: '344', label: '344 非限制->冻结', desc: '非限制->冻结' }

@@ -121,7 +121,9 @@
             <el-table-column type="selection" width="55" align="center" />
             <el-table-column label="需求单号" align="center" prop="demandNo" min-width="160">
               <template #default="{ row }">
-                <el-link type="primary" @click="openDetail(row.id)">{{ row.demandNo }}</el-link>
+                <router-link :to="'/workOrderPrepDemandLine?demandNo=' + row.demandNo" class="link-type">
+                  <span>{{ row.demandNo }}</span>
+                </router-link>
               </template>
             </el-table-column>
             <el-table-column label="单据类型" align="center" min-width="110">
@@ -142,7 +144,7 @@
                 </div>
               </template>
             </el-table-column>
-<!--            <el-table-column label="工单数" align="center" prop="workOrderCount" min-width="80" />-->
+            <!--            <el-table-column label="工单数" align="center" prop="workOrderCount" min-width="80" />-->
             <el-table-column label="待发" align="center" min-width="80">
               <template #default="{ row }">{{ formatQty(row.totalRequired) ?? '-' }}</template>
             </el-table-column>
@@ -476,6 +478,7 @@ const openDetail = (id: number | string) => {
   currentDemandId.value = id;
   detailVisible.value = true;
 };
+
 const openIssue = (issueId: number | string) => {
   currentIssueId.value = issueId;
   issueDrawerVisible.value = true;

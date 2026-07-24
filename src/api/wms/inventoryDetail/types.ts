@@ -127,6 +127,16 @@ export interface InventoryDetailForm extends BaseEntity {
   unit?: string;
 
   /**
+   * 库存类型
+   */
+  inventoryType?: string;
+
+  /**
+   * 数量
+   */
+  quantity?: number;
+
+  /**
    * 特殊库存标识
    */
   specialInventoryFlag?: string;
@@ -145,6 +155,26 @@ export interface InventoryDetailForm extends BaseEntity {
    * 库位编码
    */
   locationCode?: string;
+
+  /**
+   * 库位名称
+   */
+  locationName?: string;
+
+  /**
+   * 库存状态
+   */
+  inventoryStatus?: string;
+
+  /**
+   * 入库状态
+   */
+  stockInStatus?: string;
+
+  /**
+   * 仓库名称
+   */
+  warehouseName?: string;
 
   /**
    * 业务伙伴
@@ -172,6 +202,16 @@ export interface InventoryDetailQuery extends PageQuery {
    * 物料编码/设备编号
    */
   itemCode?: string;
+
+  /**
+   * 批量物料编码（仅展示用，逗号拼接）
+   */
+  itemCodeStr?: string;
+
+  /**
+   * 批量物料编码列表
+   */
+  itemCodeList?: string[];
 
   /**
    * 物料名称/设备名称
@@ -204,6 +244,16 @@ export interface InventoryDetailQuery extends PageQuery {
   unit?: string;
 
   /**
+   * 库存类型
+   */
+  inventoryType?: string;
+
+  /**
+   * 数量
+   */
+  quantity?: number;
+
+  /**
    * 特殊库存标识
    */
   specialInventoryFlag?: string;
@@ -222,6 +272,26 @@ export interface InventoryDetailQuery extends PageQuery {
    * 库位编码
    */
   locationCode?: string;
+
+  /**
+   * 库位名称
+   */
+  locationName?: string;
+
+  /**
+   * 库存状态
+   */
+  inventoryStatus?: string;
+
+  /**
+   * 入库状态
+   */
+  stockInStatus?: string;
+
+  /**
+   * 仓库名称
+   */
+  warehouseName?: string;
 
   /**
    * 业务伙伴

@@ -13,6 +13,9 @@
             <el-form-item label="客户单号" prop="customerNo">
               <el-input v-model="queryParams.customerNo" placeholder="请输入客户单号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="客户参考" prop="customerRef">
+              <el-input v-model="queryParams.customerRef" placeholder="请输入客户参考" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="发货日期" prop="deliveryTime" style="width: 308px">
               <el-date-picker v-model="queryParams.deliveryTime" clearable type="date" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择发货日期" :shortcuts="shortcuts" />
             </el-form-item>
@@ -71,30 +74,31 @@
         <el-table-column v-if="columns[0].visible" label="客户代码" align="left" prop="customerCode" width="100" />
         <el-table-column v-if="columns[1].visible" label="客户名称" align="left" prop="customerName" width="240" />
         <el-table-column v-if="columns[2].visible" label="客户单号" align="left" prop="customerNo" width="120" />
-        <el-table-column v-if="columns[3].visible" label="物料" align="left" prop="item" width="150" />
-        <el-table-column v-if="columns[4].visible" label="旧料号" align="left" prop="oldItem" width="150" />
-        <el-table-column v-if="columns[5].visible" label="物料描述" align="left" prop="itemDesc" width="250" />
-        <el-table-column v-if="columns[6].visible" label="发货日期" align="left" prop="deliveryTime" width="180">
+        <el-table-column v-if="columns[3].visible" label="客户参考" align="left" prop="customerRef" width="120" />
+        <el-table-column v-if="columns[4].visible" label="物料" align="left" prop="item" width="150" />
+        <el-table-column v-if="columns[5].visible" label="旧料号" align="left" prop="oldItem" width="150" />
+        <el-table-column v-if="columns[6].visible" label="物料描述" align="left" prop="itemDesc" width="250" />
+        <el-table-column v-if="columns[7].visible" label="发货日期" align="left" prop="deliveryTime" width="180">
           <template #default="scope">
             <span>{{ parseTime(scope.row.deliveryTime, '{y}-{m}-{d}') }}</span>
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[7].visible" label="目的地" align="left" prop="deliveryDestination" />
-        <el-table-column v-if="columns[8].visible" label="出货数量" align="left" prop="qty" />
-        <el-table-column v-if="columns[9].visible" label="扫码数量" align="left" prop="scanQty">
+        <el-table-column v-if="columns[8].visible" label="目的地" align="left" prop="deliveryDestination" />
+        <el-table-column v-if="columns[9].visible" label="出货数量" align="left" prop="qty" />
+        <el-table-column v-if="columns[10].visible" label="扫码数量" align="left" prop="scanQty">
           <template #default="scope">
             <router-link :to="'/wms/shipping-notice-detail/index/2/' + scope.row.id" class="link-type">
               <span>{{ scope.row.scanQty }}</span>
             </router-link>
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[10].visible" label="数量备注" align="left" prop="qtyRemark" />
-        <el-table-column v-if="columns[11].visible" label="状态" align="left" prop="status">
+        <el-table-column v-if="columns[11].visible" label="数量备注" align="left" prop="qtyRemark" />
+        <el-table-column v-if="columns[12].visible" label="状态" align="left" prop="status">
           <template #default="scope">
             <dict-tag :options="wms_shipping_notice_status" :value="scope.row.status" />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[12].visible" label="备注" align="left" prop="remark" width="200" />
+        <el-table-column v-if="columns[13].visible" label="备注" align="left" prop="remark" width="200" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width" fixed="right">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -119,6 +123,9 @@
         </el-form-item>
         <el-form-item label="客户单号" prop="customerNo">
           <el-input v-model="form.customerNo" placeholder="请输入客户单号" />
+        </el-form-item>
+        <el-form-item label="客户参考" prop="customerRef">
+          <el-input v-model="form.customerRef" placeholder="请输入客户参考" />
         </el-form-item>
         <el-form-item label="发货目的地" prop="deliveryDestination">
           <el-input v-model="form.deliveryDestination" placeholder="请输入发货目的地" />
@@ -278,16 +285,17 @@ const columns = ref<TableColumns[]>([
   { key: 1, label: '客户代码', visible: true },
   { key: 2, label: '客户名称', visible: true },
   { key: 3, label: '客户单号', visible: true },
-  { key: 4, label: '物料', visible: true },
-  { key: 5, label: '旧料号', visible: true },
-  { key: 6, label: '物料描述', visible: true },
-  { key: 7, label: '发货日期', visible: true },
-  { key: 8, label: '目的地', visible: true },
-  { key: 9, label: '出货数量', visible: true },
-  { key: 10, label: '扫码数量', visible: true },
-  { key: 11, label: '数量备注', visible: true },
-  { key: 12, label: '状态', visible: true },
-  { key: 13, label: '备注', visible: true }
+  { key: 4, label: '客户参考', visible: true },
+  { key: 5, label: '物料', visible: true },
+  { key: 6, label: '旧料号', visible: true },
+  { key: 7, label: '物料描述', visible: true },
+  { key: 8, label: '发货日期', visible: true },
+  { key: 9, label: '目的地', visible: true },
+  { key: 10, label: '出货数量', visible: true },
+  { key: 11, label: '扫码数量', visible: true },
+  { key: 12, label: '数量备注', visible: true },
+  { key: 13, label: '状态', visible: true },
+  { key: 14, label: '备注', visible: true }
 ]);
 watch(
   columns,
@@ -302,6 +310,7 @@ const initFormData: ShippingNoticeForm = {
   customerCode: undefined,
   customerName: undefined,
   customerNo: undefined,
+  customerRef: undefined,
   shipmentNo: undefined,
   deliveryDestination: undefined,
   deliveryTime: undefined,
@@ -322,6 +331,7 @@ const data = reactive<PageData<ShippingNoticeForm, ShippingNoticeQuery>>({
     customerCode: undefined,
     customerName: undefined,
     customerNo: undefined,
+    customerRef: undefined,
     shipmentNo: undefined,
     deliveryDestination: undefined,
     deliveryTime: undefined,

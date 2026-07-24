@@ -36,7 +36,7 @@
             </el-form-item>
             <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
               <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" clearable>
-                <el-option v-for="dict in wms_inventory_type" :key="dict.value" :label="dict.label" :value="dict.value" />
+                <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
               </el-select>
             </el-form-item>
             <el-form-item label="移动时间" prop="moveDate">
@@ -84,7 +84,7 @@
         <el-table-column label="移动记录ID" align="center" prop="id" v-if="true" />
         <el-table-column label="移动类型" align="center" prop="moveType" />
         <el-table-column label="物料编码" align="center" prop="itemCode" />
-        <el-table-column label="物料名称" align="center" prop="itemName" />
+        <el-table-column label="物料名称" align="center" prop="itemName" show-overflow-tooltip />
         <el-table-column label="批次号" align="center" prop="batchNo" />
         <el-table-column label="库存方向" align="center" prop="inventoryDirection" />
         <el-table-column label="关联的移动ID" align="center" prop="relatedMoveId" />
@@ -102,7 +102,7 @@
         <el-table-column label="打包编号" align="center" prop="packingCode" />
         <el-table-column label="特殊库存标识" align="center" prop="specialInventoryFlag">
           <template #default="scope">
-            <dict-tag :options="wms_inventory_type" :value="scope.row.specialInventoryFlag" />
+            <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
           </template>
         </el-table-column>
         <el-table-column label="移动时间" align="center" prop="moveDate" width="180">
@@ -183,7 +183,7 @@
         </el-form-item>
         <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
           <el-select v-model="form.specialInventoryFlag" placeholder="请选择特殊库存标识">
-            <el-option v-for="dict in wms_inventory_type" :key="dict.value" :label="dict.label" :value="dict.value"></el-option>
+            <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="移动时间" prop="moveDate">
@@ -224,7 +224,7 @@ import { PalletInventoryMovementVO, PalletInventoryMovementQuery, PalletInventor
 import { dayjs } from 'element-plus';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_inventory_type } = toRefs<any>(proxy?.useDict('wms_inventory_type'));
+const { wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag'));
 
 const palletInventoryMovementList = ref<PalletInventoryMovementVO[]>([]);
 const buttonLoading = ref(false);
