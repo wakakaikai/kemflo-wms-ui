@@ -1,12 +1,5 @@
 <template>
-  <el-drawer
-    v-if="isDrawer"
-    v-model="visible"
-    :title="dialogTitle"
-    size="85%"
-    append-to-body
-    class="location-detail-drawer"
-  >
+  <el-drawer v-if="isDrawer" v-model="visible" :title="dialogTitle" size="85%" append-to-body class="location-detail-drawer">
     <div v-loading="loading" class="location-detail-dialog">
       <div class="material-info">
         <el-descriptions :column="isRecommendMode ? 4 : 3" border size="small">
@@ -26,19 +19,9 @@
       <template v-if="isRecommendMode">
         <el-alert v-if="readonly" type="info" :closable="false" show-icon class="tip-alert">查看缺料分析推荐结果（只读）</el-alert>
         <el-alert v-else-if="demandInventoryQty <= 0" type="warning" :closable="false" show-icon class="tip-alert"> 请先填写本次备料数量后再使用系统推荐 </el-alert>
-        <el-alert
-          v-else-if="materialRequiresSalesOrderInventory"
-          type="warning"
-          :closable="false"
-          show-icon
-          class="tip-alert"
-        >
-          本物料需使用销售订单库存（E），仅可分配匹配的销售订单及项次：{{ formatSalesOrderInventoryLabel(materialSoConstraint) }}
-        </el-alert>
+        <el-alert v-else-if="materialRequiresSalesOrderInventory" type="warning" :closable="false" show-icon class="tip-alert"> 本物料需使用销售订单库存（E），仅可分配匹配的销售订单及项次：{{ formatSalesOrderInventoryLabel(materialSoConstraint) }} </el-alert>
         <el-alert v-else type="info" :closable="false" show-icon class="tip-alert"> 系统按 FIFO 自动推荐分配数量；可直接修改任意库位分配数量，与推荐不一致须填写调整原因 </el-alert>
-        <el-alert v-if="isRecommendMode && allowShortageConfirm && demandInventoryQty > 0 && totalUnrestrictedQty <= 0" type="warning" :closable="false" show-icon class="tip-alert">
-          当前无可用库存，可点击「缺料备料确认」；后续确认分类时将生成缺料需求行
-        </el-alert>
+        <el-alert v-if="isRecommendMode && allowShortageConfirm && demandInventoryQty > 0 && totalUnrestrictedQty <= 0" type="warning" :closable="false" show-icon class="tip-alert"> 当前无可用库存，可点击「缺料备料确认」；后续确认分类时将生成缺料需求行 </el-alert>
       </template>
       <el-alert v-else type="info" :closable="false" show-icon class="tip-alert"> 查询物料实时库存，按仓库 / 库位展示；不参与备料推荐与确认 </el-alert>
 
@@ -57,18 +40,9 @@
         </div>
       </div>
 
-      <el-table
-        ref="tableRef"
-        :data="flatRows"
-        row-key="rowKey"
-        border
-        stripe
-        size="small"
-        :max-height="420"
-        @selection-change="onSelectionChange"
-      >
+      <el-table ref="tableRef" :data="flatRows" row-key="rowKey" border stripe size="small" :max-height="420" @selection-change="onSelectionChange">
         <el-table-column v-if="isRecommendMode && !readonly" type="selection" width="46" :selectable="isRowSelectable" />
-        <el-table-column prop="warehouseCode" label="仓库" width="110" show-overflow-tooltip />
+        <el-table-column prop="warehouseCode" label="仓库" min-width="110" show-overflow-tooltip />
         <el-table-column prop="locationCode" label="库位" min-width="140" show-overflow-tooltip />
         <el-table-column label="非限制使用" width="110" align="right">
           <template #default="{ row }">{{ formatQty(rowPickAvailableQty(row)) }}</template>
@@ -82,7 +56,7 @@
         <el-table-column label="批次号" width="120" show-overflow-tooltip>
           <template #default="{ row }">{{ row.batchCode || '-' }}</template>
         </el-table-column>
-        <el-table-column label="接收时间" width="118">
+        <el-table-column label="接收时间" min-width="120">
           <template #default="{ row }">{{ row.receivedDate || '' }}</template>
         </el-table-column>
         <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag" width="96">
@@ -99,19 +73,7 @@
         </el-table-column>
         <el-table-column v-if="isRecommendMode" label="分配数量" width="130" align="right">
           <template #default="{ row }">
-            <el-input-number
-              v-if="!readonly && isPickableLeaf(row)"
-              :model-value="row.recommendedQty ?? 0"
-              :min="0"
-              :max="rowPickAvailableQty(row)"
-              :precision="3"
-              :step="1"
-              controls-position="right"
-              size="small"
-              class="pick-qty-input"
-              @click.stop
-              @change="(val: number | undefined) => onPickQtyChange(row, val)"
-            />
+            <el-input-number v-if="!readonly && isPickableLeaf(row)" :model-value="row.recommendedQty ?? 0" :min="0" :max="rowPickAvailableQty(row)" :precision="3" :step="1" controls-position="right" size="small" class="pick-qty-input" @click.stop @change="(val: number | undefined) => onPickQtyChange(row, val)" />
             <span v-else-if="row.recommendedQty">{{ formatQty(row.recommendedQty) }}</span>
             <span v-else>-</span>
           </template>
@@ -119,13 +81,7 @@
         <el-table-column v-if="isRecommendMode" label="标记" width="100" align="center">
           <template #default="{ row }">
             <el-tag v-if="isNonUserLineWarehouse(row)" type="danger" size="small">其他线边</el-tag>
-            <el-tag
-              v-else-if="materialRequiresSalesOrderInventory && !isOperatableLocationForBom(materialSoConstraint, row)"
-              type="info"
-              size="small"
-            >
-              不可分配
-            </el-tag>
+            <el-tag v-else-if="materialRequiresSalesOrderInventory && !isOperatableLocationForBom(materialSoConstraint, row)" type="info" size="small"> 不可分配 </el-tag>
             <el-tag v-else-if="row.isRecommended && !isQtyOverridden(row)" type="success" size="small">推荐</el-tag>
             <el-tag v-else-if="isQtyOverridden(row)" type="warning" size="small">已调整</el-tag>
           </template>
@@ -143,12 +99,7 @@
             <span class="pick-col pick-batch">批次</span>
             <span class="pick-col pick-qty">数量</span>
           </div>
-          <div
-            v-for="(pick, idx) in recommendInfoItems"
-            :key="idx"
-            class="recommend-pick-row"
-            :class="{ 'is-other-line': pick.isOtherLine }"
-          >
+          <div v-for="(pick, idx) in recommendInfoItems" :key="idx" class="recommend-pick-row" :class="{ 'is-other-line': pick.isOtherLine }">
             <span class="pick-col pick-loc" :title="pick.location">{{ pick.location }}</span>
             <span class="pick-col pick-batch" :title="pick.batch">{{ pick.batch }}</span>
             <span class="pick-col pick-qty">
@@ -198,19 +149,9 @@
       <template v-if="isRecommendMode">
         <el-alert v-if="readonly" type="info" :closable="false" show-icon class="tip-alert">查看缺料分析推荐结果（只读）</el-alert>
         <el-alert v-else-if="demandInventoryQty <= 0" type="warning" :closable="false" show-icon class="tip-alert"> 请先填写本次备料数量后再使用系统推荐 </el-alert>
-        <el-alert
-          v-else-if="materialRequiresSalesOrderInventory"
-          type="warning"
-          :closable="false"
-          show-icon
-          class="tip-alert"
-        >
-          本物料需使用销售订单库存（E），仅可分配匹配的销售订单及项次：{{ formatSalesOrderInventoryLabel(materialSoConstraint) }}
-        </el-alert>
+        <el-alert v-else-if="materialRequiresSalesOrderInventory" type="warning" :closable="false" show-icon class="tip-alert"> 本物料需使用销售订单库存（E），仅可分配匹配的销售订单及项次：{{ formatSalesOrderInventoryLabel(materialSoConstraint) }} </el-alert>
         <el-alert v-else type="info" :closable="false" show-icon class="tip-alert"> 系统按 FIFO 自动推荐分配数量；可直接修改任意库位分配数量，与推荐不一致须填写调整原因 </el-alert>
-        <el-alert v-if="isRecommendMode && allowShortageConfirm && demandInventoryQty > 0 && totalUnrestrictedQty <= 0" type="warning" :closable="false" show-icon class="tip-alert">
-          当前无可用库存，可点击「缺料备料确认」；后续确认分类时将生成缺料需求行
-        </el-alert>
+        <el-alert v-if="isRecommendMode && allowShortageConfirm && demandInventoryQty > 0 && totalUnrestrictedQty <= 0" type="warning" :closable="false" show-icon class="tip-alert"> 当前无可用库存，可点击「缺料备料确认」；后续确认分类时将生成缺料需求行 </el-alert>
       </template>
       <el-alert v-else type="info" :closable="false" show-icon class="tip-alert"> 查询物料实时库存，按仓库 / 库位展示；不参与备料推荐与确认 </el-alert>
 
@@ -229,40 +170,31 @@
         </div>
       </div>
 
-      <el-table
-        ref="tableRef"
-        :data="flatRows"
-        row-key="rowKey"
-        border
-        stripe
-        size="small"
-        :max-height="420"
-        @selection-change="onSelectionChange"
-      >
+      <el-table ref="tableRef" :data="flatRows" row-key="rowKey" border stripe size="small" :max-height="420" @selection-change="onSelectionChange">
         <el-table-column v-if="isRecommendMode && !readonly" type="selection" width="46" :selectable="isRowSelectable" />
-        <el-table-column prop="warehouseCode" label="仓库" width="110" show-overflow-tooltip />
-        <el-table-column prop="locationCode" label="库位" min-width="140" show-overflow-tooltip />
-        <el-table-column label="非限制使用" width="110" align="right">
+        <el-table-column prop="warehouseCode" label="仓库" min-width="110" show-overflow-tooltip />
+        <el-table-column prop="locationCode" label="库位" min-width="110" show-overflow-tooltip />
+        <el-table-column label="非限制使用" min-width="110" align="right">
           <template #default="{ row }">{{ formatQty(rowPickAvailableQty(row)) }}</template>
         </el-table-column>
-        <el-table-column label="质量检验" width="100" align="right">
+        <el-table-column label="质量检验" min-width="100" align="right">
           <template #default="{ row }">{{ formatQty(row.inspectionQty) }}</template>
         </el-table-column>
-        <el-table-column label="已冻结" width="90" align="right">
+        <el-table-column label="已冻结" min-width="90" align="right">
           <template #default="{ row }">{{ formatQty(row.blockedQty) }}</template>
         </el-table-column>
-        <el-table-column label="批次号" width="120" show-overflow-tooltip>
+        <el-table-column label="批次号" min-width="120" show-overflow-tooltip>
           <template #default="{ row }">{{ row.batchCode || '-' }}</template>
         </el-table-column>
-        <el-table-column label="接收时间" width="118">
+        <el-table-column label="接收时间" min-width="160">
           <template #default="{ row }">{{ row.receivedDate || '' }}</template>
         </el-table-column>
-        <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag" width="96">
+        <el-table-column label="特殊库存" align="center" prop="specialInventoryFlag" min-width="96">
           <template #default="scope">
             <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
           </template>
         </el-table-column>
-        <el-table-column v-if="showBusinessCodeColumn" label="业务编码" width="130" show-overflow-tooltip>
+        <el-table-column v-if="showBusinessCodeColumn" label="业务编码" min-width="130" show-overflow-tooltip>
           <template #default="scope">
             <span v-if="scope.row.specialInventoryFlag && scope.row.specialInventoryFlag !== 'N'">
               {{ scope.row.businessCode }}
@@ -271,19 +203,7 @@
         </el-table-column>
         <el-table-column v-if="isRecommendMode" label="分配数量" width="130" align="right">
           <template #default="{ row }">
-            <el-input-number
-              v-if="!readonly && isPickableLeaf(row)"
-              :model-value="row.recommendedQty ?? 0"
-              :min="0"
-              :max="rowPickAvailableQty(row)"
-              :precision="3"
-              :step="1"
-              controls-position="right"
-              size="small"
-              class="pick-qty-input"
-              @click.stop
-              @change="(val: number | undefined) => onPickQtyChange(row, val)"
-            />
+            <el-input-number v-if="!readonly && isPickableLeaf(row)" :model-value="row.recommendedQty ?? 0" :min="0" :max="rowPickAvailableQty(row)" :precision="3" :step="1" controls-position="right" size="small" class="pick-qty-input" @click.stop @change="(val: number | undefined) => onPickQtyChange(row, val)" />
             <span v-else-if="row.recommendedQty">{{ formatQty(row.recommendedQty) }}</span>
             <span v-else>-</span>
           </template>
@@ -291,13 +211,7 @@
         <el-table-column v-if="isRecommendMode" label="标记" width="100" align="center">
           <template #default="{ row }">
             <el-tag v-if="isNonUserLineWarehouse(row)" type="danger" size="small">其他线边</el-tag>
-            <el-tag
-              v-else-if="materialRequiresSalesOrderInventory && !isOperatableLocationForBom(materialSoConstraint, row)"
-              type="info"
-              size="small"
-            >
-              不可分配
-            </el-tag>
+            <el-tag v-else-if="materialRequiresSalesOrderInventory && !isOperatableLocationForBom(materialSoConstraint, row)" type="info" size="small"> 不可分配 </el-tag>
             <el-tag v-else-if="row.isRecommended && !isQtyOverridden(row)" type="success" size="small">推荐</el-tag>
             <el-tag v-else-if="isQtyOverridden(row)" type="warning" size="small">已调整</el-tag>
           </template>
@@ -315,12 +229,7 @@
             <span class="pick-col pick-batch">批次</span>
             <span class="pick-col pick-qty">数量</span>
           </div>
-          <div
-            v-for="(pick, idx) in recommendInfoItems"
-            :key="idx"
-            class="recommend-pick-row"
-            :class="{ 'is-other-line': pick.isOtherLine }"
-          >
+          <div v-for="(pick, idx) in recommendInfoItems" :key="idx" class="recommend-pick-row" :class="{ 'is-other-line': pick.isOtherLine }">
             <span class="pick-col pick-loc" :title="pick.location">{{ pick.location }}</span>
             <span class="pick-col pick-batch" :title="pick.batch">{{ pick.batch }}</span>
             <span class="pick-col pick-qty">
@@ -359,26 +268,10 @@ import type { TableInstance } from 'element-plus';
 import { ElMessage } from 'element-plus';
 import type { WorkOrderBomVO, MaterialLocationRow } from '@/api/wms/allocation/types';
 import InventoryApi from '@/api/wms/allocation/index';
+import { formatQty,formatQtyWithUnit } from '@/utils/ruoyi';
 import { computeRecommendCapInventoryQty, issueQtyToInventoryQty, resolveBomBaseUnit } from '@/api/wms/allocation/index';
-import {
-  clampPickQty,
-  cloneMaterialLocationRows,
-  deductLocationPicksFromStock,
-  normalizeMaterialInventoryResponse,
-  isNonUserLineWarehouse,
-  recommendLocationsByFifo,
-  recommendLocationsFromCheckApi,
-  resolveLocationPickAvailableQty,
-  shouldUseCheckInventoryRecommend,
-  sumPickQty
-} from '@/api/wms/allocation/index';
-import {
-  bomRequiresSalesOrderInventory,
-  enrichLocationRowsWithSalesOrderDefaults,
-  formatSalesOrderInventoryLabel,
-  isOperatableLocationForBom,
-  resolveBomSalesOrderConstraint
-} from '@/api/wms/allocation/index';
+import { clampPickQty, cloneMaterialLocationRows, deductLocationPicksFromStock, normalizeMaterialInventoryResponse, isNonUserLineWarehouse, recommendLocationsByFifo, recommendLocationsFromCheckApi, resolveLocationPickAvailableQty, shouldUseCheckInventoryRecommend, sumPickQty } from '@/api/wms/allocation/index';
+import { bomRequiresSalesOrderInventory, enrichLocationRowsWithSalesOrderDefaults, formatSalesOrderInventoryLabel, isOperatableLocationForBom, resolveBomSalesOrderConstraint } from '@/api/wms/allocation/index';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag'));
@@ -498,9 +391,7 @@ const selectedPickQty = computed(() => sumPickQty(selectedLocations.value));
 const pickShortageQty = computed(() => Math.max(0, demandInventoryQty.value - selectedPickQty.value));
 
 /** 是否存在需展示业务编码的特殊库存行 */
-const showBusinessCodeColumn = computed(() =>
-  flatRows.value.some((row) => row.specialInventoryFlag && row.specialInventoryFlag !== 'N')
-);
+const showBusinessCodeColumn = computed(() => flatRows.value.some((row) => row.specialInventoryFlag && row.specialInventoryFlag !== 'N'));
 
 /** 全部库位非限制可用量合计（销售订单绑定时仅统计可分配库存） */
 const totalUnrestrictedQty = computed(() =>
@@ -537,15 +428,7 @@ const canConfirm = computed(() => {
 });
 
 /** 备料模式无库存时，允许缺料备料确认 */
-const canConfirmShortage = computed(
-  () => !props.readonly && props.allowShortageConfirm && isRecommendMode.value && demandInventoryQty.value > 0 && totalUnrestrictedQty.value <= 0
-);
-
-/** 格式化数量显示 */
-const formatQty = (val?: number) => {
-  const n = Number(val ?? 0);
-  return Number.isNaN(n) ? '0' : n;
-};
+const canConfirmShortage = computed(() => !props.readonly && props.allowShortageConfirm && isRecommendMode.value && demandInventoryQty.value > 0 && totalUnrestrictedQty.value <= 0);
 
 const rowPickAvailableQty = (row: MaterialLocationRow) => resolveLocationPickAvailableQty(row);
 
@@ -567,9 +450,7 @@ const isQtyOverridden = (row: MaterialLocationRow) => {
 
 /** 从勾选状态重建已选库位列表并更新缺口 */
 function syncSelectedFromTable() {
-  selectedLocations.value = flatRows.value
-    .filter((row) => selectedLeafKeys.value.has(row.rowKey))
-    .map((row) => ({ ...row, recommendedQty: Number(row.recommendedQty ?? 0) }));
+  selectedLocations.value = flatRows.value.filter((row) => selectedLeafKeys.value.has(row.rowKey)).map((row) => ({ ...row, recommendedQty: Number(row.recommendedQty ?? 0) }));
   shortageQty.value = pickShortageQty.value;
 }
 
@@ -632,12 +513,8 @@ function buildWorkingLocationRows(source: MaterialLocationRow[]): MaterialLocati
 function runRecommendation() {
   const cap = recommendCapInventoryQty.value;
   const useCheckOrder = shouldUseCheckInventoryRecommend(flatRows.value);
-  const allocateOptions = props.material
-    ? { canAllocate: (loc: MaterialLocationRow) => isOperatableLocationForBom(materialSoConstraint.value, loc) }
-    : undefined;
-  const result = useCheckOrder
-    ? recommendLocationsFromCheckApi(flatRows.value, cap, allocateOptions)
-    : recommendLocationsByFifo(flatRows.value, cap, allocateOptions);
+  const allocateOptions = props.material ? { canAllocate: (loc: MaterialLocationRow) => isOperatableLocationForBom(materialSoConstraint.value, loc) } : undefined;
+  const result = useCheckOrder ? recommendLocationsFromCheckApi(flatRows.value, cap, allocateOptions) : recommendLocationsByFifo(flatRows.value, cap, allocateOptions);
   recommendedRows.value = result.recommendedRows.map((row) => ({ ...row, systemRecommendedQty: row.recommendedQty }));
   recommendedKeys.value = result.recommendedKeys;
   systemRecommendedMap.value = new Map(result.recommendedRows.map((row) => [row.rowKey, Number(row.recommendedQty ?? 0)]));

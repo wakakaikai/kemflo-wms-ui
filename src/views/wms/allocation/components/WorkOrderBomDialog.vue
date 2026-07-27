@@ -1131,6 +1131,7 @@ const applyCheckPayloadToRows = (checkPayload: ReturnType<typeof parseInventoryC
       salesOrderItem: soConstraint.salesOrderItem,
       specialInventoryFlag: bom.specialInventoryFlag ?? (bomRequiresSalesOrderInventory(soConstraint) ? 'E' : undefined),
       checkInventoryRecommendedLocations,
+      fifoRecommendedLocations: undefined,
       materialPoolQty: poolQty,
       availableQty: poolQty,
       autoWarehouseAvailableQty,
