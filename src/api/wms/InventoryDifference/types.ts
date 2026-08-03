@@ -45,6 +45,21 @@ export interface InventoryDiffVO {
   unit: string;
 
   /**
+   * WMS库存数量
+   */
+  totalQuantity?: number;
+
+  /**
+   * SAP库存数量
+   */
+  sapQuantity?: number;
+
+  /**
+   * 差异数量
+   */
+  diffQuantity?: number;
+
+  /**
    * 特殊库存标识
    */
   specialInventoryFlag: string;
@@ -90,6 +105,16 @@ export interface InventoryDiffQuery extends PageQuery {
    * 物料编码/设备编号
    */
   itemCode?: string;
+
+  /**
+   * 物料编码列表（批量查询）
+   */
+  itemCodeList?: string[];
+
+  /**
+   * 物料编码输入字符串（前端使用，支持逗号/空格分隔）
+   */
+  itemCodeStr?: string;
 
   /**
    * 物料名称/设备名称
@@ -150,6 +175,16 @@ export interface InventoryDiffQuery extends PageQuery {
    * 业务伙伴名称
    */
   businessName?: string;
+
+  /**
+   * 对比维度: wms-WMS库存差异, sap-SAP库存差异
+   */
+  compareDimension?: string;
+
+  /**
+   * 仅显示差异物料
+   */
+  diffFlag?: boolean;
 
   /**
    * 日期范围参数

@@ -5,22 +5,24 @@
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="物料编码" prop="itemCode">
-              <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.itemCode" :config="itemCodeConfig" placeholder="请输入物料编码" @keyup.enter="handleQuery" />
             </el-form-item>
-            <!--            <el-form-item label="物料名称" prop="itemName">
-              <el-input v-model="queryParams.itemName" placeholder="请输入物料名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>-->
+            <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
+              <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable style="width: 160px">
+                <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="业务伙伴" prop="businessCode">
+              <HistoryInput v-model="queryParams.businessCode" :config="businessCodeConfig" placeholder="请输入业务伙伴" @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="批次号" prop="batchCode">
-              <el-input v-model="queryParams.batchCode" placeholder="请输入批次号" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.batchCode" :config="batchCodeConfig" placeholder="请输入批次号" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="仓库编码" prop="warehouseCode">
-              <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="库区编码" prop="areaCode">
-              <el-input v-model="queryParams.areaCode" placeholder="请输入库区编码" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.warehouseCode" :config="warehouseCodeConfig" placeholder="请输入仓库编码" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="库位编码" prop="locationCode">
-              <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.locationCode" :config="locationCodeConfig" placeholder="请输入库位编码" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -35,19 +37,19 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['wms:inventoryDetail:add']"> 新增 </el-button>
+            <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['wms:inventoryDetail:add']"> 新增</el-button>
           </el-col>
           <!--          <el-col :span="1.5">
             <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['wms:inventoryDetail:edit']">修改 </el-button>
           </el-col>-->
           <el-col :span="1.5">
-            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['wms:inventoryDetail:remove']">删除 </el-button>
+            <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['wms:inventoryDetail:remove']">删除</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['wms:inventoryDetail:import']" type="info" plain icon="Upload" @click="handleImport">导入 </el-button>
+            <el-button v-hasPermi="['wms:inventoryDetail:import']" type="info" plain icon="Upload" @click="handleImport">导入</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:inventoryDetail:export']">导出 </el-button>
+            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['wms:inventoryDetail:export']">导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" :columns="columns" @queryTable="getList"></right-toolbar>
         </el-row>
@@ -81,18 +83,15 @@
         <el-table-column v-if="columns[19].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width" fixed="right" width="150">
           <template #default="scope">
-            <!--            <el-tooltip content="修改" placement="top">
-              <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:inventoryDetail:edit']">修改 </el-button>
-            </el-tooltip>-->
+            <el-tooltip content="修改" placement="top">
+              <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:inventoryDetail:edit']">修改</el-button>
+            </el-tooltip>
             <el-tooltip content="WMS盘亏" placement="top">
-              <el-button link type="primary" icon="Edit" @click="handleSubtract(scope.row)" v-hasPermi="['wms:inventoryDetail:subtract']"> WMS盘亏 </el-button>
+              <el-button link type="primary" icon="Edit" @click="handleSubtract(scope.row)" v-hasPermi="['wms:inventoryDetail:subtract']"> WMS盘亏</el-button>
             </el-tooltip>
             <el-tooltip content="删除" placement="top">
-              <el-button link type="danger" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:inventoryDetail:remove']">删除 </el-button>
+              <el-button link type="danger" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['wms:inventoryDetail:remove']">删除</el-button>
             </el-tooltip>
-            <!--            <el-tooltip content="移库" placement="top">
-              <el-button link type="primary" icon="Position" @click="handleTransfer(scope.row)" v-hasPermi="['wms:inventoryDetail:transfer']">移库</el-button>
-            </el-tooltip>-->
           </template>
         </el-table-column>
       </el-table>
@@ -224,18 +223,7 @@
 
     <!-- 导入对话框 -->
     <el-dialog v-model="upload.open" :title="upload.title" width="400px" append-to-body>
-      <el-upload
-        ref="uploadRef"
-        :limit="1"
-        accept=".xlsx, .xls"
-        :headers="upload.headers"
-        :action="upload.url + '?updateSupport=' + upload.updateSupport"
-        :disabled="upload.isUploading"
-        :on-progress="handleFileUploadProgress"
-        :on-success="handleFileSuccess"
-        :auto-upload="false"
-        drag
-      >
+      <el-upload ref="uploadRef" :limit="1" accept=".xlsx, .xls" :headers="upload.headers" :action="upload.url + '?updateSupport=' + upload.updateSupport" :disabled="upload.isUploading" :on-progress="handleFileUploadProgress" :on-success="handleFileSuccess" :auto-upload="false" drag>
         <el-icon class="el-icon--upload">
           <i-ep-upload-filled />
         </el-icon>
@@ -243,7 +231,7 @@
         <template #tip>
           <div class="text-center el-upload__tip">
             <span>仅允许导入xls、xlsx格式文件。</span>
-            <el-link type="primary" :underline="false" style="font-size: 12px; vertical-align: baseline" @click="importTemplate">下载模板 </el-link>
+            <el-link type="primary" :underline="false" style="font-size: 12px; vertical-align: baseline" @click="importTemplate">下载模板</el-link>
           </div>
         </template>
       </el-upload>
@@ -270,11 +258,25 @@ import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import SalesOrderDetailDialog from '@/views/wms/salesOrderDetail/components/SalesOrderDetailDialog.vue';
 import type { SalesOrderDetailVO } from '@/api/wms/salesOrderDetail/types';
+import { historyDB } from '@/store/modules/indexedDB';
 import { ref } from 'vue';
 import { globalHeaders } from '@/utils/request';
+import HistoryInput from '@/components/HistoryInput/index.vue';
+import { HistoryConfig } from '@/types/history';
 
+const route = useRoute();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_special_flag, wms_inventory_type } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag', 'wms_inventory_type'));
+
+// 监听路由参数变化，从库存差异页面跳转时自动刷新
+watch(
+  () => route.query,
+  (newQuery) => {
+    if (newQuery.itemCode || newQuery.warehouseCode) {
+      handleQuery();
+    }
+  }
+);
 
 const inventoryDetailList = ref<InventoryDetailVO[]>([]);
 const buttonLoading = ref(false);
@@ -393,7 +395,7 @@ const data = reactive<PageData<InventoryDetailForm, InventoryDetailQuery>>({
     itemName: [{ required: true, message: '物料名称/设备名称不能为空', trigger: 'blur' }],
     locationCode: [{ required: true, message: '请输入库位编码', trigger: 'blur' }],
     inventoryType: [{ required: true, message: '请选择库存类型', trigger: 'blur' }],
-    quantity: [{ required: true, message: '请输入库存数量', trigger: 'blur' }]
+    quantity: [{ required: true, message: '请输出库数量存数量', trigger: 'blur' }]
   }
 });
 /*** 导入参数 */
@@ -415,9 +417,85 @@ const { queryParams, form, rules } = toRefs(data);
 
 const uploadRef = ref<ElUploadInstance>();
 
+// 搜索历史记录配置
+const itemCodeConfig: HistoryConfig = {
+  key: 'itemCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryDetail',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const businessCodeConfig: HistoryConfig = {
+  key: 'businessCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryDetail',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const batchCodeConfig: HistoryConfig = {
+  key: 'batchCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryDetail',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const warehouseCodeConfig: HistoryConfig = {
+  key: 'warehouseCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryDetail',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const locationCodeConfig: HistoryConfig = {
+  key: 'locationCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryDetail',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
 /** 查询库存明细记录列表 */
 const getList = async () => {
   loading.value = true;
+  // 从路由参数接收物料编码和仓别（从库存差异页面跳转）
+  const routeItemCode = route.query.itemCode as string | undefined;
+  const routeWarehouseCode = route.query.warehouseCode as string | undefined;
+  if (routeItemCode) queryParams.value.itemCode = routeItemCode;
+  if (routeWarehouseCode) queryParams.value.warehouseCode = routeWarehouseCode;
   const res = await listInventoryDetail(queryParams.value);
   inventoryDetailList.value = res.rows;
   total.value = res.total;
@@ -578,11 +656,11 @@ const handleExport = () => {
     `inventoryDetail_${new Date().getTime()}.xlsx`
   );
 };
+
 /** 显示物料选择对话框 */
 const showItemDialog = () => {
   itemDialogRef.value.openDialog();
   itemDialogRef.value.handleQuery();
-  // currenIndex.value = index;
 };
 
 const itemSelectCallBack = (record: any) => {
@@ -656,6 +734,35 @@ function submitFileForm() {
 }
 
 onMounted(() => {
+  // 预置供应商代码历史记录（根据租户区分）
+  const tenantId = localStorage.getItem('tenantId');
+  const presetSupplierCodes = tenantId === '000001' ? ['CN00', 'TW00'] : ['CN10', 'TW00'];
+  historyDB.getHistory('supplierCode', 10, 'inventoryDetail').then((items) => {
+    if (items.length === 0) {
+      presetSupplierCodes.forEach((code) => {
+        historyDB.addHistory({ value: code, key: 'supplierCode', page: 'inventoryDetail', timestamp: Date.now() });
+      });
+    }
+  });
+
+  // 预置库位编码历史记录（根据租户区分）
+  const presetLocationCode = tenantId === '000001' ? 'CN00' : 'CN10';
+  historyDB.getHistory('locationCode', 10, 'inventoryDetail').then((items) => {
+    if (items.length === 0) {
+      historyDB.addHistory({ value: presetLocationCode, key: 'locationCode', page: 'inventoryDetail', timestamp: Date.now() });
+    }
+  });
+
+  // 预置客户代码历史记录（根据租户区分）
+  const presetCustomerCodes = tenantId === '000001' ? ['CN00', 'TW00'] : ['CN10', 'TW00'];
+  historyDB.getHistory('customerCode', 10, 'inventoryDetail').then((items) => {
+    if (items.length === 0) {
+      presetCustomerCodes.forEach((code) => {
+        historyDB.addHistory({ value: code, key: 'customerCode', page: 'inventoryDetail', timestamp: Date.now() });
+      });
+    }
+  });
+
   getList();
 });
 </script>
@@ -664,6 +771,7 @@ onMounted(() => {
   height: 100%;
   width: 100%;
 }
+
 .card-content {
   text-align: center;
   padding: 10px;

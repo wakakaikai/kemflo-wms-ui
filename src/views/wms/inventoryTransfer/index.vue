@@ -22,6 +22,9 @@
               </template>
             </HistoryInput>
           </el-form-item>
+          <el-form-item label="仓库编码" prop="warehouseCode">
+            <HistoryInput v-model="queryParams.warehouseCode" :config="warehouseCodeConfig" placeholder="请输入仓库编码" @keyup.enter="handleQuery" />
+          </el-form-item>
           <el-form-item label="库位编码" prop="locationCode">
             <HistoryInput v-model="queryParams.locationCode" :config="locationCodeConfig" placeholder="请输入库位编码" @keyup.enter="handleQuery" />
           </el-form-item>
@@ -31,9 +34,6 @@
             </el-form-item>
             <el-form-item label="批次号" prop="batchCode">
               <el-input v-model="queryParams.batchCode" placeholder="请输入批次号" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="仓库编码" prop="warehouseCode">
-              <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
               <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable>
@@ -79,7 +79,7 @@
             </el-table-column>
             <el-table-column v-if="columns[8].visible && showInventoryBusinessPartnerColumn" label="业务伙伴" align="center" min-width="90">
               <template #default="scope">
-                <span v-if="scope.row.specialInventoryFlag && scope.row.specialInventoryFlag !== 'N'">{{ scope.row.businessCode }}</span>
+                <span v-if="scope.row.specialInventoryFlag">{{ scope.row.businessCode }}</span>
               </template>
             </el-table-column>
             <el-table-column v-if="columns[9].visible && showInventoryBusinessPartnerColumn" label="伙伴名称" align="center" min-width="100" show-overflow-tooltip>
@@ -373,6 +373,20 @@ const itemCodeConfig: HistoryConfig = {
 
 const locationCodeConfig: HistoryConfig = {
   key: 'locationCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryTransfer',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const warehouseCodeConfig: HistoryConfig = {
+  key: 'warehouseCode',
   storage: 'indexedDB',
   maxSize: 10,
   page: 'inventoryTransfer',
@@ -819,7 +833,7 @@ const submitTransfer = async () => {
       targetAreaCode: item.targetAreaCode,
       targetLocationCode: item.targetLocationCode,
       targetInventoryType: item.targetInventoryType,
-      targetBusinessCode: item.targetBusinessCode,
+      targetBusinessCode: item.targetBusinessCode ? (item.targetBusinessCode === '411' ? undefined : item.targetBusinessCode) : item.businessCode,
       transferQuantity: item.transferQuantity,
       specialInventoryFlag: item.specialInventoryFlag,
       businessCode: item.businessCode,

@@ -67,7 +67,7 @@
 
       <el-table :key="tableKey" v-loading="loading" :data="shippingDetailList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column v-if="columns[0].visible" label="客户代码" align="left" prop="customerCode" />
+        <el-table-column v-if="columns[0].visible" label="客户代码" align="left" prop="customerCode" min-width="100" />
         <el-table-column v-if="columns[1].visible" label="客户名称" align="left" prop="customerName" show-overflow-tooltip />
         <el-table-column v-if="columns[2].visible" label="条码" align="left" prop="sfc" min-width="180" />
         <el-table-column v-if="columns[3].visible" label="数量" align="right" prop="quantity" />

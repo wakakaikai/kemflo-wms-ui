@@ -52,6 +52,30 @@ export const subtractInventoryDetail = (data: InventoryDetailForm) => {
 };
 
 /**
+ * 容器入库
+ * @param data
+ */
+export const containerInbound = (data: InventoryDetailForm) => {
+  return request({
+    url: '/wms/inventoryDetail/container/inbound',
+    method: 'post',
+    data: data
+  });
+};
+
+/**
+ * 容器出库
+ * @param data
+ */
+export const containerOutbound = (data: InventoryDetailForm) => {
+  return request({
+    url: '/wms/inventoryDetail/container/outbound',
+    method: 'put',
+    data: data
+  });
+};
+
+/**
  * 修改库存明细记录
  * @param data
  */

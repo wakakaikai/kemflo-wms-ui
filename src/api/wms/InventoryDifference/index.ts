@@ -1,14 +1,13 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { InventoryDetailVO, InventoryDetailForm, InventoryDetailQuery } from '@/api/wms/inventoryDetail/types';
+import { InventoryDiffVO, InventoryDiffQuery } from '@/api/wms/InventoryDifference/types';
 
 /**
- * 查询库存明细记录列表
+ * 查询库存差异列表
  * @param query
  * @returns {*}
  */
-
-export const listInventoryDiff = (query?: InventoryDetailQuery): AxiosPromise<InventoryDetailVO[]> => {
+export const listInventoryDiff = (query?: InventoryDiffQuery): AxiosPromise<InventoryDiffVO[]> => {
   return request({
     url: '/wms/inventory/difference',
     method: 'get',

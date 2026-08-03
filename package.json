@@ -20,6 +20,8 @@
     "url": "https://gitee.com/JavaLionLi/plus-ui.git"
   },
   "dependencies": {
+    "@antv/x6": "^3.1.7",
+    "@antv/x6-vue-shape": "^3.0.2",
     "@element-plus/icons-vue": "2.3.1",
     "@highlightjs/vue-plugin": "2.1.0",
     "@vueup/vue-quill": "1.2.0",
@@ -99,8 +101,8 @@
     "quill": "2.0.2"
   },
   "engines": {
-    "node": ">=18.18.0",
-    "npm": ">=8.9.0"
+    "node": ">=20.19.0",
+    "npm": ">=8.19.0"
   },
   "browserslist": [
     "Chrome >= 87",

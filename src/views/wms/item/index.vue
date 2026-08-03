@@ -10,9 +10,6 @@
             <el-form-item label="描述" prop="itemDesc">
               <el-input v-model="queryParams.itemDesc" placeholder="请输入描述" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="描述" prop="itemDesc">
-              <el-input v-model="queryParams.itemDesc" placeholder="请输入描述" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <div v-show="showAdvancedSearch">
               <el-form-item label="旧料号" prop="oldItem">
                 <el-input v-model="queryParams.oldItem" placeholder="请输入旧料号" clearable @keyup.enter="handleQuery" />

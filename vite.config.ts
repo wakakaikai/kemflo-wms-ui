@@ -68,6 +68,12 @@ export default defineConfig(({ mode, command }) => {
     // 预编译
     optimizeDeps: {
       include: ['vue', 'vue-router', 'pinia', 'axios', '@vueuse/core', 'echarts', 'vue-i18n', '@vueup/vue-quill', 'image-conversion', 'element-plus/es/components/**/css']
+    },
+
+    build: {
+      sourcemap: false,
+      reportCompressedSize: false,
+      chunkSizeWarningLimit: 2000
     }
   };
 });

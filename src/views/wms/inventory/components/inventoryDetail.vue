@@ -5,22 +5,22 @@
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="物料编码" prop="itemCode">
-              <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.itemCode" :config="itemCodeConfig" placeholder="请输入物料编码" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="物料名称" prop="itemName">
-              <el-input v-model="queryParams.itemName" placeholder="请输入物料名称" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.itemName" :config="itemNameConfig" placeholder="请输入物料名称" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="批次号" prop="batchCode">
-              <el-input v-model="queryParams.batchCode" placeholder="请输入批次号" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.batchCode" :config="batchCodeConfig" placeholder="请输入批次号" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="仓库编码" prop="warehouseCode">
-              <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.warehouseCode" :config="warehouseCodeConfig" placeholder="请输入仓库编码" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="库区编码" prop="areaCode">
-              <el-input v-model="queryParams.areaCode" placeholder="请输入库区编码" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.areaCode" :config="areaCodeConfig" placeholder="请输入库区编码" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="库位编码" prop="locationCode">
-              <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.locationCode" :config="locationCodeConfig" placeholder="请输入库位编码" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="接收日期" prop="receiptDate">
               <el-date-picker clearable v-model="queryParams.receiptDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
@@ -145,6 +145,8 @@
 <script setup name="InventoryDetail" lang="ts">
 import { listInventoryDetail, getInventoryDetail, delInventoryDetail, addInventoryDetail, updateInventoryDetail } from '@/api/wms/inventoryDetail';
 import { InventoryDetailVO, InventoryDetailQuery, InventoryDetailForm } from '@/api/wms/inventoryDetail/types';
+import HistoryInput from '@/components/HistoryInput/index.vue';
+import { HistoryConfig } from '@/types/history';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_status, wms_stock_in_status, wms_inventory_type } = toRefs<any>(proxy?.useDict('wms_inventory_status', 'wms_stock_in_status', 'wms_inventory_type'));
@@ -235,6 +237,91 @@ const data = reactive<PageData<InventoryDetailForm, InventoryDetailQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+// 搜索历史记录配置（与 inventory 页共用历史）
+const itemCodeConfig: HistoryConfig = {
+  key: 'itemCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventory',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const itemNameConfig: HistoryConfig = {
+  key: 'itemName',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventory',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const batchCodeConfig: HistoryConfig = {
+  key: 'batchCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventory',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const warehouseCodeConfig: HistoryConfig = {
+  key: 'warehouseCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventory',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const areaCodeConfig: HistoryConfig = {
+  key: 'areaCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventory',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const locationCodeConfig: HistoryConfig = {
+  key: 'locationCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventory',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
 
 /** 查询库存明细记录列表 */
 const getList = async () => {

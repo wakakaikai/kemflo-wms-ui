@@ -5,10 +5,7 @@
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="物料编码" prop="itemCode">
-              <el-input v-model="queryParams.itemCode" placeholder="请输入物料编码" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="物料名称" prop="itemName">
-              <el-input v-model="queryParams.itemName" placeholder="请输入物料名称" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.itemCode" :config="itemCodeConfig" placeholder="请输入物料编码" @keyup.enter="handleQuery" />
             </el-form-item>
             <!--            <el-form-item label="库存状态" prop="inventoryStatus">
               <el-select v-model="queryParams.inventoryStatus" placeholder="请选择库存状态" clearable>
@@ -16,13 +13,13 @@
               </el-select>
             </el-form-item>-->
             <el-form-item label="仓库编码" prop="warehouseCode">
-              <el-input v-model="queryParams.warehouseCode" placeholder="请输入仓库编码" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.warehouseCode" :config="warehouseCodeConfig" placeholder="请输入仓库编码" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="库区编码" prop="areaCode">
-              <el-input v-model="queryParams.areaCode" placeholder="请输入库区编码" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.areaCode" :config="areaCodeConfig" placeholder="请输入库区编码" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="库位编码" prop="locationCode">
-              <el-input v-model="queryParams.locationCode" placeholder="请输入库位编码" clearable @keyup.enter="handleQuery" />
+              <HistoryInput v-model="queryParams.locationCode" :config="locationCodeConfig" placeholder="请输入库位编码" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -146,6 +143,8 @@
 <script setup name="Inventory" lang="ts">
 import { listInventory, getInventory, delInventory, addInventory, updateInventory } from '@/api/wms/inventory';
 import { InventoryVO, InventoryQuery, InventoryForm } from '@/api/wms/inventory/types';
+import HistoryInput from '@/components/HistoryInput/index.vue';
+import { HistoryConfig } from '@/types/history';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_special_flag, wms_inventory_type } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag', 'wms_inventory_type'));
@@ -228,6 +227,63 @@ const data = reactive<PageData<InventoryForm, InventoryQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+// 搜索历史记录配置
+const itemCodeConfig: HistoryConfig = {
+  key: 'itemCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventory',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const warehouseCodeConfig: HistoryConfig = {
+  key: 'warehouseCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventory',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const areaCodeConfig: HistoryConfig = {
+  key: 'areaCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventory',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const locationCodeConfig: HistoryConfig = {
+  key: 'locationCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventory',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
 
 // 列显隐信息
 const columns = ref<FieldOption[]>([
