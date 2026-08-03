@@ -2,7 +2,7 @@
   <div class="p-2">
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
-        <el-card shadow="hover">
+        <el-card shadow="hover" class="inventory-search-header-card">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="移动类型" prop="moveType">
               <el-select v-model="queryParams.moveType" placeholder="请选择移动类型" filterable clearable style="width: 100%">
@@ -610,3 +610,11 @@ onMounted(() => {
   getList();
 });
 </script>
+
+<style lang="scss" scoped>
+/* 历史下拉不被搜索卡片裁剪 */
+.inventory-search-header-card,
+.inventory-search-header-card :deep(.el-card__body) {
+  overflow: visible;
+}
+</style>

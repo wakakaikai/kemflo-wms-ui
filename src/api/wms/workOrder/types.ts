@@ -319,6 +319,16 @@ export interface WorkOrderQuery extends PageQuery {
   mantissaOrderFlag?: number;
 
   /**
+   * 工单类型（如 ZP92 拆解 → 00092，ZP93 粉碎 → 00093）
+   */
+  workOrderType?: string;
+
+  /**
+   * 工单状态列表（如 RELEASABLE、CRTD）
+   */
+  statusList?: string[];
+
+  /**
    * 工单优先级
    */
   priority?: number;

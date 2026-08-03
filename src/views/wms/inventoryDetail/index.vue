@@ -2,7 +2,7 @@
   <div class="p-2">
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
-        <el-card shadow="hover">
+        <el-card shadow="hover" class="inventory-detail-search-header-card">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="物料编码" prop="itemCode">
               <HistoryInput v-model="queryParams.itemCode" :config="itemCodeConfig" placeholder="请输入物料编码" @keyup.enter="handleQuery" />
@@ -767,6 +767,11 @@ onMounted(() => {
 });
 </script>
 <style lang="scss" scoped>
+/* 历史下拉不被搜索卡片裁剪 */
+.inventory-detail-search-header-card,
+.inventory-detail-search-header-card :deep(.el-card__body) {
+  overflow: visible;
+}
 .box-card {
   height: 100%;
   width: 100%;

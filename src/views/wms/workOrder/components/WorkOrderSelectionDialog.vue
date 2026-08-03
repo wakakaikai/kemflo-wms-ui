@@ -27,8 +27,15 @@
       <!-- 工单列表 -->
       <div class="order-list" v-loading="loading">
         <el-table ref="orderTableRef" :data="workOrderList" border height="400" @selection-change="handleSelectionChange" row-key="id">
-          <el-table-column type="selection" width="55" />
-          <el-table-column prop="workOrderNo" label="工单号" fixed>
+          <el-table-column v-if="singleSelect" width="55" align="center">
+            <template #default="{ row }">
+              <el-radio v-model="singleSelectedNo" :value="row.workOrderNo" @change="handleSingleSelect(row)">
+                <span></span>
+              </el-radio>
+            </template>
+          </el-table-column>
+          <el-table-column v-else type="selection" width="55" />
+          <el-table-column prop="workOrderNo" label="工单号">
             <template #default="{ row }">
               <el-tooltip v-if="row.isUrgent" content="紧急工单" placement="top">
                 <el-tag type="danger" size="small">急</el-tag>
@@ -111,12 +118,21 @@ interface Props {
   bomMode?: 'issue' | 'prep';
   /** 是否显示列表内 BOM 快捷操作（统一工作台选单时关闭） */
   showBomAction?: boolean;
+  /** 工单类型过滤（如 ZP92 → 00092，ZP93 → 00093），传空则不过滤 */
+  workOrderType?: string;
+  /** 工单状态过滤（如 RELEASABLE、CRTD），传空数组则不过滤 */
+  statusList?: string[];
+  /** 单选模式：仅允许选择一个工单（用 radio 替代多选复选框） */
+  singleSelect?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   selectedOrders: () => [],
   bomMode: 'issue',
-  showBomAction: true
+  showBomAction: true,
+  workOrderType: undefined,
+  statusList: () => [],
+  singleSelect: false
 });
 
 const bomMode = computed(() => props.bomMode);
@@ -217,9 +233,24 @@ const workOrderList = ref<WorkOrderVO[]>([]);
 const pickedOrders = ref<WorkOrderVO[]>([]);
 const selectedIds = ref<number[]>([]);
 const syncingSelection = ref(false);
+// 单选模式下当前勾选的工单号
+const singleSelectedNo = ref<string | number | null>(null);
+
+/** 单选：选择某行工单 */
+const handleSingleSelect = (row: WorkOrderVO) => {
+  singleSelectedNo.value = row.workOrderNo;
+  pickedOrders.value = [
+    {
+      ...row,
+      materialIssues: orderMaterialIssues.value[row.workOrderNo] ?? row.materialIssues
+    }
+  ];
+  selectedIds.value = pickedOrders.value.map((item) => item.id);
+};
 
 const initPickedOrdersFromProps = () => {
   pickedOrders.value = [...props.selectedOrders];
+  singleSelectedNo.value = props.singleSelect ? (pickedOrders.value[0]?.workOrderNo ?? null) : null;
   orderMaterialIssues.value = {};
   props.selectedOrders.forEach((o) => {
     if (o.materialIssues?.length) {
@@ -230,6 +261,7 @@ const initPickedOrdersFromProps = () => {
 
 /** 按 pickedOrders 同步当前页表格勾选（与外部列表保持一致） */
 const syncTableSelection = async (clearAll = false) => {
+  if (props.singleSelect) return;
   await nextTick();
   const table = orderTableRef.value;
   if (!table) return;
@@ -282,7 +314,7 @@ const handleBatchInputConfirm = (values: string[]) => {
 const getList = async () => {
   loading.value = true;
   try {
-    const res = await listWorkOrder(queryParams.value);
+    const res = await listWorkOrder({ ...queryParams.value, workOrderType: props.workOrderType, statusList: props.statusList });
     workOrderList.value = res.rows;
     total.value = res.total;
     if (visible.value) {

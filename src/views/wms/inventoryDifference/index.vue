@@ -3,7 +3,7 @@
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover" class="inventory-difference-header-card">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto" :rules="rules">
             <el-form-item label="物料编码" prop="itemCodeStr">
               <HistoryInput v-model="queryParams.itemCodeStr" :config="itemCodeConfig" placeholder="请输入物料编码" @keyup.enter="handleQuery()">
                 <template #append>
@@ -11,7 +11,7 @@
                 </template>
               </HistoryInput>
             </el-form-item>
-            <el-form-item label="仓库编码" prop="warehouseCode" :rules="[{ required: true, message: '仓别为必填项', trigger: 'blur' }]">
+            <el-form-item label="仓库编码" prop="warehouseCode" >
               <HistoryInput v-model="queryParams.warehouseCode" :config="warehouseCodeConfig" placeholder="请输入仓库编码" @keyup.enter="handleQuery()">
                 <template #append>
                   <el-button icon="Search" type="primary" @click="showWarehouseDialog" />
@@ -112,11 +112,14 @@ const data = reactive<PageData<any, InventoryDiffQuery>>({
     itemCodeStr: undefined,
     itemCodeList: [],
     warehouseCode: undefined,
+    compareDimension: 'sap',
     params: {}
   },
-  rules: {}
+  rules: {
+    warehouseCode: [{ required: true, message: '仓库编码不能为空', trigger: 'blur' }]
+  }
 });
-const { queryParams } = toRefs(data);
+const { queryParams, rules } = toRefs(data);
 
 const itemCodeConfig: HistoryConfig = {
   key: 'itemCode',
