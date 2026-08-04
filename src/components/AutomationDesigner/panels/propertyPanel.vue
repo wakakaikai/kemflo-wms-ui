@@ -1,8 +1,8 @@
 <template>
   <div class="property-panel-inner">
     <div v-if="!node" class="empty-hint">
-      <el-icon style="font-size: 40px; color: #ccc"><Collection /></el-icon>
-      <p>点击节点编辑属性</p>
+      <el-icon style="font-size: 40px; color: #d6e4ff"><Collection /></el-icon>
+      <p>选中画布中的节点<br />在此编辑属性配置</p>
     </div>
     <template v-else>
       <div class="node-info-bar">
@@ -75,7 +75,7 @@
 
         <h4 class="section-title">失败策略</h4>
         <el-form-item label="策略">
-          <el-select v-model="formData.failStrategy" @change="handleChange">
+          <el-select v-model="formData.failStrategy" style="width: 100%" @change="handleChange">
             <el-option label="停止" value="STOP" />
             <el-option label="跳过继续" value="CONTINUE" />
             <el-option label="重试" value="RETRY" />
@@ -103,6 +103,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue';
 import { Node } from '@antv/x6';
+import { Collection } from '@element-plus/icons-vue';
 import { getNodeConfig } from '../types';
 import { getConfigFormFields, FormField } from '../config/nodeConfig';
 
@@ -122,37 +123,78 @@ const nodeId = ref('');
 
 const nodeConfig = computed(() => getNodeConfig(nodeType.value));
 
+function clearFormData() {
+  Object.keys(formData).forEach((key) => {
+    delete formData[key];
+  });
+}
+
+function toFormValue(field: FormField, value: any) {
+  if (field.type === 'json') {
+    if (value === undefined || value === null || value === '') return '';
+    if (typeof value === 'string') return value;
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+  return value;
+}
+
+function fromFormValue(field: FormField, value: any) {
+  if (field.type !== 'json') return value;
+  if (value === undefined || value === null || value === '') return value;
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
 watch(() => props.node, (newNode) => {
-  if (!newNode) return;
+  if (!newNode) {
+    clearFormData();
+    configFields.value = [];
+    nodeType.value = '';
+    nodeId.value = '';
+    return;
+  }
   const data = newNode.getData() || {};
   nodeType.value = data.nodeType || '';
   nodeId.value = newNode.id;
   configFields.value = getConfigFormFields(nodeType.value);
 
-  Object.assign(formData, {
-    name: newNode.attr('label/text') || '',
-    nodeId: newNode.id,
-    ...(data.config || {}),
-    failStrategy: data.config?.failStrategy || 'STOP',
-    timeout: data.config?.timeout || 0,
+  clearFormData();
+  const config = data.config || {};
+  const next: Record<string, any> = {
+    name: data.label || newNode.attr('label/text') || '',
+    failStrategy: config.failStrategy || 'STOP',
+    timeout: config.timeout ?? 0,
+  };
+  configFields.value.forEach((field) => {
+    const raw = config[field.key] !== undefined ? config[field.key] : field.defaultValue;
+    next[field.key] = toFormValue(field, raw);
   });
-  Object.assign(retry, data.config?.retry || { maxRetryCount: 3, retryInterval: 10 });
-}, { immediate: false });
+  Object.assign(formData, next);
+  Object.assign(retry, config.retry || { maxRetryCount: 3, retryInterval: 10 });
+}, { immediate: true });
 
 function handleChange() {
   if (!props.node) return;
-  // merge all config
   const config: Record<string, any> = {};
-  configFields.value.forEach(f => {
-    config[f.key] = formData[f.key];
+  configFields.value.forEach((f) => {
+    config[f.key] = fromFormValue(f, formData[f.key]);
   });
   config.failStrategy = formData.failStrategy;
   config.timeout = formData.timeout;
   config.retry = { ...retry };
 
-  // Also update node label
   if (formData.name) {
     props.node.attr('label/text', formData.name);
+    const data = props.node.getData() || {};
+    props.node.setData({ ...data, label: formData.name });
   }
 
   emit('updateConfig', config);
@@ -164,20 +206,17 @@ function handleChange() {
 .empty-hint {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 60px 0; color: #c9cdd4;
+  padding: 80px 24px; color: #c2c8d5;
+  text-align: center;
 }
-.empty-hint .el-icon { font-size: 40px; }
-.empty-hint p { margin-top: 8px; font-size: 13px; color: #86909c; }
-.panel-header {
-  display: none;
-}
+.empty-hint .el-icon { font-size: 36px; color: #d6e4ff; }
+.empty-hint p { margin-top: 12px; font-size: 13px; color: #8c8c8c; line-height: 1.5; }
 .property-form { width: 100%; padding: 0 16px 16px; }
 .section-title {
   font-size: 12px; font-weight: 600; color: #4e5969;
   padding: 12px 0 8px; margin: 0;
   border-top: 1px solid #f0f0f0;
 }
-.section-title:first-child { border-top: none; }
 .property-form :deep(.el-form-item) { margin-bottom: 12px; }
 .property-form :deep(.el-form-item__label) { font-size: 12px; color: #4e5969; padding-bottom: 4px; }
 .property-form :deep(.el-input__wrapper) { box-shadow: 0 0 0 1px #e5e6e8 inset; }
@@ -187,6 +226,5 @@ function handleChange() {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 16px; border-bottom: 1px solid #f0f0f0; margin-bottom: 8px;
 }
-.node-info-bar .node-type-tag { font-size: 11px; }
 .no-config { font-size: 12px; color: #86909c; text-align: center; padding: 16px 0; }
 </style>

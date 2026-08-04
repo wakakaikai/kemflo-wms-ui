@@ -7,14 +7,14 @@ export interface AutoEventOutboxQuery extends PageQuery {
 }
 
 export interface AutoEventOutboxVo {
-  eventId: number | string;
+  id: number | string;
+  eventId: string;
   eventType: string;
-  businessType: string;
-  businessId: string;
+  businessType?: string;
+  businessId?: string;
   status: string;
-  retryCount: number;
-  nextRetryTime?: Date;
-  consumeTime?: Date;
-  createTime: Date;
-  updateTime: Date;
+  retryCount?: number;
+  nextRetryTime?: string;
+  consumeTime?: string;
+  createTime?: string;
 }

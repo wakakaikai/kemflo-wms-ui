@@ -6,6 +6,18 @@ export const listNodeExecution = (query: AutoNodeExecutionQuery): AxiosPromise<A
   return request({ url: '/automation/nodeExecution/list', method: 'get', params: query });
 };
 
+export const getNodeExecution = (id: number | string): AxiosPromise<AutoNodeExecutionVo> => {
+  return request({ url: '/automation/nodeExecution/' + id, method: 'get' });
+};
+
+export const getNodeExecutionInput = (id: number | string): AxiosPromise<string> => {
+  return request({ url: `/automation/nodeExecution/${id}/input`, method: 'get' });
+};
+
+export const getNodeExecutionOutput = (id: number | string): AxiosPromise<string> => {
+  return request({ url: `/automation/nodeExecution/${id}/output`, method: 'get' });
+};
+
 export const retryNodeExecution = (id: number | string) => {
   return request({ url: `/automation/nodeExecution/${id}/retry`, method: 'post' });
 };

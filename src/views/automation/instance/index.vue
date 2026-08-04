@@ -51,12 +51,12 @@
         <el-table-column label="流程定义" prop="definitionName" min-width="160" />
         <el-table-column label="触发类型" align="center" width="120">
           <template #default="scope">
-            <dict-tag :options="auto_trigger_type" :value="scope.row.triggerType" />
+            <dict-tag :options="triggerTypeOptions" :value="scope.row.triggerType" />
           </template>
         </el-table-column>
         <el-table-column label="状态" align="center" width="100">
           <template #default="scope">
-            <dict-tag :options="auto_instance_status" :value="scope.row.status" />
+            <dict-tag :options="instanceStatusOptions" :value="scope.row.status" />
           </template>
         </el-table-column>
         <el-table-column label="开始时间" align="center" width="170" prop="startTime">
@@ -105,7 +105,7 @@
         <el-descriptions-item label="流程定义">{{ currentInstance.definitionName }}</el-descriptions-item>
         <el-descriptions-item label="触发类型">{{ currentInstance.triggerType }}</el-descriptions-item>
         <el-descriptions-item label="状态">
-          <dict-tag :options="auto_instance_status" :value="currentInstance.status" />
+          <dict-tag :options="instanceStatusOptions" :value="currentInstance.status" />
         </el-descriptions-item>
         <el-descriptions-item label="开始时间">{{ proxy?.parseTime(currentInstance.startTime) }}</el-descriptions-item>
         <el-descriptions-item label="结束时间">{{ proxy?.parseTime(currentInstance.endTime) }}</el-descriptions-item>
@@ -122,15 +122,20 @@
 </template>
 
 <script setup name="AutomationInstance" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
 import { ElFormInstance } from 'element-plus';
 import { listInstance, getInstance, terminateInstance } from '@/api/automation/instance';
 import { AutoInstanceQuery, AutoInstanceVo } from '@/api/automation/instance/types';
 import { useRouter } from 'vue-router';
+import {
+  AUTO_INSTANCE_STATUS_OPTIONS, AUTO_TRIGGER_TYPE_OPTIONS, resolveDictOptions
+} from '@/views/automation/options';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const router = useRouter();
 const { auto_instance_status, auto_trigger_type } = toRefs<any>(proxy?.useDict('auto_instance_status', 'auto_trigger_type'));
+const instanceStatusOptions = computed(() => resolveDictOptions(auto_instance_status.value, AUTO_INSTANCE_STATUS_OPTIONS));
+const triggerTypeOptions = computed(() => resolveDictOptions(auto_trigger_type.value, AUTO_TRIGGER_TYPE_OPTIONS));
 
 const instanceList = ref<AutoInstanceVo[]>([]);
 const total = ref(0);
@@ -161,8 +166,8 @@ const getList = async () => {
   loading.value = true;
   try {
     const res = await listInstance(queryParams.value);
-    instanceList.value = res.data.rows ?? res.data;
-    total.value = res.data.total ?? res.data.length;
+    instanceList.value = (res as any).rows ?? [];
+    total.value = (res as any).total ?? 0;
   } finally { loading.value = false; }
 };
 

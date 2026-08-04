@@ -9,17 +9,16 @@ export interface AutoNodeExecutionQuery extends PageQuery {
 export interface AutoNodeExecutionVo {
   id: number | string;
   instanceId: number | string;
-  nodeId: string;
-  nodeName: string;
-  nodeType: string;
+  nodeId?: string;
+  nodeName?: string;
+  nodeType?: string;
+  executionNo?: number;
   status: string;
-  retryCount: number;
-  startTime?: Date;
-  endTime?: Date;
+  retryCount?: number;
+  startTime?: string;
+  endTime?: string;
   durationMs?: number;
-  inputData?: string;
-  outputData?: string;
+  errorCode?: string;
   errorMessage?: string;
-  createTime: Date;
-  updateTime: Date;
+  createTime?: string;
 }

@@ -51,14 +51,19 @@
       <el-table v-loading="loading" :data="nodeExecutionList" border>
         <el-table-column label="节点名称" prop="nodeName" min-width="150" />
         <el-table-column label="节点类型" align="center" width="120" prop="nodeType" />
-        <el-table-column label="执行次数" align="center" width="80" prop="retryCount">
+        <el-table-column label="执行次数" align="center" width="90" prop="executionNo">
+          <template #default="scope">
+            <span>{{ scope.row.executionNo || 0 }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="重试次数" align="center" width="80" prop="retryCount">
           <template #default="scope">
             <span>{{ scope.row.retryCount || 0 }}</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" align="center" width="100">
           <template #default="scope">
-            <dict-tag :options="auto_node_status" :value="scope.row.status" />
+            <dict-tag :options="nodeStatusOptions" :value="scope.row.status" />
           </template>
         </el-table-column>
         <el-table-column label="开始时间" align="center" width="170" prop="startTime">
@@ -119,16 +124,18 @@
 </template>
 
 <script setup name="AutomationNodeExecution" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
 import { ElFormInstance } from 'element-plus';
-import { listNodeExecution, retryNodeExecution } from '@/api/automation/nodeExecution';
+import { listNodeExecution, retryNodeExecution, getNodeExecutionInput, getNodeExecutionOutput } from '@/api/automation/nodeExecution';
 import { AutoNodeExecutionQuery, AutoNodeExecutionVo } from '@/api/automation/nodeExecution/types';
 import { useRoute, useRouter } from 'vue-router';
+import { AUTO_NODE_STATUS_OPTIONS, resolveDictOptions } from '@/views/automation/options';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const route = useRoute();
 const router = useRouter();
 const { auto_node_status } = toRefs<any>(proxy?.useDict('auto_node_status'));
+const nodeStatusOptions = computed(() => resolveDictOptions(auto_node_status.value, AUTO_NODE_STATUS_OPTIONS));
 
 const nodeExecutionList = ref<AutoNodeExecutionVo[]>([]);
 const total = ref(0);
@@ -158,8 +165,8 @@ const getList = async () => {
   loading.value = true;
   try {
     const res = await listNodeExecution(queryParams.value);
-    nodeExecutionList.value = res.data.rows ?? res.data;
-    total.value = res.data.total ?? res.data.length;
+    nodeExecutionList.value = (res as any).rows ?? [];
+    total.value = (res as any).total ?? 0;
   } finally { loading.value = false; }
 };
 
@@ -180,21 +187,30 @@ const goBack = () => {
   router.push({ path: '/automation/instance' });
 };
 
+const formatJson = (raw?: string | null) => {
+  if (!raw) return '无数据';
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
+};
+
 /** 查看输入输出 */
 const handleViewIO = async (row: AutoNodeExecutionVo) => {
-  ioContent.input = row.inputData
-    ? JSON.stringify(JSON.parse(row.inputData), null, 2)
-    : '无输入数据';
-  ioContent.output = row.outputData
-    ? JSON.stringify(JSON.parse(row.outputData), null, 2)
-    : '无输出数据';
-  ioDialog.title = '节点: ' + row.nodeName;
+  const [inputRes, outputRes] = await Promise.all([
+    getNodeExecutionInput(row.id),
+    getNodeExecutionOutput(row.id)
+  ]);
+  ioContent.input = formatJson(inputRes.data);
+  ioContent.output = formatJson(outputRes.data);
+  ioDialog.title = '节点: ' + (row.nodeName || row.nodeId || row.id);
   ioDialog.visible = true;
 };
 
 /** 重试 */
 const handleRetry = async (row: AutoNodeExecutionVo) => {
-  await proxy?.$modal.confirm('确认重试节点"' + row.nodeName + '"?');
+  await proxy?.$modal.confirm('确认重试节点"' + (row.nodeName || row.id) + '"?');
   await retryNodeExecution(row.id);
   proxy?.$modal.msgSuccess('已触发重试');
   await getList();

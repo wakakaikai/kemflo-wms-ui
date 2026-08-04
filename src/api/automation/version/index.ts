@@ -9,3 +9,15 @@ export const listVersion = (query: AutoVersionQuery): AxiosPromise<AutoVersionVo
 export const getVersion = (id: number | string): AxiosPromise<AutoVersionVo> => {
   return request({ url: '/automation/version/' + id, method: 'get' });
 };
+
+export const getRuntimeJson = (id: number | string): AxiosPromise<string> => {
+  return request({ url: `/automation/version/${id}/runtimeJson`, method: 'get' });
+};
+
+export const getDesignJson = (id: number | string): AxiosPromise<{ designJson?: string }> => {
+  return request({ url: `/automation/version/${id}/designJson`, method: 'post' });
+};
+
+export const publishVersion = (id: number | string) => {
+  return request({ url: `/automation/version/${id}/publish`, method: 'post' });
+};

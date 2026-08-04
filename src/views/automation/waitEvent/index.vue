@@ -40,7 +40,7 @@
         <el-table-column label="等待键" prop="waitKey" min-width="180" show-overflow-tooltip />
         <el-table-column label="状态" align="center" width="100">
           <template #default="scope">
-            <dict-tag :options="auto_wait_status" :value="scope.row.status" />
+            <dict-tag :options="waitStatusOptions" :value="scope.row.status" />
           </template>
         </el-table-column>
         <el-table-column label="过期时间" align="center" width="170" prop="expireTime">
@@ -81,13 +81,15 @@
 </template>
 
 <script setup name="AutomationWaitEvent" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
 import { ElFormInstance } from 'element-plus';
 import { listWaitEvent, completeWaitEvent, cancelWaitEvent } from '@/api/automation/waitEvent';
 import { AutoWaitEventQuery, AutoWaitEventVo } from '@/api/automation/waitEvent/types';
+import { AUTO_WAIT_STATUS_OPTIONS, resolveDictOptions } from '@/views/automation/options';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { auto_wait_status } = toRefs<any>(proxy?.useDict('auto_wait_status'));
+const waitStatusOptions = computed(() => resolveDictOptions(auto_wait_status.value, AUTO_WAIT_STATUS_OPTIONS));
 
 const waitEventList = ref<AutoWaitEventVo[]>([]);
 const total = ref(0);
@@ -114,8 +116,8 @@ const getList = async () => {
   loading.value = true;
   try {
     const res = await listWaitEvent(queryParams.value);
-    waitEventList.value = res.data.rows ?? res.data;
-    total.value = res.data.total ?? res.data.length;
+    waitEventList.value = (res as any).rows ?? [];
+    total.value = (res as any).total ?? 0;
   } finally { loading.value = false; }
 };
 

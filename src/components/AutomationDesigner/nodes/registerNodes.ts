@@ -1,96 +1,67 @@
 // X6 Vue 节点组件注册
-import { Graph } from '@antv/x6';
-// 显式导入侧效应模块以确保 vue-shape 基础节点注册不被 Vite tree-shake 移除
-// （@antv/x6-vue-shape 的 package.json 未声明 sideEffects，侧效应会被树摇掉）
-import '@antv/x6-vue-shape/es/node';
-import '@antv/x6-vue-shape/es/view';
-import { ALL_NODE_CONFIGS, NodeCategory } from '../types';
-
-// 导入 Vue 节点组件
+import '@antv/x6-vue-shape';
+import { register } from '@antv/x6-vue-shape';
+import { ALL_NODE_CONFIGS } from '../types';
 import BaseNode from './BaseNode.vue';
-import TriggerNode from './TriggerNode.vue';
-import ControlNode from './ControlNode.vue';
-import DataNode from './DataNode.vue';
-import IntegrationNode from './IntegrationNode.vue';
-import DeviceNode from './DeviceNode.vue';
-import ApprovalNode from './ApprovalNode.vue';
 
-// 节点类型到 Vue 组件的映射
-const nodeComponentMap: Record<string, any> = {
-  // 触发节点 - 使用 TriggerNode
-  MANUAL_TRIGGER: TriggerNode,
-  CRON_TRIGGER: TriggerNode,
-  WEBHOOK_TRIGGER: TriggerNode,
-  DATA_TRIGGER: TriggerNode,
-  MESSAGE_TRIGGER: TriggerNode,
-  DEVICE_PROPERTY_TRIGGER: TriggerNode,
-  // 控制节点 - 使用 ControlNode
-  CONDITION: ControlNode,
-  SWITCH: ControlNode,
-  LOOP: ControlNode,
-  DELAY: ControlNode,
-  WAIT: ControlNode,
-  END: ControlNode,
-  // 数据节点 - 使用 DataNode
-  DATA_QUERY: DataNode,
-  DATA_CREATE: DataNode,
-  DATA_UPDATE: DataNode,
-  DATA_DELETE: DataNode,
-  DATA_MAPPING: DataNode,
-  DATA_FILTER: DataNode,
-  // 集成节点 - 使用 IntegrationNode
-  HTTP_CALL: IntegrationNode,
-  JDBC_CALL: IntegrationNode,
-  SAP_CALL: IntegrationNode,
-  MQTT_CALL: IntegrationNode,
-  SFTP_CALL: IntegrationNode,
-  MAIL_CALL: IntegrationNode,
-  // 设备节点 - 使用 DeviceNode
-  DEVICE_READ: DeviceNode,
-  DEVICE_WRITE: DeviceNode,
-  DEVICE_BATCH_READ: DeviceNode,
-  DEVICE_COMMAND: DeviceNode,
-  DEVICE_WAIT_RESPONSE: DeviceNode,
-  DEVICE_STATUS: DeviceNode,
-  // 审批节点 - 使用 ApprovalNode
-  APPROVAL_START: ApprovalNode,
-  APPROVAL_WAIT: ApprovalNode,
-  APPROVAL_TERMINATE: ApprovalNode,
+const COLOR_PORT_GRAY = '#C2C8D5';
+const PORT_DOT_RADIUS = 3;
+
+const basePortAttrs = {
+  r: PORT_DOT_RADIUS,
+  magnet: true,
+  stroke: COLOR_PORT_GRAY,
+  strokeWidth: 1,
+  fill: COLOR_PORT_GRAY,
+  style: { visibility: 'hidden' },
 };
 
-// 获取节点对应的 Vue 组件
-export function getNodeComponent(type: string): any {
-  return nodeComponentMap[type] || BaseNode;
+const createPortGroup = (position: 'top' | 'right' | 'bottom' | 'left') => ({
+  position,
+  attrs: { circle: { ...basePortAttrs } },
+});
+
+export const AGENT_PORTS = {
+  groups: {
+    top: createPortGroup('top'),
+    right: createPortGroup('right'),
+    bottom: createPortGroup('bottom'),
+    left: createPortGroup('left'),
+  },
+  items: [
+    { id: 'top', group: 'top' },
+    { id: 'right', group: 'right' },
+    { id: 'bottom', group: 'bottom' },
+    { id: 'left', group: 'left' },
+  ],
+};
+
+export const CARD_WIDTH = 260;
+export const CARD_HEIGHT = 96;
+
+/** 统一使用 Agent Card 风格节点 */
+export function getNodeComponent(_type: string): any {
+  return BaseNode;
 }
 
-// 注册所有 Vue 节点到 X6
+/**
+ * 必须使用 @antv/x6-vue-shape 的 register()，
+ * 才会同时写入 shapeMaps；仅 Graph.registerNode 会导致节点可选中但组件不渲染。
+ */
 export function registerVueNodes() {
   ALL_NODE_CONFIGS.forEach((cfg) => {
-    const component = getNodeComponent(cfg.type);
-    const isDiamond = cfg.shape === 'diamond' || cfg.type === 'CONDITION' || cfg.type === 'SWITCH';
-
-    Graph.registerNode(cfg.type + '-vue', {
-      inherit: 'vue-shape',
-      width: 140,
-      height: 56,
-      component,
+    register({
+      shape: cfg.type + '-vue',
+      width: CARD_WIDTH,
+      height: CARD_HEIGHT,
+      component: BaseNode,
       data: {
         nodeType: cfg.type,
         label: cfg.label,
+        color: cfg.color,
         config: { ...(cfg.defaultConfig || {}) },
       },
-      ports: {
-        groups: {
-          top: { position: 'top', attrs: { circle: { r: 4, magnet: true, stroke: '#5F95FF', strokeWidth: 1, fill: '#fff' } } },
-          bottom: { position: 'bottom', attrs: { circle: { r: 4, magnet: true, stroke: '#5F95FF', strokeWidth: 1, fill: '#fff' } } },
-          left: { position: 'left', attrs: { circle: { r: 4, magnet: true, stroke: '#5F95FF', strokeWidth: 1, fill: '#fff' } } },
-          right: { position: 'right', attrs: { circle: { r: 4, magnet: true, stroke: '#5F95FF', strokeWidth: 1, fill: '#fff' } } },
-        },
-        items: [
-          { group: 'top' }, { group: 'bottom' },
-          { group: 'left' }, { group: 'right' },
-        ],
-      },
+      ports: AGENT_PORTS,
     });
   });
 }

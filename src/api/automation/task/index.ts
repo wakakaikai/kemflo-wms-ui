@@ -6,6 +6,10 @@ export const listTask = (query: AutoTaskQuery): AxiosPromise<AutoTaskVo[]> => {
   return request({ url: '/automation/task/list', method: 'get', params: query });
 };
 
+export const getTask = (id: number | string): AxiosPromise<AutoTaskVo> => {
+  return request({ url: '/automation/task/' + id, method: 'get' });
+};
+
 export const retryTask = (id: number | string) => {
   return request({ url: `/automation/task/${id}/retry`, method: 'post' });
 };

@@ -12,18 +12,16 @@ export interface AutoInstanceVo {
   instanceNo: string;
   definitionId: number | string;
   definitionName?: string;
+  definitionVersion?: number;
+  businessType?: string;
+  businessId?: string;
   status: string;
   triggerType: string;
-  startTime?: Date;
-  endTime?: Date;
+  currentNodeId?: string;
+  startTime?: string;
+  endTime?: string;
   durationMs?: number;
+  errorCode?: string;
   errorMessage?: string;
-  createTime: Date;
-  updateTime: Date;
-}
-
-export interface AutoInstanceForm {
-  id?: number | string;
-  definitionId?: number | string;
-  triggerType?: string;
+  createTime?: string;
 }

@@ -99,17 +99,27 @@ export function getNodeConfig(type: string): NodeConfigItem | undefined {
   return ALL_NODE_CONFIGS.find(n => n.type === type);
 }
 
-// 端口定义
+// 端口定义（默认隐藏，悬停/已连接时显示）
+const portCircle = {
+  r: 3,
+  magnet: true,
+  stroke: '#C2C8D5',
+  strokeWidth: 1,
+  fill: '#C2C8D5',
+  style: { visibility: 'hidden' as const },
+};
 export const NODE_PORTS = {
   groups: {
-    top: { position: 'top', attrs: { circle: { r: 4, magnet: true, stroke: '#5F95FF', strokeWidth: 1, fill: '#fff' } } },
-    bottom: { position: 'bottom', attrs: { circle: { r: 4, magnet: true, stroke: '#5F95FF', strokeWidth: 1, fill: '#fff' } } },
-    left: { position: 'left', attrs: { circle: { r: 4, magnet: true, stroke: '#5F95FF', strokeWidth: 1, fill: '#fff' } } },
-    right: { position: 'right', attrs: { circle: { r: 4, magnet: true, stroke: '#5F95FF', strokeWidth: 1, fill: '#fff' } } },
+    top: { position: 'top', attrs: { circle: { ...portCircle } } },
+    bottom: { position: 'bottom', attrs: { circle: { ...portCircle } } },
+    left: { position: 'left', attrs: { circle: { ...portCircle } } },
+    right: { position: 'right', attrs: { circle: { ...portCircle } } },
   },
   items: [
-    { group: 'top' }, { group: 'bottom' },
-    { group: 'left' }, { group: 'right' },
+    { id: 'top', group: 'top' },
+    { id: 'bottom', group: 'bottom' },
+    { id: 'left', group: 'left' },
+    { id: 'right', group: 'right' },
   ],
 };
 

@@ -1,89 +1,257 @@
 <template>
   <div
-    class="x6-node-vue"
-    :class="[shapeClass, 'status-' + (nodeStatus || 'idle')]"
-    :style="{ '--node-color': nodeColor }"
-    @mouseenter="hover = true" @mouseleave="hover = false"
-    @click.stop
+    class="agent-card"
+    :class="[themeClass, { 'is-start': isStart, 'is-end': isEnd }]"
+    @mouseenter="hover = true"
+    @mouseleave="hover = false"
   >
-    <div class="node-accent" :style="{ background: nodeColor }"></div>
-    <div class="node-icon" :style="{ background: nodeColor + '15', color: nodeColor }">
-      <span class="icon-text">{{ iconText }}</span>
+    <div class="header">
+      <div class="icon">{{ iconText }}</div>
+      <div class="title" :title="nodeLabel">{{ nodeLabel }}</div>
+      <div v-if="badge" class="badge">{{ badge }}</div>
+      <div v-show="hover && !isStart && !isEnd" class="actions">
+        <span class="op" title="复制节点" @click.stop="handleCopy">⧉</span>
+        <span class="op" title="删除节点" @click.stop="handleDelete">✕</span>
+      </div>
     </div>
-    <div class="node-content">
-      <div class="node-label" :title="nodeLabel">{{ nodeLabel }}</div>
-      <div class="node-type-tag">{{ categoryLabel }}</div>
+
+    <div v-if="isStart" class="body">
+      <span class="section">流程开始节点</span>
     </div>
-    <div v-if="nodeStatus && nodeStatus !== 'idle'" class="node-status-dot" :class="'dot-' + nodeStatus" />
-    <div v-show="hover" class="node-plus-btn" :style="{ background: nodeColor }" @click.stop="handlePlusClick">+</div>
+    <div v-else-if="isEnd" class="footer">
+      <span class="section">流程结束节点</span>
+    </div>
+    <div v-else class="desc">{{ categoryLabel }} · {{ shortDesc }}</div>
+
+    <div v-show="hover && !isEnd" class="plus-btn" @click.stop="handlePlusClick">+</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, inject } from 'vue';
-import { getNodeConfig, NodeCategory, NodeCategoryLabels } from '../types';
+import { computed, ref, inject, onMounted, onUnmounted } from 'vue';
+import { getNodeConfig, NodeCategoryLabels } from '../types';
 import { emit } from '../events';
 
-// x6-vue-shape 只传递 { node, graph } 作为 props
-// 所有节点数据需通过 getNode() inject 获取
 const getNode = inject('getNode') as (() => any) | undefined;
 const node = getNode?.();
-const nodeData = node?.getData() || {};
-
-const nodeType = nodeData.nodeType || '';
-const nodeLabel = nodeData.label || nodeData.nodeLabel || '';
-const nodeStatus = nodeData.status || '';
 const hover = ref(false);
 
-const config = computed(() => getNodeConfig(nodeType));
-const nodeColor = computed(() => nodeData.color || config.value?.color || '#1677ff');
-const shapeClass = computed(() => config.value?.shape || 'rect');
+const liveData = ref<Record<string, any>>(node?.getData() || {});
+
+function syncData() {
+  liveData.value = { ...(node?.getData() || {}) };
+}
+
+onMounted(() => {
+  node?.on('change:data', syncData);
+});
+onUnmounted(() => {
+  node?.off('change:data', syncData);
+});
+
+const nodeType = computed(() => liveData.value.nodeType || '');
+const nodeLabel = computed(() => liveData.value.label || liveData.value.nodeLabel || '');
+
+const config = computed(() => getNodeConfig(nodeType.value));
+
+const isStart = computed(() => nodeType.value.includes('TRIGGER'));
+const isEnd = computed(() => nodeType.value === 'END');
+
 const categoryLabel = computed(() => {
   const cat = config.value?.category;
   return cat ? NodeCategoryLabels[cat] || cat : '';
 });
+
+const badge = computed(() => {
+  if (isStart.value) return '触发器';
+  if (isEnd.value) return '输出端';
+  return '';
+});
+
 const iconText = computed(() => {
-  const label = nodeLabel || config.value?.label || '';
+  if (isStart.value) return 'S';
+  if (isEnd.value) return 'E';
+  const label = nodeLabel.value || config.value?.label || '';
   return label.charAt(0);
 });
 
+const themeClass = computed(() => {
+  const color = config.value?.color || '#5F95FF';
+  if (isStart.value) return 'theme-blue';
+  if (isEnd.value) return 'theme-red';
+  if (color === '#fa8c16') return 'theme-orange';
+  if (color === '#52c41a') return 'theme-green';
+  if (color === '#722ed1') return 'theme-purple';
+  if (color === '#13c2c2') return 'theme-cyan';
+  if (color === '#eb2f96') return 'theme-magenta';
+  return 'theme-blue';
+});
+
+const shortDesc = computed(() => {
+  const cfg = liveData.value.config || {};
+  if (cfg.description) return cfg.description;
+  if (cfg.expression) return cfg.expression;
+  if (cfg.cronExpression) return cfg.cronExpression;
+  if (cfg.path) return cfg.path;
+  if (cfg.worksheetId) return `工作表: ${cfg.worksheetId}`;
+  return config.value?.label || nodeType.value;
+});
+
 function handlePlusClick() {
-  if (node) {
-    const pos = node.getBoundingBox();
-    emit('node:plus-click', { sourceNode: node, x: pos.x + pos.width / 2, y: pos.y + pos.height + 10, sourceEdge: undefined });
-  }
+  if (!node) return;
+  const pos = node.getBBox();
+  emit('node:plus-click', {
+    sourceNode: node,
+    x: pos.x + pos.width / 2,
+    y: pos.y + pos.height + 24,
+    sourceEdge: undefined,
+  });
+}
+
+function handleCopy() {
+  if (node) emit('node:copy', { node });
+}
+
+function handleDelete() {
+  if (node) emit('node:delete', { node });
 }
 </script>
 
 <style scoped>
-.x6-node-vue {
-  width: 100%; height: 100%;
-  display: flex; align-items: center; gap: 10px;
-  padding: 0 12px 0 0;
-  border: 1px solid #e5e6e8;
+.agent-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #5f95ff;
   border-radius: 8px;
-  cursor: pointer;
-  transition: box-shadow 0.2s, border-color 0.2s;
-  box-sizing: border-box; overflow: visible;
-  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  box-sizing: border-box;
+  padding: 12px;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  gap: 8px;
+  cursor: move;
   position: relative;
+  transition: box-shadow 0.2s;
+  user-select: none;
 }
-.x6-node-vue:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: var(--node-color, #1677ff); }
-.x6-node-vue.status-running { border-style: dashed; animation: node-pulse 1.5s ease-in-out infinite; }
-.x6-node-vue.status-success { border-color: #52c41a !important; --node-color: #52c41a; }
-.x6-node-vue.status-failed { border-color: #f5222d !important; --node-color: #f5222d; }
-@keyframes node-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(22,119,255,0.3); } 50% { box-shadow: 0 0 0 6px rgba(22,119,255,0); } }
-.node-accent { width: 4px; height: 100%; flex-shrink: 0; align-self: stretch; }
-.node-icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 12px; font-weight: bold; flex-shrink: 0; }
-.node-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0; }
-.node-label { font-size: 12px; font-weight: 600; color: #1d2129; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.5; }
-.node-type-tag { font-size: 10px; color: #86909c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
-.node-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-right: 4px; }
-.dot-running { background: #1677ff; animation: dot-blink 1s infinite; }
-.dot-success { background: #52c41a; }
-.dot-failed { background: #f5222d; }
-.dot-waiting { background: #fa8c16; }
-@keyframes dot-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-.node-plus-btn { position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 22px; height: 22px; border-radius: 50%; color: #fff; font-size: 16px; font-weight: 300; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; box-shadow: 0 2px 6px rgba(0,0,0,0.15); line-height: 1; transition: transform 0.15s, box-shadow 0.15s; }
-.node-plus-btn:hover { transform: translateX(-50%) scale(1.15); box-shadow: 0 3px 10px rgba(0,0,0,0.2); }
+.agent-card:hover {
+  box-shadow: 0 4px 16px rgba(95, 149, 255, 0.18);
+}
+.agent-card.is-start,
+.agent-card.is-end {
+  border-radius: 12px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+}
+.icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f0f5ff;
+  color: #1d39c4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.theme-green .icon { background: #e6fffb; color: #08979c; }
+.theme-orange .icon { background: #fff7e6; color: #fa8c16; }
+.theme-red .icon { background: #fff1f0; color: #cf1322; }
+.theme-purple .icon { background: #f9f0ff; color: #722ed1; }
+.theme-cyan .icon { background: #e6fffb; color: #13c2c2; }
+.theme-magenta .icon { background: #fff0f6; color: #eb2f96; }
+.is-start .icon { background: #eef2ff; color: #5f95ff; }
+.is-end .icon { background: #fff1f0; color: #ff7875; }
+
+.title {
+  font-size: 15px;
+  color: #141414;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.badge {
+  margin-left: auto;
+  font-size: 12px;
+  color: #8c8c8c;
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.actions {
+  margin-left: auto;
+  color: #8c8c8c;
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.actions .op {
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px;
+  border-radius: 4px;
+}
+.actions .op:hover {
+  color: #5f95ff;
+  background: #f0f5ff;
+}
+
+.desc {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.65);
+  line-height: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.body,
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.plus-btn {
+  position: absolute;
+  bottom: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #5f95ff;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 2px 6px rgba(95, 149, 255, 0.35);
+  line-height: 1;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.plus-btn:hover {
+  transform: translateX(-50%) scale(1.15);
+  box-shadow: 0 3px 10px rgba(95, 149, 255, 0.45);
+}
 </style>

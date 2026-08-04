@@ -14,10 +14,14 @@
       </template>
 
       <el-table v-loading="loading" :data="versionList" border>
-        <el-table-column label="版本号" align="center" width="100" prop="version" />
+        <el-table-column label="版本号" align="center" width="100">
+          <template #default="scope">
+            <el-button link type="primary" @click="handleViewFlow(scope.row)">v{{ scope.row.version }}</el-button>
+          </template>
+        </el-table-column>
         <el-table-column label="发布状态" align="center" width="120">
           <template #default="scope">
-            <dict-tag :options="auto_publish_status" :value="scope.row.publishStatus" />
+            <dict-tag :options="publishStatusOptions" :value="scope.row.publishStatus" />
           </template>
         </el-table-column>
         <el-table-column label="发布人" align="center" width="150" prop="publishBy" />
@@ -32,10 +36,15 @@
             <span>{{ proxy?.parseTime(scope.row.createTime) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="备注" prop="remark" min-width="150" show-overflow-tooltip />
-        <el-table-column fixed="right" align="center" label="操作" width="200">
+        <el-table-column fixed="right" align="center" label="操作" width="320">
           <template #default="scope">
-            <el-button link type="primary" icon="View" @click="handleViewRuntime(scope.row)">查看运行定义</el-button>
+            <el-button link type="primary" icon="Share" @click="handleViewFlow(scope.row)">查看编排</el-button>
+            <el-button link type="primary" icon="View" @click="handleViewRuntime(scope.row)">运行定义</el-button>
+            <el-button
+              v-if="scope.row.publishStatus === 'DRAFT'"
+              link type="success" icon="Upload"
+              @click="handlePublish(scope.row)"
+            >发布</el-button>
             <el-button link type="primary" icon="Download" @click="handleExport(scope.row)">导出</el-button>
           </template>
         </el-table-column>
@@ -59,24 +68,30 @@
         </div>
       </template>
     </el-dialog>
+
+    <VersionFlowPreview ref="versionPreviewRef" />
   </div>
 </template>
 
 <script setup name="AutomationVersion" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
 import { ElFormInstance } from 'element-plus';
-import { listVersion, getVersion } from '@/api/automation/version';
+import { listVersion, getVersion, getRuntimeJson, publishVersion } from '@/api/automation/version';
 import { AutoVersionQuery, AutoVersionVo } from '@/api/automation/version/types';
 import { useRoute, useRouter } from 'vue-router';
+import { AUTO_PUBLISH_STATUS_OPTIONS, resolveDictOptions } from '@/views/automation/options';
+import VersionFlowPreview from '@/views/automation/components/VersionFlowPreview.vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const route = useRoute();
 const router = useRouter();
 const { auto_publish_status } = toRefs<any>(proxy?.useDict('auto_publish_status'));
+const publishStatusOptions = computed(() => resolveDictOptions(auto_publish_status.value, AUTO_PUBLISH_STATUS_OPTIONS));
 
 const versionList = ref<AutoVersionVo[]>([]);
 const total = ref(0);
 const loading = ref(true);
+const versionPreviewRef = ref<InstanceType<typeof VersionFlowPreview>>();
 
 const viewDialog = reactive<DialogOption>({ visible: false, title: '' });
 const runtimeJsonContent = ref('');
@@ -99,8 +114,8 @@ const getList = async () => {
   loading.value = true;
   try {
     const res = await listVersion(queryParams.value);
-    versionList.value = res.data.rows ?? res.data;
-    total.value = res.data.total ?? res.data.length;
+    versionList.value = (res as any).rows ?? [];
+    total.value = (res as any).total ?? 0;
   } finally { loading.value = false; }
 };
 
@@ -109,20 +124,49 @@ const goBack = () => {
   router.push({ path: '/automation/definition' });
 };
 
+/** 查看历史编排 */
+const handleViewFlow = (row: AutoVersionVo) => {
+  versionPreviewRef.value?.open({ id: row.id, version: row.version });
+};
+
 /** 查看运行定义 */
 const handleViewRuntime = async (row: AutoVersionVo) => {
-  const res = await getVersion(row.id);
-  runtimeJsonContent.value = res.data.runtimeJson
-    ? JSON.stringify(JSON.parse(res.data.runtimeJson), null, 2)
-    : '暂无运行定义数据';
+  const res = await getRuntimeJson(row.id);
+  runtimeJsonContent.value = formatJsonContent(res.data);
   viewDialog.title = '运行定义 - 版本 ' + row.version;
   viewDialog.visible = true;
 };
 
+function formatJsonContent(content: unknown): string {
+  if (content == null || content === '') {
+    return '暂无运行定义数据（请先在设计器保存流程，且需包含触发节点与至少一个业务节点）';
+  }
+  if (typeof content === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(content), null, 2);
+    } catch {
+      return content;
+    }
+  }
+  try {
+    return JSON.stringify(content, null, 2);
+  } catch {
+    return String(content);
+  }
+}
+
+/** 发布版本 */
+const handlePublish = async (row: AutoVersionVo) => {
+  await proxy?.$modal.confirm('确认发布版本 v' + row.version + '?');
+  await publishVersion(row.id);
+  proxy?.$modal.msgSuccess('发布成功');
+  await getList();
+};
+
 /** 导出 */
 const handleExport = async (row: AutoVersionVo) => {
-  const res = await getVersion(row.id);
-  const dataStr = JSON.stringify({ version: res.data, runtimeJson: res.data.runtimeJson }, null, 2);
+  const [versionRes, runtimeRes] = await Promise.all([getVersion(row.id), getRuntimeJson(row.id)]);
+  const dataStr = JSON.stringify({ version: versionRes.data, runtimeJson: runtimeRes.data }, null, 2);
   const blob = new Blob([dataStr], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

@@ -3,7 +3,7 @@
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="自动化编码" prop="automationCode">
               <el-input v-model="queryParams.automationCode" placeholder="请输入自动化编码" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -52,12 +52,12 @@
         <el-table-column label="自动化名称" prop="automationName" min-width="160" />
         <el-table-column label="触发类型" align="center" width="120">
           <template #default="scope">
-            <dict-tag :options="auto_trigger_type" :value="scope.row.triggerType" />
+            <dict-tag :options="triggerTypeOptions" :value="scope.row.triggerType" />
           </template>
         </el-table-column>
         <el-table-column label="状态" align="center" width="100">
           <template #default="scope">
-            <dict-tag :options="auto_definition_status" :value="scope.row.status" />
+            <dict-tag :options="definitionStatusOptions" :value="scope.row.status" />
           </template>
         </el-table-column>
         <el-table-column label="当前版本" align="center" width="90" prop="currentVersion" />
@@ -76,7 +76,6 @@
             <span>{{ proxy?.parseTime(scope.row.createTime) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="备注" prop="remark" min-width="120" show-overflow-tooltip />
         <el-table-column fixed="right" align="center" label="操作" width="300">
           <template #default="scope">
             <el-button v-hasPermi="['automation:definition:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row)">编辑</el-button>
@@ -127,9 +126,6 @@
         <el-form-item label="描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入描述" />
         </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="请输入备注" />
-        </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -142,18 +138,23 @@
 </template>
 
 <script setup name="AutomationDefinition" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
 import { ElFormInstance } from 'element-plus';
 import {
   listDefinition, getDefinition, addDefinition, updateDefinition, delDefinition,
-  publishDefinition, disableDefinition, archiveDefinition
+  publishDefinition, enableDefinition, disableDefinition, archiveDefinition, updateDefinitionEnabled
 } from '@/api/automation/definition';
 import { AutoDefinitionForm, AutoDefinitionQuery, AutoDefinitionVo } from '@/api/automation/definition/types';
 import { useRouter } from 'vue-router';
+import {
+  AUTO_DEFINITION_STATUS_OPTIONS, AUTO_TRIGGER_TYPE_OPTIONS, resolveDictOptions
+} from '@/views/automation/options';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const router = useRouter();
 const { auto_definition_status, auto_trigger_type } = toRefs<any>(proxy?.useDict('auto_definition_status', 'auto_trigger_type'));
+const definitionStatusOptions = computed(() => resolveDictOptions(auto_definition_status.value, AUTO_DEFINITION_STATUS_OPTIONS));
+const triggerTypeOptions = computed(() => resolveDictOptions(auto_trigger_type.value, AUTO_TRIGGER_TYPE_OPTIONS));
 
 const definitionList = ref<AutoDefinitionVo[]>([]);
 const total = ref(0);
@@ -169,7 +170,6 @@ const initFormData: AutoDefinitionForm = {
   automationName: undefined,
   triggerType: undefined,
   description: undefined,
-  remark: undefined,
 };
 
 const data = reactive<PageData<AutoDefinitionForm, AutoDefinitionQuery>>({
@@ -196,8 +196,8 @@ const getList = async () => {
   loading.value = true;
   try {
     const res = await listDefinition(queryParams.value);
-    definitionList.value = res.data.rows ?? res.data;
-    total.value = res.data.total ?? res.data.length;
+    definitionList.value = (res as any).rows ?? [];
+    total.value = (res as any).total ?? 0;
   } finally { loading.value = false; }
 };
 
@@ -243,7 +243,7 @@ const handleUpdate = async (row: AutoDefinitionVo) => {
 
 /** 设计器 */
 const handleDesign = (row: AutoDefinitionVo) => {
-  router.push({ path: '/automation/designer/index/' + row.id });
+  router.push({ path: `/automation/designer/index/${row.id}` });
 };
 
 /** 版本列表 */
@@ -288,7 +288,7 @@ const handleMoreAction = async (cmd: string, row: AutoDefinitionVo) => {
       proxy?.$modal.msgSuccess('已停用');
       break;
     case 'enable':
-      await publishDefinition(row.id);
+      await enableDefinition(row.id);
       proxy?.$modal.msgSuccess('已启用');
       break;
     case 'archive':
@@ -305,8 +305,12 @@ const handleMoreAction = async (cmd: string, row: AutoDefinitionVo) => {
 
 /** 启用/停用切换 */
 const handleEnabledChange = async (row: AutoDefinitionVo) => {
-  await updateDefinition({ id: row.id, enabled: row.enabled } as AutoDefinitionForm);
-  proxy?.$modal.msgSuccess(row.enabled ? '已启用' : '已停用');
+  try {
+    await updateDefinitionEnabled(row.id, row.enabled ?? 0);
+    proxy?.$modal.msgSuccess(row.enabled ? '已启用' : '已停用');
+  } catch {
+    row.enabled = row.enabled === 1 ? 0 : 1;
+  }
 };
 
 onMounted(() => {

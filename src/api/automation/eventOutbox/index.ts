@@ -6,6 +6,10 @@ export const listEventOutbox = (query: AutoEventOutboxQuery): AxiosPromise<AutoE
   return request({ url: '/automation/eventOutbox/list', method: 'get', params: query });
 };
 
+export const getEventOutbox = (id: number | string): AxiosPromise<AutoEventOutboxVo> => {
+  return request({ url: '/automation/eventOutbox/' + id, method: 'get' });
+};
+
 export const redeliverEventOutbox = (id: number | string) => {
   return request({ url: `/automation/eventOutbox/${id}/redeliver`, method: 'post' });
 };

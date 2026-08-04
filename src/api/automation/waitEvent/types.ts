@@ -9,10 +9,11 @@ export interface AutoWaitEventQuery extends PageQuery {
 export interface AutoWaitEventVo {
   id: number | string;
   instanceId: number | string;
+  nodeExecutionId?: number | string;
   waitType: string;
   waitKey: string;
   status: string;
-  expireTime?: Date;
-  createTime: Date;
-  updateTime: Date;
+  expireTime?: string;
+  resumeTime?: string;
+  createTime?: string;
 }

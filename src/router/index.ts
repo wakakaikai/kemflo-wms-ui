@@ -73,6 +73,19 @@ export const constantRoutes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/automation/designer',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: 'index/:definitionId?',
+        component: () => import('@/views/automation/designer/index.vue'),
+        name: 'AutomationDesigner',
+        meta: { title: '流程设计', activeMenu: '/automation/definition', noCache: true }
+      }
+    ]
+  },
+  {
     path: '/:pathMatch(.*)*',
     component: () => import('@/views/error/404.vue'),
     hidden: true

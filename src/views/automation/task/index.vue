@@ -46,7 +46,7 @@
         <el-table-column label="任务类型" align="center" width="120" prop="taskType" />
         <el-table-column label="状态" align="center" width="100">
           <template #default="scope">
-            <dict-tag :options="auto_task_status" :value="scope.row.status" />
+            <dict-tag :options="taskStatusOptions" :value="scope.row.status" />
           </template>
         </el-table-column>
         <el-table-column label="优先级" align="center" width="70" prop="priority" />
@@ -59,11 +59,6 @@
         <el-table-column label="创建时间" align="center" width="170" prop="createTime">
           <template #default="scope">
             <span>{{ proxy?.parseTime(scope.row.createTime) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="更新时间" align="center" width="170" prop="updateTime">
-          <template #default="scope">
-            <span>{{ proxy?.parseTime(scope.row.updateTime) }}</span>
           </template>
         </el-table-column>
         <el-table-column fixed="right" align="center" label="操作" width="120">
@@ -89,13 +84,15 @@
 </template>
 
 <script setup name="AutomationTask" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
 import { ElFormInstance } from 'element-plus';
 import { listTask, retryTask } from '@/api/automation/task';
 import { AutoTaskQuery, AutoTaskVo } from '@/api/automation/task/types';
+import { AUTO_TASK_STATUS_OPTIONS, resolveDictOptions } from '@/views/automation/options';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { auto_task_status } = toRefs<any>(proxy?.useDict('auto_task_status'));
+const taskStatusOptions = computed(() => resolveDictOptions(auto_task_status.value, AUTO_TASK_STATUS_OPTIONS));
 
 const taskList = ref<AutoTaskVo[]>([]);
 const total = ref(0);
@@ -123,8 +120,8 @@ const getList = async () => {
   loading.value = true;
   try {
     const res = await listTask(queryParams.value);
-    taskList.value = res.data.rows ?? res.data;
-    total.value = res.data.total ?? res.data.length;
+    taskList.value = (res as any).rows ?? [];
+    total.value = (res as any).total ?? 0;
   } finally { loading.value = false; }
 };
 

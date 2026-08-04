@@ -10,15 +10,16 @@ export interface AutoVersionVo {
   id: number | string;
   definitionId: number | string;
   version: number;
-  runtimeJson?: string;
   publishStatus: string;
-  publishTime?: Date;
+  publishBy?: string;
+  publishTime?: string;
   checksum?: string;
-  createTime: Date;
+  createTime?: string;
 }
 
 export interface AutoVersionForm {
   id?: number | string;
   definitionId?: number | string;
+  designJson?: string;
   runtimeJson?: string;
 }

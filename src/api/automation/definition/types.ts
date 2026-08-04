@@ -11,25 +11,22 @@ export interface AutoDefinitionVo {
   id: number | string;
   automationCode: string;
   automationName: string;
-  categoryId: number;
-  categoryName?: string;
-  description: string;
+  categoryId?: number;
+  description?: string;
   triggerType: string;
   status: string;
-  currentVersion: number;
-  enabled: number;
-  createTime: Date;
-  updateTime: Date;
+  currentVersion?: number;
+  enabled?: number;
+  createTime?: string;
 }
 
 export interface AutoDefinitionForm {
   id?: number | string;
-  automationCode: string;
-  automationName: string;
+  automationCode?: string;
+  automationName?: string;
   categoryId?: number;
   description?: string;
   triggerType?: string;
   status?: string;
   enabled?: number;
-  remark?: string;
 }

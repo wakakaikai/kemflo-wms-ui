@@ -45,7 +45,7 @@
         <el-table-column label="业务ID" prop="businessId" min-width="140" show-overflow-tooltip />
         <el-table-column label="状态" align="center" width="100">
           <template #default="scope">
-            <dict-tag :options="auto_outbox_status" :value="scope.row.status" />
+            <dict-tag :options="outboxStatusOptions" :value="scope.row.status" />
           </template>
         </el-table-column>
         <el-table-column label="重试次数" align="center" width="80" prop="retryCount" />
@@ -87,13 +87,15 @@
 </template>
 
 <script setup name="AutomationEventOutbox" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
 import { ElFormInstance } from 'element-plus';
 import { listEventOutbox, redeliverEventOutbox } from '@/api/automation/eventOutbox';
 import { AutoEventOutboxQuery, AutoEventOutboxVo } from '@/api/automation/eventOutbox/types';
+import { AUTO_OUTBOX_STATUS_OPTIONS, resolveDictOptions } from '@/views/automation/options';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { auto_outbox_status } = toRefs<any>(proxy?.useDict('auto_outbox_status'));
+const outboxStatusOptions = computed(() => resolveDictOptions(auto_outbox_status.value, AUTO_OUTBOX_STATUS_OPTIONS));
 
 const eventOutboxList = ref<AutoEventOutboxVo[]>([]);
 const total = ref(0);
@@ -122,8 +124,8 @@ const getList = async () => {
   loading.value = true;
   try {
     const res = await listEventOutbox(queryParams.value);
-    eventOutboxList.value = res.data.rows ?? res.data;
-    total.value = res.data.total ?? res.data.length;
+    eventOutboxList.value = (res as any).rows ?? [];
+    total.value = (res as any).total ?? 0;
   } finally { loading.value = false; }
 };
 

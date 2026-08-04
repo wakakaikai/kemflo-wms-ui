@@ -6,6 +6,10 @@ export const listWaitEvent = (query: AutoWaitEventQuery): AxiosPromise<AutoWaitE
   return request({ url: '/automation/waitEvent/list', method: 'get', params: query });
 };
 
+export const getWaitEvent = (id: number | string): AxiosPromise<AutoWaitEventVo> => {
+  return request({ url: '/automation/waitEvent/' + id, method: 'get' });
+};
+
 export const completeWaitEvent = (id: number | string) => {
   return request({ url: `/automation/waitEvent/${id}/complete`, method: 'post' });
 };
