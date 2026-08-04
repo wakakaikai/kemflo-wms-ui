@@ -14,10 +14,14 @@
       </template>
 
       <el-table v-loading="loading" :data="pointList" border>
-        <el-table-column label="设备ID" prop="deviceId" min-width="100" />
-        <el-table-column label="点位ID" prop="pointId" min-width="100" />
+        <el-table-column label="点位编码" prop="pointCode" min-width="140" />
+        <el-table-column label="点位名称" prop="pointName" min-width="160" />
         <el-table-column label="当前值" prop="currentValue" min-width="120" />
-        <el-table-column label="质量" align="center" width="100" prop="quality" />
+        <el-table-column label="质量" align="center" width="100">
+          <template #default="scope">
+            <dict-tag :options="qualityOptions" :value="scope.row.quality" />
+          </template>
+        </el-table-column>
         <el-table-column label="采集时间" align="center" width="170" prop="collectTime">
           <template #default="scope">
             <span>{{ proxy?.parseTime(scope.row.collectTime) }}</span>
@@ -37,14 +41,17 @@
 </template>
 
 <script setup name="IotDevicePoint" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, computed, onMounted, reactive, ref, toRefs } from 'vue';
 import { listDevicePoint } from '@/api/iot/devicePoint';
 import { DevicePointQuery, DevicePointVO } from '@/api/iot/devicePoint/types';
+import { IOT_QUALITY_OPTIONS, resolveDictOptions } from '@/views/iot/options';
 import { useRoute, useRouter } from 'vue-router';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const route = useRoute();
 const router = useRouter();
+const { iot_quality } = toRefs<any>(proxy?.useDict('iot_quality'));
+const qualityOptions = computed(() => resolveDictOptions(iot_quality.value, IOT_QUALITY_OPTIONS));
 
 const pointList = ref<DevicePointVO[]>([]);
 const total = ref(0);
@@ -66,8 +73,8 @@ const getList = async () => {
   loading.value = true;
   try {
     const res = await listDevicePoint(queryParams.value);
-    pointList.value = res.data.rows ?? res.data;
-    total.value = res.data.total ?? res.data.length;
+    pointList.value = (res as any).rows ?? [];
+    total.value = (res as any).total ?? 0;
   } finally { loading.value = false; }
 };
 

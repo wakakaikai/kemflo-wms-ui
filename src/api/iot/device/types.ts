@@ -10,6 +10,11 @@ export interface DeviceVO {
   productId: string | number;
 
   /**
+   * 产品名称
+   */
+  productName?: string;
+
+  /**
    * 设备编码
    */
   deviceCode: string;
@@ -38,6 +43,11 @@ export interface DeviceVO {
    * 设备位置
    */
   deviceLocation?: string;
+
+  /**
+   * 创建时间
+   */
+  createTime?: string;
 }
 
 export interface DeviceForm extends BaseEntity {

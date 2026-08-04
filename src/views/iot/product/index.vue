@@ -12,12 +12,7 @@
             </el-form-item>
             <el-form-item label="协议类型" prop="protocolType">
               <el-select v-model="queryParams.protocolType" placeholder="协议类型" clearable style="width: 160px">
-                <el-option label="Modbus TCP" value="MODBUS_TCP" />
-                <el-option label="Modbus RTU" value="MODBUS_RTU" />
-                <el-option label="S7" value="S7" />
-                <el-option label="OPC UA" value="OPC_UA" />
-                <el-option label="MQTT" value="MQTT" />
-                <el-option label="HTTP" value="HTTP" />
+                <el-option v-for="item in protocolOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
             <el-form-item label="状态" prop="status">
@@ -40,14 +35,22 @@
           <el-col :span="1.5">
             <el-button v-hasPermi="['iot:product:add']" type="primary" plain icon="Plus" @click="handleAdd()">新增</el-button>
           </el-col>
+          <el-col :span="1.5">
+            <el-button v-hasPermi="['iot:product:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">删除</el-button>
+          </el-col>
           <right-toolbar v-model:show-search="showSearch" @query-table="getList" />
         </el-row>
       </template>
 
-      <el-table v-loading="loading" :data="productList" border>
+      <el-table v-loading="loading" :data="productList" border @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="50" align="center" />
         <el-table-column label="产品编码" prop="productCode" min-width="140" />
         <el-table-column label="产品名称" prop="productName" min-width="160" />
-        <el-table-column label="协议类型" align="center" width="130" prop="protocolType" />
+        <el-table-column label="协议类型" align="center" width="130">
+          <template #default="scope">
+            <dict-tag :options="protocolOptions" :value="scope.row.protocolType" />
+          </template>
+        </el-table-column>
         <el-table-column label="厂商" prop="manufacturer" min-width="140" />
         <el-table-column label="产品版本" align="center" width="120" prop="productVersion" />
         <el-table-column label="状态" align="center" width="90">
@@ -55,7 +58,7 @@
             <dict-tag :options="sys_normal_disable" :value="scope.row.status" />
           </template>
         </el-table-column>
-        <el-table-column label="备注" prop="remark" min-width="150" show-overflow-tooltip />
+        <el-table-column label="描述" prop="description" min-width="150" show-overflow-tooltip />
         <el-table-column label="创建时间" align="center" width="170" prop="createTime">
           <template #default="scope">
             <span>{{ proxy?.parseTime(scope.row.createTime) }}</span>
@@ -79,7 +82,6 @@
       />
     </el-card>
 
-    <!-- 新增/修改对话框 -->
     <el-dialog v-model="dialog.visible" :title="dialog.title" destroy-on-close append-to-body width="600px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="产品编码" prop="productCode">
@@ -90,12 +92,7 @@
         </el-form-item>
         <el-form-item label="协议类型" prop="protocolType">
           <el-select v-model="form.protocolType" placeholder="请选择协议类型" style="width: 100%">
-            <el-option label="Modbus TCP" value="MODBUS_TCP" />
-            <el-option label="Modbus RTU" value="MODBUS_RTU" />
-            <el-option label="S7" value="S7" />
-            <el-option label="OPC UA" value="OPC_UA" />
-            <el-option label="MQTT" value="MQTT" />
-            <el-option label="HTTP" value="HTTP" />
+            <el-option v-for="item in protocolOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="厂商" prop="manufacturer">
@@ -109,8 +106,8 @@
             <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">{{ dict.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="请输入备注" />
+        <el-form-item label="描述" prop="description">
+          <el-input v-model="form.description" type="textarea" :rows="2" placeholder="请输入描述" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -124,20 +121,24 @@
 </template>
 
 <script setup name="IotProduct" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed, onMounted } from 'vue';
 import { ElFormInstance } from 'element-plus';
 import { listProduct, getProduct, addProduct, updateProduct, delProduct } from '@/api/iot/product';
 import { ProductForm, ProductQuery, ProductVO } from '@/api/iot/product/types';
 import { useRouter } from 'vue-router';
+import { IOT_PROTOCOL_OPTIONS, resolveDictOptions } from '@/views/iot/options';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const router = useRouter();
-const { sys_normal_disable } = toRefs<any>(proxy?.useDict('sys_normal_disable'));
+const { sys_normal_disable, iot_protocol_type } = toRefs<any>(proxy?.useDict('sys_normal_disable', 'iot_protocol_type'));
+const protocolOptions = computed(() => resolveDictOptions(iot_protocol_type.value, IOT_PROTOCOL_OPTIONS));
 
 const productList = ref<ProductVO[]>([]);
 const total = ref(0);
 const loading = ref(true);
 const showSearch = ref(true);
+const ids = ref<Array<string | number>>([]);
+const multiple = ref(true);
 
 const dialog = reactive<DialogOption>({ visible: false, title: '' });
 const queryFormRef = ref<ElFormInstance>();
@@ -150,7 +151,7 @@ const initFormData: ProductForm = {
   manufacturer: undefined,
   productVersion: undefined,
   status: '0',
-  remark: undefined,
+  description: undefined,
 };
 
 const data = reactive<PageData<ProductForm, ProductQuery>>({
@@ -176,9 +177,16 @@ const getList = async () => {
   loading.value = true;
   try {
     const res = await listProduct(queryParams.value);
-    productList.value = res.data.rows ?? res.data;
-    total.value = res.data.total ?? res.data.length;
-  } finally { loading.value = false; }
+    productList.value = (res as any).rows ?? [];
+    total.value = (res as any).total ?? 0;
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleSelectionChange = (selection: ProductVO[]) => {
+  ids.value = selection.map((item) => item.id);
+  multiple.value = !selection.length;
 };
 
 const cancel = () => {
@@ -230,9 +238,10 @@ const submitForm = () => {
   });
 };
 
-const handleDelete = async (row: ProductVO) => {
-  await proxy?.$modal.confirm('是否确认删除产品"' + row.productName + '"?');
-  await delProduct(row.id);
+const handleDelete = async (row?: ProductVO) => {
+  const _ids = row?.id || ids.value;
+  await proxy?.$modal.confirm('是否确认删除选中的产品数据?');
+  await delProduct(_ids);
   proxy?.$modal.msgSuccess('删除成功');
   await getList();
 };

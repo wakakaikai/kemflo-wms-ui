@@ -1,38 +1,21 @@
 export interface DeviceShadowVO {
-  /**
-   * 设备影子ID
-   */
   id: string | number;
-
-  /**
-   * 设备ID
-   */
   deviceId: string | number;
-
-  /**
-   * 属性JSON
-   */
+  deviceName?: string;
   propertiesJson?: string;
-
-  /**
-   * 版本
-   */
   version?: number;
-
-  /**
-   * 最后上报时间
-   */
   lastReportTime?: string;
+  createTime?: string;
+}
+
+export interface DeviceShadowForm extends BaseEntity {
+  id?: string | number;
+  deviceId?: string | number;
+  propertiesJson?: string;
+  version?: number;
 }
 
 export interface DeviceShadowQuery extends PageQuery {
-  /**
-   * 设备ID
-   */
   deviceId?: string | number;
-
-  /**
-   * 日期范围参数
-   */
   params?: any;
 }

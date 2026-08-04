@@ -15,6 +15,16 @@ export interface DevicePointVO {
   pointId: string | number;
 
   /**
+   * 点位编码
+   */
+  pointCode?: string;
+
+  /**
+   * 点位名称
+   */
+  pointName?: string;
+
+  /**
    * 当前值
    */
   currentValue?: string;
@@ -27,6 +37,15 @@ export interface DevicePointVO {
   /**
    * 采集时间
    */
+  collectTime?: string;
+}
+
+export interface DevicePointForm extends BaseEntity {
+  id?: string | number;
+  deviceId?: string | number;
+  pointId?: string | number;
+  currentValue?: string;
+  quality?: string;
   collectTime?: string;
 }
 

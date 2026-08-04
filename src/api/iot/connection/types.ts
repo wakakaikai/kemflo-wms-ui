@@ -10,6 +10,11 @@ export interface ConnectionVO {
   deviceId: string | number;
 
   /**
+   * 设备名称
+   */
+  deviceName?: string;
+
+  /**
    * 连接类型
    */
   connectionType: string;
@@ -33,6 +38,11 @@ export interface ConnectionVO {
    * 状态（0正常 1停用）
    */
   status?: string;
+
+  /**
+   * 创建时间
+   */
+  createTime?: string;
 }
 
 export interface ConnectionForm extends BaseEntity {

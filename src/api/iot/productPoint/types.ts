@@ -10,6 +10,11 @@ export interface ProductPointVO {
   productId: string | number;
 
   /**
+   * 产品名称
+   */
+  productName?: string;
+
+  /**
    * 点位编码
    */
   pointCode: string;
