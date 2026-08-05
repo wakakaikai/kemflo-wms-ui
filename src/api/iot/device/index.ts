@@ -1,62 +1,42 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { DeviceVO, DeviceForm, DeviceQuery } from '@/api/iot/device/types';
+import { DeviceVO, DeviceForm, DeviceQuery } from './types';
 
-/**
- * 查询设备列表
- * @param query
- * @returns {*}
- */
 export const listDevice = (query?: DeviceQuery): AxiosPromise<DeviceVO[]> => {
-  return request({
-    url: '/iot/device/list',
-    method: 'get',
-    params: query
-  });
+  return request({ url: '/iot/device/list', method: 'get', params: query });
 };
 
-/**
- * 查询设备详细
- * @param id
- */
 export const getDevice = (id: string | number): AxiosPromise<DeviceVO> => {
-  return request({
-    url: '/iot/device/' + id,
-    method: 'get'
-  });
+  return request({ url: '/iot/device/' + id, method: 'get' });
 };
 
-/**
- * 新增设备
- * @param data
- */
 export const addDevice = (data: DeviceForm) => {
-  return request({
-    url: '/iot/device',
-    method: 'post',
-    data: data
-  });
+  return request({ url: '/iot/device', method: 'post', data });
 };
 
-/**
- * 修改设备
- * @param data
- */
 export const updateDevice = (data: DeviceForm) => {
-  return request({
-    url: '/iot/device',
-    method: 'put',
-    data: data
-  });
+  return request({ url: '/iot/device', method: 'put', data });
 };
 
-/**
- * 删除设备
- * @param id
- */
 export const delDevice = (id: string | number | Array<string | number>) => {
-  return request({
-    url: '/iot/device/' + id,
-    method: 'delete'
-  });
+  return request({ url: '/iot/device/' + id, method: 'delete' });
 };
+
+export const testDeviceConnection = (id: string | number): AxiosPromise<boolean> => {
+  return request({ url: '/iot/device/testConnection/' + id, method: 'post' });
+};
+
+export const readDevicePoints = (id: string | number): AxiosPromise<PointReadItem[]> => {
+  return request({ url: '/iot/device/read/' + id, method: 'get' });
+};
+
+export interface PointReadItem {
+  pointCode: string;
+  pointName?: string;
+  tagAddress?: string;
+  normalizedAddress?: string;
+  value?: any;
+  success?: boolean;
+  error?: string;
+  quality?: string;
+}

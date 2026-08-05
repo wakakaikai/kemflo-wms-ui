@@ -1,125 +1,44 @@
 export interface DeviceVO {
-  /**
-   * 设备ID
-   */
   id: string | number;
-
-  /**
-   * 产品ID
-   */
-  productId: string | number;
-
-  /**
-   * 产品名称
-   */
-  productName?: string;
-
-  /**
-   * 设备编码
-   */
   deviceCode: string;
-
-  /**
-   * 设备名称
-   */
   deviceName: string;
-
-  /**
-   * 状态（0正常 1停用）
-   */
-  status?: string;
-
-  /**
-   * 在线状态（0离线 1在线）
-   */
+  protocol: string;
+  transportCode?: string;
+  host?: string;
+  port?: number;
+  connectionUrl?: string;
+  connectionParamsJson?: string;
+  collectInterval?: number;
+  connectTimeout?: number;
+  reconnectInterval?: number;
   onlineStatus?: string;
-
-  /**
-   * 最后在线时间
-   */
   lastOnlineTime?: string;
-
-  /**
-   * 设备位置
-   */
   deviceLocation?: string;
-
-  /**
-   * 创建时间
-   */
+  status?: string;
   createTime?: string;
 }
 
 export interface DeviceForm extends BaseEntity {
-  /**
-   * 设备ID
-   */
   id?: string | number;
-
-  /**
-   * 产品ID
-   */
-  productId?: string | number;
-
-  /**
-   * 设备编码
-   */
   deviceCode?: string;
-
-  /**
-   * 设备名称
-   */
   deviceName?: string;
-
-  /**
-   * 状态（0正常 1停用）
-   */
-  status?: string;
-
-  /**
-   * 在线状态（0离线 1在线）
-   */
-  onlineStatus?: string;
-
-  /**
-   * 最后在线时间
-   */
-  lastOnlineTime?: string;
-
-  /**
-   * 设备位置
-   */
+  protocol?: string;
+  transportCode?: string;
+  host?: string;
+  port?: number;
+  connectionUrl?: string;
+  connectionParamsJson?: string;
+  collectInterval?: number;
+  connectTimeout?: number;
+  reconnectInterval?: number;
   deviceLocation?: string;
+  status?: string;
 }
 
 export interface DeviceQuery extends PageQuery {
-  /**
-   * 产品ID
-   */
-  productId?: string | number;
-
-  /**
-   * 设备编码
-   */
   deviceCode?: string;
-
-  /**
-   * 设备名称
-   */
   deviceName?: string;
-
-  /**
-   * 在线状态（0离线 1在线）
-   */
+  protocol?: string;
   onlineStatus?: string;
-
-  /**
-   * 状态（0正常 1停用）
-   */
   status?: string;
-
-  /**
-   * 日期范围参数
-   */
-  params?: any;
 }
