@@ -4,7 +4,7 @@
       <el-step title="选择需求人" :description="demandUserStepDesc" />
       <el-step title="选择工单与备料" :description="prepStepDesc" />
       <el-step title="仓别分类" description="按已分配库位仓别编码分流" />
-      <el-step title="执行任务" description="按任务卡执行 261 扣料或跟进备料/缺料" />
+      <el-step title="执行任务" description="按任务卡执行扣料或跟进备料/缺料" />
     </el-steps>
     <div v-if="activeStep === 0" class="step-body demand-user-step">
       <el-card shadow="never" class="demand-user-card">
@@ -28,16 +28,11 @@
     </div>
     <div v-if="activeStep === 1" class="step-body">
       <div class="step-toolbar">
-        <el-button @click="goToDemandUserStep">重选需求人</el-button>
         <el-button type="primary" @click="showOrderDialog = true">
           <el-icon><Plus /></el-icon>
           选择工单
         </el-button>
         <el-button type="primary" plain :disabled="!selectedOrders.length" @click="openMergedPrepBom">填写合并备料清单</el-button>
-        <el-button type="success" :disabled="!canClassify" :loading="classifying" @click="confirmClassify">
-          <el-icon><Sort /></el-icon>
-          确认备料并分类
-        </el-button>
         <span v-if="selectedOrders.length" class="hint">已选 {{ selectedOrders.length }} 个工单 · 备料 {{ totalPrepLineCount }} 条</span>
       </div>
       <el-table v-if="selectedOrders.length" :data="selectedOrders" border size="small" max-height="420">
@@ -70,13 +65,18 @@
         </el-table-column>
       </el-table>
       <el-empty v-else description="请选择工单，点击「填写合并备料清单」统一勾选物料并分配库位（共用料按序号统一推荐）" />
+
+      <!-- 上一步 + 确认备料并分类（底部居中） -->
+      <div class="step-footer-row">
+        <el-button @click="goToDemandUserStep">上一步</el-button>
+        <el-button type="success" :disabled="!canClassify" :loading="classifying" @click="confirmClassify">
+          <el-icon><Sort /></el-icon>
+          确认备料并分类
+        </el-button>
+      </div>
     </div>
     <div v-if="activeStep === 2" class="step-body">
       <div class="step-toolbar">
-        <el-button @click="backToPrepStep">上一步</el-button>
-        <el-button v-if="planRowCount" type="primary" :loading="generatingPrep" @click="generateDemandPlan"
-          ><el-icon><MagicStick /></el-icon>生成备料需求（{{ planRowCount }}条）</el-button
-        >
         <span v-if="isClassified" class="hint">自动仓 {{ autoMaterialRows.length }} · 线边仓 {{ lineMaterialRows.length }} · 平面仓 {{ flatMaterialRows.length }} · 缺料 {{ shortageMaterialRows.length }}</span>
       </div>
       <el-alert v-if="isClassified" type="info" :closable="false" show-icon class="classify-hint">确认下方分类无误后，点「生成备料需求」将自动仓、线边仓、平面仓及缺料合并为一个备料计划</el-alert>
@@ -92,6 +92,7 @@
             <el-table v-if="autoMaterialRows.length" :data="autoMaterialRows" border size="small" max-height="280">
               <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
               <el-table-column prop="materialCode" label="物料编码" min-width="100" />
+              <el-table-column prop="materialDesc" label="物料描述" min-width="150" show-overflow-tooltip />
               <el-table-column label="本次备料数量" min-width="110" align="right">
                 <template #default="{ row }">{{ formatClassifiedPrepQty(row) }}</template>
               </el-table-column>
@@ -121,6 +122,7 @@
             <el-table v-if="lineMaterialRows.length" :data="lineMaterialRows" border size="small" max-height="280">
               <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
               <el-table-column prop="materialCode" label="物料编码" min-width="100" />
+              <el-table-column prop="materialDesc" label="物料描述" min-width="150" show-overflow-tooltip />
               <el-table-column label="本次备料数量" min-width="110" align="right">
                 <template #default="{ row }">{{ formatClassifiedPrepQty(row) }}</template>
               </el-table-column>
@@ -150,6 +152,7 @@
             <el-table v-if="flatMaterialRows.length" :data="flatMaterialRows" border size="small" max-height="280">
               <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
               <el-table-column prop="materialCode" label="物料编码" min-width="100" />
+              <el-table-column prop="materialDesc" label="物料描述" min-width="150" show-overflow-tooltip />
               <el-table-column label="本次备料数量" min-width="110" align="right">
                 <template #default="{ row }">{{ formatClassifiedPrepQty(row) }}</template>
               </el-table-column>
@@ -179,6 +182,7 @@
             <el-table v-if="shortageMaterialRows.length" :data="shortageMaterialRows" border size="small" max-height="280">
               <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
               <el-table-column prop="materialCode" label="物料编码" min-width="100" />
+              <el-table-column prop="materialDesc" label="物料描述" min-width="150" show-overflow-tooltip />
               <el-table-column label="库存类型" width="100" align="center">
                 <template #default="{ row }">
                   <dict-tag :options="wms_inventory_special_flag" :value="resolveDemandRowInventoryFlag(row)" />
@@ -198,13 +202,21 @@
         </el-col>
       </el-row>
       <el-empty v-else description="请返回上一步完成备料并分类" />
+
+      <!-- 上一步 + 生成备料需求（底部居中） -->
+      <div class="step-footer-row">
+        <el-button @click="backToPrepStep">上一步</el-button>
+        <el-button v-if="planRowCount" type="primary" :loading="generatingPrep" @click="generateDemandPlan">
+          <el-icon><MagicStick /></el-icon>
+          生成备料需求（{{ planRowCount }}条）
+        </el-button>
+      </div>
     </div>
     <div v-if="activeStep === 3" class="step-body">
       <div class="step-toolbar">
         <el-button v-if="!taskExecutionFinished" size="small" @click="activeStep = 2">返回分类</el-button>
         <el-button v-if="currentDemand && !taskExecutionFinished" size="small" @click="reloadDemandDetail">刷新</el-button>
         <el-button v-if="currentDemand?.issueId && !taskExecutionFinished" type="primary" size="small" @click="goToMaterialIssue">去领料</el-button>
-        <el-button v-if="taskExecutionFinished" type="primary" @click="resetForNextPrepRound">开始下一轮备料</el-button>
       </div>
       <div v-if="resultMessage" class="result-alert">
         <el-alert show-icon :title="resultMessage" :type="resultStatus ? 'success' : 'error'" :closable="false">
@@ -260,7 +272,7 @@
                   </template>
                 </el-table-column>
                 <prep-demand-location-source-column show-remark :rows="prep261AutoDisplayRows" />
-                <el-table-column label="操作" width="70" fixed="right">
+                <el-table-column label="操作" width="70" fixed="right" v-if="!taskExecutionFinished">
                   <template #default="{ row }">
                     <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
                   </template>
@@ -298,7 +310,7 @@
                   </template>
                 </el-table-column>
                 <prep-demand-location-source-column show-remark :rows="prep261LineDisplayRows" />
-                <el-table-column label="操作" width="70" fixed="right">
+                <el-table-column label="操作" width="70" fixed="right" v-if="!taskExecutionFinished">
                   <template #default="{ row }">
                     <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
                   </template>
@@ -336,7 +348,7 @@
                 <el-table-column label="目标需求库位" min-width="140">
                   <template #default="{ row }">{{ row.targetDemandLocationCode || '-' }}</template>
                 </el-table-column>
-                <el-table-column label="操作" width="70" fixed="right"
+                <el-table-column label="操作" width="70" fixed="right" v-if="!taskExecutionFinished"
                   ><template #default="{ row }"><el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button></template></el-table-column
                 >
               </el-table>
@@ -367,7 +379,7 @@
                 <el-table-column label="本次备料数量" min-width="110" align="right"
                   ><template #default="{ row }">{{ formatClassifiedPrepQty(row) }}</template></el-table-column
                 >
-                <el-table-column label="操作" width="70" fixed="right"
+                <el-table-column label="操作" width="70" fixed="right" v-if="!taskExecutionFinished"
                   ><template #default="{ row }"><el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button></template></el-table-column
                 >
               </el-table>
@@ -452,7 +464,19 @@ const currentIssueId = ref<number | string | null>(null);
 const showTargetLocationDialog = ref(false);
 
 const hasPrepLines = (order: WorkOrderVO) => order.materialIssues?.some((l) => Number(l.issueQty) > 0) ?? false;
-const classifiedMaterialRows = computed(() => flattenClassifiedMaterials(selectedOrders.value));
+/** 分类行物料描述：由工单 materialIssues 回填（保存时带出 componentDesc） */
+const resolveClassifiedMaterialDesc = (row: MaterialDemandDetailRow): string => {
+  const order = selectedOrders.value.find((item) => item.workOrderNo === row.workOrderNo);
+  if (!order) return '';
+  const issueLine = findIssueLineForDemandDetail(order, row);
+  return String(issueLine?.componentDesc ?? '');
+};
+const classifiedMaterialRows = computed(() =>
+  flattenClassifiedMaterials(selectedOrders.value).map((row) => ({
+    ...row,
+    materialDesc: resolveClassifiedMaterialDesc(row)
+  }))
+);
 const autoMaterialRows = computed(() => classifiedMaterialRows.value.filter((r) => r.warehouseRoute === 'AUTO'));
 const lineMaterialRows = computed(() => classifiedMaterialRows.value.filter((r) => r.warehouseRoute === 'LINE'));
 const prep261AutoDisplayRows = computed(() => prepDisplayRows.value.filter((r) => isPrepWarehouse261DisplayRow(r, 'AUTO')));
@@ -1018,6 +1042,14 @@ const goToMaterialIssue = () => {
 }
 .demand-user-form {
   margin-bottom: 8px;
+}
+.demand-user-card .step-toolbar {
+  justify-content: center;
+}
+.step-footer-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
 }
 .classify-hint {
   margin-bottom: 4px;

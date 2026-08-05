@@ -26,7 +26,7 @@
 
       <!-- 工单列表 -->
       <div class="order-list" v-loading="loading">
-        <el-table ref="orderTableRef" :data="workOrderList" border height="400" @selection-change="handleSelectionChange" row-key="id">
+        <el-table ref="orderTableRef" :data="workOrderList" border height="400" row-key="id" highlight-current-row @row-click="handleRowClick" @selection-change="handleSelectionChange">
           <el-table-column v-if="singleSelect" width="55" align="center">
             <template #default="{ row }">
               <el-radio v-model="singleSelectedNo" :value="row.workOrderNo" @change="handleSingleSelect(row)">
@@ -55,7 +55,7 @@
           </el-table-column>
           <el-table-column v-if="showBomAction" label="操作" fixed="right" align="center">
             <template #default="{ row }">
-              <el-button type="primary" link @click="viewBom(row)">
+              <el-button type="primary" link @click.stop="viewBom(row)">
                 {{ bomMode === 'prep' ? '填写备料' : '查看领料' }}
               </el-button>
             </template>
@@ -92,14 +92,7 @@
   <BatchInputDialog ref="batchInputDialogRef" v-model="batchInputDialogVisible" title="批量录入工单号" placeholder="请输入工单号，支持多行粘贴" @confirm="handleBatchInputConfirm" />
 
   <!-- BOM详情对话框 -->
-  <work-order-bom-dialog
-    v-if="showBomAction"
-    v-model="showBomDialog"
-    :work-order="currentWorkOrder"
-    :material-issues="currentWorkOrder ? orderMaterialIssues[currentWorkOrder.workOrderNo] : undefined"
-    :mode="bomMode"
-    @save="onBomMaterialIssuesSave"
-  />
+  <work-order-bom-dialog v-if="showBomAction" v-model="showBomDialog" :work-order="currentWorkOrder" :material-issues="currentWorkOrder ? orderMaterialIssues[currentWorkOrder.workOrderNo] : undefined" :mode="bomMode" @save="onBomMaterialIssuesSave" />
 </template>
 
 <script setup lang="ts">
@@ -246,6 +239,15 @@ const handleSingleSelect = (row: WorkOrderVO) => {
     }
   ];
   selectedIds.value = pickedOrders.value.map((item) => item.id);
+};
+
+/** 点击行选中：单选直接选中，多选切换勾选（参考 itemDialog 行点击选中） */
+const handleRowClick = (row: WorkOrderVO) => {
+  if (props.singleSelect) {
+    handleSingleSelect(row);
+  } else {
+    orderTableRef.value?.toggleRowSelection(row);
+  }
 };
 
 const initPickedOrdersFromProps = () => {
@@ -401,9 +403,7 @@ const handleClose = () => {
 const onBomMaterialIssuesSave = (payload: { workOrderNo: string; materialIssues: WorkOrderMaterialIssueLine[] }) => {
   orderMaterialIssues.value[payload.workOrderNo] = payload.materialIssues;
   if (pickedOrders.value.some((o) => o.workOrderNo === payload.workOrderNo)) {
-    pickedOrders.value = pickedOrders.value.map((o) =>
-      o.workOrderNo === payload.workOrderNo ? { ...o, materialIssues: payload.materialIssues } : o
-    );
+    pickedOrders.value = pickedOrders.value.map((o) => (o.workOrderNo === payload.workOrderNo ? { ...o, materialIssues: payload.materialIssues } : o));
   }
 };
 

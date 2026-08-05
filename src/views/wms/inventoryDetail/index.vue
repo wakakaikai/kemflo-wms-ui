@@ -4,8 +4,12 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover" class="inventory-detail-search-header-card">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
-            <el-form-item label="物料编码" prop="itemCode">
-              <HistoryInput v-model="queryParams.itemCode" :config="itemCodeConfig" placeholder="请输入物料编码" @keyup.enter="handleQuery" />
+            <el-form-item label="物料编码" prop="itemCodeStr">
+              <HistoryInput v-model="queryParams.itemCodeStr" :config="itemCodeConfig" placeholder="请输入物料编码" @keyup.enter="handleQuery">
+                <template #append>
+                  <el-button icon="CopyDocument" @click="openBatchInputDialog" title="批量录入物料编码" />
+                </template>
+              </HistoryInput>
             </el-form-item>
             <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
               <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable style="width: 160px">
@@ -57,10 +61,10 @@
 
       <el-table v-loading="loading" :data="inventoryDetailList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column v-if="columns[0].visible" label="物料编码" align="left" prop="itemCode" fixed="left" min-width="150" />
-        <el-table-column v-if="columns[1].visible" label="物料名称" align="left" prop="itemName" fixed="left" max-width="200" show-overflow-tooltip />
-        <el-table-column v-if="columns[2].visible" label="批次号" align="center" prop="batchCode" fixed="left" min-width="110" />
-        <el-table-column v-if="columns[3].visible" label="非限制数量" align="center" prop="availableQuantity" fixed="left" min-width="90" />
+        <el-table-column v-if="columns[0].visible" label="物料编码" align="left" prop="itemCode" fixed="left" />
+        <el-table-column v-if="columns[1].visible" label="物料名称" align="left" prop="itemName" fixed="left" show-overflow-tooltip />
+        <el-table-column v-if="columns[2].visible" label="批次号" align="center" prop="batchCode" fixed="left" />
+        <el-table-column v-if="columns[3].visible" label="非限制数量" align="center" prop="availableQuantity" fixed="left" />
         <el-table-column v-if="columns[4].visible" label="质检数量" align="center" prop="inspectionQuantity" fixed="left" />
         <el-table-column v-if="columns[5].visible" label="冻结数量" align="center" prop="blockedQuantity" fixed="left" />
         <el-table-column v-if="columns[6].visible" label="在途数量" align="center" prop="transitQuantity" fixed="left" />
@@ -77,11 +81,11 @@
         <el-table-column v-if="columns[13].visible" label="库位编码" align="center" prop="locationCode" />
         <el-table-column v-if="columns[14].visible" label="检验批号" align="center" prop="inspectionNo" />
         <el-table-column v-if="columns[15].visible" label="创建者" align="center" prop="createByName" />
-        <el-table-column v-if="columns[16].visible" label="创建时间" align="center" prop="createTime" width="180" />
+        <el-table-column v-if="columns[16].visible" label="创建时间" align="center" prop="createTime" />
         <el-table-column v-if="columns[17].visible" label="更新者" align="center" prop="updateByName" />
-        <el-table-column v-if="columns[18].visible" label="更新时间" align="center" prop="updateTime" width="180" />
+        <el-table-column v-if="columns[18].visible" label="更新时间" align="center" prop="updateTime" />
         <el-table-column v-if="columns[19].visible" label="备注" align="center" prop="remark" />
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width" fixed="right" width="150">
+        <el-table-column label="操作" align="center" class-name="small-padding fixed-width" fixed="right" min-width="150">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
               <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['wms:inventoryDetail:edit']">修改</el-button>
@@ -248,6 +252,9 @@
     <ItemDialog ref="itemDialogRef" @item-select-call-back="itemSelectCallBack" />
     <!-- 销售订单明细选择 -->
     <SalesOrderDetailDialog ref="salesOrderDetailDialogRef" @sales-order-detail-select-call-back="salesOrderDetailSelectCallBack" />
+
+    <!-- 物料编码批量输入对话框 -->
+    <BatchInputDialog ref="batchInputDialogRef" v-model="batchInputDialogVisible" title="批量录入物料编码" placeholder="请输入物料编码，支持多行粘贴" @confirm="handleBatchInputConfirm" />
   </div>
 </template>
 
@@ -262,6 +269,7 @@ import { historyDB } from '@/store/modules/indexedDB';
 import { ref } from 'vue';
 import { globalHeaders } from '@/utils/request';
 import HistoryInput from '@/components/HistoryInput/index.vue';
+import BatchInputDialog from '@/components/BatchInputDialog/index.vue';
 import { HistoryConfig } from '@/types/history';
 
 const route = useRoute();
@@ -292,6 +300,8 @@ const inventoryDetailFormRef = ref<ElFormInstance>();
 const itemDialogRef = ref<InstanceType<typeof ItemDialog>>();
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 const salesOrderDetailDialogRef = ref<InstanceType<typeof SalesOrderDetailDialog>>();
+const batchInputDialogVisible = ref(false);
+const batchInputDialogRef = ref<InstanceType<typeof BatchInputDialog>>();
 
 // 列显隐信息
 const columns = ref<FieldOption[]>([
@@ -367,6 +377,8 @@ const data = reactive<PageData<InventoryDetailForm, InventoryDetailQuery>>({
     pageSize: 10,
     itemType: undefined,
     itemCode: undefined,
+    itemCodeStr: undefined,
+    itemCodeList: [],
     itemName: undefined,
     batchCode: undefined,
     availableQuantity: undefined,
@@ -391,9 +403,9 @@ const data = reactive<PageData<InventoryDetailForm, InventoryDetailQuery>>({
   },
   rules: {
     id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
-    itemCode: [{ required: true, message: '物料编码/设备编号不能为空', trigger: 'blur' }],
+    itemCode: [{ required: true, message: '物料编码/设备编号不能为空' }],
     itemName: [{ required: true, message: '物料名称/设备名称不能为空', trigger: 'blur' }],
-    locationCode: [{ required: true, message: '请输入库位编码', trigger: 'blur' }],
+    locationCode: [{ required: true, message: '请输入库位编码' }],
     inventoryType: [{ required: true, message: '请选择库存类型', trigger: 'blur' }],
     quantity: [{ required: true, message: '请输出库数量存数量', trigger: 'blur' }]
   }
@@ -494,8 +506,16 @@ const getList = async () => {
   // 从路由参数接收物料编码和仓别（从库存差异页面跳转）
   const routeItemCode = route.query.itemCode as string | undefined;
   const routeWarehouseCode = route.query.warehouseCode as string | undefined;
-  if (routeItemCode) queryParams.value.itemCode = routeItemCode;
+  if (routeItemCode) queryParams.value.itemCodeStr = routeItemCode;
   if (routeWarehouseCode) queryParams.value.warehouseCode = routeWarehouseCode;
+  // 统一走 itemCodeStr → itemCodeList 解析，避免残留单值过滤
+  queryParams.value.itemCode = undefined;
+  queryParams.value.itemCodeList = String(queryParams.value.itemCodeStr || '').trim()
+    ? String(queryParams.value.itemCodeStr || '')
+        .trim()
+        .split(/[,;，；\s]+/)
+        .filter(Boolean)
+    : [];
   const res = await listInventoryDetail(queryParams.value);
   inventoryDetailList.value = res.rows;
   total.value = res.total;
@@ -517,13 +537,32 @@ const reset = () => {
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
+  // 从输入框内容解析物料编码列表（支持手动输入单个/多个，或批量录入回填）
+  const str = String(queryParams.value.itemCodeStr || '').trim();
+  queryParams.value.itemCodeList = str ? str.split(/[,;，；\s]+/).filter(Boolean) : [];
   getList();
 };
 
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
+  // 清空批量录入的物料编码
+  queryParams.value.itemCodeStr = undefined;
+  queryParams.value.itemCodeList = [];
+  batchInputDialogRef.value?.resetInput();
   handleQuery();
+};
+
+// 打开批量录入物料编码弹框
+const openBatchInputDialog = () => {
+  batchInputDialogVisible.value = true;
+};
+
+// 弹框确定的回调
+const handleBatchInputConfirm = (values: string[]) => {
+  // 将批量输入的值回填到输入框，查询时统一解析
+  queryParams.value.itemCodeStr = values.join(',');
+  handleQuery(); // 执行查询
 };
 
 /** 多选框选中数据 */

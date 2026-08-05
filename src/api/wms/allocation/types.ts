@@ -79,6 +79,8 @@ export interface WorkOrderMaterialIssueLine {
   /** SAP 预留单项次 */
   reserveItemNo?: string;
   materialCode: string;
+  /** BOM 行物料描述（备料/领料保存时带出，用于分类展示） */
+  componentDesc?: string;
   issueQty: number;
   /** 发料单位（可选计量单位） */
   issueUnit?: string;
@@ -189,6 +191,8 @@ export interface AllocationRequest {
   prepItems?: import('@/api/wms/workOrderPrepDemand/types').PrepDemandLineItem[];
   /** 单据类型：NORMAL-普通领料单, OVER_PICK-超领单 */
   demandType?: import('@/api/wms/workOrderPrepDemand/types').PrepDemandType | string;
+  /** 备料业务类型：BOM-通过工单BOM生成领料需求, WO_MATERIAL-根据工单号料号生成备料需求 */
+  businessType?: 'BOM' | 'WO_MATERIAL' | string;
   /** 需求人员编码（字典 wms_material_user） */
   materialUserCode?: string;
   /** 需求人员姓名 */
@@ -279,7 +283,8 @@ export interface InventoryCheckResultVO {
 }
 
 export interface InventoryCheckRequest {
-  workOrderNo: string;
+  /** 工单号（手动领料等场景可不传） */
+  workOrderNo?: string;
   materialCodes?: string[];
   /** 缺料行数按物料编码统计（SCADA 重复物料占比） */
   materialShortageLineCounts?: Record<string, number>;
@@ -407,6 +412,7 @@ export interface BomIssueRow {
   salesOrderItem?: string;
   specialInventoryFlag?: string;
   componentMaterial: string;
+  componentDesc?: string;
   componentQty: number;
   issuedQty?: number;
   /** 已预约数量 */

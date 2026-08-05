@@ -138,9 +138,10 @@ export function getMaterialBatches(materialCode: string) {
 }
 
 export function getWorkOrderBom(workOrderNo: string) {
-  return listWorkOrderBom({ workOrderNo, pageNum: 1, pageSize: 500 } as any).then((res: any) => ({
+  return listWorkOrderBom({ workOrderNo, pageNum: 1, pageSize: 2000 } as any).then((res: any) => ({
     ...res,
-    data: res.rows || []
+    // 过滤 componentQty 小于 0 的异常 BOM 行，任何场景都不展示
+    data: (res.rows || []).filter((row: any) => !(Number(row.componentQty) < 0))
   }));
 }
 
@@ -1975,6 +1976,7 @@ function mapBomRowToIssueLine(r: BomIssueRow): WorkOrderMaterialIssueLine {
     reserveNo: r.reserveNo,
     reserveItemNo: r.reserveItemNo,
     materialCode: r.componentMaterial,
+    componentDesc: r.componentDesc,
     issueQty: Number(r.issueQty),
     issueUnit: r.unit,
     conversionRatio: r.conversionRatio,

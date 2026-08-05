@@ -67,7 +67,7 @@ export default defineConfig(({ mode, command }) => {
     },
     // 预编译
     optimizeDeps: {
-      include: ['vue', 'vue-router', 'pinia', 'axios', '@vueuse/core', 'echarts', 'vue-i18n', '@vueup/vue-quill', 'image-conversion', 'element-plus/es/components/**/css']
+      include: ['vue', 'vue-router', 'pinia', 'axios', '@vueuse/core', 'echarts', 'vue-i18n', '@vueup/vue-quill', 'image-conversion', 'element-plus/es/components/**/css', '@antv/x6', '@antv/x6-vue-shape']
     },
 
     build: {
