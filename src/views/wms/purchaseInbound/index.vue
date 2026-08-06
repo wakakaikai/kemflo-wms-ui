@@ -25,6 +25,11 @@
                     <!--                    <el-input v-model="queryParams.itemNumber" placeholder="请输入项次" clearable @keyup.enter="handleQuery" />-->
                     <HistoryInput v-model="queryParams.itemNumber" :config="itemNoConfig" placeholder="请输入项次" @keyup.enter="handleQuery" />
                   </el-form-item>
+                  <el-form-item label="采购类别" prop="poCategory">
+                    <el-select v-model="queryParams.poCategory" placeholder="请选择采购类别" clearable>
+                      <el-option v-for="dict in wms_purchase_category" :key="dict.value" :label="dict.label" :value="dict.value" />
+                    </el-select>
+                  </el-form-item>
 
                   <!-- 高级搜索项，默认隐藏 -->
                   <div v-show="showAdvancedSearch">
@@ -52,6 +57,11 @@
                     <el-table-column type="selection" width="55" align="center" />
                     <el-table-column v-if="columns[0].visible" label="采购单" align="left" prop="poNumber" fixed="left" min-width="120" />
                     <el-table-column v-if="columns[1].visible" label="项次" align="left" prop="itemNumber" fixed="left" min-width="65" />
+                    <el-table-column v-if="columns[17].visible" label="采购类别" align="center" prop="poCategory" min-width="100">
+                      <template #default="scope">
+                        <dict-tag :options="wms_purchase_category" :value="scope.row.poCategory" />
+                      </template>
+                    </el-table-column>
                     <el-table-column label="交货状态" align="center" width="100" fixed="left">
                       <template #default="scope">
                         <el-tooltip :content="getEarlyDeliveryTooltip(scope.row)" placement="top">
@@ -172,6 +182,11 @@
                   <el-table-column type="index" width="50" align="center" />
                   <el-table-column label="采购单" prop="poNumber" />
                   <el-table-column label="项次" prop="itemNumber" />
+                  <el-table-column label="采购类别" prop="poCategory" align="center">
+                    <template #default="scope">
+                      <dict-tag :options="wms_purchase_category" :value="scope.row.poCategory" />
+                    </template>
+                  </el-table-column>
                   <el-table-column label="料号" prop="materialCode" />
                   <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip />
                   <el-table-column label="订单数量" align="left" prop="orderQuantity" min-width="100" />
@@ -478,6 +493,7 @@ import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const { wms_purchase_category } = toRefs<any>(proxy?.useDict('wms_purchase_category'));
 
 const purchaseOrderDetailList = ref<PurchaseOrderDetailVO[]>([]);
 const loading = ref(true);
@@ -541,6 +557,7 @@ const data = reactive<PageData<PurchaseOrderDetailForm, PurchaseOrderDetailQuery
     pageSize: 10,
     poNumber: undefined,
     itemNumber: undefined,
+    poCategory: undefined,
     materialCode: undefined,
     materialDesc: undefined,
     shortText: undefined,
@@ -662,7 +679,8 @@ const columns = ref<FieldOption[]>([
   { key: 13, label: `库存单位`, visible: false, children: [] },
   { key: 14, label: `换算比例`, visible: false, children: [] },
   { key: 15, label: `供应商代码`, visible: true, children: [] },
-  { key: 16, label: `供应商名称`, visible: true, children: [] }
+  { key: 16, label: `供应商名称`, visible: true, children: [] },
+  { key: 17, label: `采购类别`, visible: true, children: [] }
 ]);
 
 // 禁用未来的时间
