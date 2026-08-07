@@ -225,7 +225,7 @@ import type { OperationObj, ResourceObj } from '@/components/common-type';
 import ResourceDialog from '@/views/mes/workpanel/components/resourceDialog.vue';
 import OperationDialog from '@/views/mes/workpanel/components/operationDialog.vue';
 import { Bell, Close, Cpu, Operation } from '@element-plus/icons-vue';
-import { queryDataCollectionBySfc, querySfcQueueInfo, dataCollectPassSfc, getSfcWeightByOperation } from '@/api/mes/workpanel';
+import { queryDataCollectionBySfc, querySfcQueueInfo, dataCollectPassSfc } from '@/api/mes/workpanel';
 import { buildDataCollectPassPayload, formatWeightValue, findWeightDcParameter } from '@/api/mes/workpanel/dataCollection/weight-pass';
 import { parseTime } from '@/utils/ruoyi';
 import { v4 as uuidv4 } from 'uuid';
@@ -269,8 +269,6 @@ interface FormData {
   residualParam?: any;
   dcParameterBoList?: any[];
 }
-
-const BEFORE_WEIGHT_OPERATION = 'WGT-BF';
 
 const formatNumber = (val: string | number | undefined | null) => {
   return formatWeightValue(val);
@@ -595,17 +593,10 @@ const handleSfcEnter = async () => {
     formData.value.dcParameterBoList = detailList;
     formData.value.weightUnit = weightParam.units || '';
 
-    // 查询测试前称重结果
-    const beforeRes: any = await getSfcWeightByOperation({
-      sfc: formData.value.sfc,
-      operation: BEFORE_WEIGHT_OPERATION
-    });
-    if (isApiSuccess(beforeRes)) {
-      const beforeWeight = beforeRes.data?.actualWeight ?? beforeRes.data?.weight ?? beforeRes.data;
-      formData.value.beforeWeight = beforeWeight === null || beforeWeight === undefined || beforeWeight === '' ? undefined : formatWeightValue(beforeWeight);
-    } else {
-      formData.value.beforeWeight = undefined;
-    }
+    // 测试前重量由后端在 WGT-AF 查询时一并返回
+    const beforeWeight = dcRes.data?.beforeWeight;
+    formData.value.beforeWeight =
+      beforeWeight === null || beforeWeight === undefined || beforeWeight === '' ? undefined : formatWeightValue(beforeWeight);
 
     if (formData.value.beforeWeight === undefined || formData.value.beforeWeight === null || formData.value.beforeWeight === '') {
       resultMessage.value = '未获取到测试前重量，请确认已完成测试前称重';

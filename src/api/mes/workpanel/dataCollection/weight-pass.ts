@@ -1,5 +1,5 @@
 /**
- * ³ÆÖØÕ¾Êı¾İÊÕ¼¯¹ıÕ¾Èë²Î×é×°£¨¶ÔÆë /mes/dataCollection/passSfc ¡ú DataCollectionBo£©
+ * ç§°é‡ç«™æ•°æ®æ”¶é›†è¿‡ç«™å…¥å‚ç»„è£…ï¼ˆå¯¹é½ /mes/dataCollection/passSfc çš„ DataCollectionBoï¼‰
  */
 
 export interface WeightPassContext {
@@ -12,7 +12,7 @@ export interface WeightPassContext {
   qty?: number | string;
 }
 
-/** ¶¨Î»³ÆÖØÊı×Ö²ÎÊı£¨ÓÅÏÈ N ÀàĞÍ£¬Æä´Î WGT* ²ÎÊıÃû£© */
+/** ä¼˜å…ˆå–æ•°å­—ç±»å‹å‚æ•°ï¼ˆdataType = Nï¼‰ï¼Œå¦åˆ™ WGT* å‚æ•°æˆ–é¦–é¡¹ */
 export function findWeightDcParameter(list: any[] = []) {
   return (
     list.find((item) => item?.dataType === 'N') ||
@@ -21,7 +21,7 @@ export function findWeightDcParameter(list: any[] = []) {
   );
 }
 
-/** ÖØÁ¿±£ÁôÖ¸¶¨Ğ¡ÊıÎ»£¨Ä¬ÈÏ 3 Î»£© */
+/** é‡é‡ä¿ç•™æŒ‡å®šå°æ•°ä½ï¼ˆé»˜è®¤ 3 ä½ï¼‰ */
 export function formatWeightValue(val: string | number | undefined | null, digits = 3): string {
   if (val === undefined || val === null || val === '') {
     return '';
@@ -34,8 +34,8 @@ export function formatWeightValue(val: string | number | undefined | null, digit
 }
 
 /**
- * ×ª³Éºó¶Ë DcParameterBo£¨×Ö¶ÎÓë org.dromara.wms.domain.mes.bo.DcParameterBo ¶ÔÆë£©
- * ²Î¿¼ weight-no-sn£ºhandle / dcGroupBo / dcParameter / actualValue / units Îª¹ıÕ¾¹Ø¼ü×Ö¶Î
+ * è½¬æˆåç«¯ DcParameterBoï¼ˆå­—æ®µè§ org.dromara.wms.domain.mes.bo.DcParameterBo å®šä¹‰ï¼‰
+ * å‚è€ƒ weight-no-snï¼šhandle / dcGroupBo / dcParameter / actualValue / units ä¸ºè¿‡ç«™å…³é”®å­—æ®µ
  */
 export function toDcParameterBoList(list: any[] = []) {
   return list
@@ -67,7 +67,7 @@ export function toDcParameterBoList(list: any[] = []) {
     });
 }
 
-/** ×é×°ÌõÂëÊı¾İÊÕ¼¯¹ıÕ¾ÇëÇóÌå DataCollectionBo */
+/** ç»„è£…æ¡ç æ•°æ®æ”¶é›†è¿‡ç«™è¯·æ±‚ä½“ DataCollectionBo */
 export function buildDataCollectPassPayload(ctx: WeightPassContext, detailList: any[]) {
   const dcParameterBoList = toDcParameterBoList(detailList);
   return {
