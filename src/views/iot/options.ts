@@ -70,11 +70,65 @@ export const IOT_ONLINE_STATUS_OPTIONS: IotOption[] = [
 ];
 
 export const IOT_DATA_TYPE_OPTIONS: IotOption[] = [
-  { label: '整型', value: 'INT' },
-  { label: '浮点', value: 'FLOAT' },
+  { label: 'INT(16位有符号)', value: 'INT' },
+  { label: 'UINT(16位无符号)', value: 'UINT' },
+  { label: 'DINT(32位有符号)', value: 'DINT' },
+  { label: 'UDINT(32位无符号)', value: 'UDINT' },
+  { label: 'FLOAT/REAL(32位浮点)', value: 'FLOAT' },
+  { label: 'DOUBLE/LREAL(64位浮点)', value: 'DOUBLE' },
   { label: '布尔', value: 'BOOL' },
   { label: '字符串', value: 'STRING' }
 ];
+
+/** 显示格式（对齐 Modbus Poll） */
+export const IOT_DISPLAY_FORMAT_OPTIONS: IotOption[] = [
+  { label: 'Signed 有符号', value: 'SIGNED' },
+  { label: 'Unsigned 无符号', value: 'UNSIGNED' },
+  { label: 'Hex 十六进制', value: 'HEX' },
+  { label: 'Binary 二进制', value: 'BINARY' }
+];
+
+/** 16/32 位字节序 */
+export const IOT_BYTE_ORDER_32_OPTIONS: IotOption[] = [
+  { label: 'AB CD（大端）', value: 'ABCD' },
+  { label: 'CD AB（字交换，常用）', value: 'CDAB' },
+  { label: 'BA DC（字节交换）', value: 'BADC' },
+  { label: 'DC BA（小端）', value: 'DCBA' }
+];
+
+/** 16 位寄存器字节序 */
+export const IOT_BYTE_ORDER_16_OPTIONS: IotOption[] = [
+  { label: 'AB（默认）', value: 'ABCD' },
+  { label: 'BA（字节交换）', value: 'BA' }
+];
+
+/** 64 位双精度字节序 */
+export const IOT_BYTE_ORDER_64_OPTIONS: IotOption[] = [
+  { label: 'AB CD EF GH', value: 'ABCDEFGH' },
+  { label: 'GH EF CD AB（常用）', value: 'GHEFCDAB' },
+  { label: 'BA DC FE HG', value: 'BADCFEHG' },
+  { label: 'HG FE DC BA', value: 'HGFEDCBA' }
+];
+
+export function resolveByteOrderOptions(dataType?: string): IotOption[] {
+  const type = (dataType || '').toUpperCase();
+  if (type === 'DOUBLE' || type === 'LREAL') return IOT_BYTE_ORDER_64_OPTIONS;
+  if (type === 'FLOAT' || type === 'REAL' || type === 'DINT' || type === 'UDINT' || type === 'LONG' || type === 'DWORD') {
+    return IOT_BYTE_ORDER_32_OPTIONS;
+  }
+  if (type === 'STRING' || type === 'CHAR') return IOT_BYTE_ORDER_32_OPTIONS;
+  if (type === 'INT' || type === 'UINT' || type === 'WORD' || type === 'SHORT') return IOT_BYTE_ORDER_16_OPTIONS;
+  return IOT_BYTE_ORDER_32_OPTIONS;
+}
+
+export function defaultByteOrder(dataType?: string): string {
+  const type = (dataType || '').toUpperCase();
+  if (type === 'FLOAT' || type === 'REAL' || type === 'DINT' || type === 'UDINT' || type === 'STRING' || type === 'CHAR') {
+    return 'CDAB';
+  }
+  if (type === 'DOUBLE' || type === 'LREAL') return 'GHEFCDAB';
+  return 'ABCD';
+}
 
 export const IOT_READ_WRITE_OPTIONS: IotOption[] = [
   { label: '只读', value: 'R' },
@@ -193,13 +247,27 @@ export function createDefaultAddressBuilder(protocol?: string, dataType?: string
 }
 
 function toModbusDataType(dataType?: string): string {
-  switch (dataType) {
+  switch ((dataType || '').toUpperCase()) {
     case 'BOOL':
       return 'BOOL';
     case 'FLOAT':
+    case 'REAL':
       return 'REAL';
+    case 'DOUBLE':
+    case 'LREAL':
+      return 'LREAL';
     case 'STRING':
+    case 'CHAR':
       return 'CHAR';
+    case 'UINT':
+    case 'WORD':
+      return 'UINT';
+    case 'DINT':
+    case 'LONG':
+      return 'DINT';
+    case 'UDINT':
+    case 'DWORD':
+      return 'UDINT';
     case 'INT':
     default:
       return 'INT';
@@ -207,13 +275,23 @@ function toModbusDataType(dataType?: string): string {
 }
 
 function toS7Access(dataType?: string): { access: string; plcType: string } {
-  switch (dataType) {
+  switch ((dataType || '').toUpperCase()) {
     case 'BOOL':
       return { access: 'DBX', plcType: 'BOOL' };
     case 'FLOAT':
+    case 'REAL':
       return { access: 'DBD', plcType: 'REAL' };
+    case 'DOUBLE':
+    case 'LREAL':
+      return { access: 'DBD', plcType: 'LREAL' };
     case 'STRING':
       return { access: 'DBB', plcType: 'STRING' };
+    case 'DINT':
+    case 'UDINT':
+    case 'LONG':
+      return { access: 'DBD', plcType: 'DINT' };
+    case 'UINT':
+      return { access: 'DBW', plcType: 'UINT' };
     case 'INT':
     default:
       return { access: 'DBW', plcType: 'INT' };
@@ -221,13 +299,21 @@ function toS7Access(dataType?: string): { access: string; plcType: string } {
 }
 
 function toS7SimpleAccess(area: 'I' | 'Q' | 'M', dataType?: string): { prefix: string; plcType: string } {
-  switch (dataType) {
+  switch ((dataType || '').toUpperCase()) {
     case 'BOOL':
       return { prefix: area, plcType: 'BOOL' };
     case 'FLOAT':
+    case 'REAL':
       return { prefix: `${area}D`, plcType: 'REAL' };
+    case 'DOUBLE':
+    case 'LREAL':
+      return { prefix: `${area}D`, plcType: 'LREAL' };
     case 'STRING':
       return { prefix: `${area}B`, plcType: 'STRING' };
+    case 'DINT':
+    case 'UDINT':
+    case 'LONG':
+      return { prefix: `${area}D`, plcType: 'DINT' };
     case 'INT':
     default:
       return { prefix: `${area}W`, plcType: 'INT' };

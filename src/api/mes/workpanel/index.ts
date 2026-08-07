@@ -78,7 +78,7 @@ export const replaceSfcBomComponent = (data: any) => {
 // 查询条码数据采集项目
 export const queryDataCollectionBySfc = (data: any) => {
   return request({
-    url: '/mes/dataCollection/dcGroup/sfc',
+    url: '/mes/dataCollection/sfc',
     method: 'post',
     data
   });
@@ -106,6 +106,15 @@ export const saveShopOrderWeightNoSn = (data: any) => {
 export const getShopOrderWeightNoSnInfo = (data: any) => {
   return request({
     url: '/mes/dataCollection/getShopOrderWeightNoSnInfo',
+    method: 'post',
+    data
+  });
+};
+
+// 查询条码指定工序的称重结果（如测试前重）
+export const getSfcWeightByOperation = (data: any) => {
+  return request({
+    url: '/mes/dataCollection/getSfcWeightByOperation',
     method: 'post',
     data
   });

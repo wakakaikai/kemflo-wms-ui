@@ -119,22 +119,22 @@ const getDataSource = async () => {
   });
 
   loading.value = false;
-  if (res.success) {
+  if (res.code === 200 || res.success) {
     let array: DcDetail[] = [];
-    const firstArray: any = res.data.dataCollectionResponseList || [];
-    itemGroupRef.value = res.data.itemGroupRef;
-    itemRef.value = res.data.itemRef;
+    const firstArray: any = res.data.dcGroupVoList || [];
+    itemGroupRef.value = res.data.itemGroupBo;
+    itemRef.value = res.data.itemBo;
     if (firstArray.length > 0) {
       let idCounter = 0;
       firstArray.forEach((data: any) => {
-        if (data.dataCollectionDetailVoList && data.dataCollectionDetailVoList.length > 0) {
-          data.dataCollectionDetailVoList.forEach((item: any) => {
+        if (data.dcParameterVoList && data.dcParameterVoList.length > 0) {
+          data.dcParameterVoList.forEach((item: any) => {
             item.firstDescription = data.description;
-            item.dcGroupAndRevision = `${item.dcGroup}/${item.dcGroupRevision}`;
+            item.dcGroupAndRevision = `${item.dcGroup || data.dcGroup}/${item.dcGroupRevision || data.revision || ''}`;
             item.id = idCounter++;
             item.contentRule = item.extFieldsVoList?.find((field: any) => field.fieldName === 'CUSTOMER_SFC_RULE')?.value;
           });
-          array = array.concat(data.dataCollectionDetailVoList);
+          array = array.concat(data.dcParameterVoList);
         }
       });
       console.log('array', array);
@@ -251,20 +251,19 @@ const handleChange = async (record: DcDetail, index: number) => {
 };
 
 const handleOk = async () => {
-  const params = {
-    activityId: '',
+  const params: any = {
     sfc: formData.sfc,
-    dataCollectionDetailVOList: dataSource.value,
+    dcParameterBoList: dataSource.value,
     operation: props.podConfig?.podConfigVO?.defaultOperation,
     resource: props.podConfig?.podConfigVO?.defaultResource,
-    itemGroupRef: itemGroupRef.value,
-    itemRef: itemRef.value
+    itemGroupBo: itemGroupRef.value,
+    itemBo: itemRef.value
   };
 
-  const arr = params.dataCollectionDetailVOList.filter((item) => {
+  const arr = params.dcParameterBoList.filter((item: any) => {
     const idx = item.id;
     if (item[`result${idx}`]) {
-      item.actualVal = item[`result${idx}`];
+      item.actualValue = item[`result${idx}`];
     }
     return item.validateStatus === 'error' || (item.required && !item[`result${idx}`]);
   });
@@ -273,8 +272,8 @@ const handleOk = async () => {
     return;
   }
 
-  params.dataCollectionDetailVOList = params.dataCollectionDetailVOList.filter((item) => {
-    return item.actualVal;
+  params.dcParameterBoList = params.dcParameterBoList.filter((item: any) => {
+    return item.actualValue;
   });
 
   loading.value = true;

@@ -474,7 +474,7 @@ const connectionParamsPlaceholder = computed(() => {
       : IOT_SERIAL_PARAMS_EXAMPLE;
   }
   if (isTcpClient.value) return IOT_TCP_CLIENT_PARAMS_EXAMPLE;
-  return '如 {"rack":0,"slot":1} 或 Modbus {"unit-identifier":1}';
+  return '如 {"unit-identifier":1}；点位字节序/显示格式请在点位中配置';
 });
 
 const syncTcpHeartbeatFromForm = () => {

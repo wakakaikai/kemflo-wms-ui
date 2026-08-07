@@ -365,6 +365,31 @@
         <div class="form-section">
           <div class="form-section__title">换算与展示</div>
           <el-row :gutter="16">
+            <el-col v-if="!isTcpClientDevice && form.dataType !== 'BOOL'" :span="12">
+              <el-form-item label="显示格式" prop="displayFormat">
+                <el-select v-model="form.displayFormat" style="width: 100%" placeholder="Signed/Unsigned/Hex/Binary">
+                  <el-option
+                    v-for="item in IOT_DISPLAY_FORMAT_OPTIONS"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col v-if="!isTcpClientDevice && showByteOrder" :span="12">
+              <el-form-item label="字节序" prop="byteOrder">
+                <el-select v-model="form.byteOrder" style="width: 100%" placeholder="按数据类型选择">
+                  <el-option
+                    v-for="item in byteOrderOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+                <div class="form-tip">正数变负/字符串乱序时优先尝试 CD AB</div>
+              </el-form-item>
+            </el-col>
             <el-col :span="12">
               <el-form-item label="缩放" prop="scaleFactor">
                 <el-input-number v-model="form.scaleFactor" :step="0.1" controls-position="right" style="width: 100%" />
@@ -412,11 +437,14 @@ import {
   IOT_PROTOCOL_OPTIONS,
   IOT_MODBUS_AREA_OPTIONS,
   IOT_S7_AREA_OPTIONS,
+  IOT_DISPLAY_FORMAT_OPTIONS,
   buildPlcTagAddress,
   createDefaultAddressBuilder,
+  defaultByteOrder,
   getProtocolGroup,
   normalizeProtocolValue,
-  parsePlcTagAddress
+  parsePlcTagAddress,
+  resolveByteOrderOptions
 } from '@/views/iot/options';
 import type { IotAddressBuilder } from '@/views/iot/options';
 import IotReadCollectDialog from '@/views/iot/components/IotReadCollectDialog.vue';
@@ -460,6 +488,12 @@ const addressPlaceholder = computed(() => {
   if (protocolGroup.value === 's7') return '例如 %DB1.DBD0:REAL';
   if (protocolGroup.value === 'tcp') return '例如 text:STATUS? 或 hex:01 03 00 00 00 01（非 Modbus 寄存器）';
   return '请输入协议对应点位地址';
+});
+
+const byteOrderOptions = computed(() => resolveByteOrderOptions(form.value.dataType));
+const showByteOrder = computed(() => {
+  const type = (form.value.dataType || '').toUpperCase();
+  return !!type && type !== 'BOOL';
 });
 
 const qualityStats = computed(() => {
@@ -507,7 +541,14 @@ const qualityTag = (value?: string): '' | 'success' | 'warning' | 'info' | 'dang
 };
 
 const isEmptyValue = (value?: string) => value == null || value === '';
-const formatValue = (value?: string) => (isEmptyValue(value) ? '—' : String(value));
+const formatValue = (value?: string) => {
+  if (isEmptyValue(value)) return '—';
+  const text = String(value);
+  if (!/^-?\d+(\.\d+)?([eE][+-]?\d+)$/.test(text)) return text;
+  const num = Number(text);
+  if (!Number.isFinite(num)) return text;
+  return num.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 20 });
+};
 
 /** 设备 ID 统一按字符串处理，避免雪花 ID 被 Number 精度丢失 */
 const toIdStr = (id?: string | number | null | (string | null)[]) => {
@@ -529,6 +570,8 @@ const initForm: PointForm = {
   pointName: undefined,
   tagAddress: undefined,
   dataType: 'FLOAT',
+  displayFormat: 'SIGNED',
+  byteOrder: 'CDAB',
   unit: undefined,
   rwMode: 'R',
   scaleFactor: 1,
@@ -621,6 +664,12 @@ const onDataTypeChange = () => {
       addrBuilder.area = 'holding-register';
     }
   }
+  form.value.byteOrder = defaultByteOrder(form.value.dataType);
+  if (form.value.dataType === 'UINT' || form.value.dataType === 'UDINT') {
+    form.value.displayFormat = 'UNSIGNED';
+  } else if (!form.value.displayFormat) {
+    form.value.displayFormat = 'SIGNED';
+  }
   syncGeneratedAddress();
 };
 
@@ -706,7 +755,9 @@ const handleUpdate = async (row: PointVO) => {
   const res = await getPoint(row.id);
   form.value = {
     ...res.data,
-    deviceId: toIdStr(res.data?.deviceId) || undefined
+    deviceId: toIdStr(res.data?.deviceId) || undefined,
+    displayFormat: res.data?.displayFormat || 'SIGNED',
+    byteOrder: res.data?.byteOrder || defaultByteOrder(res.data?.dataType)
   };
   await resolveDeviceProtocol(form.value.deviceId);
   resetAddressBuilder(form.value.tagAddress);
@@ -965,6 +1016,13 @@ watch(
     font-weight: 600;
     color: var(--el-text-color-primary);
   }
+}
+
+.form-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--el-text-color-secondary);
 }
 
 .addr-builder {

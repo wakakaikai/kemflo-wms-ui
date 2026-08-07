@@ -27,12 +27,21 @@ export function isPassStatus(status?: string): boolean {
 
 export function formatCollectValue(value: unknown): string {
   if (value == null) return '';
+  if (typeof value === 'number') return formatPlainNumber(value);
   if (typeof value === 'string') return value;
   try {
-    return JSON.stringify(value, null, 2);
+    return JSON.stringify(value, (_k, v) => (typeof v === 'number' ? formatPlainNumber(v) : v), 2);
   } catch {
     return String(value);
   }
+}
+
+/** 避免 JS Number 科学计数法展示 */
+export function formatPlainNumber(value: number): string {
+  if (!Number.isFinite(value)) return String(value);
+  const raw = String(value);
+  if (!/[eE]/.test(raw)) return raw;
+  return value.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 20 });
 }
 
 function asObject(value: unknown): Record<string, any> | null {

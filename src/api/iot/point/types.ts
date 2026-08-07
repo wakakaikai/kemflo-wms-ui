@@ -6,6 +6,8 @@ export interface PointVO {
   pointName: string;
   tagAddress: string;
   dataType?: string;
+  displayFormat?: string;
+  byteOrder?: string;
   unit?: string;
   rwMode?: string;
   scaleFactor?: number;
@@ -25,6 +27,8 @@ export interface PointForm extends BaseEntity {
   pointName?: string;
   tagAddress?: string;
   dataType?: string;
+  displayFormat?: string;
+  byteOrder?: string;
   unit?: string;
   rwMode?: string;
   scaleFactor?: number;

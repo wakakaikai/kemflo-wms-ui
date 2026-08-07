@@ -82,7 +82,7 @@
 import { computed, ref } from 'vue';
 import type { PointReadItem } from '@/api/iot/device';
 import TcpCollectResultPanel from '@/views/iot/components/TcpCollectResultPanel.vue';
-import { formatCollectValue, parseSafetyTestPayload, isStructuredJsonValue } from '@/views/iot/utils/parseTcpCollectValue';
+import { formatCollectValue, formatPlainNumber, parseSafetyTestPayload, isStructuredJsonValue } from '@/views/iot/utils/parseTcpCollectValue';
 import { buildReadResultFileName, captureReadResultScreenshot } from '@/views/iot/utils/captureReadResult';
 import { ElMessage } from 'element-plus';
 
@@ -125,6 +125,7 @@ const plainRows = computed(() =>
 
 const formatCellValue = (value: unknown) => {
   if (value == null) return '-';
+  if (typeof value === 'number') return formatPlainNumber(value);
   if (typeof value === 'object') return formatCollectValue(value);
   return String(value);
 };
