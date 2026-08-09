@@ -11,7 +11,7 @@ export function getDefaultConfig(type: string): Record<string, any> {
 export interface FormField {
   key: string;
   label: string;
-  type: 'input' | 'number' | 'select' | 'switch' | 'textarea' | 'json';
+  type: 'input' | 'number' | 'select' | 'radio' | 'switch' | 'textarea' | 'json' | 'keyValueList';
   required?: boolean;
   placeholder?: string;
   options?: Array<{ label: string; value: any }>;
@@ -61,11 +61,15 @@ function getTypeSpecificFields(type: string): FormField[] {
       { key: 'threshold', label: '阈值', type: 'number', defaultValue: 0 },
     ],
     CONDITION: [
-      { key: 'expression', label: '条件表达式', type: 'textarea', required: true, placeholder: 'trigger.value > 80' },
+      { key: 'expression', label: '筛选条件', type: 'textarea', required: true, placeholder: '例如: loadingTime == null' },
+      { key: 'alias', label: '节点别名', type: 'input', placeholder: '可选' },
+      { key: 'description', label: '节点说明', type: 'textarea', placeholder: '可选' },
     ],
     SWITCH: [
-      { key: 'expression', label: '表达式', type: 'textarea', required: true },
+      { key: 'expression', label: '分支表达式', type: 'textarea', required: true },
       { key: 'cases', label: '分支配置(JSON)', type: 'json' },
+      { key: 'alias', label: '节点别名', type: 'input', placeholder: '可选' },
+      { key: 'description', label: '节点说明', type: 'textarea', placeholder: '可选' },
     ],
     LOOP: [
       { key: 'collectionExpression', label: '集合表达式', type: 'input', required: true },
@@ -112,8 +116,30 @@ function getTypeSpecificFields(type: string): FormField[] {
       { key: 'expression', label: '过滤表达式', type: 'textarea', required: true },
     ],
     HTTP_CALL: [
-      { key: 'operationCode', label: '操作编码', type: 'input', required: true },
-      { key: 'inputMapping', label: '输入映射(JSON)', type: 'json' },
+      { key: 'url', label: '请求URL', type: 'input', required: true, placeholder: 'https://api.example.com/orders/${orderId}' },
+      { key: 'contentType', label: 'Content-Type', type: 'select', defaultValue: 'application/json', options: [
+        { label: 'application/json', value: 'application/json' },
+        { label: 'application/x-www-form-urlencoded', value: 'application/x-www-form-urlencoded' },
+        { label: 'text/plain', value: 'text/plain' },
+        { label: 'multipart/form-data', value: 'multipart/form-data' },
+        { label: '自定义(见Headers)', value: 'custom' },
+      ]},
+      { key: 'headers', label: '请求头', type: 'keyValueList', placeholder: 'Authorization' },
+      { key: 'queryParams', label: 'Query参数(JSON)', type: 'json', placeholder: '{"page":1,"size":10}' },
+      { key: 'bodyType', label: '请求体类型', type: 'select', defaultValue: 'json', options: [
+        { label: 'JSON', value: 'json' },
+        { label: 'Form', value: 'form' },
+        { label: 'Raw文本', value: 'raw' },
+        { label: '无', value: 'none' },
+      ]},
+      { key: 'body', label: '请求体', type: 'textarea', placeholder: 'JSON / 文本；可用 ${变量名} 引用流程变量' },
+      { key: 'timeoutMs', label: '超时(毫秒)', type: 'number', defaultValue: 30000 },
+      { key: 'successCodes', label: '成功状态码', type: 'input', defaultValue: '200,201,204', placeholder: '200,201,204' },
+      { key: 'responseType', label: '响应解析', type: 'select', defaultValue: 'json', options: [
+        { label: 'JSON', value: 'json' },
+        { label: '文本', value: 'text' },
+      ]},
+      { key: 'outputVar', label: '输出变量名', type: 'input', defaultValue: 'httpResponse', placeholder: '写入流程变量的键名' },
     ],
     JDBC_CALL: [
       { key: 'connectionId', label: '连接ID', type: 'input', required: true },

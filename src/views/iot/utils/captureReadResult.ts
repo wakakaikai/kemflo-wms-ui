@@ -49,8 +49,9 @@ export async function captureReadResultScreenshot(options: {
   root: HTMLElement;
   fileName?: string;
   scale?: number;
+  onclone?: (clonedRoot: HTMLElement) => void;
 }): Promise<void> {
-  const { root, fileName = `采集结果_${Date.now()}.png`, scale = 2 } = options;
+  const { root, fileName = `采集结果_${Date.now()}.png`, scale = 2, onclone } = options;
   const snapshots: StyleSnapshot[] = [];
   const dialog = (root.closest('.el-dialog') as HTMLElement) || root;
 
@@ -78,7 +79,10 @@ export async function captureReadResultScreenshot(options: {
       scrollX: 0,
       scrollY: -window.scrollY,
       windowWidth: Math.max(root.scrollWidth, root.clientWidth),
-      windowHeight: Math.max(root.scrollHeight, root.clientHeight)
+      windowHeight: Math.max(root.scrollHeight, root.clientHeight),
+      onclone: (_doc, clonedElement) => {
+        onclone?.(clonedElement as HTMLElement);
+      }
     });
 
     await new Promise<void>((resolve, reject) => {

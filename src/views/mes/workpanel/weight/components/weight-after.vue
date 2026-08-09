@@ -213,9 +213,6 @@
 
     <OperationDialog ref="operationDialogRef" @operation-call-back="operationCallBack" />
     <ResourceDialog ref="resourceDialogRef" @resource-call-back="resourceCallBack" />
-
-    <audio id="warningAudioAf" :src="warningsMp3" hidden="hidden" />
-    <audio id="successAudioAf" :src="successMp3" hidden="hidden" />
   </div>
 </template>
 
@@ -226,11 +223,16 @@ import ResourceDialog from '@/views/mes/workpanel/components/resourceDialog.vue'
 import OperationDialog from '@/views/mes/workpanel/components/operationDialog.vue';
 import { Bell, Close, Cpu, Operation } from '@element-plus/icons-vue';
 import { queryDataCollectionBySfc, querySfcQueueInfo, dataCollectPassSfc } from '@/api/mes/workpanel';
-import { buildDataCollectPassPayload, formatWeightValue, findWeightDcParameter } from '@/api/mes/workpanel/dataCollection/weight-pass';
+import {
+  buildDataCollectPassPayload,
+  formatWeightValue,
+  findWeightDcParameter,
+  findResidualDcParameter
+} from '@/api/mes/workpanel/dataCollection/weight-pass';
 import { parseTime } from '@/utils/ruoyi';
 import { v4 as uuidv4 } from 'uuid';
-import warningsMp3 from '@/assets/mp3/warnings.mp3';
-import successMp3 from '@/assets/mp3/success.mp3';
+import { audioPlayer } from '@/utils/audioPlayer';
+import { useSerialPort } from '@/hooks/useSerialPort';
 
 const { currentRoute } = useRouter();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -272,11 +274,6 @@ interface FormData {
 
 const formatNumber = (val: string | number | undefined | null) => {
   return formatWeightValue(val);
-};
-
-const isResidualParam = (item: any) => {
-  const text = `${item?.dcParameter || ''}${item?.description || ''}${item?.firstDescription || ''}`.toUpperCase();
-  return text.includes('残水') || text.includes('RESIDUAL') || text.includes('WATER');
 };
 
 const extractDcDetailList = (dcRes: any) => {
@@ -327,34 +324,10 @@ const pagination = ref({
   total: 0
 });
 
-interface SerialPortForm {
-  portName: string;
-  portDesc: string;
-  baudRate: number;
-  dataBits: number;
-  stopBits: number;
-  parity: string;
-  flowControl: string;
-}
-
-const form = ref<SerialPortForm>({
-  portName: '',
-  portDesc: '',
-  baudRate: 9600,
-  dataBits: 8,
-  stopBits: 1,
-  parity: 'none',
-  flowControl: 'none'
-});
-
-const isConnected = ref(false);
-const connecting = ref(false);
-const serialPort = ref<any | null>(null);
-let reader: ReadableStreamBYOBReader | null = null;
-let writer: WritableStreamDefaultWriter | null = null;
-let keepReading = false;
-let dataBuffer: number[] = [];
 let submitting = false;
+
+const warnVoice = () => audioPlayer.playWarning();
+const successVoice = () => audioPlayer.playSuccess();
 
 const focusSfcInput = async () => {
   await nextTick();
@@ -578,9 +551,8 @@ const handleSfcEnter = async () => {
       return;
     }
 
-    const numberParams = detailList.filter((item) => item.dataType === 'N');
-    const residualParam = numberParams.find((item) => isResidualParam(item)) || (numberParams.length > 1 ? numberParams[1] : undefined);
-    const weightParam = numberParams.find((item) => item !== residualParam) || numberParams[0] || detailList[0];
+    const weightParam = findWeightDcParameter(detailList);
+    const residualParam = findResidualDcParameter(detailList);
 
     formData.value.weightParam = weightParam;
     formData.value.residualParam = residualParam;
@@ -808,7 +780,7 @@ const processDataPacket = (packet: string) => {
   }
 
   if (processedWeight && !isNaN(Number(processedWeight))) {
-    processedWeight = parseFloat(processedWeight).toString();
+    processedWeight = formatWeightValue(processedWeight);
   }
 
   if (scanBeforeWeight.value && !formData.value.sfc) {
@@ -825,174 +797,11 @@ const processDataPacket = (packet: string) => {
 
   if (formData.value.sfc && processedWeight) {
     submitForm(true);
-  } else if (processedWeight) {
-    resultMessage.value = '已获取重量，请扫描条码';
-    resultStatus.value = true;
   }
 };
 
-const readSerialData = async () => {
-  if (!serialPort.value || !serialPort.value.readable) {
-    return;
-  }
-
-  try {
-    reader = serialPort.value.readable.getReader({ mode: 'byob' });
-    const bufferSize = 1024;
-    let buffer = new ArrayBuffer(bufferSize);
-
-    while (keepReading) {
-      try {
-        const { value, done } = await reader.read(new Uint8Array(buffer));
-        if (done) {
-          break;
-        }
-
-        buffer = value.buffer;
-        dataBuffer.push(...value);
-
-        if (dataBuffer.length >= 2 && dataBuffer[dataBuffer.length - 2] === 0x0d && dataBuffer[dataBuffer.length - 1] === 0x0a) {
-          const textDecoder = new TextDecoder();
-          const packet = textDecoder.decode(new Uint8Array(dataBuffer));
-          processDataPacket(packet);
-          dataBuffer = [];
-        }
-        if (dataBuffer.length >= 1 && dataBuffer[dataBuffer.length - 1] === 0x7d) {
-          const textDecoder = new TextDecoder();
-          const packet = textDecoder.decode(new Uint8Array(dataBuffer));
-          processDataPacket(packet);
-          dataBuffer = [];
-        }
-      } catch (error) {
-        if (keepReading) {
-          console.error('读取串口数据时发生错误:', error);
-        }
-        break;
-      }
-    }
-  } catch (error: any) {
-    if (keepReading) {
-      ElMessage.error('读取串口数据出错: ' + (error.message || error));
-    }
-  } finally {
-    if (reader) {
-      try {
-        reader.releaseLock();
-      } catch (e) {
-        // ignore
-      }
-      reader = null;
-    }
-  }
-};
-
-const getPortDisplayName = (port: any) => {
-  let name = port.path || '未知端口';
-  const info = port.getInfo();
-  if (port.productName) {
-    name = `${port.productName} (${port.path})`;
-  } else if (info.usbVendorId && info.usbProductId) {
-    name = `USB设备 (0x${info.usbVendorId.toString(16)}:0x${info.usbProductId.toString(16)})`;
-  }
-  return name;
-};
-
-const connect = async () => {
-  connecting.value = true;
-  try {
-    serialPort.value = await navigator.serial.requestPort();
-    form.value.portName = getPortDisplayName(serialPort.value);
-    await serialPort.value.open({
-      baudRate: form.value.baudRate,
-      dataBits: form.value.dataBits as 8 | 7 | 6 | 5,
-      stopBits: form.value.stopBits as 1 | 2,
-      parity: form.value.parity as 'none' | 'even' | 'odd',
-      flowControl: form.value.flowControl as 'none' | 'hardware',
-      bufferSize: 1024
-    });
-
-    isConnected.value = true;
-    keepReading = true;
-    dataBuffer = [];
-    readSerialData();
-    ElMessage.success('串口连接成功');
-  } catch (error: any) {
-    if (error.name === 'NotFoundError') {
-      ElMessage.warning('未选择串口设备');
-    } else {
-      ElMessage.error('串口连接失败: ' + (error.message || error));
-    }
-  } finally {
-    connecting.value = false;
-  }
-};
-
-const disconnect = async () => {
-  keepReading = false;
-  try {
-    if (reader) {
-      try {
-        await reader.cancel();
-      } catch (e) {
-        // ignore
-      }
-      try {
-        if (reader) {
-          reader.releaseLock();
-        }
-      } catch (e) {
-        // ignore
-      }
-      reader = null;
-    }
-
-    if (writer) {
-      try {
-        await writer.close();
-      } catch (e) {
-        // ignore
-      }
-      try {
-        if (writer) {
-          writer.releaseLock();
-        }
-      } catch (e) {
-        // ignore
-      }
-      writer = null;
-    }
-
-    if (serialPort.value && serialPort.value.readable) {
-      await serialPort.value.close();
-    }
-
-    isConnected.value = false;
-    serialPort.value = null;
-    dataBuffer = [];
-    ElMessage.info('串口已断开');
-  } catch (error: any) {
-    ElMessage.error('断开串口失败: ' + (error.message || error));
-  }
-};
-
-const handleConnect = async () => {
-  if (isConnected.value) {
-    await disconnect();
-  } else {
-    await connect();
-  }
-};
-
-const handleSerialConnect = () => {
-  ElMessage.success('检测到串口设备连接');
-};
-
-const handleSerialDisconnect = () => {
-  if (isConnected.value) {
-    disconnect();
-    ElMessage.warning('串口设备已断开');
-  }
-};
+const { isConnected, connecting, handleConnect, disconnect, checkBrowserSupport, setupListeners, teardownListeners } =
+  useSerialPort(processDataPacket);
 
 const paginatedHistoryData = computed(() => {
   const start = (pagination.value.currentPage - 1) * pagination.value.pageSize;
@@ -1015,14 +824,6 @@ const clearHistoryData = () => {
   pagination.value.currentPage = 1;
 };
 
-const warnVoice = () => {
-  document.getElementById('warningAudioAf')?.play();
-};
-
-const successVoice = () => {
-  document.getElementById('successAudioAf')?.play();
-};
-
 onMounted(() => {
   const routerPath = currentRoute.value.fullPath;
   const lastSegment = routerPath.split('/').pop();
@@ -1038,29 +839,14 @@ onMounted(() => {
 
   findPodConfig();
   loadScanBeforeWeight();
-  disconnect();
-
-  if (!('serial' in navigator)) {
-    ElMessage.error('当前浏览器不支持Web Serial API，请使用Chrome 89+或Edge 89+浏览器');
-  }
-
-  navigator.serial?.addEventListener('connect', handleSerialConnect);
-  navigator.serial?.addEventListener('disconnect', handleSerialDisconnect);
+  disconnect(true);
+  checkBrowserSupport();
+  setupListeners();
   focusSfcInput();
 });
 
 onBeforeUnmount(async () => {
-  navigator.serial?.removeEventListener('connect', handleSerialConnect);
-  navigator.serial?.removeEventListener('disconnect', handleSerialDisconnect);
-  await disconnect();
-
-  if (serialPort.value && 'forget' in serialPort.value) {
-    try {
-      await serialPort.value.forget();
-    } catch (error) {
-      console.error('撤销串行端口权限时出错:', error);
-    }
-  }
+  await teardownListeners();
 });
 </script>
 

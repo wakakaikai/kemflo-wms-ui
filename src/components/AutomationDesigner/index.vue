@@ -1,10 +1,13 @@
 <template>
   <div class="designer-root" :class="{ 'is-readonly': readonly }" @contextmenu.prevent>
     <div class="designer-layout">
-      <!-- 左侧物料栏 -->
-      <aside v-if="!readonly" class="stencil-panel">
+      <!-- 左侧物料栏（默认收起） -->
+      <aside v-if="!readonly && showStencilPanel" class="stencil-panel">
         <div class="stencil-header">
           <span class="stencil-title">节点物料</span>
+          <button class="stencil-close" title="收起" @click="showStencilPanel = false">
+            <el-icon :size="14"><Close /></el-icon>
+          </button>
         </div>
         <NodeToolbox @add-node="handleToolboxAdd" />
       </aside>
@@ -21,6 +24,9 @@
             </el-button>
             <el-button size="small" type="success" @click="handlePublish">
               <el-icon><Upload /></el-icon>发布
+            </el-button>
+            <el-button size="small" type="warning" :loading="running" @click="handleRun">
+              <el-icon><VideoPlay /></el-icon>执行
             </el-button>
           </div>
           <div v-else class="toolbar-group">
@@ -43,24 +49,13 @@
           </template>
           <div class="toolbar-divider" />
           <div class="toolbar-group">
-            <el-tooltip content="缩小" placement="bottom">
-              <button class="tool-icon-btn" @click="handleZoomOut">
-                <el-icon><ZoomOut /></el-icon>
-              </button>
-            </el-tooltip>
-            <span class="zoom-label">{{ zoomPercent }}%</span>
-            <el-tooltip content="放大" placement="bottom">
-              <button class="tool-icon-btn" @click="handleZoomIn">
-                <el-icon><ZoomIn /></el-icon>
-              </button>
-            </el-tooltip>
-            <el-tooltip content="适应画布" placement="bottom">
-              <button class="tool-icon-btn" @click="handleZoomToFit">
-                <el-icon><FullScreen /></el-icon>
+            <el-tooltip content="节点物料" placement="bottom">
+              <button class="tool-icon-btn" :class="{ active: showStencilPanel }" @click="showStencilPanel = !showStencilPanel">
+                <el-icon><Grid /></el-icon>
               </button>
             </el-tooltip>
           </div>
-          <div class="toolbar-spacer" />
+          <div class="toolbar-divider" />
           <div class="toolbar-group">
             <el-tooltip content="导出 JSON" placement="bottom">
               <button class="tool-icon-btn" @click="handleExport">
@@ -98,8 +93,29 @@
                 <line x1="8" y1="12" x2="16" y2="12" />
               </svg>
             </div>
-            <p class="empty-title">{{ readonly ? '该版本暂无流程设计数据' : '从左侧拖拽节点开始搭建流程' }}</p>
-            <p v-if="!readonly" class="empty-desc">空格+拖拽平移画布 · Ctrl+滚轮缩放 · Shift+拖拽框选</p>
+            <p class="empty-title">{{ readonly ? '该版本暂无流程设计数据' : '点击节点底部 + 添加下一步' }}</p>
+            <p v-if="!readonly" class="empty-desc">竖向编排 · 节点 ··· 打开设置 · 工具栏可展开节点物料</p>
+          </div>
+
+          <!-- 浮动缩放工具栏（明道云风格） -->
+          <div class="floating-zoom-bar">
+            <el-tooltip content="适应画布" placement="right">
+              <button class="float-btn" @click="handleZoomToFit">
+                <el-icon><FullScreen /></el-icon>
+              </button>
+            </el-tooltip>
+            <div class="float-divider" />
+            <el-tooltip content="缩小" placement="right">
+              <button class="float-btn" @click="handleZoomOut">
+                <el-icon><ZoomOut /></el-icon>
+              </button>
+            </el-tooltip>
+            <span class="float-zoom-label">{{ zoomPercent }}%</span>
+            <el-tooltip content="放大" placement="right">
+              <button class="float-btn" @click="handleZoomIn">
+                <el-icon><ZoomIn /></el-icon>
+              </button>
+            </el-tooltip>
           </div>
         </div>
 
@@ -112,34 +128,46 @@
           </div>
         </transition>
       </main>
-
-      <!-- 右侧属性面板 -->
-      <aside v-if="!readonly" class="property-panel" :class="{ collapsed: !selectedNode && !propertyPinned }">
-        <div class="panel-header">
-          <span class="panel-title">{{ selectedNode ? '节点配置' : '属性面板' }}</span>
-          <button
-            v-if="selectedNode"
-            class="panel-close"
-            title="取消选中"
-            @click="clearSelection"
-          >
-            <el-icon :size="14"><Close /></el-icon>
-          </button>
-        </div>
-        <div class="panel-body">
-          <PropertyPanel :node="selectedNode" @update-config="handleUpdateConfig" />
-        </div>
-      </aside>
     </div>
 
-    <!-- 浮动节点选择面板 -->
+    <!-- 节点选择弹窗 -->
     <NodePicker
       v-if="!readonly"
       :visible="pickerVisible"
-      :anchor-rect="pickerAnchor"
       @select="handlePickerSelect"
       @close="pickerVisible = false"
     />
+
+    <!-- 节点设置抽屉 -->
+    <NodeSettingsDrawer
+      v-if="!readonly"
+      :visible="settingsDrawerVisible"
+      :node="settingsNode"
+      @close="closeSettingsDrawer"
+      @save="closeSettingsDrawer"
+      @update-config="handleUpdateConfig"
+    />
+
+    <el-dialog v-model="runDialogVisible" title="执行流程" width="520px" destroy-on-close append-to-body>
+      <el-form label-width="90px">
+        <el-form-item label="输入变量">
+          <el-input
+            v-model="runVariablesText"
+            type="textarea"
+            :rows="8"
+            placeholder='JSON 对象，例如: {"orderId":"SO-1","amount":15000}'
+          />
+        </el-form-item>
+        <el-form-item v-if="runningInstanceId" label="实例ID">
+          <span>{{ runningInstanceId }}</span>
+          <el-tag class="ml-2" size="small">{{ runningInstanceStatus }}</el-tag>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="runDialogVisible = false">关闭</el-button>
+        <el-button type="primary" :loading="running" @click="confirmRun">开始执行</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -148,18 +176,19 @@ import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue';
 import { Graph, Node, Edge, MiniMap } from '@antv/x6';
 import {
   Check, Select, Upload, RefreshLeft, RefreshRight,
-  ZoomOut, ZoomIn, FullScreen, Download, Document, Close,
+  ZoomOut, ZoomIn, FullScreen, Download, Document, Close, VideoPlay, Grid,
 } from '@element-plus/icons-vue';
-import { useGraph, resizeGraph, addNodeToGraph, exportDesignJson, importDesignJson } from './graph/useGraph';
+import { useGraph, resizeGraph, addNodeToGraph, exportDesignJson, importDesignJson, applyNodeRuntimeStatus, clearNodeRuntimeStatus, applyVerticalEdgeStyle, alignNodeBelow, CARD_WIDTH, CARD_HEIGHT } from './graph/useGraph';
 import { getNodeConfig } from './types';
-import PropertyPanel from './panels/propertyPanel.vue';
 import BottomPanel from './panels/bottomPanel.vue';
 import NodePicker from './panels/NodePicker.vue';
+import NodeSettingsDrawer from './panels/NodeSettingsDrawer.vue';
 import NodeToolbox from './panels/nodeToolbox.vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { on as eventOn } from './events';
-import { getDefinitionDesign, saveDefinitionDesign, publishDefinition } from '@/api/automation/definition';
+import { getDefinitionDesign, saveDefinitionDesign, publishDefinition, validateDefinitionDesign } from '@/api/automation/definition';
 import { getDesignJson } from '@/api/automation/version';
+import { startInstance, getInstanceNodes } from '@/api/automation/instance';
 
 const props = defineProps<{
   definitionId?: string | number;
@@ -184,11 +213,10 @@ const canUndo = ref(false);
 const canRedo = ref(false);
 const showEmptyHint = ref(true);
 const showLogs = ref(false);
-const propertyPinned = ref(false);
+const showStencilPanel = ref(false);
 const zoomPercent = ref(100);
 
 const pickerVisible = ref(false);
-const pickerAnchor = ref<{ x: number; y: number; width?: number; height?: number }>({ x: 0, y: 0 });
 interface PickerSource {
   sourceNode?: any;
   sourceEdge?: any;
@@ -196,6 +224,16 @@ interface PickerSource {
   y?: number;
 }
 const pickerSource = ref<PickerSource>({});
+
+const settingsDrawerVisible = ref(false);
+const settingsNode = ref<any>(null);
+
+const running = ref(false);
+const runDialogVisible = ref(false);
+const runVariablesText = ref('{\n  "orderId": "SO-10086",\n  "amount": 15000\n}');
+const runningInstanceId = ref<string | number | ''>('');
+const runningInstanceStatus = ref('');
+let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 let graph: Graph | null = null;
 let resizeObserver: ResizeObserver | null = null;
@@ -214,15 +252,15 @@ function addLog(level: string, message: string) {
   if (logs.value.length > 200) logs.value.shift();
 }
 
-function getAnchorRectFromGraph(x: number, y: number) {
-  if (!graph || !canvasAreaRef.value) return;
-  const rect = canvasAreaRef.value.getBoundingClientRect();
-  return { x: rect.left + x, y: rect.top + y };
+function openSettingsDrawer(node: Node) {
+  settingsNode.value = node;
+  settingsDrawerVisible.value = true;
+  selectedNode.value = node;
 }
 
-function clearSelection() {
-  graph?.cleanSelection();
-  selectedNode.value = null;
+function closeSettingsDrawer() {
+  settingsDrawerVisible.value = false;
+  settingsNode.value = null;
 }
 
 function updateZoomLabel() {
@@ -265,7 +303,10 @@ onMounted(async () => {
 
   graph.on('node:selected', ({ node }) => { selectedNode.value = node; });
   graph.on('node:unselected', () => { selectedNode.value = null; });
-  graph.on('blank:click', () => { selectedNode.value = null; });
+  graph.on('blank:click', () => {
+    selectedNode.value = null;
+    closeSettingsDrawer();
+  });
 
   if (!readonly.value) {
     graph.on('history:change', () => {
@@ -298,11 +339,39 @@ onMounted(async () => {
 
     eventOn('node:plus-click', (data: PickerSource) => {
       pickerSource.value = data;
-      const pos = getAnchorRectFromGraph(data.x!, data.y!);
-      if (pos) {
-        pickerAnchor.value = pos;
-        pickerVisible.value = true;
+      pickerVisible.value = true;
+    });
+
+    eventOn('node:settings', (data: { node: Node }) => {
+      if (!graph || !data.node) return;
+      graph.select(data.node);
+      openSettingsDrawer(data.node);
+    });
+
+    eventOn('node:rename', async (data: { node: Node }) => {
+      if (!graph || !data.node) return;
+      const nd = data.node.getData() || {};
+      const current = nd.label || '';
+      try {
+        const { value } = await ElMessageBox.prompt('请输入节点名称', '修改名称', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          inputValue: current,
+          inputValidator: (v) => (!!v?.trim() ? true : '名称不能为空'),
+        });
+        if (!value?.trim()) return;
+        data.node.setData({ ...nd, label: value.trim() });
+        addLog('info', `已重命名: ${value.trim()}`);
+      } catch {
+        /* cancelled */
       }
+    });
+
+    eventOn('node:edit-meta', (data: { node: Node; focus?: string }) => {
+      if (!graph || !data.node) return;
+      graph.select(data.node);
+      openSettingsDrawer(data.node);
+      addLog('info', `编辑节点: ${(data.node.getData() as any)?.label || data.node.id}`);
     });
 
     eventOn('node:delete', (data: { node: Node }) => {
@@ -340,6 +409,7 @@ onMounted(async () => {
   });
 
   graph.on('edge:added', ({ edge }: { edge: Edge }) => {
+    applyVerticalEdgeStyle(edge);
     [edge.getSourceCellId(), edge.getTargetCellId()].forEach((cid, i) => {
       const portId = i === 0 ? edge.getSourcePortId() : edge.getTargetPortId();
       if (!cid || !portId) return;
@@ -369,41 +439,6 @@ onMounted(async () => {
       }
     });
   });
-
-  // 连线悬停：删除按钮 + 插入节点（只读模式禁用）
-  if (!readonly.value) {
-    graph.on('edge:mouseenter', ({ edge }: { edge: Edge }) => {
-      edge.addTools([
-        { name: 'button-remove', args: { distance: -40 } },
-        {
-          name: 'button',
-          args: {
-            markup: [
-              { tagName: 'circle', selector: 'btn', attrs: { r: 10, fill: '#5F95FF', cursor: 'pointer' } },
-              { tagName: 'text', selector: 'icon', attrs: { text: '+', fill: '#fff', fontSize: 14, fontWeight: 'bold', textAnchor: 'middle', dominantBaseline: 'central', pointerEvents: 'none' } }
-            ],
-            distance: 0.5,
-            onClick: ({ edge: e }: { edge: Edge }) => {
-              const src = e.getSourceNode();
-              const tgt = e.getTargetNode();
-              if (!src || !tgt) return;
-              const srcBox = src.getBBox();
-              const tgtBox = tgt.getBBox();
-              const mx = (srcBox.x + srcBox.width / 2 + tgtBox.x + tgtBox.width / 2) / 2;
-              const my = (srcBox.y + srcBox.height / 2 + tgtBox.y + tgtBox.height / 2) / 2;
-              pickerSource.value = { sourceNode: src, sourceEdge: e, x: mx, y: my };
-              const pos = getAnchorRectFromGraph(mx, my);
-              if (pos) { pickerAnchor.value = pos; pickerVisible.value = true; }
-              e.removeTools();
-            },
-          },
-        }
-      ]);
-    });
-    graph.on('edge:mouseleave', ({ edge }: { edge: Edge }) => {
-      edge.removeTools();
-    });
-  }
 
   addLog('success', '画布初始化完成');
 
@@ -435,6 +470,7 @@ watch(
 );
 
 onUnmounted(() => {
+  stopPoll();
   resizeObserver?.disconnect();
   graph?.dispose();
   graph = null;
@@ -515,14 +551,14 @@ function handleDrop(e: DragEvent) {
   if (!type) return;
   // 落点对齐卡片中心
   const local = graph.clientToLocal(e.clientX, e.clientY);
-  handleAddNode(type, local.x - 130, local.y - 48);
+  handleAddNode(type, local.x - CARD_WIDTH / 2, local.y - CARD_HEIGHT / 2);
 }
 
 function handlePickerSelect(type: string) {
   if (!graph) return;
   const src = pickerSource.value;
-  const x = src.x ?? 300;
-  const y = src.y ?? 100;
+  const rawX = src.x ?? 300;
+  const rawY = src.y ?? 100;
 
   if (src.sourceEdge) {
     const edge = src.sourceEdge;
@@ -532,29 +568,44 @@ function handlePickerSelect(type: string) {
     const targetPort = edge.getTargetPortId();
     edge.remove();
 
-    const newNode = addNodeToGraph(graph, type, x - 130, y - 48);
+    const newNode = addNodeToGraph(graph, type, rawX - CARD_WIDTH / 2, rawY - CARD_HEIGHT / 2);
     if (sourceNode) {
-      graph.addEdge({ source: { cell: sourceNode.id, port: sourcePort || 'bottom' }, target: { cell: newNode.id, port: 'top' }, shape: 'automation-edge' });
+      alignNodeBelow(sourceNode, newNode, 48);
     }
+    const e1 = graph.addEdge({ source: { cell: sourceNode!.id, port: sourcePort || 'bottom' }, target: { cell: newNode.id, port: 'top' }, shape: 'automation-edge' });
+    applyVerticalEdgeStyle(e1);
     if (targetNode) {
-      graph.addEdge({ source: { cell: newNode.id, port: 'bottom' }, target: { cell: targetNode.id, port: targetPort || 'top' }, shape: 'automation-edge' });
+      alignNodeBelow(newNode, targetNode, 48);
+      const e2 = graph.addEdge({ source: { cell: newNode.id, port: 'bottom' }, target: { cell: targetNode.id, port: targetPort || 'top' }, shape: 'automation-edge' });
+      applyVerticalEdgeStyle(e2);
     }
     addLog('success', '在连线中插入节点');
   } else if (src.sourceNode) {
     const sourceNode = src.sourceNode;
-    const newNode = addNodeToGraph(graph, type, x - 130, y);
-    graph.addEdge({ source: { cell: sourceNode.id, port: 'bottom' }, target: { cell: newNode.id, port: 'top' }, shape: 'automation-edge' });
-    addLog('success', `从节点创建分支: ${getNodeConfig(type)?.label || type}`);
+    const newNode = addNodeToGraph(graph, type, rawX - CARD_WIDTH / 2, rawY);
+    alignNodeBelow(sourceNode, newNode, 48);
+
+    // 分支节点：第二路分支偏右排列
+    if (type === 'CONDITION' || type === 'SWITCH') {
+      const outs = graph.getOutgoingEdges(sourceNode) || [];
+      if (outs.length >= 1) {
+        const pos = newNode.getPosition();
+        newNode.setPosition({ x: pos.x + (outs.length > 1 ? 0 : 160), y: pos.y });
+      }
+    }
+
+    const e = graph.addEdge({ source: { cell: sourceNode.id, port: 'bottom' }, target: { cell: newNode.id, port: 'top' }, shape: 'automation-edge' });
+    applyVerticalEdgeStyle(e);
+    addLog('success', `添加节点: ${getNodeConfig(type)?.label || type}`);
   } else {
-    handleAddNode(type, x, y);
+    handleAddNode(type, rawX - CARD_WIDTH / 2, rawY - CARD_HEIGHT / 2);
   }
 }
 
 function handleCanvasContextMenu(e: MouseEvent) {
-  if (!graph || !canvasRef.value) return;
+  if (!graph) return;
   const local = graph.clientToLocal(e.clientX, e.clientY);
   pickerSource.value = { x: local.x, y: local.y };
-  pickerAnchor.value = { x: e.clientX, y: e.clientY };
   pickerVisible.value = true;
 }
 
@@ -577,20 +628,37 @@ async function handleSave() {
   }
 }
 
-function handleValidate() {
+async function handleValidate() {
   if (!graph) return;
-  const errors: string[] = [];
-  const cells = graph.getCells();
-  const triggerNodes = cells.filter(c => c.getData()?.nodeType?.includes('TRIGGER'));
-  if (triggerNodes.length === 0) errors.push('流程必须包含至少一个触发节点');
-  const endNodes = cells.filter(c => c.getData()?.nodeType === 'END');
-  if (endNodes.length === 0) errors.push('流程必须包含结束节点');
-  if (errors.length === 0) {
-    addLog('success', '校验通过');
+  const id = resolveDefinitionId();
+  const designData = exportDesignJson(graph);
+  // 前端快速检查
+  const nodes = graph.getNodes();
+  const triggerNodes = nodes.filter(c => c.getData()?.nodeType?.includes('TRIGGER'));
+  const endNodes = nodes.filter(c => c.getData()?.nodeType === 'END');
+  if (triggerNodes.length === 0) {
+    ElMessage.warning('流程必须包含至少一个触发节点');
+    addLog('error', '流程必须包含至少一个触发节点');
+    return;
+  }
+  if (endNodes.length === 0) {
+    ElMessage.warning('流程必须包含结束节点');
+    addLog('error', '流程必须包含结束节点');
+    return;
+  }
+  if (!id) {
+    addLog('success', '前端校验通过（未绑定定义，跳过后端校验）');
     ElMessage.success('校验通过');
-  } else {
+    return;
+  }
+  try {
+    await validateDefinitionDesign(id, JSON.stringify(designData));
+    addLog('success', '后端校验通过');
+    ElMessage.success('校验通过');
+  } catch (e: any) {
     showLogs.value = true;
-    errors.forEach(e => addLog('error', e));
+    const msg = e?.message || e?.msg || '校验失败';
+    addLog('error', msg);
     ElMessage.warning('校验失败，请查看日志');
   }
 }
@@ -603,16 +671,92 @@ async function handlePublish() {
   }
   if (!graph) return;
   try {
-    // 发布前先持久化当前设计
     const designData = exportDesignJson(graph);
     await saveDefinitionDesign(id, JSON.stringify(designData));
     await publishDefinition(id);
     designLoadedForId = id;
-    addLog('success', '流程已发布');
+    addLog('success', '流程已发布（已生成 LiteFlow EL）');
     ElMessage.success('发布成功');
     emit('published');
+  } catch (e: any) {
+    addLog('error', e?.message || e?.msg || '发布失败');
+  }
+}
+
+function handleRun() {
+  const id = resolveDefinitionId();
+  if (!id) {
+    ElMessage.warning('请先保存流程定义');
+    return;
+  }
+  runDialogVisible.value = true;
+}
+
+async function confirmRun() {
+  const id = resolveDefinitionId();
+  if (!id || !graph) return;
+  let variables: Record<string, any> = {};
+  try {
+    variables = runVariablesText.value?.trim() ? JSON.parse(runVariablesText.value) : {};
   } catch {
-    addLog('error', '发布失败');
+    ElMessage.error('输入变量必须是合法 JSON 对象');
+    return;
+  }
+  running.value = true;
+  try {
+    // 执行前保存并确保已发布版本存在；若发布失败仍尝试用已有版本
+    const designData = exportDesignJson(graph);
+    await saveDefinitionDesign(id, JSON.stringify(designData));
+    try {
+      await publishDefinition(id);
+    } catch {
+      // 可能已有发布版本
+    }
+    clearNodeRuntimeStatus(graph);
+    const res = await startInstance({ definitionId: id, variables, triggerType: 'MANUAL_TRIGGER' });
+    const instanceId = (res as any).data ?? res;
+    runningInstanceId.value = instanceId;
+    runningInstanceStatus.value = 'RUNNING';
+    addLog('success', `已启动实例 ${instanceId}`);
+    ElMessage.success('已启动执行');
+    startPoll(instanceId);
+  } catch (e: any) {
+    addLog('error', e?.message || e?.msg || '执行失败');
+    ElMessage.error('执行失败');
+  } finally {
+    running.value = false;
+  }
+}
+
+function startPoll(instanceId: string | number) {
+  stopPoll();
+  const tick = async () => {
+    if (!graph) return;
+    try {
+      const res = await getInstanceNodes(instanceId);
+      const trace = res.data;
+      runningInstanceStatus.value = trace?.status || '';
+      clearNodeRuntimeStatus(graph);
+      (trace?.nodes || []).forEach((n) => {
+        applyNodeRuntimeStatus(graph!, n.nodeId, n.status);
+      });
+      if (trace?.status && !['CREATED', 'RUNNING', 'WAITING'].includes(trace.status)) {
+        stopPoll();
+        addLog(trace.status === 'SUCCESS' ? 'success' : 'error', `实例结束: ${trace.status}`);
+        if (trace.errorMessage) addLog('error', trace.errorMessage);
+      }
+    } catch {
+      // ignore transient
+    }
+  };
+  tick();
+  pollTimer = setInterval(tick, 1000);
+}
+
+function stopPoll() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
   }
 }
 
@@ -652,12 +796,13 @@ function handleImport(file: File): boolean {
 }
 
 function handleUpdateConfig(config: Record<string, any>) {
-  if (!selectedNode.value || !graph) return;
-  const data = selectedNode.value.getData() || {};
+  const node = settingsNode.value || selectedNode.value;
+  if (!node || !graph) return;
+  const data = node.getData() || {};
   data.config = { ...data.config, ...config };
   if (config.name) data.label = config.name;
-  selectedNode.value.setData(data);
-  addLog('info', `更新节点配置: ${data.label || selectedNode.value.id}`);
+  node.setData(data);
+  addLog('info', `更新节点配置: ${data.label || node.id}`);
 }
 </script>
 
@@ -689,13 +834,31 @@ function handleUpdateConfig(config: Record<string, any>) {
   height: 44px;
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  padding: 0 12px 0 16px;
   border-bottom: 1px solid #f0f0f0;
   flex-shrink: 0;
+  gap: 8px;
 }
 .stencil-title {
   font-size: 14px;
   font-weight: 600;
+  color: #141414;
+  flex: 1;
+}
+.stencil-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #8c8c8c;
+  cursor: pointer;
+}
+.stencil-close:hover {
+  background: #f5f5f5;
   color: #141414;
 }
 
@@ -707,7 +870,7 @@ function handleUpdateConfig(config: Record<string, any>) {
   overflow: hidden;
   position: relative;
   min-width: 0;
-  background: #fff;
+  background: #f7f8fa;
 }
 .toolbar {
   display: flex;
@@ -815,6 +978,55 @@ function handleUpdateConfig(config: Record<string, any>) {
   margin: 0;
 }
 
+/* ---- Floating zoom ---- */
+.floating-zoom-bar {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(4px);
+}
+.float-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #4e5969;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.float-btn:hover {
+  background: #f0f5ff;
+  color: #5f95ff;
+}
+.float-divider {
+  width: 20px;
+  height: 1px;
+  background: #e8eaed;
+  margin: 2px 0;
+}
+.float-zoom-label {
+  font-size: 11px;
+  color: #8c8c8c;
+  min-width: 36px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 0;
+}
+
 /* ---- Bottom logs ---- */
 .bottom-panel {
   height: 140px;
@@ -832,58 +1044,5 @@ function handleUpdateConfig(config: Record<string, any>) {
 .slide-up-leave-to {
   height: 0;
   opacity: 0;
-}
-
-/* ---- Property ---- */
-.property-panel {
-  width: 320px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  border-left: 1px solid #dfe3e8;
-  background: #fff;
-  transition: width 0.2s ease, opacity 0.2s ease;
-  overflow: hidden;
-  z-index: 5;
-}
-.property-panel.collapsed {
-  width: 0;
-  border-left: none;
-  opacity: 0;
-  pointer-events: none;
-}
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 44px;
-  padding: 0 16px;
-  border-bottom: 1px solid #f0f0f0;
-  flex-shrink: 0;
-}
-.panel-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #141414;
-}
-.panel-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: #8c8c8c;
-  cursor: pointer;
-}
-.panel-close:hover {
-  background: #f5f5f5;
-  color: #141414;
-}
-.panel-body {
-  flex: 1;
-  overflow-y: auto;
 }
 </style>

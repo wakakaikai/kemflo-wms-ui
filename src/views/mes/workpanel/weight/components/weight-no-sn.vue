@@ -210,9 +210,6 @@
     <ShopOrderDialog ref="shopOrderDialogRef" :podConfig="podConfig" @shop-order-call-back="shopOrderCallBack" />
     <OperationDialog ref="operationDialogRef" @operation-call-back="operationCallBack" />
     <ResourceDialog ref="resourceDialogRef" @resource-call-back="resourceCallBack" />
-
-    <audio id="warningAudio" :src="warningsMp3" hidden="hidden" />
-    <audio id="successAudio" :src="successMp3" hidden="hidden" />
   </div>
 </template>
 
@@ -236,8 +233,8 @@ const operationDialogRef = ref<InstanceType<typeof OperationDialog>>();
 const resourceDialogRef = ref<InstanceType<typeof ResourceDialog>>();
 const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
 import { Bell } from '@element-plus/icons-vue';
-import warningsMp3 from '@/assets/mp3/warnings.mp3';
-import successMp3 from '@/assets/mp3/success.mp3';
+import { audioPlayer } from '@/utils/audioPlayer';
+import { useSerialPort } from '@/hooks/useSerialPort';
 const resultMessage = ref('');
 const resultStatus = ref(false);
 
@@ -577,18 +574,8 @@ const receiveOptions = ref({
   autoScroll: true
 });
 
-// 连接状态
-const isConnected = ref(false);
-const connecting = ref(false);
-
-// Web Serial API相关引用
-const serialPort = ref<any | null>(null);
-let reader: ReadableStreamBYOBReader | null = null;
-let writer: WritableStreamDefaultWriter | null = null;
-let keepReading = false;
-
-// 数据缓冲区
-let dataBuffer: number[] = [];
+const warnVoice = () => audioPlayer.playWarning();
+const successVoice = () => audioPlayer.playSuccess();
 
 // 全局键盘事件处理函数
 const handleGlobalKeyDown = (event: KeyboardEvent) => {
@@ -598,166 +585,22 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
     submitForm();
   }
 };
-// 初始化加载
-onMounted(() => {
-  const routerPath = currentRoute.value.fullPath;
-  const lastSegment = routerPath.split('/').pop();
-  const resOperationObj = getOperationFromLocalStorage();
-  if (!resOperationObj) {
-    if (lastSegment === 'WGT-NO-SN') {
-      saveOperationToLocalStorage({
-        operation: 'WGT-NO-SN',
-        operationDesc: '无条码称重'
-      });
-    }
-    if (lastSegment === 'TEST-SAFETY') {
-      saveOperationToLocalStorage({
-        operation: 'TEST-SAFETY',
-        operationDesc: '安规测试'
-      });
-    }
-  }
 
-  findPodConfig();
-
-  // 解绑所有的串口连接
-  disconnect();
-
-  // 检查浏览器是否支持Web Serial API
-  if (!('serial' in navigator)) {
-    ElMessage.error('当前浏览器不支持Web Serial API，请使用Chrome 89+或Edge 89+浏览器');
-  }
-
-  // 监听连接状态变化
-  navigator.serial?.addEventListener('connect', handleSerialConnect);
-  navigator.serial?.addEventListener('disconnect', handleSerialDisconnect);
-
-  // 添加键盘事件监听（带条件判断）
-  const handleKeyDown = (event: KeyboardEvent) => {
-    // 确保当前路由是这个页面
-    if (currentRoute.value.name === 'WGT-NO-SN' || currentRoute.value.path.includes('WGT-NO-SN')) {
-      handleGlobalKeyDown(event);
-    }
-  };
-
-  // 添加全局键盘事件监听
-  window.addEventListener('keydown', handleKeyDown);
-});
-
-// 组件卸载前关闭连接并撤销权限
-onBeforeUnmount(async () => {
-  navigator.serial?.removeEventListener('connect', handleSerialConnect);
-  navigator.serial?.removeEventListener('disconnect', handleSerialDisconnect);
-  // 断开串口连接
-  await disconnect();
-
-  // 撤销对串行端口的访问权限
-  if (serialPort.value && 'forget' in serialPort.value) {
-    try {
-      await serialPort.value.forget();
-      console.log('串行端口访问权限已撤销');
-    } catch (error) {
-      console.error('撤销串行端口权限时出错:', error);
-    }
-  }
-
-  window.removeEventListener('keydown', handleKeyDown);
-});
-
-// 处理串口连接事件
-const handleSerialConnect = (event: Event) => {
-  ElMessage.success('检测到串口设备连接');
-  refreshSerialPortVoList();
-};
-
-// 处理串口断开事件
-const handleSerialDisconnect = (event: Event) => {
-  if (isConnected.value) {
-    disconnect();
-    ElMessage.warning('串口设备已断开');
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (currentRoute.value.name === 'WGT-NO-SN' || currentRoute.value.path.includes('WGT-NO-SN')) {
+    handleGlobalKeyDown(event);
   }
 };
 
 // 刷新串口列表
 const refreshSerialPortVoList = async () => {
   try {
-    // Web Serial API不提供列出所有可用端口的功能
-    // 用户需要通过requestPort手动选择
     ElMessage.info('请点击"打开串口"按钮选择串口设备');
-    serialPortVoList.value = []; // 清空列表
+    serialPortVoList.value = [];
   } catch (error) {
     ElMessage.error('获取串口列表失败');
   }
 };
-
-// 连接/断开串口
-const handleConnect = async () => {
-  if (isConnected.value) {
-    await disconnect();
-  } else {
-    await connect();
-  }
-};
-
-// 获取端口显示名称
-const getPortDisplayName = (port: any) => {
-  // 尝试获取串口的真实名称
-  let name = port.path || '未知端口';
-
-  // 尝试获取更多信息
-  const info = port.getInfo();
-
-  // 对于虚拟串口和蓝牙设备，尝试获取更多描述信息
-  if (port.productName) {
-    name = `${port.productName} (${port.path})`;
-  } else if (info.usbVendorId && info.usbProductId) {
-    name = `USB设备 (0x${info.usbVendorId.toString(16)}:0x${info.usbProductId.toString(16)})`;
-  }
-
-  return name;
-};
-
-// 连接串口
-const connect = async () => {
-  connecting.value = true;
-
-  try {
-    // 请求串口权限
-    serialPort.value = await navigator.serial.requestPort();
-
-    // 获取端口信息并设置端口名称
-    form.value.portName = getPortDisplayName(serialPort.value);
-
-    // 打开串口连接，设置缓冲区大小
-    const bufferSize = 1024; // 1kB
-    await serialPort.value.open({
-      baudRate: form.value.baudRate,
-      dataBits: form.value.dataBits as 8 | 7 | 6 | 5,
-      stopBits: form.value.stopBits as 1 | 2,
-      parity: form.value.parity as 'none' | 'even' | 'odd',
-      flowControl: form.value.flowControl as 'none' | 'hardware',
-      bufferSize: bufferSize
-    });
-
-    isConnected.value = true;
-    keepReading = true;
-    dataBuffer = []; // 清空数据缓冲区
-
-    // 启动数据读取
-    readSerialData();
-    ElMessage.success('串口连接成功');
-  } catch (error: any) {
-    if (error.name === 'NotFoundError') {
-      ElMessage.warning('未选择串口设备');
-    } else {
-      ElMessage.error('串口连接失败: ' + (error.message || error));
-    }
-  } finally {
-    connecting.value = false;
-  }
-};
-
-// 发送数据到后台
 const submitForm = async () => {
   try {
     resultStatus.value = true;
@@ -914,132 +757,20 @@ const processDataPacket = (packet: string) => {
   }
 };
 
-// 读取串口数据 - 使用BYOB模式读取
-const readSerialData = async () => {
-  if (!serialPort.value || !serialPort.value.readable) {
-    return;
-  }
+const { isConnected, connecting, portName, handleConnect, disconnect, checkBrowserSupport, setupListeners, teardownListeners } =
+  useSerialPort(processDataPacket, {
+    getConfig: () => ({
+      baudRate: form.value.baudRate,
+      dataBits: form.value.dataBits as 8 | 7 | 6 | 5,
+      stopBits: form.value.stopBits as 1 | 2,
+      parity: form.value.parity as 'none' | 'even' | 'odd',
+      flowControl: form.value.flowControl as 'none' | 'hardware'
+    })
+  });
 
-  try {
-    // 获取BYOB读取器
-    reader = serialPort.value.readable.getReader({ mode: 'byob' });
-
-    // 设置缓冲区大小
-    const bufferSize = 1024; // 1kB
-    let buffer = new ArrayBuffer(bufferSize);
-
-    while (keepReading) {
-      try {
-        const { value, done } = await reader.read(new Uint8Array(buffer));
-        if (done) {
-          break;
-        }
-
-        // 更新缓冲区
-        buffer = value.buffer;
-        // 将新数据追加到数据缓冲区
-        dataBuffer.push(...value);
-
-        // 检查缓冲区是否以 \r\n 结尾 (0x0d 0x0a)
-        if (dataBuffer.length >= 2 && dataBuffer[dataBuffer.length - 2] === 0x0d && dataBuffer[dataBuffer.length - 1] === 0x0a) {
-          // 将缓冲区数据转换为字符串
-          const textDecoder = new TextDecoder();
-          const packet = textDecoder.decode(new Uint8Array(dataBuffer));
-
-          // 处理完整的数据包
-          processDataPacket(packet);
-
-          // 清空缓冲区
-          dataBuffer = [];
-        }
-        // 检查缓冲区是否以 }结束的
-        if (dataBuffer.length >= 1 && dataBuffer[dataBuffer.length - 1] === 0x7d) {
-          // 将缓冲区数据转换为字符串
-          const textDecoder = new TextDecoder();
-          const packet = textDecoder.decode(new Uint8Array(dataBuffer));
-          processDataPacket(packet);
-          dataBuffer = [];
-        }
-      } catch (error) {
-        // 处理报错
-        if (keepReading) {
-          console.error('读取串口数据时发生错误:', error);
-        }
-        break;
-      }
-    }
-  } catch (error: any) {
-    if (keepReading) {
-      ElMessage.error('读取串口数据出错: ' + (error.message || error));
-    }
-  } finally {
-    // 释放读取器锁
-    if (reader) {
-      try {
-        reader.releaseLock();
-      } catch (e) {
-        // 忽略释放锁时的错误
-      }
-      reader = null;
-    }
-  }
-};
-
-// 断开串口连接
-const disconnect = async () => {
-  keepReading = false;
-
-  try {
-    // 停止读取
-    if (reader) {
-      try {
-        await reader.cancel();
-      } catch (e) {
-        // 忽略取消错误
-      }
-      try {
-        // 再次检查reader是否仍然存在，因为在await reader.cancel()期间可能已经变为null
-        if (reader) {
-          reader.releaseLock();
-        }
-      } catch (e) {
-        // 忽略释放锁时的错误
-      }
-      reader = null;
-    }
-
-    // 释放写入器
-    if (writer) {
-      try {
-        await writer.close();
-      } catch (e) {
-        // 忽略关闭错误
-      }
-      try {
-        // 同样添加保护性检查
-        if (writer) {
-          writer.releaseLock();
-        }
-      } catch (e) {
-        // 忽略释放锁时的错误
-      }
-      writer = null;
-    }
-
-    // 关闭串口
-    if (serialPort.value && serialPort.value.readable) {
-      await serialPort.value.close();
-    }
-
-    isConnected.value = false;
-    serialPort.value = null;
-    dataBuffer = []; // 清空数据缓冲区
-
-    ElMessage.info('串口已断开');
-  } catch (error: any) {
-    ElMessage.error('断开串口失败: ' + (error.message || error));
-  }
-};
+watch(portName, (name) => {
+  form.value.portName = name;
+});
 
 // 清空接收数据
 const clearReceivedData = () => {
@@ -1120,17 +851,36 @@ const clearHistoryData = () => {
   pagination.value.currentPage = 1;
 };
 
-/**预警声音播放*/
-const warnVoice = () => {
-  // 预警声音播放
-  document.getElementById('warningAudio').play();
-};
+onMounted(() => {
+  const routerPath = currentRoute.value.fullPath;
+  const lastSegment = routerPath.split('/').pop();
+  const resOperationObj = getOperationFromLocalStorage();
+  if (!resOperationObj) {
+    if (lastSegment === 'WGT-NO-SN') {
+      saveOperationToLocalStorage({
+        operation: 'WGT-NO-SN',
+        operationDesc: '无条码称重'
+      });
+    }
+    if (lastSegment === 'TEST-SAFETY') {
+      saveOperationToLocalStorage({
+        operation: 'TEST-SAFETY',
+        operationDesc: '安规测试'
+      });
+    }
+  }
 
-/**成功声音播放*/
-const successVoice = () => {
-  // 成功声音播放
-  document.getElementById('successAudio').play();
-};
+  findPodConfig();
+  disconnect(true);
+  checkBrowserSupport();
+  setupListeners();
+  window.addEventListener('keydown', handleKeyDown);
+});
+
+onBeforeUnmount(async () => {
+  await teardownListeners();
+  window.removeEventListener('keydown', handleKeyDown);
+});
 </script>
 
 <style scoped>

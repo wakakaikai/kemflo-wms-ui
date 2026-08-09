@@ -99,7 +99,7 @@
     </el-card>
 
     <!-- 详情对话框 -->
-    <el-dialog v-model="detailDialog.visible" title="实例详情" destroy-on-close append-to-body width="700px">
+    <el-dialog v-model="detailDialog.visible" title="实例详情" destroy-on-close append-to-body width="780px">
       <el-descriptions :column="2" border v-if="currentInstance">
         <el-descriptions-item label="实例编号">{{ currentInstance.instanceNo }}</el-descriptions-item>
         <el-descriptions-item label="流程定义">{{ currentInstance.definitionName }}</el-descriptions-item>
@@ -110,8 +110,24 @@
         <el-descriptions-item label="开始时间">{{ proxy?.parseTime(currentInstance.startTime) }}</el-descriptions-item>
         <el-descriptions-item label="结束时间">{{ proxy?.parseTime(currentInstance.endTime) }}</el-descriptions-item>
         <el-descriptions-item label="耗时(ms)">{{ currentInstance.durationMs }}</el-descriptions-item>
+        <el-descriptions-item label="当前节点">{{ currentInstance.currentNodeId || '-' }}</el-descriptions-item>
         <el-descriptions-item label="错误信息" :span="2">{{ currentInstance.errorMessage || '-' }}</el-descriptions-item>
       </el-descriptions>
+      <div class="mt-4" v-if="traceNodes.length">
+        <div class="mb-2 font-medium">节点执行状态</div>
+        <el-table :data="traceNodes" border size="small">
+          <el-table-column label="节点ID" prop="nodeId" min-width="140" show-overflow-tooltip />
+          <el-table-column label="名称" prop="nodeName" min-width="100" />
+          <el-table-column label="类型" prop="nodeType" width="110" />
+          <el-table-column label="状态" prop="status" width="100" align="center">
+            <template #default="scope">
+              <el-tag size="small" :type="nodeStatusTag(scope.row.status)">{{ scope.row.status }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="耗时(ms)" prop="durationMs" width="90" align="center" />
+          <el-table-column label="错误" prop="errorMessage" min-width="140" show-overflow-tooltip />
+        </el-table>
+      </div>
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="detailDialog.visible = false">关 闭</el-button>
@@ -124,8 +140,8 @@
 <script setup name="AutomationInstance" lang="ts">
 import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
 import { ElFormInstance } from 'element-plus';
-import { listInstance, getInstance, terminateInstance } from '@/api/automation/instance';
-import { AutoInstanceQuery, AutoInstanceVo } from '@/api/automation/instance/types';
+import { listInstance, getInstance, terminateInstance, getInstanceNodes } from '@/api/automation/instance';
+import { AutoInstanceQuery, AutoInstanceVo, AutoInstanceNodeStatus } from '@/api/automation/instance/types';
 import { useRouter } from 'vue-router';
 import {
   AUTO_INSTANCE_STATUS_OPTIONS, AUTO_TRIGGER_TYPE_OPTIONS, resolveDictOptions
@@ -143,6 +159,7 @@ const loading = ref(true);
 const showSearch = ref(true);
 const selectedIds = ref<(number | string)[]>([]);
 const currentInstance = ref<AutoInstanceVo | null>(null);
+const traceNodes = ref<AutoInstanceNodeStatus[]>([]);
 
 const detailDialog = reactive<DialogOption>({ visible: false, title: '' });
 const queryFormRef = ref<ElFormInstance>();
@@ -192,7 +209,21 @@ const handleSelectionChange = (selection: AutoInstanceVo[]) => {
 const handleDetail = async (row: AutoInstanceVo) => {
   const res = await getInstance(row.id);
   currentInstance.value = res.data;
+  try {
+    const trace = await getInstanceNodes(row.id);
+    traceNodes.value = trace.data?.nodes || [];
+  } catch {
+    traceNodes.value = [];
+  }
   detailDialog.visible = true;
+};
+
+const nodeStatusTag = (status?: string) => {
+  if (status === 'SUCCESS') return 'success';
+  if (status === 'FAILED') return 'danger';
+  if (status === 'RUNNING') return 'primary';
+  if (status === 'SKIPPED') return 'info';
+  return 'warning';
 };
 
 /** 节点日志 */

@@ -1,20 +1,26 @@
 <template>
-  <div class="property-panel-inner">
+  <div class="property-panel-inner" :class="{ 'is-drawer': drawerMode }">
     <div v-if="!node" class="empty-hint">
       <el-icon style="font-size: 40px; color: #d6e4ff"><Collection /></el-icon>
       <p>选中画布中的节点<br />在此编辑属性配置</p>
     </div>
     <template v-else>
-      <div class="node-info-bar">
+      <div v-if="!drawerMode" class="node-info-bar">
         <el-tag size="small" :color="nodeConfig?.color || '#1677ff'" effect="dark" disable-transitions>{{ nodeConfig?.label || nodeType }}</el-tag>
         <span style="font-size:12px;color:#86909c">ID: {{ nodeId }}</span>
       </div>
-      <el-form :model="formData" label-position="top" size="small" class="property-form">
+      <el-form :model="formData" label-position="top" size="default" class="property-form">
         <el-form-item label="节点名称">
           <el-input v-model="formData.name" placeholder="请输入名称" @change="handleChange" />
         </el-form-item>
+        <el-form-item v-if="drawerMode" label="节点别名">
+          <el-input v-model="formData.alias" placeholder="可选" @change="handleChange" />
+        </el-form-item>
+        <el-form-item v-if="drawerMode" label="节点说明">
+          <el-input v-model="formData.description" type="textarea" :rows="2" placeholder="可选" @change="handleChange" />
+        </el-form-item>
         <h4 class="section-title">节点配置</h4>
-        <template v-if="configFields.length > 0">
+        <template v-if="configFields.length > 0 && nodeType !== 'HTTP_CALL'">
           <el-form-item
             v-for="field in configFields"
             :key="field.key"
@@ -39,6 +45,7 @@
               v-else-if="field.type === 'select'"
               v-model="formData[field.key]"
               placeholder="请选择"
+              :multiple="false"
               style="width: 100%"
               @change="handleChange"
             >
@@ -49,11 +56,32 @@
                 :value="opt.value"
               />
             </el-select>
+            <el-radio-group
+              v-else-if="field.type === 'radio'"
+              v-model="formData[field.key]"
+              class="http-method-group"
+              @change="handleChange"
+            >
+              <el-radio-button
+                v-for="opt in field.options"
+                :key="opt.value"
+                :label="opt.value"
+              >{{ opt.label }}</el-radio-button>
+            </el-radio-group>
             <el-input
               v-else-if="field.type === 'textarea'"
               v-model="formData[field.key]"
               type="textarea"
               :rows="3"
+              :placeholder="field.placeholder"
+              @change="handleChange"
+            />
+            <KeyValueListEditor
+              v-else-if="field.type === 'keyValueList'"
+              v-model="formData[field.key]"
+              :key-placeholder="field.placeholder || '名称'"
+              value-placeholder="值"
+              add-label="+ header"
               @change="handleChange"
             />
             <el-input
@@ -61,7 +89,7 @@
               v-model="formData[field.key]"
               type="textarea"
               :rows="4"
-              placeholder="JSON格式"
+              :placeholder="field.placeholder || 'JSON格式'"
               @change="handleChange"
             />
             <el-switch
@@ -106,9 +134,12 @@ import { Node } from '@antv/x6';
 import { Collection } from '@element-plus/icons-vue';
 import { getNodeConfig } from '../types';
 import { getConfigFormFields, FormField } from '../config/nodeConfig';
+import KeyValueListEditor from './KeyValueListEditor.vue';
+import { mapToKeyValueRows, keyValueRowsToMap } from './keyValueUtils';
 
 const props = defineProps<{
   node: Node | null;
+  drawerMode?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -130,6 +161,13 @@ function clearFormData() {
 }
 
 function toFormValue(field: FormField, value: any) {
+  if (field.type === 'keyValueList') {
+    return mapToKeyValueRows(value);
+  }
+  if (field.type === 'radio' || field.type === 'select') {
+    if (Array.isArray(value)) return value[0] ?? field.defaultValue ?? '';
+    return value ?? field.defaultValue ?? '';
+  }
   if (field.type === 'json') {
     if (value === undefined || value === null || value === '') return '';
     if (typeof value === 'string') return value;
@@ -143,6 +181,13 @@ function toFormValue(field: FormField, value: any) {
 }
 
 function fromFormValue(field: FormField, value: any) {
+  if (field.type === 'keyValueList') {
+    return keyValueRowsToMap(Array.isArray(value) ? value : []);
+  }
+  if (field.type === 'radio' || field.type === 'select') {
+    if (Array.isArray(value)) return value[0] ?? '';
+    return value ?? '';
+  }
   if (field.type !== 'json') return value;
   if (value === undefined || value === null || value === '') return value;
   if (typeof value !== 'string') return value;
@@ -170,6 +215,8 @@ watch(() => props.node, (newNode) => {
   const config = data.config || {};
   const next: Record<string, any> = {
     name: data.label || newNode.attr('label/text') || '',
+    alias: config.alias || '',
+    description: config.description || '',
     failStrategy: config.failStrategy || 'STOP',
     timeout: config.timeout ?? 0,
   };
@@ -190,6 +237,8 @@ function handleChange() {
   config.failStrategy = formData.failStrategy;
   config.timeout = formData.timeout;
   config.retry = { ...retry };
+  if (formData.alias !== undefined) config.alias = formData.alias;
+  if (formData.description !== undefined) config.description = formData.description;
 
   if (formData.name) {
     props.node.attr('label/text', formData.name);
@@ -227,4 +276,53 @@ function handleChange() {
   padding: 12px 16px; border-bottom: 1px solid #f0f0f0; margin-bottom: 8px;
 }
 .no-config { font-size: 12px; color: #86909c; text-align: center; padding: 16px 0; }
+
+.property-panel-inner.is-drawer .property-form {
+  padding: 16px 20px 24px;
+}
+.property-panel-inner.is-drawer .section-title {
+  font-size: 13px;
+  color: #262626;
+}
+.property-panel-inner.is-drawer :deep(.el-form-item__label) {
+  font-size: 13px;
+  color: #595959;
+}
+.property-panel-inner.is-drawer :deep(.el-form-item.is-required .el-form-item__label::before) {
+  color: #ff4d4f;
+}
+.http-test-block {
+  padding: 0 0 8px;
+}
+.http-test-desc {
+  font-size: 12px;
+  color: #8c8c8c;
+  margin: 0 0 10px;
+}
+.http-test-result {
+  margin-top: 12px;
+}
+.http-test-meta {
+  font-size: 12px;
+  color: #52c41a;
+  margin-bottom: 8px;
+}
+.http-test-body :deep(.el-textarea__inner) {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  background: #fafafa;
+}
+.http-method-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  width: 100%;
+}
+.http-method-group :deep(.el-radio-button__inner) {
+  min-width: 52px;
+  padding: 8px 12px;
+}
+.property-form :deep(.kv-list) {
+  margin-top: 2px;
+}
 </style>

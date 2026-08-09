@@ -1,222 +1,103 @@
 <template>
-  <div ref="boardRef" class="app-container">
-    <!-- 顶部标题 -->
-    <div class="dashboard-header">
+  <div ref="boardRef" class="material-board material-board-theme" :class="{ 'is-fullscreen': isFullscreen }">
+    <div class="board-grid-bg" aria-hidden="true" />
+
+    <header class="dashboard-header">
       <div class="header-left">
-        <img src="@/assets/logo/kemflo-logo.jpg" alt="Logo" class="logo" @click="toggleFullscreen" />
+        <img src="@/assets/logo/kemflo-logo.jpg" alt="Logo" class="logo" title="点击切换全屏" @click.stop="toggleFullscreen" />
       </div>
-      <div class="header-center" @click="showSettings = true">
-        <h2>物料超市看板</h2>
+      <div class="header-center" title="点击打开看板配置" @click="showSettings = true">
+        <h2 class="page-title">物料超市看板</h2>
+        <el-tag v-if="lastRefreshTime" type="primary" effect="light" class="refresh-tag">数据更新 {{ lastRefreshTime }}</el-tag>
       </div>
       <div class="header-right">
-        <div class="current-time">{{ currentDateTime }}</div>
-      </div>
-    </div>
-
-    <div class="dashboard-content">
-      <!-- 顶部统计卡片 -->
-      <div class="station-top">
-        <div class="cards-container">
-          <div class="card-wrapper">
-            <div class="top-item-box item-box-one">
-              <div class="card-content">
-                <div class="card-title-large">总物料种类</div>
-                <div class="card-main">
-                  <div class="card-value-wrapper">
-                    <div class="card-value">{{ dashboardStats.totalMaterialTypes }}</div>
-                  </div>
-                  <div class="card-details">
-                    <div class="detail-row">
-                      <div class="detail-item">
-                        <span class="detail-label">安全库存:</span>
-                        <span class="detail-value">{{ dashboardStats.materialsWithLowStock }}</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-label">超储物料:</span>
-                        <span class="detail-value">{{ dashboardStats.materialsWithOverStock }}</span>
-                      </div>
-                    </div>
-                    <div class="detail-row">
-                      <div class="detail-item">
-                        <span class="detail-label">缺料物料:</span>
-                        <span class="detail-value">{{ dashboardStats.materialsWithShortage }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="card-wrapper">
-            <div class="top-item-box item-box-two">
-              <div class="card-content">
-                <div class="card-title-large">库存总量</div>
-                <div class="card-main">
-                  <div class="card-value-wrapper">
-                    <div class="card-value">{{ dashboardStats.totalInventory }}</div>
-                  </div>
-                  <div class="card-details">
-                    <div class="detail-row">
-                      <div class="detail-item">
-                        <span class="detail-label">非限制:</span>
-                        <span class="detail-value">{{ dashboardStats.unrestrictedStock }}</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-label">质检库存:</span>
-                        <span class="detail-value">{{ dashboardStats.inspectionStock }}</span>
-                      </div>
-                    </div>
-                    <div class="detail-row">
-                      <div class="detail-item">
-                        <span class="detail-label">冻结库存:</span>
-                        <span class="detail-value">{{ dashboardStats.frozenStock }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-<!--          <div class="card-wrapper">
-            <div class="top-item-box item-box-three">
-              <div class="card-content">
-                <div class="card-title-large">库存周转率</div>
-                <div class="card-main">
-                  <div class="card-value-wrapper">
-                    <div class="card-value">{{ dashboardStats.inventoryTurnoverRate }}%</div>
-                  </div>
-                  <div class="card-details">
-                    <div class="detail-row">
-                      <div class="detail-item">
-                        <span class="detail-label">上周:</span>
-                        <span class="detail-value">{{ dashboardStats.lastWeekTurnoverRate }}%</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-label">上月:</span>
-                        <span class="detail-value">{{ dashboardStats.lastMonthTurnoverRate }}%</span>
-                      </div>
-                    </div>
-                    <div class="detail-row">
-                      <div class="detail-item">
-                        <span class="detail-label">同比:</span>
-                        <span class="detail-value" :class="turnoverTrendClass">{{ turnoverTrendText }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>-->
-          <div class="card-wrapper">
-            <div class="top-item-box item-box-four">
-              <div class="card-content">
-                <div class="card-title-large">补货及时率</div>
-                <div class="card-main">
-                  <div class="card-value-wrapper">
-                    <div class="card-value">{{ dashboardStats.restockTimelinessRate }}%</div>
-                  </div>
-                  <div class="card-details">
-                    <div class="detail-row">
-                      <div class="detail-item">
-                        <span class="detail-label">今日:</span>
-                        <span class="detail-value">{{ dashboardStats.todayRestockRate }}%</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-label">本周:</span>
-                        <span class="detail-value">{{ dashboardStats.thisWeekRestockRate }}%</span>
-                      </div>
-                    </div>
-                    <div class="detail-row">
-                      <div class="detail-item">
-                        <span class="detail-label">趋势:</span>
-                        <span class="detail-value" :class="restockTrendClass">{{ restockTrendText }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="card-wrapper">
-            <div class="top-item-box item-box-four">
-              <div class="card-content">
-                <div class="card-title-large">库存预警</div>
-                <div class="card-main">
-                  <div class="card-value-wrapper">
-                    <div class="card-value">{{ dashboardStats.inventoryWarnings }}</div>
-                  </div>
-                  <div class="card-details">
-                    <div class="detail-row">
-                      <div class="detail-item">
-                        <span class="detail-label">紧急:</span>
-                        <span class="detail-value">{{ dashboardStats.criticalWarnings }}</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-label">一般:</span>
-                        <span class="detail-value">{{ dashboardStats.normalWarnings }}</span>
-                      </div>
-                    </div>
-                    <div class="detail-row">
-                      <div class="detail-item">
-                        <span class="detail-label">处理中:</span>
-                        <span class="detail-value">{{ dashboardStats.processingWarnings }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="time-wrap">
+          <el-icon><Clock /></el-icon>
+          <span class="current-time">{{ currentDateTime }}</span>
         </div>
       </div>
+    </header>
 
-      <!-- 中间图表区 -->
-      <!--      <div class="station-middle">
-        <el-row :gutter="12" class="chart-row">
-          <el-col :span="24">
-            <el-card class="box-card" shadow="never">
-              <div class="card-title">物料库存状态 - 电池柱状图</div>
-              <div class="chart-container">
-                <div ref="batteryChart" class="chart"></div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-      </div>-->
+    <div class="dashboard-content">
+      <section class="kpi-strip">
+        <article v-for="card in statCards" :key="card.key" class="kpi-card" :class="card.theme">
+          <span class="kpi-corner kpi-corner-tl" />
+          <span class="kpi-corner kpi-corner-tr" />
+          <span class="kpi-corner kpi-corner-bl" />
+          <span class="kpi-corner kpi-corner-br" />
+          <div class="kpi-title">{{ card.title }}</div>
+          <div class="kpi-value">{{ card.value }}</div>
+          <div class="kpi-meta">
+            <div v-for="(row, rowIdx) in card.rows" :key="rowIdx" class="kpi-meta-row">
+              <span v-for="item in row" :key="item.label" class="kpi-meta-item">
+                <span class="kpi-meta-label">{{ item.label }}</span>
+                <span class="kpi-meta-value" :class="item.className">{{ item.value }}</span>
+              </span>
+            </div>
+          </div>
+        </article>
+      </section>
 
-      <!-- 底部轮播区 -->
-      <div class="station-bottom">
-        <el-row :gutter="12" class="chart-row">
-          <el-col :span="24">
-            <el-card class="box-card" shadow="never">
-              <div class="card-title">物料库存状态</div>
-              <div class="chart-container">
-                <el-carousel indicator-position="outside" height="600px" :interval="5000" arrow="always" @change="onCarouselChange">
-                  <el-carousel-item v-for="(group, index) in materialGroups" :key="index">
-                    <div :ref="(el) => setCarouselChartRef(el, index)" class="chart" :id="`carousel-chart-${index}`"></div>
-                  </el-carousel-item>
-                </el-carousel>
+      <section class="station-bottom">
+        <div class="chart-panel">
+          <div class="chart-panel-header">
+            <div class="panel-title">物料库存状态</div>
+            <div class="chart-panel-meta">
+              <span v-if="materialGroups.length" class="page-indicator">
+                {{ currentCarouselIndex + 1 }} / {{ materialGroups.length }}
+              </span>
+              <div class="stock-legend">
+                <span class="legend-item legend-normal">正常</span>
+                <span class="legend-item legend-low">不足</span>
+                <span class="legend-item legend-over">超储</span>
               </div>
-            </el-card>
-          </el-col>
-        </el-row>
-      </div>
+            </div>
+          </div>
+          <div ref="chartContainerRef" class="chart-container">
+            <el-carousel
+              v-if="materialGroups.length"
+              class="material-carousel"
+              indicator-position="outside"
+              :height="carouselHeight"
+              :interval="carouselInterval"
+              arrow="always"
+              @change="onCarouselChange"
+            >
+              <el-carousel-item v-for="(group, index) in materialGroups" :key="index">
+                <div :ref="(el) => setCarouselChartRef(el, index)" class="chart" :id="`carousel-chart-${index}`" />
+              </el-carousel-item>
+            </el-carousel>
+            <div v-else class="chart-empty">暂无物料数据</div>
+          </div>
+        </div>
+      </section>
     </div>
 
-    <el-dialog v-model="showSettings" title="显示设置" width="40%">
+    <footer class="board-bottom">
+      <div class="board-bottom-text">
+        <h5><span class="bottom-top">物料超市监控数据</span></h5>
+        <p>Material Supermarket Monitoring Data</p>
+      </div>
+    </footer>
+
+    <el-dialog
+      v-model="showSettings"
+      title="看板参数配置"
+      width="520px"
+      append-to-body
+      class="config-dialog"
+      modal-class="material-board-dialog-modal"
+    >
       <div class="settings-content">
-        <el-form ref="queryFormRef" :model="userSettingsForm" :inline="true" label-width="auto">
-          <el-row :gutter="20">
-            <el-col :sm="24" :md="24" :lg="24">
-              <el-form-item label="数据刷新" prop="freshScadaData">
-                <el-input-number v-model="userSettingsForm.freshScadaData" :min="5" :step="1">
-                  <template #suffix>
-                    <span>秒</span>
-                  </template>
-                </el-input-number>
-              </el-form-item>
-            </el-col>
-          </el-row>
+        <el-form ref="queryFormRef" :model="userSettingsForm" label-width="110px">
+          <el-form-item label="数据刷新" prop="freshScadaData">
+            <el-input-number v-model="userSettingsForm.freshScadaData" :min="5" :step="1" />
+            <span class="settings-unit">秒</span>
+          </el-form-item>
+          <el-form-item label="轮播间隔" prop="autoPlayInterval">
+            <el-input-number v-model="userSettingsForm.autoPlayInterval" :min="3" :step="1" />
+            <span class="settings-unit">秒</span>
+          </el-form-item>
         </el-form>
       </div>
 
@@ -233,7 +114,8 @@ import * as echarts from 'echarts';
 import { useRequest } from 'vue-request';
 
 import { ElMessage, ElCarousel, ElCarouselItem } from 'element-plus';
-import { ref, computed, nextTick, onMounted, onUnmounted, reactive } from 'vue';
+import { Clock } from '@element-plus/icons-vue';
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 
 interface UserSettingsForm {
   showOperationLine: number;
@@ -254,14 +136,17 @@ interface DashboardStats {
   unrestrictedStock: number;
   inspectionStock: number;
   frozenStock: number;
+  restockTimelinessRate: number;
+  todayRestockRate: number;
+  thisWeekRestockRate: number;
   inventoryWarnings: number;
   criticalWarnings: number;
   normalWarnings: number;
   processingWarnings: number;
 }
 
-const tabPosition = ref('week');
 const currentDateTime = ref('');
+const lastRefreshTime = ref('');
 const userSettingsForm = ref<UserSettingsForm>({
   showOperationLine: 10,
   showOperationPerRow: 6,
@@ -280,6 +165,9 @@ const dashboardStats = ref<DashboardStats>({
   unrestrictedStock: 0,
   inspectionStock: 0,
   frozenStock: 0,
+  restockTimelinessRate: 0,
+  todayRestockRate: 0,
+  thisWeekRestockRate: 0,
   inventoryWarnings: 0,
   criticalWarnings: 0,
   normalWarnings: 0,
@@ -301,7 +189,18 @@ const carouselChartInstances = {};
 const currentCarouselIndex = ref(0);
 
 const boardRef = ref(null);
+const chartContainerRef = ref(null);
 const isFullscreen = ref(false);
+const carouselHeight = ref('520px');
+
+const carouselInterval = computed(() => userSettingsForm.value.autoPlayInterval * 1000);
+
+const updateCarouselHeight = () => {
+  const container = chartContainerRef.value;
+  if (!container) return;
+  const height = Math.max(container.clientHeight - 48, 320);
+  carouselHeight.value = `${height}px`;
+};
 
 // 计算属性：补货趋势显示
 const restockTrendClass = computed(() => {
@@ -316,6 +215,64 @@ const restockTrendClass = computed(() => {
 const restockTrendText = computed(() => {
   const diff = dashboardStats.value.restockTimelinessRate - 100;
   return diff >= 0 ? `↑ ${Math.abs(diff).toFixed(2)}%` : `↓ ${Math.abs(diff).toFixed(2)}%`;
+});
+
+const statCards = computed(() => {
+  const s = dashboardStats.value;
+  return [
+    {
+      key: 'types',
+      theme: 'kpi-card--blue',
+      title: '总物料种类',
+      value: s.totalMaterialTypes,
+      rows: [
+        [
+          { label: '安全库存', value: s.materialsWithLowStock },
+          { label: '超储物料', value: s.materialsWithOverStock }
+        ],
+        [{ label: '缺料物料', value: s.materialsWithShortage }]
+      ]
+    },
+    {
+      key: 'inventory',
+      theme: 'kpi-card--gold',
+      title: '库存总量',
+      value: s.totalInventory,
+      rows: [
+        [
+          { label: '非限制', value: s.unrestrictedStock },
+          { label: '质检库存', value: s.inspectionStock }
+        ],
+        [{ label: '冻结库存', value: s.frozenStock }]
+      ]
+    },
+    {
+      key: 'restock',
+      theme: 'kpi-card--cyan',
+      title: '补货及时率',
+      value: `${s.restockTimelinessRate}%`,
+      rows: [
+        [
+          { label: '今日', value: `${s.todayRestockRate}%` },
+          { label: '本周', value: `${s.thisWeekRestockRate}%` }
+        ],
+        [{ label: '趋势', value: restockTrendText.value, className: restockTrendClass.value }]
+      ]
+    },
+    {
+      key: 'warning',
+      theme: 'kpi-card--danger',
+      title: '库存预警',
+      value: s.inventoryWarnings,
+      rows: [
+        [
+          { label: '紧急', value: s.criticalWarnings },
+          { label: '一般', value: s.normalWarnings }
+        ],
+        [{ label: '处理中', value: s.processingWarnings }]
+      ]
+    }
+  ];
 });
 
 // 更新当前时间
@@ -364,6 +321,9 @@ const refreshData = async () => {
     unrestrictedStock: 12580,
     inspectionStock: 1840,
     frozenStock: 1000,
+    restockTimelinessRate: 96.5,
+    todayRestockRate: 98.2,
+    thisWeekRestockRate: 95.8,
     inventoryWarnings: 10,
     criticalWarnings: 3,
     normalWarnings: 7,
@@ -373,7 +333,12 @@ const refreshData = async () => {
   // 初始化物料分组
   initializeMaterialGroups();
 
+  lastRefreshTime.value = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+
   initCharts();
+  nextTick(() => {
+    updateCarouselHeight();
+  });
 };
 
 // 初始化物料分组
@@ -445,10 +410,12 @@ const setCarouselChartRef = (el, index) => {
 // 轮播切换事件
 const onCarouselChange = (currentIndex) => {
   currentCarouselIndex.value = currentIndex;
-  // 确保当前索引的图表已初始化
-  if (carouselChartRefs.value[currentIndex]) {
-    initCarouselChart(currentIndex);
-  }
+  nextTick(() => {
+    if (carouselChartRefs.value[currentIndex]) {
+      initCarouselChart(currentIndex);
+      carouselChartInstances[currentIndex]?.resize();
+    }
+  });
 };
 
 // 初始化轮播图表
@@ -475,31 +442,43 @@ const initCarouselChart = (index) => {
 
   const total = Math.max(...group.map((item) => item.maxStock));
   const datas = group.map((item) => item.currentStock);
+  const barAreaHeight = Math.max(group.length * 72 + 80, 280);
 
-  // 根据参考代码配置选项
-  // 根据参考代码配置选项
   const option = {
-    backgroundColor: '#071347',
-    xAxis: {
-      max: total,
-      splitLine: {
-        show: false
-      },
-      axisLine: {
-        show: false
-      },
-      axisLabel: {
-        show: false
-      },
-      axisTick: {
-        show: false
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      backgroundColor: 'rgba(16, 13, 68, 0.92)',
+      borderColor: 'rgba(100, 150, 255, 0.35)',
+      textStyle: { color: '#fff' },
+      formatter(params) {
+        const item = group[params[0]?.dataIndex];
+        if (!item) return '';
+        const percentage = ((item.currentStock / item.maxStock) * 100).toFixed(1);
+        return [
+          `<strong>${item.name}</strong>`,
+          `当前库存: ${item.currentStock}`,
+          `库存上限: ${item.maxStock}`,
+          `安全库存: ${item.safetyStock}`,
+          `库存占比: ${percentage}%`,
+          `状态: ${getStatusText(item)}`
+        ].join('<br/>');
       }
     },
+    xAxis: {
+      max: total,
+      splitLine: { show: false },
+      axisLine: { show: false },
+      axisLabel: { show: false },
+      axisTick: { show: false }
+    },
     grid: {
-      left: 250,
-      top: 100, // 设置条形图的边距
-      right: 250,
-      bottom: 100
+      left: 220,
+      top: 36,
+      right: 120,
+      bottom: 36,
+      height: barAreaHeight
     },
     yAxis: [
       {
@@ -519,21 +498,21 @@ const initCarouselChart = (index) => {
     ],
     series: [
       {
-        // 内
         type: 'bar',
         barWidth: 28,
         silent: true,
         itemStyle: {
-          color: '#1588D1'
+          color(params) {
+            return getMaterialColor(group[params.dataIndex]);
+          },
+          borderRadius: [4, 0, 0, 4]
         },
         label: {
           formatter: '{b}',
-          textStyle: {
-            color: '#fff',
-            fontSize: 14
-          },
+          color: '#fff',
+          fontSize: 14,
           position: 'left',
-          distance: 20, // 向右偏移位置
+          distance: 16,
           show: true
         },
         data: category,
@@ -541,10 +520,9 @@ const initCarouselChart = (index) => {
         animationEasing: 'elasticOut'
       },
       {
-        // 分隔
         type: 'pictorialBar',
         itemStyle: {
-          color: '#07314a'
+          color: 'rgba(7, 49, 74, 0.85)'
         },
         symbolRepeat: 'fixed',
         symbolMargin: 2,
@@ -566,18 +544,17 @@ const initCarouselChart = (index) => {
           color: 'none'
         },
         label: {
-          formatter: (params) => {
-            var text;
-            text = '{f| ' + ((params.data * 100) / total).toFixed(2) + '%}';
-            return text;
+          formatter(params) {
+            const item = group[params.dataIndex];
+            const percent = ((params.data * 100) / item.maxStock).toFixed(1);
+            return `{value|${params.data}}  {percent|${percent}%}`;
           },
           rich: {
-            f: {
-              color: '#ffffff'
-            }
+            value: { color: '#ffffff', fontSize: 13, fontWeight: 'bold' },
+            percent: { color: '#8ec5ff', fontSize: 12 }
           },
           position: 'right',
-          distance: 10, // 向右偏移位置
+          distance: 12,
           show: true
         },
         data: datas,
@@ -590,10 +567,10 @@ const initCarouselChart = (index) => {
         data: Array(group.length).fill(total),
         barWidth: 45,
         itemStyle: {
-          barBorderRadius: [5, 5, 5, 5],
-          color: 'transparent', // 填充色
-          borderColor: '#1588D1', // 边框色
-          borderWidth: 3 // 边框宽度
+          barBorderRadius: [6, 6, 6, 6],
+          color: 'transparent',
+          borderColor: 'rgba(21, 136, 209, 0.65)',
+          borderWidth: 2
         },
         z: 0
       },
@@ -605,7 +582,9 @@ const initCarouselChart = (index) => {
         symbolOffset: [3, -5],
         symbolKeepAspect: true,
         itemStyle: {
-          color: '#1588D1'
+          color(params) {
+            return getMaterialColor(group[params.dataIndex]);
+          }
         },
         data: Array(group.length).fill(total)
       }
@@ -951,13 +930,11 @@ const getStatusText = (item: any) => {
 
 // 窗口大小变化时重绘图表
 const resizeCharts = () => {
+  updateCarouselHeight();
   batteryChartInstance?.resize();
 
-  // 重绘所有轮播图表
   Object.values(carouselChartInstances).forEach((instance) => {
-    if (instance) {
-      instance.resize();
-    }
+    instance?.resize();
   });
 };
 
@@ -977,6 +954,7 @@ onMounted(async () => {
   await run();
 
   nextTick(() => {
+    updateCarouselHeight();
     initCharts();
     window.addEventListener('resize', resizeCharts);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -1019,314 +997,470 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.app-container {
+.material-board,
+.material-board-theme {
+  --ref-cyan: #0ac1c7;
+  --ref-blue: #4facfe;
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 84px);
+  min-height: calc(100vh - 84px);
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  color: #e8f4ff;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  color-scheme: dark;
+  background: #020818;
+}
+
+.material-board.is-fullscreen {
   height: 100vh;
-  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-  padding: 16px;
-  overflow: hidden;
-  box-shadow: 0 0 30px rgba(0, 10, 255, 0.3);
+  min-height: 100vh;
 }
 
-.app-container.fullscreen {
-  padding: 0;
+.board-grid-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(10, 193, 199, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10, 193, 199, 0.04) 1px, transparent 1px),
+    radial-gradient(circle at 20% 20%, rgba(79, 172, 254, 0.12), transparent 35%),
+    radial-gradient(circle at 80% 80%, rgba(10, 193, 199, 0.1), transparent 40%),
+    linear-gradient(180deg, #020818 0%, #071428 50%, #020818 100%);
+  background-size: 48px 48px, 48px 48px, auto, auto, auto;
 }
 
-.dashboard-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-  gap: 10px;
+.material-board > *:not(.board-grid-bg) {
+  position: relative;
+  z-index: 1;
 }
 
-/* 顶部标题样式 */
 .dashboard-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  height: 70px;
-  background: rgba(16, 13, 68, 0.8);
-  border-radius: 12px;
-  padding: 0;
-  margin-bottom: 15px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(100, 100, 255, 0.2);
-  cursor: pointer;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 76px;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(10, 193, 199, 0.25);
+  background: linear-gradient(180deg, rgba(8, 24, 48, 0.95), rgba(4, 14, 30, 0.85));
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
 }
 
-.dashboard-header:hover {
-  background: rgba(16, 13, 68, 0.9);
+.header-left,
+.header-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
 }
 
 .header-left {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
+  justify-content: flex-start;
+}
+
+.header-right {
+  justify-content: flex-end;
 }
 
 .header-center {
   flex: 2;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-}
-
-.header-right {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 16px;
+  gap: 6px;
+  cursor: pointer;
 }
 
 .logo {
-  height: 45px;
-  filter: drop-shadow(0 0 5px rgba(100, 150, 255, 0.8));
+  height: 48px;
+  border-radius: 6px;
   cursor: pointer;
+  box-shadow: 0 0 12px rgba(0, 200, 255, 0.35);
 }
 
-.dashboard-header h2 {
-  font-size: 28px;
-  font-weight: bold;
-  background: linear-gradient(to right, #4facfe, #00f2fe);
+.page-title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  background: linear-gradient(180deg, #b8c8dc, #fff);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 2px 10px rgba(0, 100, 255, 0.3);
-  letter-spacing: 1px;
-  cursor: pointer;
 }
 
-.current-time {
-  font-size: 28px;
-  font-weight: bold;
-  color: #00f2fe;
-  text-shadow: 0 2px 10px rgba(0, 100, 255, 0.3);
+.refresh-tag {
+  background: rgba(10, 193, 199, 0.12);
+  border: 1px solid rgba(10, 193, 199, 0.32);
+  color: #93f8fb;
 }
 
-/* 使用flex布局的卡片容器 */
-.station-top {
-  flex: 0 0 auto;
-}
-
-.cards-container {
+.time-wrap {
   display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ref-cyan);
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  margin-top: 5px;
-}
-
-.card-wrapper {
-  flex: 1;
-  min-width: 0; /* 允许卡片收缩 */
-}
-
-.top-item-box {
-  height: 160px;
-  background: #2a2a4a;
-  border-radius: 10px;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(100, 120, 255, 0.2);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 16px;
-}
-
-.card-content {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.card-title-large {
-  font-size: 16px;
-  font-weight: 500;
-  margin-bottom: 5px;
-}
-
-.card-main {
-  display: flex;
-  flex: 1;
-  gap: 10px;
-  align-items: center;
-}
-
-.card-value-wrapper {
-  flex: 0.5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  margin: 0 5px;
-  min-width: 0;
-  line-height: 60px;
-}
-
-.card-value {
-  font-size: 26px;
-  font-weight: bold;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.card-details {
-  flex: 2;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 0 5px;
-  gap: 5px;
-}
-
-.detail-row {
-  display: flex;
-  gap: 5px;
-}
-
-.detail-item {
-  flex: 1;
-  display: flex;
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.detail-label {
-  display: flex;
-  justify-content: flex-end;
-  padding-right: 5px;
-  color: #ddd;
-  min-width: 45px;
-}
-
-.detail-value {
-  flex: 1;
-  display: flex;
-  justify-content: flex-start;
-  font-weight: bold;
-  color: #fff;
-}
-
-.text-success {
-  color: #67c23a;
-}
-
-.text-danger {
-  color: #f56c6c;
-}
-
-.item-box-one {
-  background: linear-gradient(30deg, #2a4a7a, #3a5a9a, #4a6abc);
-}
-
-.item-box-two {
-  background: linear-gradient(30deg, #5a4a2a, #7a6a3a, #9a8a4a);
-}
-
-.item-box-three {
-  background: linear-gradient(30deg, #2a5a4a, #3a7a5a, #4a9a6a);
-}
-
-.item-box-four {
-  background: linear-gradient(30deg, #5a2a3a, #7a3a4a, #9a4a5a);
-}
-
-.item-box-five {
-  background: linear-gradient(30deg, #5a2a2a, #7a3a3a, #9a4a4a);
-}
-
-.station-middle {
-  flex: 1;
+  padding: 12px 16px;
   min-height: 0;
   overflow: hidden;
 }
 
-.chart-row {
-  height: 100%;
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.kpi-card {
+  position: relative;
+  min-height: 132px;
+  padding: 14px 16px;
+  border: 1px solid rgba(79, 172, 254, 0.22);
+  background: rgba(8, 20, 42, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.kpi-card--blue {
+  border-color: rgba(79, 172, 254, 0.35);
+  background: linear-gradient(135deg, rgba(42, 74, 122, 0.55), rgba(8, 20, 42, 0.85));
+}
+
+.kpi-card--gold {
+  border-color: rgba(230, 162, 60, 0.35);
+  background: linear-gradient(135deg, rgba(90, 74, 42, 0.55), rgba(8, 20, 42, 0.85));
+}
+
+.kpi-card--cyan {
+  border-color: rgba(10, 193, 199, 0.35);
+  background: linear-gradient(135deg, rgba(42, 90, 74, 0.55), rgba(8, 20, 42, 0.85));
+}
+
+.kpi-card--danger {
+  border-color: rgba(245, 108, 108, 0.35);
+  background: linear-gradient(135deg, rgba(90, 42, 58, 0.55), rgba(8, 20, 42, 0.85));
+}
+
+.kpi-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ref-cyan);
+}
+
+.kpi-corner-tl {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.kpi-corner-tr {
+  top: -1px;
+  right: -1px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.kpi-corner-bl {
+  bottom: -1px;
+  left: -1px;
+  border-right: none;
+  border-top: none;
+}
+
+.kpi-corner-br {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+}
+
+.kpi-title {
+  font-size: 14px;
+  color: rgba(232, 244, 255, 0.75);
+  margin-bottom: 6px;
+}
+
+.kpi-value {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #fff;
+  text-shadow: 0 0 16px rgba(79, 172, 254, 0.35);
+}
+
+.kpi-meta {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-meta-row {
+  display: flex;
+  gap: 12px;
+}
+
+.kpi-meta-item {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.kpi-meta-label {
+  color: rgba(200, 214, 255, 0.65);
+  white-space: nowrap;
+}
+
+.kpi-meta-value {
+  color: #fff;
+  font-weight: 600;
+
+  &.text-success {
+    color: #67c23a;
+  }
+
+  &.text-danger {
+    color: #f56c6c;
+  }
 }
 
 .station-bottom {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding: 0;
 }
 
-.box-card {
+.chart-panel {
   height: 100%;
-  background-color: rgba(30, 30, 40, 0.7);
-  border-color: rgba(100, 100, 200, 0.3);
-  color: #fff;
-  backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
+  border: 1px solid rgba(79, 172, 254, 0.22);
+  background: rgba(8, 20, 42, 0.72);
+  backdrop-filter: blur(8px);
 }
 
-.box-card :deep(.el-card__body) {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background-color: transparent;
-  color: #fff;
-  padding: 0;
-}
-
-.card-title {
-  font-weight: bold;
-  height: 30px;
+.chart-panel-header {
   display: flex;
   align-items: center;
-  color: #fff;
-  padding: 10px 20px 5px;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px 0;
   flex-shrink: 0;
 }
 
-.card-title::before {
-  content: '';
-  height: 16px;
-  width: 5px;
-  background: #3671e8;
-  margin-right: 8px;
+.panel-title {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+
+  &::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    margin-right: 8px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--ref-blue), var(--ref-cyan));
+  }
+}
+
+.chart-panel-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.page-indicator {
+  font-size: 13px;
+  color: #8ec5ff;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(21, 136, 209, 0.15);
+  border: 1px solid rgba(100, 150, 255, 0.25);
+}
+
+.stock-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.legend-item {
+  position: relative;
+  padding-left: 14px;
+  font-size: 12px;
+  color: #c8d6ff;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+  }
+}
+
+.legend-normal::before {
+  background: #67c23a;
+}
+
+.legend-low::before {
+  background: #f56c6c;
+}
+
+.legend-over::before {
+  background: #e6a23c;
 }
 
 .chart-container {
   flex: 1;
-  padding: 0 15px 15px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 16px 12px;
   min-height: 0;
 }
 
 .chart {
   height: 100%;
   width: 100%;
+  min-height: 280px;
 }
 
-.line-charts-container {
-  display: flex;
-  gap: 12px;
-  height: 100%;
-}
-
-.chart-wrapper {
+.chart-empty {
   flex: 1;
-  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(200, 214, 255, 0.65);
+  font-size: 14px;
 }
 
-.station-top {
-  padding: 10px 0 5px 0;
+.material-carousel {
+  height: 100%;
+
+  :deep(.el-carousel__container) {
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(7, 19, 71, 0.55) 0%, rgba(10, 24, 58, 0.35) 100%);
+    border: 1px solid rgba(100, 150, 255, 0.12);
+  }
+
+  :deep(.el-carousel__arrow) {
+    width: 40px;
+    height: 40px;
+    background: rgba(16, 13, 68, 0.85);
+    border: 1px solid rgba(100, 150, 255, 0.35);
+    color: #8ec5ff;
+
+    &:hover {
+      background: rgba(54, 113, 232, 0.85);
+      color: #fff;
+    }
+  }
+
+  :deep(.el-carousel__indicators--outside) {
+    margin-top: 8px;
+  }
+
+  :deep(.el-carousel__indicator) {
+    .el-carousel__button {
+      width: 24px;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(142, 197, 255, 0.25);
+      opacity: 1;
+    }
+
+    &.is-active .el-carousel__button {
+      background: linear-gradient(90deg, #4facfe, #00f2fe);
+    }
+  }
+
+  :deep(.el-carousel__item) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
-.station-middle {
-  padding: 0;
+.board-bottom {
+  flex-shrink: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid rgba(10, 193, 199, 0.18);
+  background: rgba(4, 12, 28, 0.85);
 }
 
-.station-bottom {
-  padding: 0;
+.board-bottom-text {
+  text-align: center;
+
+  h5 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(200, 214, 255, 0.75);
+  }
+
+  p {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: rgba(200, 214, 255, 0.45);
+    letter-spacing: 1px;
+  }
+
+  .bottom-top {
+    color: var(--ref-cyan);
+  }
+}
+
+.settings-unit {
+  margin-left: 8px;
+  color: rgba(200, 214, 255, 0.65);
+}
+
+@media (max-width: 1400px) {
+  .kpi-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+</style>
+
+<style lang="scss">
+.material-board-dialog-modal {
+  .el-dialog {
+    background: linear-gradient(180deg, #0f1936, #0a1228);
+    border: 1px solid rgba(10, 193, 199, 0.25);
+  }
+
+  .el-dialog__title,
+  .el-dialog__headerbtn .el-dialog__close {
+    color: #c8d6ff;
+  }
+
+  .el-form-item__label {
+    color: #c8d6ff;
+  }
 }
 </style>

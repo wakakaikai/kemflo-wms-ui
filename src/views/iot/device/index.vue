@@ -324,6 +324,9 @@
                 :rows="isTcpClient || isSerialLink ? 5 : 2"
                 :placeholder="connectionParamsPlaceholder"
               />
+              <div v-if="isModbus && !isTcpClient" class="form-tip">
+                Modbus 浮点默认在点位配置字节序（CD AB）；此处 floatByteOrder 为设备级默认值，可被点位覆盖。
+              </div>
               <div v-if="isTcpClient" class="form-tip">编码/拆包等高级参数；保活请用上方表单，提交时自动写入 JSON。</div>
             </el-form-item>
           </el-col>
@@ -374,12 +377,14 @@ import {
   IOT_TRANSPORT_OPTIONS,
   IOT_ONLINE_STATUS_OPTIONS,
   IOT_TCP_CLIENT_PARAMS_EXAMPLE,
+  IOT_MODBUS_TCP_PARAMS_EXAMPLE,
   IOT_SERIAL_PARAMS_EXAMPLE,
   normalizeProtocolValue,
   normalizeTransportValue,
   isTcpTransport,
   isSerialTransport,
   isTcpClientProtocol,
+  isModbusProtocol,
   createDefaultTcpHeartbeat,
   parseTcpHeartbeat,
   mergeTcpHeartbeat,
@@ -458,9 +463,10 @@ const isOnline = (row: DeviceVO) => String(row.onlineStatus) === '1';
 const protocolLabel = (protocol?: string) =>
   IOT_PROTOCOL_OPTIONS.find((item) => item.value === protocol)?.label || protocol || '—';
 
-const isTcpClientRow = (row: DeviceVO) => isTcpClientProtocol(row.protocol, row.transportCode);
+const isTcpClientRow = (row: DeviceVO) => isTcpClientProtocol(row.protocol);
 
-const isTcpClient = computed(() => isTcpClientProtocol(form.value.protocol, form.value.transportCode));
+const isTcpClient = computed(() => isTcpClientProtocol(form.value.protocol));
+const isModbus = computed(() => isModbusProtocol(form.value.protocol));
 const isSerialLink = computed(() => isSerialTransport(form.value.transportCode));
 const hostPlaceholder = computed(() => {
   if (isSerialLink.value) return '如 COM3 或 /dev/ttyUSB0';
@@ -474,7 +480,10 @@ const connectionParamsPlaceholder = computed(() => {
       : IOT_SERIAL_PARAMS_EXAMPLE;
   }
   if (isTcpClient.value) return IOT_TCP_CLIENT_PARAMS_EXAMPLE;
-  return '如 {"unit-identifier":1}；点位字节序/显示格式请在点位中配置';
+  if (isModbus.value) {
+    return IOT_MODBUS_TCP_PARAMS_EXAMPLE;
+  }
+  return '如 {"unit-identifier":1}；Modbus 浮点字节序可在设备 JSON（floatByteOrder）或各点位 byteOrder 配置';
 });
 
 const syncTcpHeartbeatFromForm = () => {
@@ -507,22 +516,33 @@ const onProtocolChange = (value?: string) => {
       form.value.transportCode = undefined;
     }
     if (!form.value.port) form.value.port = 502;
+    if (!form.value.connectionParamsJson) {
+      form.value.connectionParamsJson = IOT_MODBUS_TCP_PARAMS_EXAMPLE;
+    }
   }
 };
 
 const onTransportChange = (value?: string) => {
   const transport = normalizeTransportValue(value);
   form.value.transportCode = transport || undefined;
+  const protocol = normalizeProtocolValue(form.value.protocol);
   if (isTcpTransport(transport)) {
-    if (normalizeProtocolValue(form.value.protocol) !== 'tcp-client' && !form.value.protocol) {
-      form.value.protocol = 'tcp-client';
+    if (protocol === 'tcp-client' || !protocol) {
+      if (!form.value.protocol) {
+        form.value.protocol = 'tcp-client';
+      }
+      form.value.connectionUrl = undefined;
+      if (!form.value.port) form.value.port = 9000;
+      if (!form.value.connectionParamsJson) {
+        form.value.connectionParamsJson = IOT_TCP_CLIENT_PARAMS_EXAMPLE;
+      }
+      syncTcpHeartbeatFromForm();
+    } else if (protocol === 'modbus-tcp') {
+      if (!form.value.port) form.value.port = 502;
+      if (!form.value.connectionParamsJson) {
+        form.value.connectionParamsJson = IOT_MODBUS_TCP_PARAMS_EXAMPLE;
+      }
     }
-    form.value.connectionUrl = undefined;
-    if (!form.value.port) form.value.port = 9000;
-    if (!form.value.connectionParamsJson) {
-      form.value.connectionParamsJson = IOT_TCP_CLIENT_PARAMS_EXAMPLE;
-    }
-    syncTcpHeartbeatFromForm();
   } else if (isSerialTransport(transport)) {
     form.value.port = undefined;
     form.value.connectionUrl = undefined;

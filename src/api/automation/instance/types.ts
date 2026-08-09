@@ -25,3 +25,29 @@ export interface AutoInstanceVo {
   errorMessage?: string;
   createTime?: string;
 }
+
+export interface AutoInstanceStartBo {
+  definitionId: number | string;
+  definitionVersion?: number;
+  triggerType?: string;
+  variables?: Record<string, any>;
+}
+
+export interface AutoInstanceNodeStatus {
+  nodeId: string;
+  nodeType?: string;
+  nodeName?: string;
+  status: string;
+  durationMs?: number;
+  startTime?: string;
+  endTime?: string;
+  errorMessage?: string;
+}
+
+export interface AutoInstanceTraceVo {
+  instanceId: number | string;
+  status: string;
+  currentNodeId?: string;
+  errorMessage?: string;
+  nodes: AutoInstanceNodeStatus[];
+}

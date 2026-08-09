@@ -82,18 +82,181 @@ export const IOT_DATA_TYPE_OPTIONS: IotOption[] = [
 
 /** 显示格式（对齐 Modbus Poll） */
 export const IOT_DISPLAY_FORMAT_OPTIONS: IotOption[] = [
-  { label: 'Signed 有符号', value: 'SIGNED' },
-  { label: 'Unsigned 无符号', value: 'UNSIGNED' },
-  { label: 'Hex 十六进制', value: 'HEX' },
-  { label: 'Binary 二进制', value: 'BINARY' }
+  { label: '有符号', value: 'SIGNED' },
+  { label: '无符号', value: 'UNSIGNED' },
+  { label: '十六进制', value: 'HEX' },
+  { label: '二进制', value: 'BINARY' }
 ];
+
+/** Modbus Poll Format（数据类型 + 格式 + 字节序合一，选项英文） */
+export interface IotPlcFormatOption {
+  label: string;
+  value: string;
+  dataType: string;
+  displayFormat: string;
+  byteOrder: string;
+}
+
+export interface IotPlcFormatGroup {
+  label: string;
+  options: IotPlcFormatOption[];
+}
+
+function plcFmt(
+  label: string,
+  value: string,
+  dataType: string,
+  displayFormat: string,
+  byteOrder: string
+): IotPlcFormatOption {
+  return { label, value, dataType, displayFormat, byteOrder };
+}
+
+const POLL_FMT_INT_OPTIONS: IotPlcFormatOption[] = [
+  plcFmt('Signed', 'SIGNED', 'INT', 'SIGNED', 'ABCD'),
+  plcFmt('Unsigned', 'UNSIGNED', 'UINT', 'UNSIGNED', 'ABCD'),
+  plcFmt('Hex', 'HEX', 'INT', 'HEX', 'ABCD'),
+  plcFmt('Binary', 'BINARY', 'INT', 'BINARY', 'ABCD')
+];
+
+const POLL_FMT_LONG_OPTIONS: IotPlcFormatOption[] = [
+  plcFmt('Long AB CD', 'LONG_ABCD', 'DINT', 'SIGNED', 'ABCD'),
+  plcFmt('Long CD AB', 'LONG_CDAB', 'DINT', 'SIGNED', 'CDAB'),
+  plcFmt('Long BA DC', 'LONG_BADC', 'DINT', 'SIGNED', 'BADC'),
+  plcFmt('Long DC BA', 'LONG_DCBA', 'DINT', 'SIGNED', 'DCBA')
+];
+
+const POLL_FMT_FLOAT_OPTIONS: IotPlcFormatOption[] = [
+  plcFmt('Float AB CD', 'FLOAT_ABCD', 'FLOAT', 'SIGNED', 'ABCD'),
+  plcFmt('Float CD AB', 'FLOAT_CDAB', 'FLOAT', 'SIGNED', 'CDAB'),
+  plcFmt('Float BA DC', 'FLOAT_BADC', 'FLOAT', 'SIGNED', 'BADC'),
+  plcFmt('Float DC BA', 'FLOAT_DCBA', 'FLOAT', 'SIGNED', 'DCBA')
+];
+
+const POLL_FMT_DOUBLE_OPTIONS: IotPlcFormatOption[] = [
+  plcFmt('Double AB CD EF GH', 'DOUBLE_ABCDEFGH', 'DOUBLE', 'SIGNED', 'ABCDEFGH'),
+  plcFmt('Double GH EF CD AB', 'DOUBLE_GHEFCDAB', 'DOUBLE', 'SIGNED', 'GHEFCDAB'),
+  plcFmt('Double BA DC FE HG', 'DOUBLE_BADCFEHG', 'DOUBLE', 'SIGNED', 'BADCFEHG'),
+  plcFmt('Double HG FE DC BA', 'DOUBLE_HGFEDCBA', 'DOUBLE', 'SIGNED', 'HGFEDCBA')
+];
+
+const POLL_FMT_STRING_OPTIONS: IotPlcFormatOption[] = [
+  plcFmt('String AB CD', 'STR_ABCD', 'STRING', 'SIGNED', 'ABCD'),
+  plcFmt('String CD AB', 'STR_CDAB', 'STRING', 'SIGNED', 'CDAB')
+];
+
+export const POLL_UNIFIED_FORMAT_OPTIONS: IotPlcFormatOption[] = [
+  ...POLL_FMT_INT_OPTIONS,
+  ...POLL_FMT_LONG_OPTIONS,
+  ...POLL_FMT_FLOAT_OPTIONS,
+  ...POLL_FMT_DOUBLE_OPTIONS,
+  ...POLL_FMT_STRING_OPTIONS
+];
+
+/** Poll 完整 Format 分组（选项英文，与 Modbus Poll 菜单一致） */
+export function resolvePollUnifiedFormatGroups(): IotPlcFormatGroup[] {
+  return [
+    { label: '\u200b', options: POLL_FMT_INT_OPTIONS },
+    { label: '\u200b', options: POLL_FMT_LONG_OPTIONS },
+    { label: '\u200b', options: POLL_FMT_FLOAT_OPTIONS },
+    { label: '\u200b', options: POLL_FMT_DOUBLE_OPTIONS },
+    { label: '\u200b', options: POLL_FMT_STRING_OPTIONS }
+  ];
+}
+
+export function resolvePlcFormatGroups(_dataType?: string): IotPlcFormatGroup[] {
+  return resolvePollUnifiedFormatGroups();
+}
+
+export function flattenPlcFormatOptions(_dataType?: string): IotPlcFormatOption[] {
+  return POLL_UNIFIED_FORMAT_OPTIONS;
+}
+
+function normalizePlcDataType(dataType?: string): string {
+  const type = (dataType || '').toUpperCase();
+  if (type === 'REAL') return 'FLOAT';
+  if (type === 'LREAL') return 'DOUBLE';
+  if (type === 'LONG' || type === 'DWORD') return 'DINT';
+  if (type === 'CHAR') return 'STRING';
+  return type;
+}
+
+/** 反查 Poll Format 值 */
+export function encodePlcFormat(displayFormat?: string, byteOrder?: string, dataType?: string): string {
+  const type = normalizePlcDataType(dataType);
+  const display = (displayFormat || 'SIGNED').toUpperCase();
+  const order = (byteOrder || defaultByteOrder(dataType)).toUpperCase();
+
+  const exact = POLL_UNIFIED_FORMAT_OPTIONS.find(
+    (o) =>
+      normalizePlcDataType(o.dataType) === type &&
+      o.displayFormat.toUpperCase() === display &&
+      o.byteOrder.toUpperCase() === order
+  );
+  if (exact) return exact.value;
+
+  if (type === 'FLOAT') {
+    return POLL_FMT_FLOAT_OPTIONS.find((o) => o.byteOrder === order)?.value || 'FLOAT_CDAB';
+  }
+  if (type === 'DOUBLE') {
+    return POLL_FMT_DOUBLE_OPTIONS.find((o) => o.byteOrder === order)?.value || 'DOUBLE_GHEFCDAB';
+  }
+  if (type === 'DINT' || type === 'UDINT') {
+    if (display === 'SIGNED') {
+      return POLL_FMT_LONG_OPTIONS.find((o) => o.byteOrder === order)?.value || 'LONG_CDAB';
+    }
+  }
+  if (type === 'STRING') {
+    return order === 'CDAB' ? 'STR_CDAB' : 'STR_ABCD';
+  }
+  return POLL_FMT_INT_OPTIONS.find((o) => o.displayFormat === display)?.value || 'SIGNED';
+}
+
+/** Poll Format 值 → 数据类型 + displayFormat + byteOrder */
+export function decodePlcFormat(
+  formatValue: string,
+  _dataType?: string,
+  current?: { dataType?: string; displayFormat?: string; byteOrder?: string }
+): { dataType: string; displayFormat: string; byteOrder: string } {
+  const option = POLL_UNIFIED_FORMAT_OPTIONS.find((o) => o.value === formatValue);
+  if (!option) {
+    return {
+      dataType: current?.dataType || 'INT',
+      displayFormat: current?.displayFormat || 'SIGNED',
+      byteOrder: current?.byteOrder || defaultByteOrder(current?.dataType)
+    };
+  }
+  return {
+    dataType: option.dataType,
+    displayFormat: option.displayFormat,
+    byteOrder: option.byteOrder
+  };
+}
+
+export function defaultPlcFormat(_dataType?: string): string {
+  return 'FLOAT_CDAB';
+}
+
+export function plcFormatFieldTip(protocol?: string, dataType?: string): string {
+  const type = normalizePlcDataType(dataType);
+  if (isModbusProtocol(protocol) && type === 'FLOAT') {
+    return '选项与 Modbus Poll Format 菜单一致；Float CD AB 占连续 2 个寄存器。';
+  }
+  if (isModbusProtocol(protocol) && type === 'DOUBLE') {
+    return 'Double GH EF CD AB 为 64 位字交换（常用）。';
+  }
+  if (type === 'STRING') {
+    return '字符串乱码时可试 String CD AB。';
+  }
+  return 'Signed/Unsigned/Hex/Binary 为 16 位；Long/Float/Double 为 32/64 位。';
+}
 
 /** 16/32 位字节序 */
 export const IOT_BYTE_ORDER_32_OPTIONS: IotOption[] = [
-  { label: 'AB CD（大端）', value: 'ABCD' },
-  { label: 'CD AB（字交换，常用）', value: 'CDAB' },
-  { label: 'BA DC（字节交换）', value: 'BADC' },
-  { label: 'DC BA（小端）', value: 'DCBA' }
+  { label: 'Long AB CD / Float AB CD', value: 'ABCD' },
+  { label: 'Long CD AB / Float CD AB', value: 'CDAB' },
+  { label: 'Long BA DC / Float BA DC', value: 'BADC' },
+  { label: 'Long DC BA / Float DC BA', value: 'DCBA' }
 ];
 
 /** 16 位寄存器字节序 */
@@ -104,10 +267,10 @@ export const IOT_BYTE_ORDER_16_OPTIONS: IotOption[] = [
 
 /** 64 位双精度字节序 */
 export const IOT_BYTE_ORDER_64_OPTIONS: IotOption[] = [
-  { label: 'AB CD EF GH', value: 'ABCDEFGH' },
-  { label: 'GH EF CD AB（常用）', value: 'GHEFCDAB' },
-  { label: 'BA DC FE HG', value: 'BADCFEHG' },
-  { label: 'HG FE DC BA', value: 'HGFEDCBA' }
+  { label: 'Double AB CD EF GH', value: 'ABCDEFGH' },
+  { label: 'Double GH EF CD AB', value: 'GHEFCDAB' },
+  { label: 'Double BA DC FE HG', value: 'BADCFEHG' },
+  { label: 'Double HG FE DC BA', value: 'HGFEDCBA' }
 ];
 
 export function resolveByteOrderOptions(dataType?: string): IotOption[] {
@@ -123,7 +286,10 @@ export function resolveByteOrderOptions(dataType?: string): IotOption[] {
 
 export function defaultByteOrder(dataType?: string): string {
   const type = (dataType || '').toUpperCase();
-  if (type === 'FLOAT' || type === 'REAL' || type === 'DINT' || type === 'UDINT' || type === 'STRING' || type === 'CHAR') {
+  if (type === 'FLOAT' || type === 'REAL') {
+    return 'CDAB';
+  }
+  if (type === 'DINT' || type === 'UDINT' || type === 'STRING' || type === 'CHAR') {
     return 'CDAB';
   }
   if (type === 'DOUBLE' || type === 'LREAL') return 'GHEFCDAB';
@@ -142,12 +308,87 @@ export const IOT_QUALITY_OPTIONS: IotOption[] = [
   { label: '不良', value: 'BAD', elTagType: 'danger' }
 ];
 
+/** Modbus 功能码（Poll 英文 + 中文说明） */
+export interface IotModbusFunctionOption {
+  /** Poll 英文标签 */
+  label: string;
+  /** 中文说明 */
+  hint: string;
+  value: string;
+}
+
+export const IOT_MODBUS_FUNCTION_OPTIONS: IotModbusFunctionOption[] = [
+  { label: '01 Read Coils (0x)', hint: '读线圈，位地址 0x 区', value: 'coil' },
+  { label: '02 Read Discrete Inputs (1x)', hint: '读离散输入，位地址 1x 区', value: 'discrete-input' },
+  { label: '03 Read Holding Registers (4x)', hint: '读保持寄存器，4x 区（最常用）', value: 'holding-register' },
+  { label: '04 Read Input Registers (3x)', hint: '读输入寄存器，3x 区', value: 'input-register' }
+];
+
+export function modbusFunctionHint(value?: string): string {
+  const hit = IOT_MODBUS_FUNCTION_OPTIONS.find((o) => o.value === (value || '').toLowerCase());
+  return hit?.hint || '';
+}
+
+export function modbusAreaToFunction(area?: string): string {
+  const hit = IOT_MODBUS_FUNCTION_OPTIONS.find((o) => o.value === (area || '').toLowerCase());
+  return hit?.value || 'holding-register';
+}
+
+export function modbusFunctionToArea(func?: string): string {
+  const hit = IOT_MODBUS_FUNCTION_OPTIONS.find((o) => o.value === func);
+  return hit?.value || 'holding-register';
+}
+
+export function parseModbusAreaFromTag(tagAddress?: string): string {
+  const match = (tagAddress || '').trim().match(/^(holding-register|input-register|coil|discrete-input)/i);
+  return match ? match[1].toLowerCase() : 'holding-register';
+}
+
+export function modbusFunctionLabelFromTag(tagAddress?: string): string {
+  const area = parseModbusAreaFromTag(tagAddress);
+  return IOT_MODBUS_FUNCTION_OPTIONS.find((o) => o.value === area)?.label || area;
+}
+
+export function modbusFunctionHintFromTag(tagAddress?: string): string {
+  const area = parseModbusAreaFromTag(tagAddress);
+  return modbusFunctionHint(area);
+}
+
+/** Poll Quantity：本点位占用的寄存器/线圈数量 */
+export function resolveModbusRegisterQuantity(dataType?: string, stringLength = 10): number {
+  const type = (dataType || '').toUpperCase();
+  if (type === 'BOOL') return 1;
+  if (type === 'INT' || type === 'UINT' || type === 'WORD') return 1;
+  if (type === 'FLOAT' || type === 'REAL' || type === 'DINT' || type === 'UDINT' || type === 'LONG' || type === 'DWORD') return 2;
+  if (type === 'DOUBLE' || type === 'LREAL') return 4;
+  if (type === 'STRING' || type === 'CHAR') return Math.max(1, Number(stringLength) || 1);
+  return 1;
+}
+
+/** 人类可读 Format 标签（列表/预览） */
+export function plcFormatLabel(displayFormat?: string, byteOrder?: string, dataType?: string): string {
+  const key = encodePlcFormat(displayFormat, byteOrder, dataType);
+  const hit = flattenPlcFormatOptions(dataType).find((o) => o.value === key);
+  return hit?.label || key;
+}
+
+/** 协议地址 ↔ PLC 4x/3x 人类地址（均从 1 起算） */
+export function modbusHumanAddress(protocolAddress: number): string {
+  const addr = Math.max(0, Number(protocolAddress) || 0);
+  return `4x ${40001 + addr} / 3x ${30001 + addr}`;
+}
+
+/** Poll 窗口：列起始地址 + 行号(0起) → 协议地址；Float 占 start+row 与 start+row+1 */
+export function modbusPollRowAddress(columnStart: number, row: number): number {
+  return Math.max(0, Number(columnStart) || 0) + Math.max(0, Number(row) || 0);
+}
+
 /** Modbus 地址区类型 */
 export const IOT_MODBUS_AREA_OPTIONS: IotOption[] = [
-  { label: '保持寄存器 holding-register', value: 'holding-register' },
-  { label: '输入寄存器 input-register', value: 'input-register' },
-  { label: '线圈 coil', value: 'coil' },
-  { label: '离散输入 discrete-input', value: 'discrete-input' }
+  { label: '保持寄存器 (4x)', value: 'holding-register' },
+  { label: '输入寄存器 (3x)', value: 'input-register' },
+  { label: '线圈 (0x)', value: 'coil' },
+  { label: '离散输入 (1x)', value: 'discrete-input' }
 ];
 
 /** Siemens S7 地址区类型 */
@@ -162,7 +403,10 @@ export type IotAddressProtocolGroup = 'modbus' | 's7' | 'tcp' | 'other';
 
 export interface IotAddressBuilder {
   area: string;
+  /** Poll 列头 / 协议起始地址（0 起） */
   address: number;
+  /** Poll 行号（0 起），实际地址 = address + pollRowOffset */
+  pollRowOffset: number;
   dbNumber: number;
   byteOffset: number;
   bitOffset: number;
@@ -205,7 +449,8 @@ export function createDefaultAddressBuilder(protocol?: string, dataType?: string
   if (group === 'modbus') {
     return {
       area: dataType === 'BOOL' ? 'coil' : 'holding-register',
-      address: 1,
+      address: 0,
+      pollRowOffset: 0,
       dbNumber: 1,
       byteOffset: 0,
       bitOffset: 0,
@@ -217,6 +462,7 @@ export function createDefaultAddressBuilder(protocol?: string, dataType?: string
     return {
       area: 'DB',
       address: 1,
+      pollRowOffset: 0,
       dbNumber: 1,
       byteOffset: 0,
       bitOffset: 0,
@@ -228,6 +474,7 @@ export function createDefaultAddressBuilder(protocol?: string, dataType?: string
     return {
       area: '',
       address: 1,
+      pollRowOffset: 0,
       dbNumber: 1,
       byteOffset: 0,
       bitOffset: 0,
@@ -238,6 +485,7 @@ export function createDefaultAddressBuilder(protocol?: string, dataType?: string
   return {
     area: '',
     address: 1,
+    pollRowOffset: 0,
     dbNumber: 1,
     byteOffset: 0,
     bitOffset: 0,
@@ -323,7 +571,8 @@ function toS7SimpleAccess(area: 'I' | 'Q' | 'M', dataType?: string): { prefix: s
 /** 根据协议/区类型/数据类型生成点位地址 */
 export function buildPlcTagAddress(protocol: string | undefined, dataType: string | undefined, builder: IotAddressBuilder): string {
   const group = getProtocolGroup(protocol);
-  const address = Math.max(0, Number(builder.address) || 0);
+  const rowOffset = Math.max(0, Number(builder.pollRowOffset) || 0);
+  const address = Math.max(0, Number(builder.address) || 0) + rowOffset;
   const dbNumber = Math.max(1, Number(builder.dbNumber) || 1);
   const byteOffset = Math.max(0, Number(builder.byteOffset) || 0);
   const bitOffset = Math.min(7, Math.max(0, Number(builder.bitOffset) || 0));
@@ -389,13 +638,15 @@ export function parsePlcTagAddress(protocol: string | undefined, tagAddress?: st
   }
 
   if (group === 'modbus') {
-    const match = text.match(/^(holding-register|input-register|coil|discrete-input):(\d+)(?::(?:CHAR\[(\d+)\]|STRING\((\d+)\)))?/i);
-    if (match) {
+    const baseMatch = text.match(/^(holding-register|input-register|coil|discrete-input):(\d+)/i);
+    if (baseMatch) {
+      const strMatch = text.match(/CHAR\[(\d+)]/i) || text.match(/STRING\((\d+)\)/i);
       return {
         ...defaults,
-        area: match[1].toLowerCase(),
-        address: Number(match[2]),
-        stringLength: Number(match[3] || match[4] || defaults.stringLength)
+        area: baseMatch[1].toLowerCase(),
+        address: Number(baseMatch[2]),
+        pollRowOffset: 0,
+        stringLength: Number(strMatch?.[1] || defaults.stringLength)
       };
     }
   }
@@ -425,6 +676,13 @@ export function parsePlcTagAddress(protocol: string | undefined, tagAddress?: st
   return defaults;
 }
 
+/** Modbus TCP 设备连接参数示例（站号 + 可选全局浮点字节序） */
+export const IOT_MODBUS_TCP_PARAMS_EXAMPLE = `{
+  "unit-identifier": 1,
+  "floatByteOrder": "CDAB",
+  "addressOffset": 0
+}`;
+
 /** TCP Client 设备连接参数示例（帧参数；保活在设备表单单独配置） */
 export const IOT_TCP_CLIENT_PARAMS_EXAMPLE = `{
   "encoding": "UTF-8",
@@ -451,8 +709,29 @@ export function createDefaultTcpHeartbeat(): TcpClientHeartbeatForm {
   };
 }
 
-export function isTcpClientProtocol(protocol?: string, transportCode?: string): boolean {
-  return normalizeProtocolValue(protocol) === 'tcp-client' || isTcpTransport(transportCode);
+/** 是否 TCP Client 原始帧采集（仅协议决定，传输链路 TCP_CLIENT 也用于 Modbus TCP） */
+export function isTcpClientProtocol(protocol?: string, _transportCode?: string): boolean {
+  return normalizeProtocolValue(protocol) === 'tcp-client';
+}
+
+export function isModbusProtocol(protocol?: string): boolean {
+  return getProtocolGroup(protocol) === 'modbus';
+}
+
+export function isModbusFloatDataType(dataType?: string): boolean {
+  const type = (dataType || '').toUpperCase();
+  return type === 'FLOAT' || type === 'REAL' || type === 'DOUBLE' || type === 'LREAL';
+}
+
+/** 字节序表单项提示（对齐 Modbus Poll Float 字节序选项） */
+export function byteOrderFieldTip(protocol?: string, dataType?: string): string {
+  if (isModbusProtocol(protocol) && isModbusFloatDataType(dataType)) {
+    return 'Modbus REAL 占连续 2 个寄存器；默认 AB CD。Poll 选 Float AB CD→ABCD；Float CD AB→CDAB。值极小/正负反时先核对 Poll 原始寄存器，再调 byteOrder 或设备 addressOffset(-1)。';
+  }
+  if (isModbusProtocol(protocol) && ((dataType || '').toUpperCase() === 'STRING' || (dataType || '').toUpperCase() === 'CHAR')) {
+    return '字符串乱序（如 42A7 显示为 247A）时尝试 CD AB。';
+  }
+  return '正数变负/数值异常时优先尝试 CD AB（32 位浮点/DINT）。';
 }
 
 export function parseConnectionParamsJson(json?: string): Record<string, any> {

@@ -35,6 +35,8 @@ export interface PointReadItem {
   pointName?: string;
   tagAddress?: string;
   normalizedAddress?: string;
+  rawRegisters?: string;
+  byteOrderUsed?: string;
   value?: any;
   success?: boolean;
   error?: string;

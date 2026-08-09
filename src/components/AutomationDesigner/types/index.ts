@@ -39,8 +39,8 @@ const triggerNodes: NodeConfigItem[] = [
 
 // 控制节点
 const controlNodes: NodeConfigItem[] = [
-  { type: 'CONDITION', category: NodeCategory.CONTROL, label: '条件判断', icon: 'QuestionFilled', color: '#fa8c16', shape: 'diamond', defaultConfig: { expression: '' } },
-  { type: 'SWITCH', category: NodeCategory.CONTROL, label: 'Switch分支', icon: 'Share', color: '#fa8c16', shape: 'diamond', defaultConfig: { expression: '', cases: [{ value: '', label: '分支1' }] } },
+  { type: 'CONDITION', category: NodeCategory.CONTROL, label: '分支', icon: 'QuestionFilled', color: '#5b8ff9', shape: 'rect', defaultConfig: { expression: '', alias: '', description: '' } },
+  { type: 'SWITCH', category: NodeCategory.CONTROL, label: '多路分支', icon: 'Share', color: '#5b8ff9', shape: 'rect', defaultConfig: { expression: '', cases: [{ value: '', label: '分支1' }], alias: '', description: '' } },
   { type: 'LOOP', category: NodeCategory.CONTROL, label: '循环', icon: 'Refresh', color: '#fa8c16', shape: 'rect', defaultConfig: { collectionExpression: '', variableName: 'item', maxIterations: 100 } },
   { type: 'DELAY', category: NodeCategory.CONTROL, label: '延时等待', icon: 'Timer', color: '#fa8c16', shape: 'rect', defaultConfig: { delaySeconds: 60 } },
   { type: 'WAIT', category: NodeCategory.CONTROL, label: '等待事件', icon: 'Stopwatch', color: '#fa8c16', shape: 'rect', defaultConfig: { waitType: 'APPROVAL', waitKey: '', timeout: 86400 } },
@@ -59,7 +59,20 @@ const dataNodes: NodeConfigItem[] = [
 
 // 集成节点
 const integrationNodes: NodeConfigItem[] = [
-  { type: 'HTTP_CALL', category: NodeCategory.INTEGRATION, label: 'HTTP调用', icon: 'Connection', color: '#722ed1', shape: 'rect', defaultConfig: { operationCode: '', inputMapping: {} } },
+  { type: 'HTTP_CALL', category: NodeCategory.INTEGRATION, label: '发送自定义请求', icon: 'Connection', color: '#5b8ff9', shape: 'rect', defaultConfig: {
+    method: 'GET',
+    url: '',
+    contentType: 'application/json',
+    headers: {},
+    queryParams: {},
+    bodyType: 'none',
+    body: '',
+    formBody: {},
+    timeoutMs: 30000,
+    successCodes: '200,201,204',
+    responseType: 'json',
+    outputVar: 'httpResponse',
+  }},
   { type: 'JDBC_CALL', category: NodeCategory.INTEGRATION, label: 'JDBC查询', icon: 'Coin', color: '#722ed1', shape: 'rect', defaultConfig: { connectionId: '', sql: '', params: [] } },
   { type: 'SAP_CALL', category: NodeCategory.INTEGRATION, label: 'SAP调用', icon: 'Cloud', color: '#722ed1', shape: 'rect', defaultConfig: { operationCode: '', inputMapping: {} } },
   { type: 'MQTT_CALL', category: NodeCategory.INTEGRATION, label: 'MQTT发布', icon: 'Send', color: '#722ed1', shape: 'rect', defaultConfig: { connectionId: '', topic: '', payload: '' } },

@@ -34,6 +34,10 @@ export const publishDefinition = (id: number | string) => {
   return request({ url: `/automation/definition/${id}/publish`, method: 'post' });
 };
 
+export const validateDefinitionDesign = (id: number | string, designJson: string) => {
+  return request({ url: `/automation/definition/${id}/validate`, method: 'post', data: { designJson } });
+};
+
 export const enableDefinition = (id: number | string) => {
   return request({ url: `/automation/definition/${id}/enable`, method: 'post' });
 };

@@ -50,7 +50,9 @@
           <el-table-column label="点位编码" prop="pointCode" min-width="110" show-overflow-tooltip />
           <el-table-column label="名称" prop="pointName" min-width="90" show-overflow-tooltip />
           <el-table-column label="实际地址" prop="normalizedAddress" min-width="160" show-overflow-tooltip />
-          <el-table-column label="采集值" min-width="160" show-overflow-tooltip>
+          <el-table-column label="原始寄存器" prop="rawRegisters" min-width="180" show-overflow-tooltip />
+          <el-table-column label="字节序" prop="byteOrderUsed" width="88" align="center" />
+          <el-table-column label="采集值" min-width="140" show-overflow-tooltip>
             <template #default="scope">
               <span v-if="scope.row.success" class="collect-value success">
                 {{ scope.row.value == null ? '-' : formatCellValue(scope.row.value) }}

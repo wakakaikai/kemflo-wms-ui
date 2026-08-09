@@ -1,58 +1,66 @@
 <template>
   <teleport to="body">
-    <div v-if="visible" class="node-picker-overlay" @click.self="close" @contextmenu.prevent="close">
-      <div ref="panelRef" class="node-picker-panel" :style="panelStyle">
-        <div class="picker-header">
-          <span class="picker-title">选择节点</span>
-          <button class="picker-close" @click="close">
-            <el-icon :size="14"><Close /></el-icon>
-          </button>
-        </div>
-        <div class="picker-search">
-          <el-input
-            v-model="searchText"
-            placeholder="搜索节点类型..."
-            size="small"
-            clearable
-            prefix-icon="Search"
-            ref="searchRef"
-          />
-        </div>
-        <div class="picker-body">
-          <div v-for="group in filteredGroups" :key="group.category" class="picker-group">
-            <div class="picker-group-title">{{ group.label }}</div>
-            <div
-              v-for="node in group.nodes"
-              :key="node.type"
-              class="picker-card"
-              @click="selectNode(node.type)"
-            >
-              <div class="picker-icon" :style="{ background: node.color + '14', color: node.color }">
-                {{ node.label.charAt(0) }}
+    <transition name="picker-fade">
+      <div v-if="visible" class="action-picker-mask" @click.self="close">
+        <div class="action-picker" role="dialog" aria-modal="true">
+          <div class="action-picker-header">
+            <span class="action-picker-title">选择一个动作</span>
+            <button class="action-picker-close" aria-label="关闭" @click="close">×</button>
+          </div>
+
+          <div class="action-picker-search">
+            <el-input
+              v-model="searchText"
+              placeholder="搜索动作..."
+              size="default"
+              clearable
+              prefix-icon="Search"
+              ref="searchRef"
+            />
+          </div>
+
+          <div class="action-picker-body">
+            <div v-for="group in filteredGroups" :key="group.category" class="action-group">
+              <div class="action-group-head" @click="toggleGroup(group.category)">
+                <el-icon class="action-group-arrow" :class="{ collapsed: !expanded[group.category] }">
+                  <ArrowDown />
+                </el-icon>
+                <span class="action-group-title">{{ group.label }}</span>
               </div>
-              <div class="picker-info">
-                <span class="picker-label">{{ node.label }}</span>
-                <span class="picker-type">{{ node.type }}</span>
+              <div v-show="expanded[group.category]" class="action-grid">
+                <button
+                  v-for="node in group.nodes"
+                  :key="node.type"
+                  type="button"
+                  class="action-item"
+                  @click="selectNode(node.type)"
+                >
+                  <span
+                    class="action-icon"
+                    :style="{ background: getCategoryColor(node.category, node.color) }"
+                  >{{ getNodeIconChar(node.type, node.label) }}</span>
+                  <span class="action-label">{{ node.label }}</span>
+                </button>
               </div>
             </div>
-          </div>
-          <div v-if="filteredGroups.every(g => g.nodes.length === 0)" class="picker-empty">
-            未找到匹配的节点
+            <div v-if="filteredGroups.every(g => g.nodes.length === 0)" class="action-empty">
+              未找到匹配的动作
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </transition>
   </teleport>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, nextTick } from 'vue';
-import { Close } from '@element-plus/icons-vue';
+import { ArrowDown } from '@element-plus/icons-vue';
 import { ALL_NODE_CONFIGS, NodeCategory, NodeCategoryLabels } from '../types';
+import { CATEGORY_THEME, getCategoryColor, getNodeIconChar } from '../config/nodeIcons';
 
 const props = defineProps<{
   visible: boolean;
-  anchorRect?: { x: number; y: number; width?: number; height?: number };
 }>();
 
 const emit = defineEmits<{
@@ -62,14 +70,19 @@ const emit = defineEmits<{
 
 const searchText = ref('');
 const searchRef = ref();
-const panelRef = ref<HTMLDivElement>();
-const panelStyle = ref<Record<string, string>>({});
+
+const expanded = reactive<Record<string, boolean>>(
+  Object.values(NodeCategory).reduce((acc, cat) => {
+    acc[cat] = true;
+    return acc;
+  }, {} as Record<string, boolean>)
+);
 
 const nodeGroups = reactive(
   Object.values(NodeCategory).map(cat => ({
     category: cat,
-    label: NodeCategoryLabels[cat],
-    nodes: ALL_NODE_CONFIGS.filter(n => n.category === cat),
+    label: CATEGORY_THEME[cat]?.label || NodeCategoryLabels[cat],
+    nodes: ALL_NODE_CONFIGS.filter(n => n.category === cat && n.type !== 'END'),
   }))
 );
 
@@ -78,8 +91,16 @@ const filteredGroups = computed(() => {
   const q = searchText.value.toLowerCase();
   return nodeGroups.map(g => ({
     ...g,
-    nodes: g.nodes.filter(n => n.label.toLowerCase().includes(q) || n.type.toLowerCase().includes(q)),
+    nodes: g.nodes.filter(n =>
+      n.label.toLowerCase().includes(q) || n.type.toLowerCase().includes(q)
+    ),
   }));
+});
+
+watch(() => searchText.value, (v) => {
+  if (v) {
+    Object.keys(expanded).forEach(k => { expanded[k] = true; });
+  }
 });
 
 watch(() => props.visible, async (v) => {
@@ -87,29 +108,11 @@ watch(() => props.visible, async (v) => {
     searchText.value = '';
     await nextTick();
     searchRef.value?.focus();
-    await nextTick();
-    computePosition();
   }
 });
 
-function computePosition() {
-  if (!props.anchorRect || !panelRef.value) return;
-  const panel = panelRef.value;
-  const pw = panel.offsetWidth || 300;
-  const ph = panel.offsetHeight || 420;
-  const gap = 8;
-
-  let left = props.anchorRect.x + (props.anchorRect.width || 0) / 2 - pw / 2;
-  let top = props.anchorRect.y + (props.anchorRect.height || 0) + gap;
-
-  if (left < 8) left = 8;
-  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
-  if (top + ph > window.innerHeight - 8) {
-    top = props.anchorRect.y - ph - gap;
-  }
-  if (top < 8) top = 8;
-
-  panelStyle.value = { left: left + 'px', top: top + 'px' };
+function toggleGroup(cat: string) {
+  expanded[cat] = !expanded[cat];
 }
 
 function selectNode(type: string) {
@@ -123,124 +126,150 @@ function close() {
 </script>
 
 <style scoped>
-.node-picker-overlay {
+.action-picker-mask {
   position: fixed;
   inset: 0;
-  z-index: 2000;
-  background: transparent;
+  z-index: 3000;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
 }
-.node-picker-panel {
-  position: absolute;
-  width: 300px;
-  max-height: 440px;
+.action-picker {
+  width: min(640px, 100%);
+  max-height: min(78vh, 720px);
   background: #fff;
-  border: 1px solid #dfe3e8;
-  border-radius: 12px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-.picker-header {
+.action-picker-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 0 20px;
+  height: 48px;
+  background: linear-gradient(90deg, #5b8ff9 0%, #4a7fe8 100%);
+  flex-shrink: 0;
 }
-.picker-title {
-  font-size: 14px;
+.action-picker-title {
+  font-size: 15px;
   font-weight: 600;
-  color: #141414;
+  color: #fff;
 }
-.picker-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
+.action-picker-close {
+  width: 32px;
+  height: 32px;
   border: none;
-  border-radius: 6px;
   background: transparent;
-  color: #8c8c8c;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 22px;
+  line-height: 1;
   cursor: pointer;
+  border-radius: 4px;
 }
-.picker-close:hover {
-  background: #f5f5f5;
-  color: #141414;
+.action-picker-close:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
-.picker-search {
-  padding: 10px 12px;
-  border-bottom: 1px solid #f0f0f0;
+.action-picker-search {
+  padding: 14px 20px 10px;
+  flex-shrink: 0;
 }
-.picker-body {
+.action-picker-body {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 0 12px;
+  padding: 4px 16px 20px;
 }
-.picker-group {
-  margin-bottom: 4px;
+.action-group {
+  margin-bottom: 8px;
 }
-.picker-group-title {
-  padding: 8px 16px 6px;
-  font-size: 11px;
-  font-weight: 600;
+.action-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.action-group-head:hover .action-group-title {
+  color: #5b8ff9;
+}
+.action-group-arrow {
+  font-size: 12px;
   color: #8c8c8c;
-  letter-spacing: 0.04em;
+  transition: transform 0.2s;
 }
-.picker-card {
+.action-group-arrow.collapsed {
+  transform: rotate(-90deg);
+}
+.action-group-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+}
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+}
+.action-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 10px 6px;
   padding: 10px 12px;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+  text-align: left;
+  transition: background 0.12s;
 }
-.picker-card:hover {
-  border-color: #5f95ff;
-  background: #fafcff;
-  box-shadow: 0 2px 8px rgba(95, 149, 255, 0.1);
+.action-item:hover {
+  background: #f5f5f5;
 }
-.picker-icon {
+.action-icon {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-.picker-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.picker-label {
+  color: #fff;
   font-size: 13px;
   font-weight: 600;
-  color: #141414;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-shrink: 0;
+  line-height: 1;
 }
-.picker-type {
-  font-size: 11px;
-  color: rgba(0, 0, 0, 0.45);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.action-label {
+  font-size: 13px;
+  color: #262626;
+  line-height: 1.35;
 }
-.picker-empty {
+.action-empty {
   text-align: center;
-  padding: 36px 14px;
-  font-size: 12px;
-  color: #c2c8d5;
+  padding: 48px 16px;
+  color: #bfbfbf;
+  font-size: 13px;
+}
+
+.picker-fade-enter-active,
+.picker-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.picker-fade-enter-active .action-picker,
+.picker-fade-leave-active .action-picker {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.picker-fade-enter-from,
+.picker-fade-leave-to {
+  opacity: 0;
+}
+.picker-fade-enter-from .action-picker,
+.picker-fade-leave-to .action-picker {
+  transform: scale(0.96) translateY(8px);
+  opacity: 0;
 }
 </style>

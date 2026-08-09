@@ -23,7 +23,6 @@
           :class="['tab-btn', { active: activeTab === tab.key }]"
           @click="activeTab = tab.key"
         >
-          <el-icon :size="14"><component :is="tab.icon" /></el-icon>
           {{ tab.label }}
         </button>
       </nav>
@@ -128,9 +127,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch, markRaw } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, Share, Setting, Clock } from '@element-plus/icons-vue';
+import { ArrowLeft } from '@element-plus/icons-vue';
 import AutomationDesigner from '@/components/AutomationDesigner/index.vue';
 import VersionFlowPreview from '@/views/automation/components/VersionFlowPreview.vue';
 import { ElMessage, FormInstance } from 'element-plus';
@@ -155,9 +154,9 @@ const versionPreviewRef = ref<InstanceType<typeof VersionFlowPreview>>();
 const formRef = ref<FormInstance>();
 
 const tabs = [
-  { key: 'flow', label: '流程编排', icon: markRaw(Share) },
-  { key: 'config', label: '基本设置', icon: markRaw(Setting) },
-  { key: 'history', label: '版本历史', icon: markRaw(Clock) }
+  { key: 'flow', label: '流程编排' },
+  { key: 'config', label: '配置' },
+  { key: 'history', label: '历史' }
 ];
 
 const form = reactive<AutoDefinitionForm>({
@@ -348,32 +347,41 @@ const goBack = () => router.push({ path: '/automation/definition' });
 .header-tabs {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0;
   flex: 1;
   justify-content: center;
 }
 .tab-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 16px;
+  height: 52px;
+  padding: 0 24px;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
-  font-size: 13px;
+  font-size: 14px;
   color: #8c8c8c;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.15s;
 }
 .tab-btn:hover {
-  color: #5f95ff;
-  background: #f0f5ff;
+  color: #5b8ff9;
 }
 .tab-btn.active {
-  color: #1d39c4;
-  background: #f0f5ff;
+  color: #5b8ff9;
   font-weight: 600;
+}
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 2px;
+  background: #5b8ff9;
+  border-radius: 1px;
 }
 
 .header-right {

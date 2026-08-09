@@ -124,6 +124,18 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column v-if="isModbusDeviceList" label="功能码" min-width="200" show-overflow-tooltip>
+          <template #default="scope">
+            <span class="poll-fc-label" :title="modbusFunctionHintFromTag(scope.row.tagAddress)">
+              {{ modbusFunctionLabelFromTag(scope.row.tagAddress) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="isModbusDeviceList" label="数据格式" width="130" show-overflow-tooltip>
+          <template #default="scope">
+            {{ plcFormatLabel(scope.row.displayFormat, scope.row.byteOrder, scope.row.dataType) }}
+          </template>
+        </el-table-column>
         <el-table-column label="读写" align="center" width="88">
           <template #default="scope">
             <el-tag size="small" effect="light" :type="rwModeTag(scope.row.rwMode)" round>
@@ -175,7 +187,7 @@
       @refresh="handleRead"
     />
 
-    <el-dialog v-model="dialog.visible" :title="dialog.title" width="720px" destroy-on-close append-to-body class="point-dialog">
+    <el-dialog v-model="dialog.visible" :title="dialog.title" width="760px" destroy-on-close append-to-body class="point-dialog">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-alert
           v-if="isTcpClientDevice"
@@ -211,22 +223,131 @@
                 <el-input v-model="form.pointName" placeholder="点位名称" />
               </el-form-item>
             </el-col>
-            <el-col :span="12">
-              <el-form-item label="数据类型" prop="dataType">
-                <el-select v-model="form.dataType" style="width: 100%" @change="onDataTypeChange">
-                  <el-option v-for="item in IOT_DATA_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+          </el-row>
+        </div>
+
+        <!-- Modbus 读写定义 -->
+        <div v-if="protocolGroup === 'modbus'" class="form-section poll-section">
+          <div class="form-section__title">读写定义</div>
+          <div class="poll-rw-grid">
+            <div class="poll-rw-row">
+              <label class="poll-rw-label">功能码：</label>
+              <el-select v-model="modbusFunction" class="poll-rw-control poll-fc-select" @change="onModbusFunctionChange">
+                <el-option v-for="item in IOT_MODBUS_FUNCTION_OPTIONS" :key="item.value" :label="item.label" :value="item.value">
+                  <div class="poll-fc-option">
+                    <span class="poll-fc-option__en">{{ item.label }}</span>
+                    <span class="poll-fc-option__zh">{{ item.hint }}</span>
+                  </div>
+                </el-option>
+              </el-select>
+              <span class="poll-rw-hint">{{ modbusFunctionHintText }}</span>
+            </div>
+            <div class="poll-rw-row">
+              <label class="poll-rw-label">Poll 列地址：</label>
+              <el-input-number
+                v-model="addrBuilder.address"
+                class="poll-rw-control poll-rw-number"
+                :min="0"
+                :step="1"
+                controls-position="right"
+                @change="syncModbusAddress"
+              />
+              <span class="poll-rw-hint">Poll 窗口列头（如 01740），0 起算。{{ modbusHumanAddrHint }}</span>
+            </div>
+            <div class="poll-rw-row">
+              <label class="poll-rw-label">Poll 行号：</label>
+              <el-input-number
+                v-model="addrBuilder.pollRowOffset"
+                class="poll-rw-control poll-rw-number"
+                :min="0"
+                :max="999"
+                :step="1"
+                controls-position="right"
+                @change="syncModbusAddress"
+              />
+              <span class="poll-rw-hint">
+                0 起算（第 4 行填 4）。实际协议地址 {{ effectiveModbusAddress }}；前面空行不参与采集，只读该行起 Float（占 2 寄存器，下一行 --）
+              </span>
+            </div>
+            <div class="poll-rw-row">
+              <label class="poll-rw-label">数量：</label>
+              <el-input-number
+                v-model="modbusQuantity"
+                class="poll-rw-control poll-rw-number"
+                :min="1"
+                :max="form.dataType === 'STRING' ? 254 : 999"
+                :step="1"
+                :disabled="!quantityEditable"
+                controls-position="right"
+                @change="onModbusQuantityChange"
+              />
+              <span class="poll-rw-hint">{{ registerQuantityHint }}</span>
+            </div>
+            <div class="poll-rw-row">
+              <label class="poll-rw-label">扫描周期：</label>
+              <div class="poll-rw-inline">
+                <el-input-number
+                  v-model="pointScanRate"
+                  class="poll-rw-control poll-rw-number"
+                  :min="100"
+                  :max="3600000"
+                  :step="100"
+                  controls-position="right"
+                  @change="scanRateDirty = true"
+                />
+                <span class="poll-rw-unit">[ms]</span>
+              </div>
+              <span class="poll-rw-hint">{{ scanRateHint }}</span>
+            </div>
+          </div>
+          <div class="poll-addr-preview">
+            点位地址：<code>{{ form.tagAddress || generatedAddress || '—' }}</code>
+            <span v-if="protocolGroup === 'modbus' && effectiveModbusAddress !== addrBuilder.address" class="poll-addr-effective">
+              （实际协议地址 {{ effectiveModbusAddress }} = 列 {{ addrBuilder.address }} + 行 {{ addrBuilder.pollRowOffset }}）
+            </span>
+          </div>
+        </div>
+
+        <!-- 数据格式（Format 与数据类型合并，选项英文） -->
+        <div v-if="!isTcpClientDevice" class="form-section poll-section">
+          <div class="form-section__title">数据格式</div>
+          <el-row :gutter="16">
+            <el-col v-if="showPlcFormat" :span="16">
+              <el-form-item label="Format" prop="plcFormat">
+                <el-select
+                  v-model="plcFormat"
+                  class="poll-format-select"
+                  style="width: 100%"
+                  placeholder="Float CD AB"
+                  @change="onPlcFormatChange"
+                >
+                  <el-option-group
+                    v-for="(group, gi) in pollUnifiedFormatGroups"
+                    :key="gi"
+                    :label="group.label"
+                    class="poll-format-group"
+                  >
+                    <el-option v-for="item in group.options" :key="item.value" :label="item.label" :value="item.value" />
+                  </el-option-group>
                 </el-select>
+                <div class="form-tip">{{ plcFormatTip }}</div>
               </el-form-item>
             </el-col>
-            <el-col :span="12">
+            <el-col :span="showPlcFormat ? 8 : 24">
               <el-form-item label="读写" prop="rwMode">
                 <el-select v-model="form.rwMode" style="width: 100%">
                   <el-option v-for="item in IOT_READ_WRITE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
                 </el-select>
               </el-form-item>
             </el-col>
+          </el-row>
+        </div>
 
-            <el-col v-if="protocolGroup !== 'other'" :span="24">
+        <!-- S7 / TCP / 其它协议地址 -->
+        <div v-if="protocolGroup !== 'modbus' && protocolGroup !== 'other'" class="form-section">
+          <div class="form-section__title">{{ isTcpClientDevice ? '命令配置' : '地址配置' }}</div>
+          <el-row :gutter="16">
+            <el-col :span="24">
               <el-form-item label="地址生成">
                 <div class="addr-builder">
                   <div class="addr-builder__toolbar">
@@ -242,7 +363,7 @@
                         <el-input
                           v-model="addrBuilder.tcpRequest"
                           :disabled="!addrAutoGenerate"
-                          placeholder="text:STATUS? 或 hex:01 03 00 00 00 01（非 holding-register）"
+                          placeholder="text:STATUS? 或 hex:01 03 00 00 00 01"
                           @input="syncGeneratedAddress"
                         />
                       </div>
@@ -250,146 +371,62 @@
                   </el-row>
 
                   <el-row v-else :gutter="12">
-                    <el-col :span="protocolGroup === 'modbus' ? 14 : 10">
+                    <el-col :span="10">
                       <div class="addr-field">
                         <span class="addr-field__label">区类型</span>
                         <el-select v-model="addrBuilder.area" style="width: 100%" :disabled="!addrAutoGenerate" @change="syncGeneratedAddress">
-                          <el-option
-                            v-for="item in addressAreaOptions"
-                            :key="item.value"
-                            :label="item.label"
-                            :value="item.value"
-                          />
+                          <el-option v-for="item in addressAreaOptions" :key="item.value" :label="item.label" :value="item.value" />
                         </el-select>
                       </div>
                     </el-col>
-
-                    <el-col v-if="protocolGroup === 'modbus'" :span="10">
-                      <div class="addr-field">
-                        <span class="addr-field__label">寄存器号</span>
-                        <el-input-number
-                          v-model="addrBuilder.address"
-                          :min="0"
-                          :step="1"
-                          controls-position="right"
-                          style="width: 100%"
-                          :disabled="!addrAutoGenerate"
-                          @change="syncGeneratedAddress"
-                        />
-                      </div>
-                    </el-col>
-
                     <el-col v-if="protocolGroup === 's7' && addrBuilder.area === 'DB'" :span="7">
                       <div class="addr-field">
                         <span class="addr-field__label">DB 号</span>
-                        <el-input-number
-                          v-model="addrBuilder.dbNumber"
-                          :min="1"
-                          :step="1"
-                          controls-position="right"
-                          style="width: 100%"
-                          :disabled="!addrAutoGenerate"
-                          @change="syncGeneratedAddress"
-                        />
+                        <el-input-number v-model="addrBuilder.dbNumber" :min="1" :step="1" controls-position="right" style="width: 100%" :disabled="!addrAutoGenerate" @change="syncGeneratedAddress" />
                       </div>
                     </el-col>
-
                     <el-col v-if="protocolGroup === 's7'" :span="7">
                       <div class="addr-field">
                         <span class="addr-field__label">字节偏移</span>
-                        <el-input-number
-                          v-model="addrBuilder.byteOffset"
-                          :min="0"
-                          :step="1"
-                          controls-position="right"
-                          style="width: 100%"
-                          :disabled="!addrAutoGenerate"
-                          @change="syncGeneratedAddress"
-                        />
+                        <el-input-number v-model="addrBuilder.byteOffset" :min="0" :step="1" controls-position="right" style="width: 100%" :disabled="!addrAutoGenerate" @change="syncGeneratedAddress" />
                       </div>
                     </el-col>
-
                     <el-col v-if="protocolGroup === 's7' && form.dataType === 'BOOL'" :span="7">
                       <div class="addr-field">
                         <span class="addr-field__label">位偏移</span>
-                        <el-input-number
-                          v-model="addrBuilder.bitOffset"
-                          :min="0"
-                          :max="7"
-                          :step="1"
-                          controls-position="right"
-                          style="width: 100%"
-                          :disabled="!addrAutoGenerate"
-                          @change="syncGeneratedAddress"
-                        />
+                        <el-input-number v-model="addrBuilder.bitOffset" :min="0" :max="7" :step="1" controls-position="right" style="width: 100%" :disabled="!addrAutoGenerate" @change="syncGeneratedAddress" />
                       </div>
                     </el-col>
-
-                    <el-col v-if="form.dataType === 'STRING'" :span="protocolGroup === 'modbus' ? 10 : 7">
+                    <el-col v-if="form.dataType === 'STRING'" :span="7">
                       <div class="addr-field">
                         <span class="addr-field__label">字符串长度</span>
-                        <el-input-number
-                          v-model="addrBuilder.stringLength"
-                          :min="1"
-                          :max="254"
-                          :step="1"
-                          controls-position="right"
-                          style="width: 100%"
-                          :disabled="!addrAutoGenerate"
-                          @change="syncGeneratedAddress"
-                        />
+                        <el-input-number v-model="addrBuilder.stringLength" :min="1" :max="254" :step="1" controls-position="right" style="width: 100%" :disabled="!addrAutoGenerate" @change="syncGeneratedAddress" />
                       </div>
                     </el-col>
                   </el-row>
 
-                  <div class="addr-preview">
-                    预览：<code>{{ generatedAddress || '请完善地址参数' }}</code>
-                  </div>
+                  <div class="addr-preview">预览：<code>{{ generatedAddress || '请完善地址参数' }}</code></div>
                 </div>
               </el-form-item>
             </el-col>
-
             <el-col :span="24">
               <el-form-item :label="isTcpClientDevice ? '命令内容' : '点位地址'" prop="tagAddress">
-                <el-input
-                  v-model="form.tagAddress"
-                  :placeholder="addressPlaceholder"
-                  :readonly="addrAutoGenerate && protocolGroup !== 'other'"
-                  @input="onTagAddressManualInput"
-                />
+                <el-input v-model="form.tagAddress" :placeholder="addressPlaceholder" :readonly="addrAutoGenerate" @input="onTagAddressManualInput" />
               </el-form-item>
             </el-col>
           </el-row>
         </div>
 
+        <div v-if="protocolGroup === 'other'" class="form-section">
+          <div class="form-section__title">点位地址</div>
+          <el-form-item label="地址" prop="tagAddress">
+            <el-input v-model="form.tagAddress" placeholder="请输入协议对应点位地址" />
+          </el-form-item>
+        </div>
+
         <div class="form-section">
           <div class="form-section__title">换算与展示</div>
           <el-row :gutter="16">
-            <el-col v-if="!isTcpClientDevice && form.dataType !== 'BOOL'" :span="12">
-              <el-form-item label="显示格式" prop="displayFormat">
-                <el-select v-model="form.displayFormat" style="width: 100%" placeholder="Signed/Unsigned/Hex/Binary">
-                  <el-option
-                    v-for="item in IOT_DISPLAY_FORMAT_OPTIONS"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col v-if="!isTcpClientDevice && showByteOrder" :span="12">
-              <el-form-item label="字节序" prop="byteOrder">
-                <el-select v-model="form.byteOrder" style="width: 100%" placeholder="按数据类型选择">
-                  <el-option
-                    v-for="item in byteOrderOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </el-select>
-                <div class="form-tip">正数变负/字符串乱序时优先尝试 CD AB</div>
-              </el-form-item>
-            </el-col>
             <el-col :span="12">
               <el-form-item label="缩放" prop="scaleFactor">
                 <el-input-number v-model="form.scaleFactor" :step="0.1" controls-position="right" style="width: 100%" />
@@ -428,23 +465,35 @@ import { Coin } from '@element-plus/icons-vue';
 import { useRoute, useRouter } from 'vue-router';
 import { listPoint, getPoint, addPoint, updatePoint, delPoint } from '@/api/iot/point';
 import { PointForm, PointQuery, PointVO } from '@/api/iot/point/types';
-import { listDevice, getDevice, readDevicePoints, PointReadItem } from '@/api/iot/device';
+import { listDevice, getDevice, updateDevice, readDevicePoints, PointReadItem } from '@/api/iot/device';
 import { DeviceVO } from '@/api/iot/device/types';
 import {
   IOT_DATA_TYPE_OPTIONS,
   IOT_READ_WRITE_OPTIONS,
   IOT_QUALITY_OPTIONS,
   IOT_PROTOCOL_OPTIONS,
+  IOT_MODBUS_FUNCTION_OPTIONS,
   IOT_MODBUS_AREA_OPTIONS,
   IOT_S7_AREA_OPTIONS,
-  IOT_DISPLAY_FORMAT_OPTIONS,
   buildPlcTagAddress,
   createDefaultAddressBuilder,
+  decodePlcFormat,
   defaultByteOrder,
+  defaultPlcFormat,
+  encodePlcFormat,
   getProtocolGroup,
+  modbusAreaToFunction,
+  modbusFunctionHint,
+  modbusFunctionHintFromTag,
+  modbusFunctionLabelFromTag,
+  modbusHumanAddress,
+  modbusPollRowAddress,
   normalizeProtocolValue,
   parsePlcTagAddress,
-  resolveByteOrderOptions
+  plcFormatFieldTip,
+  plcFormatLabel,
+  resolveModbusRegisterQuantity,
+  resolvePollUnifiedFormatGroups
 } from '@/views/iot/options';
 import type { IotAddressBuilder } from '@/views/iot/options';
 import IotReadCollectDialog from '@/views/iot/components/IotReadCollectDialog.vue';
@@ -465,6 +514,8 @@ const total = ref(0);
 const ids = ref<Array<string | number>>([]);
 const multiple = ref(true);
 const selectedProtocol = ref('');
+const currentDevice = ref<DeviceVO | null>(null);
+const modbusFunction = ref('holding-register');
 const addrAutoGenerate = ref(true);
 const addrBuilder = reactive<IotAddressBuilder>(createDefaultAddressBuilder('modbus-tcp', 'FLOAT'));
 
@@ -478,77 +529,18 @@ const queryFormRef = ref<ElFormInstance>();
 const formRef = ref<ElFormInstance>();
 
 const protocolGroup = computed(() => getProtocolGroup(selectedProtocol.value));
+const isModbusDeviceList = computed(() => protocolGroup.value === 'modbus');
 const isTcpClientDevice = computed(() => protocolGroup.value === 'tcp');
 const protocolLabel = computed(
   () => IOT_PROTOCOL_OPTIONS.find((item) => item.value === normalizeProtocolValue(selectedProtocol.value))?.label || selectedProtocol.value || '未知协议'
 );
 const addressAreaOptions = computed(() => (protocolGroup.value === 's7' ? IOT_S7_AREA_OPTIONS : IOT_MODBUS_AREA_OPTIONS));
 const addressPlaceholder = computed(() => {
-  if (protocolGroup.value === 'modbus') return '例如 holding-register:1:REAL 或 holding-register:1:CHAR[10]';
+  if (protocolGroup.value === 'modbus') return '例如 holding-register:1740:REAL（占 1740-1741 两寄存器）或 holding-register:1:CHAR[10]';
   if (protocolGroup.value === 's7') return '例如 %DB1.DBD0:REAL';
   if (protocolGroup.value === 'tcp') return '例如 text:STATUS? 或 hex:01 03 00 00 00 01（非 Modbus 寄存器）';
   return '请输入协议对应点位地址';
 });
-
-const byteOrderOptions = computed(() => resolveByteOrderOptions(form.value.dataType));
-const showByteOrder = computed(() => {
-  const type = (form.value.dataType || '').toUpperCase();
-  return !!type && type !== 'BOOL';
-});
-
-const qualityStats = computed(() => {
-  const rows = pointList.value;
-  return {
-    good: rows.filter((r) => r.quality === 'GOOD').length,
-    uncertain: rows.filter((r) => r.quality === 'UNCERTAIN').length,
-    bad: rows.filter((r) => r.quality === 'BAD').length
-  };
-});
-
-const optionLabel = (options: { label: string; value: string }[], value?: string) =>
-  options.find((o) => o.value === value)?.label || value || '—';
-
-const dataTypeLabel = (value?: string) => optionLabel(IOT_DATA_TYPE_OPTIONS, value);
-const rwModeLabel = (value?: string) => optionLabel(IOT_READ_WRITE_OPTIONS, value);
-const qualityLabel = (value?: string) => optionLabel(IOT_QUALITY_OPTIONS, value);
-
-const dataTypeTag = (value?: string): '' | 'success' | 'warning' | 'info' | 'danger' => {
-  const map: Record<string, '' | 'success' | 'warning' | 'info' | 'danger'> = {
-    INT: '',
-    FLOAT: 'success',
-    BOOL: 'warning',
-    STRING: 'info'
-  };
-  return map[value || ''] || 'info';
-};
-
-const rwModeTag = (value?: string): '' | 'success' | 'warning' | 'info' | 'danger' => {
-  const map: Record<string, '' | 'success' | 'warning' | 'info' | 'danger'> = {
-    R: 'info',
-    W: 'warning',
-    RW: 'success'
-  };
-  return map[value || ''] || 'info';
-};
-
-const qualityTag = (value?: string): '' | 'success' | 'warning' | 'info' | 'danger' => {
-  const map: Record<string, '' | 'success' | 'warning' | 'info' | 'danger'> = {
-    GOOD: 'success',
-    UNCERTAIN: 'warning',
-    BAD: 'danger'
-  };
-  return map[value || ''] || 'info';
-};
-
-const isEmptyValue = (value?: string) => value == null || value === '';
-const formatValue = (value?: string) => {
-  if (isEmptyValue(value)) return '—';
-  const text = String(value);
-  if (!/^-?\d+(\.\d+)?([eE][+-]?\d+)$/.test(text)) return text;
-  const num = Number(text);
-  if (!Number.isFinite(num)) return text;
-  return num.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 20 });
-};
 
 /** 设备 ID 统一按字符串处理，避免雪花 ID 被 Number 精度丢失 */
 const toIdStr = (id?: string | number | null | (string | null)[]) => {
@@ -556,12 +548,6 @@ const toIdStr = (id?: string | number | null | (string | null)[]) => {
   const raw = Array.isArray(id) ? id[0] : id;
   if (raw == null || raw === '') return '';
   return String(raw);
-};
-
-const resolveDeviceName = (row: PointVO) => {
-  if (row.deviceName) return row.deviceName;
-  const matched = deviceOptions.value.find((item) => toIdStr(item.id) === toIdStr(row.deviceId));
-  return matched?.deviceName || toIdStr(row.deviceId) || '—';
 };
 
 const initForm: PointForm = {
@@ -612,31 +598,242 @@ const { queryParams, form, rules } = toRefs(data);
 const currentDeviceId = computed(() => toIdStr(routeDeviceId.value) || toIdStr(queryParams.value.deviceId) || undefined);
 const generatedAddress = computed(() => buildPlcTagAddress(selectedProtocol.value, form.value.dataType, addrBuilder));
 
+const pollUnifiedFormatGroups = resolvePollUnifiedFormatGroups();
+const plcFormatTip = computed(() => plcFormatFieldTip(selectedProtocol.value, form.value.dataType));
+const showPlcFormat = computed(() => {
+  const type = (form.value.dataType || '').toUpperCase();
+  return !!type && type !== 'BOOL';
+});
+const isModbusBitArea = computed(() => {
+  const area = (addrBuilder.area || '').toLowerCase();
+  return area === 'coil' || area === 'discrete-input';
+});
+const quantityEditable = computed(() => !isModbusBitArea.value && form.value.dataType !== 'BOOL');
+const registerQuantityHint = computed(() => {
+  const q = modbusQuantity.value;
+  const auto = resolveModbusRegisterQuantity(form.value.dataType, addrBuilder.stringLength);
+  if (form.value.dataType === 'STRING') {
+    return quantityDirty.value ? `字符串占 ${q} 个寄存器（已手动调整）` : `随 Format 联动；字符串占 ${q} 个寄存器，可手动调整`;
+  }
+  if (form.value.dataType === 'BOOL') return '线圈/离散点固定为 1';
+  if (quantityDirty.value) return `已手动设为 ${q}（Format 默认 ${auto}）`;
+  if (q === 1) return '随 Format 默认：1 个寄存器（16 位），可手动调整';
+  if (q === 2) return '随 Format 默认：2 个连续寄存器（32 位），可手动调整';
+  if (q === 4) return '随 Format 默认：4 个连续寄存器（64 位），可手动调整';
+  return `随 Format 默认：${q} 个寄存器，可手动调整`;
+});
+const effectiveModbusAddress = computed(() => modbusPollRowAddress(addrBuilder.address, addrBuilder.pollRowOffset));
+const modbusHumanAddrHint = computed(() => modbusHumanAddress(effectiveModbusAddress.value));
+const modbusFunctionHintText = computed(() => modbusFunctionHint(modbusFunction.value));
+const scanRateHint = computed(() => {
+  if (!form.value.deviceId) return '请先选择设备';
+  if (scanRateDirty.value) return '已修改，保存点位时将同步到设备采集周期';
+  const devMs = currentDevice.value?.collectInterval;
+  return devMs != null ? `来自设备「${currentDevice.value?.deviceName || '当前设备'}」：${devMs} ms` : '加载设备采集周期…';
+});
+
+const modbusQuantity = ref(2);
+const quantityDirty = ref(false);
+const pointScanRate = ref(1000);
+const scanRateDirty = ref(false);
+const plcFormat = ref('FLOAT_CDAB');
+
+function syncModbusQuantityFromFormat() {
+  modbusQuantity.value = resolveModbusRegisterQuantity(form.value.dataType, addrBuilder.stringLength);
+}
+
+function onModbusQuantityChange(val: number | undefined) {
+  if (val == null) return;
+  quantityDirty.value = true;
+  if (form.value.dataType === 'STRING') {
+    addrBuilder.stringLength = val;
+    syncModbusAddress();
+  }
+}
+
+watch(
+  () => [form.value.dataType, addrBuilder.stringLength, plcFormat.value, isModbusBitArea.value] as const,
+  () => {
+    if (!quantityDirty.value) {
+      syncModbusQuantityFromFormat();
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => currentDevice.value?.collectInterval,
+  (val) => {
+    if (val != null && !scanRateDirty.value) {
+      pointScanRate.value = val;
+    }
+  },
+  { immediate: true }
+);
+
+const syncPlcFormatFromForm = () => {
+  plcFormat.value = encodePlcFormat(form.value.displayFormat, form.value.byteOrder, form.value.dataType);
+};
+
+const onPlcFormatChange = (value: string) => {
+  const next = decodePlcFormat(value, undefined, {
+    dataType: form.value.dataType,
+    displayFormat: form.value.displayFormat,
+    byteOrder: form.value.byteOrder
+  });
+  form.value.dataType = next.dataType;
+  form.value.displayFormat = next.displayFormat;
+  form.value.byteOrder = next.byteOrder;
+  quantityDirty.value = false;
+  syncModbusQuantityFromFormat();
+  if (protocolGroup.value === 'modbus') {
+    syncModbusAddress();
+  } else {
+    syncGeneratedAddress();
+  }
+};
+
+const qualityStats = computed(() => {
+  const rows = pointList.value;
+  return {
+    good: rows.filter((r) => r.quality === 'GOOD').length,
+    uncertain: rows.filter((r) => r.quality === 'UNCERTAIN').length,
+    bad: rows.filter((r) => r.quality === 'BAD').length
+  };
+});
+
+const optionLabel = (options: { label: string; value: string }[], value?: string) =>
+  options.find((o) => o.value === value)?.label || value || '—';
+
+const dataTypeLabel = (value?: string) => optionLabel(IOT_DATA_TYPE_OPTIONS, value);
+const rwModeLabel = (value?: string) => optionLabel(IOT_READ_WRITE_OPTIONS, value);
+const qualityLabel = (value?: string) => optionLabel(IOT_QUALITY_OPTIONS, value);
+
+const dataTypeTag = (value?: string): '' | 'success' | 'warning' | 'info' | 'danger' => {
+  const map: Record<string, '' | 'success' | 'warning' | 'info' | 'danger'> = {
+    INT: '',
+    FLOAT: 'success',
+    BOOL: 'warning',
+    STRING: 'info'
+  };
+  return map[value || ''] || 'info';
+};
+
+const rwModeTag = (value?: string): '' | 'success' | 'warning' | 'info' | 'danger' => {
+  const map: Record<string, '' | 'success' | 'warning' | 'info' | 'danger'> = {
+    R: 'info',
+    W: 'warning',
+    RW: 'success'
+  };
+  return map[value || ''] || 'info';
+};
+
+const qualityTag = (value?: string): '' | 'success' | 'warning' | 'info' | 'danger' => {
+  const map: Record<string, '' | 'success' | 'warning' | 'info' | 'danger'> = {
+    GOOD: 'success',
+    UNCERTAIN: 'warning',
+    BAD: 'danger'
+  };
+  return map[value || ''] || 'info';
+};
+
+const isEmptyValue = (value?: string) => value == null || value === '';
+const formatValue = (value?: string) => {
+  if (isEmptyValue(value)) return '—';
+  const text = String(value).trim();
+  if (!/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(text)) return text;
+  const num = Number(text);
+  if (!Number.isFinite(num)) return text;
+  const abs = Math.abs(num);
+  if (abs > 0 && (abs < 1e-4 || abs >= 1e8)) {
+    return num.toPrecision(6);
+  }
+  return num.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 6 });
+};
+
+const resolveDeviceName = (row: PointVO) => {
+  if (row.deviceName) return row.deviceName;
+  const matched = deviceOptions.value.find((item) => toIdStr(item.id) === toIdStr(row.deviceId));
+  return matched?.deviceName || toIdStr(row.deviceId) || '—';
+};
+
 const resolveDeviceProtocol = async (deviceId?: string | number) => {
   const id = toIdStr(deviceId);
   if (!id) {
     selectedProtocol.value = '';
+    currentDevice.value = null;
     return;
   }
   const cached = deviceOptions.value.find((item) => toIdStr(item.id) === id);
   if (cached?.protocol) {
     selectedProtocol.value = normalizeProtocolValue(cached.protocol);
-    return;
   }
   try {
     const res = await getDevice(id);
     selectedProtocol.value = normalizeProtocolValue(res.data?.protocol);
-    if (res.data && !deviceOptions.value.some((item) => toIdStr(item.id) === toIdStr(res.data.id))) {
-      deviceOptions.value.push(res.data);
+    currentDevice.value = res.data || null;
+    if (res.data) {
+      const idx = deviceOptions.value.findIndex((item) => toIdStr(item.id) === id);
+      if (idx >= 0) {
+        deviceOptions.value[idx] = { ...deviceOptions.value[idx], ...res.data };
+      } else {
+        deviceOptions.value.push(res.data);
+      }
+      if (!scanRateDirty.value && res.data.collectInterval != null) {
+        pointScanRate.value = res.data.collectInterval;
+      }
     }
   } catch {
-    selectedProtocol.value = '';
+    if (!cached?.protocol) selectedProtocol.value = '';
+    currentDevice.value = cached || null;
   }
+};
+
+async function persistDeviceScanRateIfNeeded() {
+  const deviceId = toIdStr(form.value.deviceId);
+  if (!deviceId || !scanRateDirty.value || pointScanRate.value == null) return;
+  const dev = currentDevice.value;
+  if (dev?.collectInterval === pointScanRate.value) {
+    scanRateDirty.value = false;
+    return;
+  }
+  const res = await getDevice(deviceId);
+  const payload = { ...res.data, id: deviceId, collectInterval: pointScanRate.value };
+  await updateDevice(payload);
+  currentDevice.value = { ...(res.data || {}), collectInterval: pointScanRate.value };
+  scanRateDirty.value = false;
+  const idx = deviceOptions.value.findIndex((item) => toIdStr(item.id) === deviceId);
+  if (idx >= 0) {
+    deviceOptions.value[idx] = { ...deviceOptions.value[idx], collectInterval: pointScanRate.value };
+  }
+};
+
+const syncModbusAddress = () => {
+  if (protocolGroup.value !== 'modbus') return;
+  const address = generatedAddress.value;
+  if (address) form.value.tagAddress = address;
+};
+
+const onModbusFunctionChange = () => {
+  addrBuilder.area = modbusFunction.value;
+  if (isModbusBitArea.value) {
+    form.value.dataType = 'BOOL';
+    quantityDirty.value = false;
+    syncModbusQuantityFromFormat();
+  } else if (form.value.dataType === 'BOOL') {
+    plcFormat.value = 'FLOAT_CDAB';
+    onPlcFormatChange('FLOAT_CDAB');
+    return;
+  }
+  syncModbusAddress();
 };
 
 const resetAddressBuilder = (tagAddress?: string) => {
   const next = parsePlcTagAddress(selectedProtocol.value, tagAddress, form.value.dataType);
   Object.assign(addrBuilder, next);
+  if (protocolGroup.value === 'modbus') {
+    modbusFunction.value = modbusAreaToFunction(addrBuilder.area);
+  }
 };
 
 const syncGeneratedAddress = () => {
@@ -655,25 +852,8 @@ const applyGeneratedAddress = () => {
   addrAutoGenerate.value = true;
 };
 
-const onDataTypeChange = () => {
-  if (protocolGroup.value === 'modbus' && addrAutoGenerate.value) {
-    if (form.value.dataType === 'BOOL' && (addrBuilder.area === 'holding-register' || addrBuilder.area === 'input-register')) {
-      addrBuilder.area = 'coil';
-    }
-    if (form.value.dataType !== 'BOOL' && (addrBuilder.area === 'coil' || addrBuilder.area === 'discrete-input')) {
-      addrBuilder.area = 'holding-register';
-    }
-  }
-  form.value.byteOrder = defaultByteOrder(form.value.dataType);
-  if (form.value.dataType === 'UINT' || form.value.dataType === 'UDINT') {
-    form.value.displayFormat = 'UNSIGNED';
-  } else if (!form.value.displayFormat) {
-    form.value.displayFormat = 'SIGNED';
-  }
-  syncGeneratedAddress();
-};
-
 const onDeviceChange = async () => {
+  scanRateDirty.value = false;
   await resolveDeviceProtocol(form.value.deviceId);
   resetAddressBuilder();
   if (addrAutoGenerate.value) syncGeneratedAddress();
@@ -739,9 +919,16 @@ const reset = async () => {
   };
   formRef.value?.resetFields();
   addrAutoGenerate.value = true;
+  scanRateDirty.value = false;
+  quantityDirty.value = false;
   await resolveDeviceProtocol(form.value.deviceId);
   resetAddressBuilder();
   syncGeneratedAddress();
+  plcFormat.value = defaultPlcFormat(form.value.dataType);
+  if (protocolGroup.value === 'modbus') {
+    modbusFunction.value = modbusAreaToFunction(addrBuilder.area);
+    syncModbusAddress();
+  }
 };
 
 const handleAdd = async () => {
@@ -762,11 +949,33 @@ const handleUpdate = async (row: PointVO) => {
   await resolveDeviceProtocol(form.value.deviceId);
   resetAddressBuilder(form.value.tagAddress);
   addrAutoGenerate.value = false;
+  syncPlcFormatFromForm();
+  quantityDirty.value = false;
+  syncModbusQuantityFromFormat();
+  syncModbusAddress();
   dialog.visible = true;
   dialog.title = '修改点位';
 };
 
+const syncFormFromPlcFormat = () => {
+  const next = decodePlcFormat(plcFormat.value, undefined, {
+    dataType: form.value.dataType,
+    displayFormat: form.value.displayFormat,
+    byteOrder: form.value.byteOrder
+  });
+  form.value.dataType = next.dataType;
+  form.value.displayFormat = next.displayFormat;
+  form.value.byteOrder = next.byteOrder;
+};
+
 const submitForm = () => {
+  if (protocolGroup.value === 'modbus') {
+    syncFormFromPlcFormat();
+    syncModbusAddress();
+    if (generatedAddress.value) {
+      form.value.tagAddress = generatedAddress.value;
+    }
+  }
   formRef.value?.validate(async (valid: boolean) => {
     if (!valid) return;
     if (!form.value.deviceId) {
@@ -775,6 +984,9 @@ const submitForm = () => {
       form.value.deviceId = toIdStr(form.value.deviceId);
     }
     form.value.id ? await updatePoint(form.value) : await addPoint(form.value);
+    if (protocolGroup.value === 'modbus') {
+      await persistDeviceScanRateIfNeeded();
+    }
     proxy?.$modal.msgSuccess('操作成功');
     dialog.visible = false;
     await getList();
@@ -1023,6 +1235,136 @@ watch(
   font-size: 12px;
   line-height: 1.4;
   color: var(--el-text-color-secondary);
+}
+
+.poll-section {
+  background: #fff;
+}
+
+.poll-rw-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.poll-rw-row {
+  display: grid;
+  grid-template-columns: 88px minmax(160px, 280px) 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.poll-rw-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  text-align: right;
+}
+
+.poll-rw-control {
+  width: 100%;
+}
+
+.poll-rw-number {
+  max-width: 280px;
+}
+
+.poll-rw-hint {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--el-text-color-secondary);
+}
+
+.poll-rw-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 280px;
+}
+
+.poll-rw-unit {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
+}
+
+.poll-addr-preview {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  background: var(--el-fill-color-light);
+  border: 1px dashed var(--el-border-color);
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: var(--el-color-primary);
+  }
+}
+
+.poll-fc-label {
+  font-size: 12px;
+  color: var(--el-text-color-regular);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.poll-fc-select :deep(.el-select__selected-item) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+}
+
+.poll-fc-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.poll-fc-option__en {
+  flex-shrink: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  color: var(--el-text-color-primary);
+}
+
+.poll-fc-option__zh {
+  flex: 1;
+  text-align: right;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poll-format-select :deep(.el-select-group__title) {
+  padding: 8px 0 4px;
+  font-size: 0;
+  line-height: 0;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.poll-format-select :deep(.el-select-group:first-child .el-select-group__title) {
+  border-top: none;
+  padding-top: 0;
+}
+
+.poll-format-select :deep(.el-select-dropdown__item) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .poll-rw-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .poll-rw-label {
+    text-align: left;
+  }
 }
 
 .addr-builder {

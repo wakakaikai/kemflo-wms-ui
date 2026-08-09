@@ -12,12 +12,57 @@ export interface WeightPassContext {
   qty?: number | string;
 }
 
-/** 优先取数字类型参数（dataType = N），否则 WGT* 参数或首项 */
+/** 数字类型参数，按 sequence 排序 */
+export function getNumericDcParameters(list: any[] = []) {
+  return list
+    .filter((item) => item?.dataType === 'N')
+    .sort((a, b) => (Number(a?.sequence) || 0) - (Number(b?.sequence) || 0));
+}
+
+/** 仅依据参数自身编号/描述识别残水参数（不含收集组描述，避免同组参数误判） */
+export function isResidualDcParameter(item: any) {
+  const text = `${item?.dcParameter || ''}${item?.description || ''}`.toUpperCase();
+  return text.includes('残水') || text.includes('RESIDUAL');
+}
+
+/** 识别称重参数（WGT / 称重 / WEIGHT） */
+export function isWeightDcParameter(item: any) {
+  const param = String(item?.dcParameter || '').toUpperCase();
+  const desc = String(item?.description || '').toUpperCase();
+  return param.includes('WGT') || desc.includes('称重') || desc.includes('WEIGHT');
+}
+
+/** 识别残水值参数：优先匹配参数名/描述，否则在双数字参数场景取非称重项或第二项 */
+export function findResidualDcParameter(list: any[] = []) {
+  const numberParams = getNumericDcParameters(list);
+  const explicit = numberParams.find(isResidualDcParameter);
+  if (explicit) {
+    return explicit;
+  }
+
+  const weightExplicit = numberParams.find(isWeightDcParameter);
+  if (weightExplicit && numberParams.length > 1) {
+    return numberParams.find((item) => item !== weightExplicit);
+  }
+
+  return numberParams.length > 1 ? numberParams[1] : undefined;
+}
+
+/** 优先取称重数字参数（dataType = N 且非残水），否则 WGT* 参数或首项 */
 export function findWeightDcParameter(list: any[] = []) {
+  const numberParams = getNumericDcParameters(list);
+  if (numberParams.length === 0) {
+    return (
+      list.find((item) => String(item?.dcParameter || '').toUpperCase().includes('WGT')) ||
+      list[0]
+    );
+  }
+
+  const residual = findResidualDcParameter(list);
   return (
-    list.find((item) => item?.dataType === 'N') ||
-    list.find((item) => String(item?.dcParameter || '').toUpperCase().includes('WGT')) ||
-    list[0]
+    numberParams.find(isWeightDcParameter) ||
+    numberParams.find((item) => item !== residual) ||
+    numberParams[0]
   );
 }
 
