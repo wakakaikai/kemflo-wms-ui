@@ -41,4 +41,7 @@ export interface PointReadItem {
   success?: boolean;
   error?: string;
   quality?: string;
+  /** 前端附加：用于数值 × 系数 */
+  dataType?: string;
+  scaleFactor?: number;
 }

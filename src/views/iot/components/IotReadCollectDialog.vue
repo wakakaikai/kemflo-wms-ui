@@ -3,7 +3,7 @@
     :model-value="visible"
     :title="title"
     class="read-collect-dialog"
-    width="92%"
+    width="100%"
     destroy-on-close
     append-to-body
     @update:model-value="emit('update:visible', $event)"
@@ -55,7 +55,7 @@
           <el-table-column label="采集值" min-width="140" show-overflow-tooltip>
             <template #default="scope">
               <span v-if="scope.row.success" class="collect-value success">
-                {{ scope.row.value == null ? '-' : formatCellValue(scope.row.value) }}
+                {{ formatCellValue(scope.row) }}
               </span>
               <span v-else class="collect-value fail">—</span>
             </template>
@@ -84,9 +84,252 @@
 import { computed, ref } from 'vue';
 import type { PointReadItem } from '@/api/iot/device';
 import TcpCollectResultPanel from '@/views/iot/components/TcpCollectResultPanel.vue';
-import { formatCollectValue, formatPlainNumber, parseSafetyTestPayload, isStructuredJsonValue } from '@/views/iot/utils/parseTcpCollectValue';
-import { buildReadResultFileName, captureReadResultScreenshot } from '@/views/iot/utils/captureReadResult';
+import html2canvas from 'html2canvas';
+import FileSaver from 'file-saver';
 import { ElMessage } from 'element-plus';
+
+// ===== iot helpers (inlined) =====
+/** TCP Client 采集值解析（安规类 JSON / 普通 JSON / 字符串） */
+
+interface SafetyTestDetailItem {
+  testItem: string;
+  testValue: string;
+  testStatus: string;
+}
+
+interface SafetyTestPayload {
+  barcode: string;
+  testStatus: string;
+  datetimeCreated?: string;
+  workcenterCode?: string;
+  groupCode?: string;
+  id?: string;
+  details: SafetyTestDetailItem[];
+  raw: Record<string, any>;
+  rawText: string;
+}
+
+function isPassStatus(status?: string): boolean {
+  const s = String(status || '')
+    .trim()
+    .toUpperCase();
+  return s === 'PASS' || s === 'OK' || s === 'SUCCESS' || s === '良' || s === '合格';
+}
+
+function formatCollectValue(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value === 'number') return formatPlainNumber(value);
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value, (_k, v) => (typeof v === 'number' ? formatPlainNumber(v) : v), 2);
+  } catch {
+    return String(value);
+  }
+}
+
+/** 避免 JS Number 科学计数法展示 */
+function formatPlainNumber(value: number): string {
+  if (!Number.isFinite(value)) return String(value);
+  const raw = String(value);
+  if (!/[eE]/.test(raw)) return raw;
+  return value.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 20 });
+}
+
+function asObject(value: unknown): Record<string, any> | null {
+  if (value == null) return null;
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, any>;
+  }
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text.startsWith('{') && !text.startsWith('[')) return null;
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, any>;
+      }
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function pick(obj: Record<string, any>, keys: string[]): any {
+  for (const key of keys) {
+    if (obj[key] != null && obj[key] !== '') return obj[key];
+    const found = Object.keys(obj).find((k) => k.toLowerCase() === key.toLowerCase());
+    if (found && obj[found] != null && obj[found] !== '') return obj[found];
+  }
+  return undefined;
+}
+
+/** 识别安规/测试设备推送的结构化报文 */
+function parseSafetyTestPayload(value: unknown): SafetyTestPayload | null {
+  const obj = asObject(value);
+  if (!obj) return null;
+
+  const detailRaw = pick(obj, ['SFC_DEVICE_TEST_DETAIL', 'TEST_DETAIL', 'details', 'ITEMS']);
+  const hasDetail = Array.isArray(detailRaw);
+  const hasBarcode = pick(obj, ['BARCODE', 'barcode', 'SFC', 'sfc']) != null;
+  const hasStatus = pick(obj, ['TEST_STATUS', 'testStatus', 'STATUS', 'status']) != null;
+  if (!hasDetail && !(hasBarcode && hasStatus)) {
+    return null;
+  }
+
+  const details: SafetyTestDetailItem[] = (hasDetail ? detailRaw : []).map((item: any) => ({
+    testItem: String(pick(item, ['TEST_ITEM', 'testItem', 'ITEM', 'name']) ?? ''),
+    testValue: String(pick(item, ['TEST_VALUE', 'testValue', 'VALUE', 'value']) ?? ''),
+    testStatus: String(pick(item, ['TEST_STATUS', 'testStatus', 'STATUS', 'result']) ?? '')
+  }));
+
+  return {
+    barcode: String(pick(obj, ['BARCODE', 'barcode', 'SFC', 'sfc']) ?? ''),
+    testStatus: String(pick(obj, ['TEST_STATUS', 'testStatus', 'STATUS', 'status']) ?? ''),
+    datetimeCreated: pick(obj, ['DATETIME_CREATED', 'datetimeCreated', 'CREATE_TIME', 'createTime']),
+    workcenterCode: pick(obj, ['WORKCENTER_CODE', 'workcenterCode', 'WORK_CENTER']),
+    groupCode: pick(obj, ['Group_Code', 'GROUP_CODE', 'groupCode']),
+    id: pick(obj, ['id', 'ID']) != null ? String(pick(obj, ['id', 'ID'])) : undefined,
+    details,
+    raw: obj,
+    rawText: formatCollectValue(obj)
+  };
+}
+
+function isStructuredJsonValue(value: unknown): boolean {
+  return !!asObject(value) || (typeof value === 'string' && value.trim().startsWith('{'));
+}
+
+type StyleSnapshot = {
+  el: HTMLElement;
+  styles: Record<string, string>;
+};
+
+const STYLE_KEYS = ['maxHeight', 'height', 'overflow', 'overflowX', 'overflowY'] as const;
+
+function snapshotAndExpand(el: HTMLElement): StyleSnapshot {
+  const styles: Record<string, string> = {};
+  STYLE_KEYS.forEach((key) => {
+    styles[key] = el.style[key];
+  });
+  el.style.maxHeight = 'none';
+  el.style.height = 'auto';
+  el.style.overflow = 'visible';
+  el.style.overflowX = 'visible';
+  el.style.overflowY = 'visible';
+  return { el, styles };
+}
+
+function restoreStyles(snapshots: StyleSnapshot[]) {
+  snapshots.forEach(({ el, styles }) => {
+    STYLE_KEYS.forEach((key) => {
+      el.style[key] = styles[key] || '';
+    });
+  });
+}
+
+function waitFrames(times = 2) {
+  return new Promise<void>((resolve) => {
+    const step = (left: number) => {
+      if (left <= 0) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(() => step(left - 1));
+    };
+    step(times);
+  });
+}
+
+/**
+ * �Բɼ��������������ͼ����ʱչ���������򣬱���ֻ�ص���������
+ */
+async function captureReadResultScreenshot(options: {
+  root: HTMLElement;
+  fileName?: string;
+  scale?: number;
+  onclone?: (clonedRoot: HTMLElement) => void;
+}): Promise<void> {
+  const { root, fileName = `�ɼ����_${Date.now()}.png`, scale = 2, onclone } = options;
+  const snapshots: StyleSnapshot[] = [];
+  const dialog = (root.closest('.el-dialog') as HTMLElement) || root;
+
+  dialog.classList.add('is-capturing');
+
+  const targets = [
+    dialog,
+    root,
+    ...Array.from(
+      root.querySelectorAll<HTMLElement>(
+        '.el-dialog__body, .el-table, .el-table__inner-wrapper, .el-table__body-wrapper, .el-table__header-wrapper, .el-scrollbar, .el-scrollbar__wrap, .el-scrollbar__view'
+      )
+    )
+  ];
+
+  Array.from(new Set(targets)).forEach((el) => snapshots.push(snapshotAndExpand(el)));
+  await waitFrames(2);
+
+  try {
+    const canvas = await html2canvas(root, {
+      scale,
+      logging: false,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      scrollX: 0,
+      scrollY: -window.scrollY,
+      windowWidth: Math.max(root.scrollWidth, root.clientWidth),
+      windowHeight: Math.max(root.scrollHeight, root.clientHeight),
+      onclone: (_doc, clonedElement) => {
+        onclone?.(clonedElement as HTMLElement);
+      }
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('��ͼ����ʧ��'));
+          return;
+        }
+        FileSaver.saveAs(blob, fileName);
+        resolve();
+      }, 'image/png');
+    });
+  } finally {
+    restoreStyles(snapshots);
+    dialog.classList.remove('is-capturing');
+  }
+}
+
+function buildReadResultFileName(title?: string) {
+  const safeTitle = (title || '�ɼ����').replace(/[\\/:*?"<>|]/g, '_');
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  return `${safeTitle}_${stamp}.png`;
+}
+
+function isNumericDataType(dataType?: string): boolean {
+  const type = (dataType || '').toUpperCase();
+  return type === 'INT' || type === 'UINT' || type === 'DINT' || type === 'UDINT' || type === 'FLOAT' || type === 'REAL' || type === 'DOUBLE' || type === 'LREAL' || type === 'WORD' || type === 'DWORD' || type === 'LONG';
+}
+function resolveScaleFactor(scaleFactor?: number | null): number {
+  const n = Number(scaleFactor);
+  return Number.isFinite(n) ? n : 1;
+}
+function applyNumericScale(raw: unknown, dataType?: string, scaleFactor?: number | null): unknown {
+  if (raw == null || raw === '') return raw;
+  if (!isNumericDataType(dataType)) return raw;
+  const scale = resolveScaleFactor(scaleFactor);
+  if (scale === 1) return raw;
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw * scale;
+  if (typeof raw === 'string') {
+    const text = raw.trim();
+    if (!/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(text)) return raw;
+    const num = Number(text);
+    if (!Number.isFinite(num)) return raw;
+    return num * scale;
+  }
+  return raw;
+}
+// ===== end iot helpers =====
 
 const props = withDefaults(
   defineProps<{
@@ -125,11 +368,12 @@ const plainRows = computed(() =>
   props.rows.filter((row) => !(row.success && (parseSafetyTestPayload(row.value) || isStructuredJsonValue(row.value))))
 );
 
-const formatCellValue = (value: unknown) => {
-  if (value == null) return '-';
-  if (typeof value === 'number') return formatPlainNumber(value);
-  if (typeof value === 'object') return formatCollectValue(value);
-  return String(value);
+const formatCellValue = (row: PointReadItem) => {
+  if (row.value == null) return '-';
+  const scaled = applyNumericScale(row.value, row.dataType, row.scaleFactor);
+  if (typeof scaled === 'number') return formatPlainNumber(scaled);
+  if (typeof scaled === 'object') return formatCollectValue(scaled);
+  return String(scaled);
 };
 
 const onCapture = async () => {
@@ -238,7 +482,7 @@ const onCapture = async () => {
 
 <style lang="scss">
 .read-collect-dialog.el-dialog {
-  max-width: 1280px;
+  max-width: 1920px;
 }
 
 .read-collect-dialog .el-dialog__body {

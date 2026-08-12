@@ -14,13 +14,8 @@
                   </span>
                 </div>
                 <div class="flex items-center gap-1">
-                  <el-button @click="openOperationDialog" class="dashed-blue-btn min-w-[120px]" size="small">
-                    {{ podConfig.operation || '点击选择工序' }}
-                  </el-button>
-                  <el-button v-if="podConfig.operation" @click="clearSelection('operation')" text size="small" class="!text-gray-400 hover:!text-red-500">
-                    <el-icon>
-                      <Close />
-                    </el-icon>
+                  <el-button class="dashed-blue-btn min-w-[120px]" size="small">
+                    {{ podConfig.operation || '' }}
                   </el-button>
                 </div>
               </div>
@@ -52,7 +47,7 @@
 
     <el-card shadow="hover" class="mb-[10px] barcode-input-card">
       <el-form @submit.prevent>
-        <el-form-item label="条码输入" label-width="80px" class="barcode-form-item">
+        <el-form-item label="条码" label-width="80px" class="barcode-form-item">
           <el-input ref="sfcInputRef" v-model="sfcInput" placeholder="请扫描或输入产品条码后回车" clearable class="barcode-input-sn" @keydown.tab.prevent="handleSfcEnter" @keydown.enter.prevent="handleSfcEnter" />
         </el-form-item>
       </el-form>
@@ -63,40 +58,54 @@
         <div class="card-header">
           <span>测试后称重采集</span>
           <el-tag :type="isConnected ? 'success' : 'info'" size="small">
-            {{ isConnected ? `已连接` : '未连接' }}
+            {{ isConnected ? '已连接' : '未连接' }}
           </el-tag>
           <div class="dc-btn-group">
-            <el-button :type="isConnected ? 'success' : 'info'" size="small" @click="handleConnect" :loading="connecting">
+            <el-button :type="isConnected ? 'danger' : 'primary'" size="small" @click="handleConnect" :loading="connecting">
               {{ isConnected ? '关闭串口' : '打开串口' }}
             </el-button>
-            <div class="scan-mode-switch">
-              <span class="scan-mode-label">先扫码再称重</span>
-              <el-switch v-model="scanBeforeWeight" />
-            </div>
             <el-button size="small" @click="clearFormData">清空</el-button>
+            <el-popover placement="bottom-end" :width="300" trigger="click">
+              <template #reference>
+                <el-button size="small" plain>
+                  <el-icon class="mr-1"><Setting /></el-icon>
+                  设置
+                </el-button>
+              </template>
+              <div class="flex flex-col gap-3 py-1">
+                <div class="flex items-center justify-between gap-4">
+                  <span class="text-sm text-gray-600">先扫码再称重</span>
+                  <el-switch v-model="scanBeforeWeight" />
+                </div>
+              </div>
+            </el-popover>
           </div>
         </div>
       </template>
 
+      <el-steps v-show="steps.length" :active="stepActive" finish-status="success" class="py-2">
+        <el-step v-for="item in steps" :key="item.stepId" :title="item.operation" :description="item.operationDesc" />
+      </el-steps>
+
       <el-form ref="queryFormRef" :model="formData" label-width="auto">
         <el-row :gutter="24">
           <el-col :lg="6" :md="8" :sm="24">
-            <el-form-item label="工单" prop="shopOrder">
-              <el-button class="dashed-blue-btn w-[100%]">
+            <el-form-item label="工单号" prop="shopOrder">
+              <el-button class="dashed-blue-btn w-[100%]" title="点击复制" @click="copyText(formData.shopOrder)">
                 {{ formData.shopOrder || '' }}
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="6" :md="8" :sm="24">
-            <el-form-item label="产品" prop="item">
-              <el-button class="dashed-blue-btn w-[100%]">
+            <el-form-item label="产品编码" prop="item">
+              <el-button class="dashed-blue-btn w-[100%]" title="点击复制" @click="copyText(formData.item)">
                 {{ formData.item || '' }}
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="12" :md="8" :sm="24">
             <el-form-item label="产品描述" prop="itemDesc">
-              <el-button class="dashed-blue-btn w-[100%] text-ellipsis">
+              <el-button class="dashed-blue-btn w-[100%] text-ellipsis" title="点击复制" @click="copyText(formData.itemDesc)">
                 {{ formData.itemDesc || '' }}
               </el-button>
             </el-form-item>
@@ -104,14 +113,14 @@
 
           <el-col :lg="12" :md="12" :sm="24">
             <el-form-item label="条码" prop="sfc">
-              <el-button class="dashed-blue-btn highlight-field w-[100%]">
+              <el-button class="dashed-blue-btn highlight-field w-[100%]" title="点击复制" @click="copyText(formData.sfc)">
                 {{ formData.sfc || '' }}
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="12" :md="12" :sm="24">
             <el-form-item label="收集组" prop="dcGroup">
-              <el-button class="dashed-blue-btn w-[100%]">
+              <el-button class="dashed-blue-btn w-[100%]" title="点击复制" @click="copyText(formData.dcGroup)">
                 {{ formData.dcGroup || '' }}
               </el-button>
             </el-form-item>
@@ -119,21 +128,21 @@
 
           <el-col :lg="8" :md="8" :sm="24">
             <el-form-item label="重量" prop="actualWeight">
-              <el-button class="dashed-blue-btn highlight-field w-[100%]">
+              <el-button class="dashed-blue-btn highlight-field w-[100%]" title="点击复制" @click="copyText(formData.actualWeight)">
                 <strong>{{ formData.actualWeight || '' }}</strong>
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="8" :md="8" :sm="24">
             <el-form-item label="下限" prop="lowLimit">
-              <el-button class="dashed-blue-btn w-[100%]">
+              <el-button class="dashed-blue-btn w-[100%]" title="点击复制" @click="copyText(formData.lowLimit)">
                 {{ formatNumber(formData.lowLimit) }}
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="8" :md="8" :sm="24">
             <el-form-item label="上限" prop="hightLimit">
-              <el-button class="dashed-blue-btn w-[100%]">
+              <el-button class="dashed-blue-btn w-[100%]" title="点击复制" @click="copyText(formData.hightLimit)">
                 {{ formatNumber(formData.hightLimit) }}
               </el-button>
             </el-form-item>
@@ -141,33 +150,32 @@
 
           <el-col :lg="6" :md="6" :sm="24">
             <el-form-item label="测试前重" prop="beforeWeight">
-              <el-button class="dashed-blue-btn w-[100%]">
+              <el-button class="dashed-blue-btn w-[100%]" title="点击复制" @click="copyText(formData.beforeWeight)">
                 {{ formatNumber(formData.beforeWeight) }}
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="6" :md="6" :sm="24">
             <el-form-item label="残水值" prop="residualWater">
-              <el-button class="dashed-blue-btn highlight-field w-[100%]">
+              <el-button class="dashed-blue-btn highlight-field w-[100%]" title="点击复制" @click="copyText(formData.residualWater)">
                 <strong>{{ formatNumber(formData.residualWater) }}</strong>
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="6" :md="6" :sm="24">
             <el-form-item label="下限" prop="residualLowLimit">
-              <el-button class="dashed-blue-btn w-[100%]">
+              <el-button class="dashed-blue-btn w-[100%]" title="点击复制" @click="copyText(formData.residualLowLimit)">
                 {{ formatNumber(formData.residualLowLimit) }}
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="6" :md="6" :sm="24">
             <el-form-item label="上限" prop="residualHighLimit">
-              <el-button class="dashed-blue-btn w-[100%]">
+              <el-button class="dashed-blue-btn w-[100%]" title="点击复制" @click="copyText(formData.residualHighLimit)">
                 {{ formatNumber(formData.residualHighLimit) }}
               </el-button>
             </el-form-item>
           </el-col>
-
 
           <el-col :lg="24" :md="24" :sm="24">
             <div v-if="resultMessage">
@@ -193,25 +201,25 @@
       </template>
 
       <el-table :data="paginatedHistoryData" style="width: 100%" size="small" max-height="300" border>
+        <el-table-column prop="timestamp" label="时间" min-width="160" />
         <el-table-column prop="sfc" label="条码" min-width="140" />
+        <el-table-column prop="item" label="产品编码" min-width="120" />
+        <el-table-column prop="itemDesc" label="物料描述" min-width="150" />
         <el-table-column prop="actualWeight" label="重量" min-width="90" />
         <el-table-column prop="lowLimit" label="下限" min-width="80" />
         <el-table-column prop="hightLimit" label="上限" min-width="80" />
-        <el-table-column label="结果" min-width="90">
+        <el-table-column label="结果" min-width="80">
           <template #default="scope">
             <el-tag :type="scope.row.result === 'PASS' ? 'success' : scope.row.result === 'FAIL' ? 'danger' : 'warning'">
-              {{ scope.row.result }}
+              {{ scope.row.result === 'PASS' ? '成功' : scope.row.result === 'FAIL' ? '失败' : scope.row.result }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="timestamp" label="时间" min-width="160" />
-        <el-table-column prop="item" label="产品" min-width="120" />
       </el-table>
 
       <el-pagination v-model:current-page="pagination.currentPage" v-model:page-size="pagination.pageSize" :page-sizes="[10, 20, 50, 100]" :total="pagination.total" layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange" @current-change="handleCurrentChange" style="margin-top: 10px; justify-content: flex-end" />
     </el-card>
 
-    <OperationDialog ref="operationDialogRef" @operation-call-back="operationCallBack" />
     <ResourceDialog ref="resourceDialogRef" @resource-call-back="resourceCallBack" />
   </div>
 </template>
@@ -220,16 +228,12 @@
 import { ElMessage } from 'element-plus';
 import type { OperationObj, ResourceObj } from '@/components/common-type';
 import ResourceDialog from '@/views/mes/workpanel/components/resourceDialog.vue';
-import OperationDialog from '@/views/mes/workpanel/components/operationDialog.vue';
-import { Bell, Close, Cpu, Operation } from '@element-plus/icons-vue';
-import { queryDataCollectionBySfc, querySfcQueueInfo, dataCollectPassSfc } from '@/api/mes/workpanel';
-import {
-  buildDataCollectPassPayload,
-  formatWeightValue,
-  findWeightDcParameter,
-  findResidualDcParameter
-} from '@/api/mes/workpanel/dataCollection/weight-pass';
+import { Bell, Close, Cpu, Operation, Setting } from '@element-plus/icons-vue';
+import { queryDataCollectionBySfc, querySfcQueueInfo, querySfcProcessList, dataCollectPassSfc } from '@/api/mes/workpanel';
+import { buildDataCollectPassPayload, formatWeightValue, findWeightDcParameter, findResidualDcParameter } from '@/api/mes/workpanel/dataCollection/weight-pass';
 import { parseTime } from '@/utils/ruoyi';
+import { copyText } from '@/utils/copy';
+import { weightHistoryDB } from '@/utils/indexedDB';
 import { v4 as uuidv4 } from 'uuid';
 import { audioPlayer } from '@/utils/audioPlayer';
 import { useSerialPort } from '@/hooks/useSerialPort';
@@ -237,7 +241,6 @@ import { useSerialPort } from '@/hooks/useSerialPort';
 const { currentRoute } = useRouter();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
-const operationDialogRef = ref<InstanceType<typeof OperationDialog>>();
 const resourceDialogRef = ref<InstanceType<typeof ResourceDialog>>();
 const sfcInputRef = ref();
 const queryFormRef = ref<ElFormInstance>();
@@ -248,6 +251,13 @@ const loading = ref(false);
 const scanBeforeWeight = ref(true);
 const sfcInput = ref('');
 const podConfig = ref<{ [key: string]: any }>({});
+/** 重量/残水超范围失败后保留页面；收到新重量时用于清空条码信息 */
+let pendingRangeFail = false;
+/** 防止串口连续上报同一条码+重量时反复自动提交 */
+let lastAutoSubmitKey = '';
+
+const steps = ref<any[]>([]);
+const stepActive = ref(0);
 
 interface FormData {
   sfc?: string;
@@ -299,9 +309,9 @@ const calcResidualWater = () => {
     formData.value.residualWater = undefined;
     return;
   }
-  // 残水值 = 测试前重 - 测试后重
-  formData.value.residualWater = formatWeightValue(before - after);
-}
+  // 残水值 =  测试后重 - 测试前重
+  formData.value.residualWater = formatWeightValue(after - before);
+};
 
 const formData = ref<FormData>({});
 
@@ -313,6 +323,7 @@ interface HistoryRow {
   lowLimit: string | number;
   hightLimit: string | number;
   result: 'PASS' | 'FAIL' | 'PENDING';
+  itemDesc: string;
   item: string;
 }
 
@@ -323,6 +334,37 @@ const pagination = ref({
   pageSize: 10,
   total: 0
 });
+
+/** 历史数据本地数据库：按路由隔离，仅保留近 7 天（IndexedDB） */
+const HISTORY_DAYS = 7;
+
+/** 过滤出近 HISTORY_DAYS 天的记录 */
+const filterHistoryByDays = (list: HistoryRow[]) => {
+  const cutoff = Date.now() - HISTORY_DAYS * 24 * 60 * 60 * 1000;
+  return (list || []).filter((row: HistoryRow) => {
+    const time = row.timestamp ? new Date(String(row.timestamp).replace(/-/g, '/')).getTime() : 0;
+    return Number.isFinite(time) && time >= cutoff;
+  });
+};
+
+const historyStoreKey = () => currentRoute.value.fullPath;
+
+const loadHistoryFromDb = async () => {
+  try {
+    const list = (await weightHistoryDB.get<HistoryRow[]>(historyStoreKey())) || [];
+    return filterHistoryByDays(list);
+  } catch (e) {
+    return [];
+  }
+};
+
+const saveHistoryToDb = () => {
+  try {
+    void weightHistoryDB.set(historyStoreKey(), filterHistoryByDays(historyData.value));
+  } catch (e) {
+    // ignore
+  }
+};
 
 let submitting = false;
 
@@ -339,24 +381,15 @@ const focusSfcInput = async () => {
 };
 
 const clearFormData = () => {
+  pendingRangeFail = false;
+  lastAutoSubmitKey = '';
   formData.value = {};
+  steps.value = [];
+  stepActive.value = 0;
   sfcInput.value = '';
   resultMessage.value = '';
   resultStatus.value = false;
   focusSfcInput();
-};
-
-const openOperationDialog = () => {
-  operationDialogRef.value.openDialog();
-};
-
-const operationCallBack = (data: any) => {
-  podConfig.value.operation = data.operation;
-  podConfig.value.operationDesc = data.description;
-  saveOperationToLocalStorage({
-    operation: data.operation,
-    operationDesc: data.description
-  });
 };
 
 const openResourceDialog = () => {
@@ -438,10 +471,10 @@ const removeOperationInLocalStorage = () => {
   saveOperationToLocalStorage(null);
 };
 
-const SCAN_BEFORE_WEIGHT_KEY = 'workPanelScanBeforeWeight';
+const SCAN_WEIGHT_AFTER_KEY = 'workPanelTestAfterWeight';
 const loadScanBeforeWeight = () => {
   try {
-    const cache = JSON.parse(localStorage.getItem(SCAN_BEFORE_WEIGHT_KEY) || '{}');
+    const cache = JSON.parse(localStorage.getItem(SCAN_WEIGHT_AFTER_KEY) || '{}');
     if (typeof cache[currentRoute.value.fullPath] === 'boolean') {
       scanBeforeWeight.value = cache[currentRoute.value.fullPath];
     }
@@ -450,12 +483,21 @@ const loadScanBeforeWeight = () => {
   }
 };
 const saveScanBeforeWeight = () => {
-  const cache = JSON.parse(localStorage.getItem(SCAN_BEFORE_WEIGHT_KEY) || '{}');
+  const cache = JSON.parse(localStorage.getItem(SCAN_WEIGHT_AFTER_KEY) || '{}');
   cache[currentRoute.value.fullPath] = scanBeforeWeight.value;
-  localStorage.setItem(SCAN_BEFORE_WEIGHT_KEY, JSON.stringify(cache));
+  localStorage.setItem(SCAN_WEIGHT_AFTER_KEY, JSON.stringify(cache));
 };
 watch(scanBeforeWeight, () => {
   saveScanBeforeWeight();
+  // 开关切换时清空真实重量，避免模式切换后沿用旧读数
+  formData.value.actualWeight = undefined;
+  formData.value.weightUnit = undefined;
+  formData.value.residualWater = undefined;
+  lastAutoSubmitKey = '';
+  if (resultMessage.value === '请先扫描条码再称重') {
+    resultMessage.value = '';
+    resultStatus.value = true;
+  }
 });
 
 const isApiSuccess = (res: any) => res?.code === 200 || res?.success === true;
@@ -466,6 +508,34 @@ const handleSfcEnter = async () => {
   sfcInput.value = sfc;
   resultMessage.value = '';
   resultStatus.value = true;
+  pendingRangeFail = false;
+  lastAutoSubmitKey = '';
+  // 开始新的扫描：清空上次条码的排队步骤与采集属性，避免残留旧值
+  steps.value = [];
+  stepActive.value = 0;
+  // 先扫码后称重：扫描新条码时自动清空上次重量，等待重新称重
+  if (scanBeforeWeight.value) {
+    formData.value.actualWeight = undefined;
+    formData.value.weightUnit = undefined;
+  }
+  formData.value.sfc = undefined;
+  formData.value.shopOrder = undefined;
+  formData.value.item = undefined;
+  formData.value.itemDesc = undefined;
+  formData.value.dcGroup = undefined;
+  formData.value.dcGroupRevision = undefined;
+  formData.value.lowLimit = undefined;
+  formData.value.hightLimit = undefined;
+  formData.value.dcParameterBoList = [];
+  formData.value.uuid = undefined;
+  formData.value.itemBo = undefined;
+  formData.value.itemGroupBo = undefined;
+  formData.value.beforeWeight = undefined;
+  formData.value.residualWater = undefined;
+  formData.value.residualLowLimit = undefined;
+  formData.value.residualHighLimit = undefined;
+  formData.value.weightParam = undefined;
+  formData.value.residualParam = undefined;
 
   if (!podConfig.value.operation) {
     resultMessage.value = '请选择对应的工序';
@@ -488,27 +558,74 @@ const handleSfcEnter = async () => {
 
   loading.value = true;
   try {
-    const queueRes: any = await querySfcQueueInfo({ sfc });
-    if (!isApiSuccess(queueRes)) {
-      resultMessage.value = queueRes?.msg || queueRes?.message || '条码查询失败';
+    const queueRes: any = await querySfcQueueInfo({ sfc }).catch((e) => {
+      resultMessage.value = e?.msg || e?.message || '条码查询失败';
       resultStatus.value = false;
       warnVoice();
-      return;
-    }
+    });
+    const [processListRes, dcRes]: any[] = await Promise.all([querySfcProcessList({ sfc }).catch(() => null), queryDataCollectionBySfc({ sfc, operation: podConfig.value.operation, resource: podConfig.value.resource }).catch(() => null)]);
 
-    const queueInfo = queueRes.data || {};
+    const queueOk = !!queueRes && isApiSuccess(queueRes);
+    const queueInfo = queueOk ? queueRes.data || {} : {};
+    const dcOk = !!dcRes && isApiSuccess(dcRes);
+
+    // 有结果后先都赋值：队列头部（工单号/产品编码/产品描述/条码）
     formData.value.sfc = queueInfo.sfc || sfc;
     formData.value.shopOrder = queueInfo.shopOrder;
     formData.value.item = queueInfo.item;
     formData.value.itemDesc = queueInfo.itemDesc;
+    formData.value.beforeWeight = undefined;
     const keepWeight = !scanBeforeWeight.value && !!formData.value.actualWeight;
     if (!keepWeight) {
       formData.value.actualWeight = undefined;
       formData.value.weightUnit = undefined;
       formData.value.residualWater = undefined;
     }
-    formData.value.beforeWeight = undefined;
     formData.value.uuid = undefined;
+
+    // 工艺路线排队步骤（接口异常时保持空）
+    steps.value = processListRes?.data || [];
+    let stepIndex = steps.value.findIndex((item: any) => parseInt(item.qtyInQueue) === 1);
+    if (stepIndex === -1) {
+      stepIndex = steps.value.length;
+    }
+    stepActive.value = stepIndex;
+
+    // 数据收集参数（成功才赋值，失败保持空）
+    if (dcOk) {
+      formData.value.itemBo = dcRes.data?.itemBo;
+      formData.value.itemGroupBo = dcRes.data?.itemGroupBo;
+
+      const detailList = extractDcDetailList(dcRes);
+      const weightParam = detailList.length ? findWeightDcParameter(detailList) : undefined;
+      const residualParam = findResidualDcParameter(detailList);
+      formData.value.weightParam = weightParam;
+      formData.value.residualParam = residualParam;
+
+      if (weightParam) {
+        formData.value.dcGroup = weightParam.dcGroup || (weightParam.dcGroupAndRevision || '').split('/')[0] || '';
+        formData.value.dcGroupRevision = weightParam.dcGroupRevision;
+        formData.value.lowLimit = weightParam.minValue;
+        formData.value.hightLimit = weightParam.maxValue;
+        formData.value.residualLowLimit = residualParam?.minValue;
+        formData.value.residualHighLimit = residualParam?.maxValue;
+        formData.value.dcParameterBoList = detailList;
+        formData.value.weightUnit = weightParam.units || '';
+      } else {
+        formData.value.dcParameterBoList = [];
+      }
+
+      // 测试前重量由后端在 WGT-AF 查询时一并返回
+      const beforeWeight = dcRes.data?.beforeWeight;
+      formData.value.beforeWeight = beforeWeight === null || beforeWeight === undefined || beforeWeight === '' ? undefined : formatWeightValue(beforeWeight);
+    }
+
+    if (queueInfo.status === 'DONE') {
+      resultMessage.value = '条码已完工';
+      resultStatus.value = false;
+      warnVoice();
+      return;
+    }
 
     if (queueInfo.operation && podConfig.value.operation && queueInfo.operation !== podConfig.value.operation) {
       const queueOpDesc = queueInfo.operationDesc ? `（${queueInfo.operationDesc}）` : '';
@@ -520,56 +637,26 @@ const handleSfcEnter = async () => {
       return;
     }
 
-    const dcRes: any = await queryDataCollectionBySfc({
-      sfc: formData.value.sfc,
-      operation: podConfig.value.operation,
-      resource: podConfig.value.resource
-    });
-
-    if (!isApiSuccess(dcRes)) {
+    if (!dcRes) {
+      resultMessage.value = '数据收集组查询异常，请检查数据收集参数';
+      resultStatus.value = false;
+      warnVoice();
+      return;
+    }
+    if (!dcOk) {
       resultMessage.value = dcRes?.msg || dcRes?.message || '数据收集组查询失败';
       resultStatus.value = false;
       warnVoice();
       return;
     }
-
-    formData.value.itemBo = dcRes.data?.itemBo;
-    formData.value.itemGroupBo = dcRes.data?.itemGroupBo;
-
-    const detailList = extractDcDetailList(dcRes);
-
-    if (detailList.length === 0) {
+    if (!(formData.value.dcParameterBoList || []).length) {
       resultMessage.value = '数据收集参数列表为空，请联系QE维护资料';
       resultStatus.value = false;
-      formData.value.dcGroup = undefined;
-      formData.value.lowLimit = undefined;
-      formData.value.hightLimit = undefined;
-      formData.value.residualLowLimit = undefined;
-      formData.value.residualHighLimit = undefined;
-      formData.value.dcParameterBoList = [];
       warnVoice();
       return;
     }
 
-    const weightParam = findWeightDcParameter(detailList);
-    const residualParam = findResidualDcParameter(detailList);
-
-    formData.value.weightParam = weightParam;
-    formData.value.residualParam = residualParam;
-    formData.value.dcGroup = weightParam.dcGroup || (weightParam.dcGroupAndRevision || '').split('/')[0] || '';
-    formData.value.dcGroupRevision = weightParam.dcGroupRevision;
-    formData.value.lowLimit = weightParam.minValue;
-    formData.value.hightLimit = weightParam.maxValue;
-    formData.value.residualLowLimit = residualParam?.minValue;
-    formData.value.residualHighLimit = residualParam?.maxValue;
-    formData.value.dcParameterBoList = detailList;
-    formData.value.weightUnit = weightParam.units || '';
-
-    // 测试前重量由后端在 WGT-AF 查询时一并返回
-    const beforeWeight = dcRes.data?.beforeWeight;
-    formData.value.beforeWeight =
-      beforeWeight === null || beforeWeight === undefined || beforeWeight === '' ? undefined : formatWeightValue(beforeWeight);
-
+    // 测试前重量必须存在（测试后称重依赖）
     if (formData.value.beforeWeight === undefined || formData.value.beforeWeight === null || formData.value.beforeWeight === '') {
       resultMessage.value = '未获取到测试前重量，请确认已完成测试前称重';
       resultStatus.value = false;
@@ -606,9 +693,11 @@ const pushHistory = (result: HistoryRow['result']) => {
     lowLimit: formData.value.lowLimit ?? '',
     hightLimit: formData.value.hightLimit ?? '',
     result,
+    itemDesc: formData.value.itemDesc || '',
     item: formData.value.item || ''
   });
   pagination.value.total = historyData.value.length;
+  saveHistoryToDb();
   return uuid;
 };
 
@@ -655,8 +744,9 @@ const validateBeforeSubmit = () => {
 
   if (!isNaN(actualWeight) && !isNaN(lowLimit) && !isNaN(highLimit)) {
     if (actualWeight < lowLimit || actualWeight > highLimit) {
-      resultMessage.value = `重量${actualWeight}超出范围[${lowLimit}~${highLimit}]`;
+      resultMessage.value = `条码${formData.value.sfc || ''} 重量${actualWeight}超出范围[${lowLimit}~${highLimit}]`;
       resultStatus.value = false;
+      pendingRangeFail = true;
       return false;
     }
   }
@@ -666,18 +756,52 @@ const validateBeforeSubmit = () => {
   const residualHigh = parseFloat(String(formData.value.residualHighLimit));
   if (!isNaN(residualWater) && !isNaN(residualLow) && !isNaN(residualHigh)) {
     if (residualWater < residualLow || residualWater > residualHigh) {
-      resultMessage.value = `残水值${residualWater}超出范围[${residualLow}~${residualHigh}]`;
+      resultMessage.value = `条码${formData.value.sfc || ''} 残水值${residualWater}超出范围[${residualLow}~${residualHigh}]`;
       resultStatus.value = false;
+      pendingRangeFail = true;
       return false;
     }
   }
   return true;
 };
 
-const resetAfterCycle = () => {
+/** 清空条码及相关列表属性（超范围后收到新重量时调用） */
+const clearBarcodeInfo = () => {
+  formData.value.sfc = undefined;
+  formData.value.shopOrder = undefined;
+  formData.value.item = undefined;
+  formData.value.itemDesc = undefined;
+  formData.value.dcGroup = undefined;
+  formData.value.dcGroupRevision = undefined;
+  formData.value.lowLimit = undefined;
+  formData.value.hightLimit = undefined;
+  formData.value.beforeWeight = undefined;
+  formData.value.residualWater = undefined;
+  formData.value.residualLowLimit = undefined;
+  formData.value.residualHighLimit = undefined;
+  formData.value.weightParam = undefined;
+  formData.value.residualParam = undefined;
+  formData.value.dcParameterBoList = [];
+  formData.value.uuid = undefined;
+  formData.value.itemBo = undefined;
+  formData.value.itemGroupBo = undefined;
+  steps.value = [];
+  stepActive.value = 0;
+  sfcInput.value = '';
+};
+
+const resetAfterCycle = (clearForm = true) => {
   const msg = resultMessage.value;
   const status = resultStatus.value;
-  formData.value = {};
+  if (clearForm) {
+    // 仅提交成功后清空页面属性；失败时保留供比对数量
+    pendingRangeFail = false;
+    lastAutoSubmitKey = '';
+    formData.value = {};
+    steps.value = [];
+    stepActive.value = 0;
+  }
+  // 失败时保留页面属性；串口同读数仍会更新重量，但不重复自动提交
   sfcInput.value = '';
   resultMessage.value = msg;
   resultStatus.value = status;
@@ -690,8 +814,8 @@ const submitForm = async (auto = false) => {
   if (!validateBeforeSubmit()) {
     pushHistory('FAIL');
     warnVoice();
-    // 避免电子秤连续上报导致重复判定
-    resetAfterCycle();
+    // 校验失败保留页面属性，方便比对数量
+    resetAfterCycle(false);
     focusSfcInput();
     return;
   }
@@ -734,7 +858,7 @@ const submitForm = async (auto = false) => {
       resultStatus.value = false;
       pushHistory('FAIL');
       warnVoice();
-      resetAfterCycle();
+      resetAfterCycle(false);
       return;
     }
 
@@ -743,22 +867,22 @@ const submitForm = async (auto = false) => {
     if (isApiSuccess(res)) {
       pushHistory('PASS');
       resultStatus.value = true;
-      resultMessage.value = res.msg || res.message || '数据上传成功';
+      resultMessage.value = `条码${formData.value.sfc || ''}${res.msg || res.message || '数据上传成功'}`;
       successVoice();
-      resetAfterCycle();
+      resetAfterCycle(true);
     } else {
       pushHistory('FAIL');
-      resultMessage.value = res.msg || res.message || '数据上传失败';
+      resultMessage.value = `条码${formData.value.sfc || ''}${res.msg || res.message || '数据上传失败'}`;
       resultStatus.value = false;
       warnVoice();
-      resetAfterCycle();
+      resetAfterCycle(false);
     }
   } catch (error: any) {
     pushHistory('FAIL');
     resultMessage.value = error?.message || '数据上传失败';
     resultStatus.value = false;
     warnVoice();
-    resetAfterCycle();
+    resetAfterCycle(false);
   } finally {
     loading.value = false;
     submitting = false;
@@ -783,25 +907,44 @@ const processDataPacket = (packet: string) => {
     processedWeight = formatWeightValue(processedWeight);
   }
 
+  // 超范围失败后：仅当收到与当前不同的新重量时，才清空条码列表信息
+  if (pendingRangeFail && String(processedWeight) !== String(formData.value.actualWeight ?? '')) {
+    pendingRangeFail = false;
+    clearBarcodeInfo();
+    lastAutoSubmitKey = '';
+  }
+
   if (scanBeforeWeight.value && !formData.value.sfc) {
-    resultMessage.value = '请先扫描条码再称重';
-    resultStatus.value = false;
-    warnVoice();
+    // 先扫码再称重开启时收到重量：清空残留读数，避免未扫码却展示重量
+    formData.value.actualWeight = undefined;
+    formData.value.weightUnit = undefined;
+    formData.value.residualWater = undefined;
+    const msg = '请先扫描条码再称重';
+    if (resultMessage.value !== msg) {
+      resultMessage.value = msg;
+      resultStatus.value = false;
+      warnVoice();
+    }
     return;
   }
 
+  // 每次串口数据都更新实际重量
   formData.value.actualWeight = processedWeight;
   formData.value.weightUnit = unit || formData.value.weightUnit;
   formData.value.uuid = uuidv4();
   calcResidualWater();
 
   if (formData.value.sfc && processedWeight) {
-    submitForm(true);
+    const submitKey = `${formData.value.sfc}::${processedWeight}`;
+    // 同一条码+同一重量不重复自动提交（串口可能连续上报）
+    if (submitKey !== lastAutoSubmitKey) {
+      lastAutoSubmitKey = submitKey;
+      submitForm(true);
+    }
   }
 };
 
-const { isConnected, connecting, handleConnect, disconnect, checkBrowserSupport, setupListeners, teardownListeners } =
-  useSerialPort(processDataPacket);
+const { isConnected, connecting, handleConnect, disconnect, checkBrowserSupport, setupListeners, teardownListeners } = useSerialPort(processDataPacket);
 
 const paginatedHistoryData = computed(() => {
   const start = (pagination.value.currentPage - 1) * pagination.value.pageSize;
@@ -822,6 +965,7 @@ const clearHistoryData = () => {
   historyData.value = [];
   pagination.value.total = 0;
   pagination.value.currentPage = 1;
+  void weightHistoryDB.remove(historyStoreKey());
 };
 
 onMounted(() => {
@@ -832,13 +976,17 @@ onMounted(() => {
     if (lastSegment === 'WGT-AF' || lastSegment === 'weight-after') {
       saveOperationToLocalStorage({
         operation: 'WGT-AF',
-        operationDesc: '功能测试后称重'
+        operationDesc: '测试后称重'
       });
     }
   }
 
   findPodConfig();
   loadScanBeforeWeight();
+  loadHistoryFromDb().then((list) => {
+    historyData.value = list;
+    pagination.value.total = list.length;
+  });
   disconnect(true);
   checkBrowserSupport();
   setupListeners();
@@ -861,6 +1009,7 @@ onBeforeUnmount(async () => {
   color: #3b82f6 !important;
   background-color: rgba(59, 130, 246, 0.05) !important;
   justify-content: flex-start;
+  user-select: text !important;
 }
 
 .dashed-blue-btn:hover {
@@ -885,17 +1034,6 @@ onBeforeUnmount(async () => {
   align-items: center;
 }
 
-.scan-mode-switch {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-right: 8px;
-}
-.scan-mode-label {
-  font-size: 13px;
-  color: #606266;
-  white-space: nowrap;
-}
 .dc-btn-group {
   display: flex;
   align-items: center;

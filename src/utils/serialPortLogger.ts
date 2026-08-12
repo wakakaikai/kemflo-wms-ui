@@ -74,17 +74,33 @@ export async function monitorRawSerialStream(
   stream: ReadableStream<Uint8Array>,
   logger: SerialPortLogger,
   shouldContinue: () => boolean,
-  onChunk?: (bytes: Uint8Array) => void
+  onChunk?: (bytes: Uint8Array) => void,
+  signal?: AbortSignal
 ) {
   const reader = stream.getReader();
   let totalBytes = 0;
   let chunkCount = 0;
+  let aborted = false;
 
   logger.info('raw monitor started');
 
+  // 关闭串口时取消本分支，解除 tee() 对 readable 流的锁，否则 port.close() 会失败
+  const onAbort = () => {
+    aborted = true;
+    try {
+      void reader.cancel();
+    } catch {
+      // ignore
+    }
+  };
+  signal?.addEventListener('abort', onAbort);
+
   try {
-    while (shouldContinue()) {
+    while (shouldContinue() && !aborted) {
       const { value, done } = await reader.read();
+      if (aborted) {
+        break;
+      }
       if (done) {
         logger.info('raw monitor stream done', { totalBytes, chunkCount });
         break;
@@ -98,8 +114,11 @@ export async function monitorRawSerialStream(
       logger.raw(`chunk #${chunkCount}`, value);
     }
   } catch (error) {
-    logger.error('raw monitor failed', error);
+    if (!aborted) {
+      logger.error('raw monitor failed', error);
+    }
   } finally {
+    signal?.removeEventListener('abort', onAbort);
     try {
       reader.releaseLock();
     } catch {

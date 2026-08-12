@@ -1,13 +1,6 @@
 import { ElMessage } from 'element-plus';
 import { applySerialPortSignals, SerialPacketTransformer } from '@/utils/serialPortReader';
-import {
-  createEmptySerialDebugStats,
-  createSerialPortLogger,
-  isSerialDebugEnabled,
-  monitorRawSerialStream,
-  type SerialDebugStats,
-  type SerialPortLogger
-} from '@/utils/serialPortLogger';
+import { createEmptySerialDebugStats, createSerialPortLogger, isSerialDebugEnabled, monitorRawSerialStream, type SerialDebugStats, type SerialPortLogger } from '@/utils/serialPortLogger';
 
 export interface SerialPortFilter {
   usbVendorId?: number;
@@ -47,20 +40,18 @@ const DEFAULT_CONFIG: SerialPortConfig = {
 };
 
 const MSG = {
-  unsupported:
-    '\u5F53\u524D\u6D4F\u89C8\u5668\u4E0D\u652F\u6301 Web Serial API\uFF0C\u8BF7\u4F7F\u7528 Chrome 89+ \u6216 Edge 89+\uFF0C\u5E76\u901A\u8FC7 HTTPS \u6216 localhost \u8BBF\u95EE',
-  connectSuccess: '\u4E32\u53E3\u8FDE\u63A5\u6210\u529F',
-  noPortSelected: '\u672A\u9009\u62E9\u4E32\u53E3\u8BBE\u5907',
-  portBusy:
-    '\u4E32\u53E3\u5DF2\u88AB\u5360\u7528\u6216\u5904\u4E8E\u975E\u6CD5\u72B6\u6001\uFF0C\u8BF7\u5173\u95ED\u5176\u4ED6\u4E32\u53E3\u8F6F\u4EF6\u540E\u91CD\u8BD5',
-  connectFailed: '\u4E32\u53E3\u8FDE\u63A5\u5931\u8D25: ',
-  disconnected: '\u4E32\u53E3\u5DF2\u65AD\u5F00',
-  disconnectFailed: '\u65AD\u5F00\u4E32\u53E3\u5931\u8D25: ',
-  deviceConnected: '\u68C0\u6D4B\u5230\u4E32\u53E3\u8BBE\u5907\u5DF2\u63D2\u5165',
-  deviceDisconnected: '\u4E32\u53E3\u8BBE\u5907\u5DF2\u62D4\u51FA',
-  grantedPort: '\u5DF2\u6388\u6743\u4E32\u53E3\u8BBE\u5907',
-  readError: '\u8BFB\u53D6\u4E32\u53E3\u6570\u636E\u65F6\u53D1\u751F\u9519\u8BEF:',
-  forgetFailed: '\u64A4\u9500\u4E32\u53E3\u6743\u9650\u5931\u8D25:'
+  unsupported: '当前浏览器不支持 Web Serial API，请使用 Chrome 89+ 或 Edge 89+，并通过 HTTPS 或 localhost 访问',
+  connectSuccess: '串口连接成功',
+  noPortSelected: '未选择串口设备',
+  portBusy: '串口已被占用或处于非法状态，请关闭其他串口软件后重试',
+  connectFailed: '串口连接失败: ',
+  disconnected: '串口已断开',
+  disconnectFailed: '断开串口失败: ',
+  deviceConnected: '检测到串口设备已插入',
+  deviceDisconnected: '串口设备已拔出',
+  grantedPort: '已授权串口设备',
+  readError: '读取串口数据时发生错误:',
+  forgetFailed: '撤销串口权限失败:'
 };
 
 /** @see https://developer.chrome.com/docs/capabilities/serial */
@@ -85,11 +76,7 @@ function getPortDisplayName(port: SerialPort) {
 }
 
 /** Prefer a single granted port; otherwise prompt the user. */
-async function requestSerialPort(
-  filters: SerialPortFilter[] | undefined,
-  preferGrantedPort: boolean,
-  logger: SerialPortLogger
-) {
+async function requestSerialPort(filters: SerialPortFilter[] | undefined, preferGrantedPort: boolean, logger: SerialPortLogger) {
   const ports = preferGrantedPort ? await navigator.serial.getPorts() : [];
   logger.info('getPorts result', { count: ports.length, preferGrantedPort });
 
@@ -99,7 +86,10 @@ async function requestSerialPort(
   }
 
   if (ports.length > 1) {
-    logger.warn('multiple granted ports, opening picker', ports.map((p) => p.getInfo?.()));
+    logger.warn(
+      'multiple granted ports, opening picker',
+      ports.map((p) => p.getInfo?.())
+    );
   }
 
   const port = await navigator.serial.requestPort(filters?.length ? { filters } : undefined);
@@ -125,7 +115,10 @@ export function useSerialPort(onPacket: (packet: string) => void, options: UseSe
   let readableStreamClosed: Promise<void> | null = null;
   let readLoopPromise: Promise<void> | null = null;
   let noDataTimer: ReturnType<typeof setTimeout> | null = null;
-  let lastEmittedPacket = '';
+
+  /** 当前 tee() 调试分支的取消控制器与完成 Promise，断口时需先取消以解除 readable 流的锁 */
+  let rawMonitorAbort: AbortController | null = null;
+  let rawMonitorDone: Promise<void> | null = null;
 
   const clearNoDataTimer = () => {
     if (noDataTimer) {
@@ -147,12 +140,7 @@ export function useSerialPort(onPacket: (packet: string) => void, options: UseSe
       if (stats.totalRawBytes === 0) {
         logger.warn('no raw bytes received yet', {
           waitedMs: noDataWarnMs,
-          hints: [
-            'check baudRate matches scale (default 9600)',
-            'close other serial tools using same COM port',
-            'some scales need DTR/RTS or stable weight trigger',
-            'open chrome://device-log for Web Serial events'
-          ],
+          hints: ['check baudRate matches scale (default 9600)', 'close other serial tools using same COM port', 'some scales need DTR/RTS or stable weight trigger', 'open chrome://device-log for Web Serial events'],
           stats
         });
         return;
@@ -160,11 +148,7 @@ export function useSerialPort(onPacket: (packet: string) => void, options: UseSe
       if (stats.totalPackets === 0) {
         logger.warn('raw bytes received but no complete packet parsed', {
           waitedMs: noDataWarnMs,
-          hints: [
-            'scale may use non-standard line ending',
-            'check buffer waiting for delimiter logs above',
-            'verify data format in raw hex/ascii logs'
-          ],
+          hints: ['scale may use non-standard line ending', 'check buffer waiting for delimiter logs above', 'verify data format in raw hex/ascii logs'],
           stats
         });
       }
@@ -176,11 +160,7 @@ export function useSerialPort(onPacket: (packet: string) => void, options: UseSe
     if (!trimmed) {
       return;
     }
-    if (trimmed === lastEmittedPacket) {
-      logger.info('skip duplicate packet', { packet: trimmed });
-      return;
-    }
-    lastEmittedPacket = trimmed;
+    // 不去重：每次收到串口完整包都交给业务层，保证实际重量实时更新
     debugStats.value.totalPackets += 1;
     debugStats.value.lastPacketAt = new Date().toISOString();
     logger.packet('line parsed', trimmed);
@@ -214,13 +194,12 @@ export function useSerialPort(onPacket: (packet: string) => void, options: UseSe
       logger.info('read loop started', { loop, readable: !!serialPort.readable, writable: !!serialPort.writable });
 
       const [processStream, debugStream] = serialPort.readable.tee();
-      void monitorRawSerialStream(debugStream, logger, () => keepReading, onRawChunk);
+      rawMonitorAbort = new AbortController();
+      rawMonitorDone = monitorRawSerialStream(debugStream, logger, () => keepReading, onRawChunk, rawMonitorAbort.signal);
 
       const textDecoder = new TextDecoderStream();
       readableStreamClosed = processStream.pipeTo(textDecoder.writable);
-      reader = textDecoder.readable
-        .pipeThrough(new TransformStream(new SerialPacketTransformer(logPendingBuffer)))
-        .getReader();
+      reader = textDecoder.readable.pipeThrough(new TransformStream(new SerialPacketTransformer(logPendingBuffer))).getReader();
 
       try {
         while (keepReading) {
@@ -261,6 +240,8 @@ export function useSerialPort(onPacket: (packet: string) => void, options: UseSe
 
       if (!keepReading || !serialPort.readable) {
         logger.info('read loop exit', { keepReading, readable: !!serialPort?.readable, stats: { ...debugStats.value } });
+        rawMonitorAbort = null;
+        rawMonitorDone = null;
         break;
       }
 
@@ -322,7 +303,6 @@ export function useSerialPort(onPacket: (packet: string) => void, options: UseSe
         ...createEmptySerialDebugStats(),
         connectedAt: new Date().toISOString()
       };
-      lastEmittedPacket = '';
 
       keepReading = true;
       isConnected.value = true;
@@ -366,11 +346,30 @@ export function useSerialPort(onPacket: (packet: string) => void, options: UseSe
         }
       }
 
+      // 取消 tee() 调试分支：不取消它会让 readable 流一直被锁定，导致 port.close() 失败
+      const abort = rawMonitorAbort;
+      const monitorDone = rawMonitorDone;
+      rawMonitorAbort = null;
+      rawMonitorDone = null;
+      if (abort) {
+        try {
+          abort.abort();
+        } catch {
+          // ignore
+        }
+      }
+
       if (readLoopPromise) {
         await readLoopPromise.catch(() => {
           // ignore
         });
         readLoopPromise = null;
+      }
+
+      if (monitorDone) {
+        await monitorDone.catch(() => {
+          // ignore
+        });
       }
 
       if (readableStreamClosed) {
@@ -383,8 +382,9 @@ export function useSerialPort(onPacket: (packet: string) => void, options: UseSe
       if (serialPort) {
         try {
           await serialPort.close();
-        } catch {
-          // ignore
+        } catch (error) {
+          // 若流仍未释放，close 会抛 InvalidStateError
+          logger.warn('port close error', error);
         }
       }
 

@@ -1,29 +1,10 @@
 <template>
   <div class="trace-table-wrap">
-    <el-table
-      :data="data"
-      :border="bordered"
-      size="small"
-      stripe
-      :header-cell-style="headerStyle"
-      class="trace-table"
-    >
-      <el-table-column type="index" :label="MSG.index" width="55" align="center" />
-      <el-table-column
-        v-for="(col, colIndex) in columns"
-        :key="col.prop"
-        :label="col.label"
-        :prop="col.prop"
-        :width="colIndex < columns.length - 1 ? col.width : undefined"
-        :min-width="colIndex === columns.length - 1 ? col.minWidth || col.width || 100 : col.minWidth"
-        align="center"
-        show-overflow-tooltip
-      >
+    <el-table :data="data" :border="bordered" size="small" stripe :header-cell-style="headerStyle" class="trace-table">
+      <el-table-column type="index" label="序号" width="55" align="center" />
+      <el-table-column v-for="col in columns" :key="col.prop" :label="col.label" :prop="col.prop" align="center">
         <template v-if="col.slot" #default="scope">
           <slot :name="col.slot" :row="scope.row" />
-        </template>
-        <template v-else-if="col.prop === 'itemRevision'" #default="scope">
-          {{ formatItemRevision(scope.row) }}
         </template>
       </el-table-column>
     </el-table>
@@ -31,8 +12,6 @@
 </template>
 
 <script setup lang="ts">
-import { MSG } from '../messages';
-
 interface ColumnDef {
   label: string;
   prop: string;
@@ -55,12 +34,6 @@ const headerStyle = {
   color: '#606266',
   fontWeight: '600'
 };
-
-const formatItemRevision = (row: Record<string, any>) => {
-  const item = row.item ?? '';
-  const revision = row.itemRevision ?? '';
-  return `${item}/${revision}`;
-};
 </script>
 
 <style scoped lang="scss">
@@ -71,6 +44,11 @@ const formatItemRevision = (row: Record<string, any>) => {
 
 .trace-table {
   width: 100%;
+
+  :deep(.el-table__cell) {
+    white-space: normal;
+    word-break: break-all;
+  }
 
   :deep(.el-table__inner-wrapper) {
     width: 100% !important;
