@@ -51,18 +51,9 @@
 
       <div v-loading="loading">
         <div v-if="viewMode === 'card'" class="device-card-grid">
-          <div
-            v-for="row in deviceList"
-            :key="row.id"
-            class="device-card"
-            :class="{ online: isOnline(row), selected: isCardSelected(row.id) }"
-          >
+          <div v-for="row in deviceList" :key="row.id" class="device-card" :class="{ online: isOnline(row), selected: isCardSelected(row.id) }">
             <div class="device-card__top">
-              <el-checkbox
-                :model-value="isCardSelected(row.id)"
-                @change="(val: CheckboxValueType) => toggleCardSelect(row, !!val)"
-                @click.stop
-              />
+              <el-checkbox :model-value="isCardSelected(row.id)" @change="(val: CheckboxValueType) => toggleCardSelect(row, !!val)" @click.stop />
               <div class="device-avatar" :class="{ online: isOnline(row) }">
                 <el-icon><Monitor /></el-icon>
               </div>
@@ -99,26 +90,12 @@
               <dict-tag :options="sys_normal_disable" :value="row.status" />
               <div class="device-card__actions">
                 <el-tooltip content="测试连接" placement="top" effect="dark" :show-after="200">
-                  <el-button
-                    v-hasPermi="['iot:device:query']"
-                    link
-                    type="primary"
-                    icon="Connection"
-                    :loading="actionId === row.id && actionType === 'test'"
-                    @click="handleTest(row)"
-                  />
+                  <el-button v-hasPermi="['iot:device:query']" link type="primary" icon="Connection" :loading="actionId === row.id && actionType === 'test'" @click="handleTest(row)" />
                 </el-tooltip>
                 <el-tooltip content="读取采集" placement="top" effect="dark" :show-after="200">
-                  <el-button
-                    v-hasPermi="['iot:device:query']"
-                    link
-                    type="success"
-                    icon="DataLine"
-                    :loading="actionId === row.id && actionType === 'read'"
-                    @click="handleRead(row)"
-                  />
+                  <el-button v-hasPermi="['iot:device:query']" link type="success" icon="DataLine" :loading="actionId === row.id && actionType === 'read'" @click="handleRead(row)" />
                 </el-tooltip>
-                <el-tooltip :content="isTcpClientRow(row) ? '命令配置（非 Modbus 寄存器）' : '点位配置'" placement="top" effect="dark" :show-after="200">
+                <el-tooltip :content="isTcpClientRow(row) ? '数据解析' : '点位配置'" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:point:list']" link type="primary" icon="Coin" @click="goPoints(row)" />
                 </el-tooltip>
                 <el-tooltip content="编辑设备" placement="top" effect="dark" :show-after="200">
@@ -133,14 +110,7 @@
           <el-empty v-if="!deviceList.length" description="暂无采集设备" />
         </div>
 
-        <el-table
-          v-else
-          :data="deviceList"
-          border
-          stripe
-          class="device-table"
-          @selection-change="handleSelectionChange"
-        >
+        <el-table v-else :data="deviceList" border stripe class="device-table" @selection-change="handleSelectionChange">
           <el-table-column type="selection" width="50" align="center" />
           <el-table-column label="设备编码" prop="deviceCode" min-width="130" />
           <el-table-column label="设备名称" prop="deviceName" min-width="140" />
@@ -165,26 +135,12 @@
             <template #default="scope">
               <div class="device-ops">
                 <el-tooltip content="测试连接" placement="top" effect="dark" :show-after="200">
-                  <el-button
-                    v-hasPermi="['iot:device:query']"
-                    link
-                    type="primary"
-                    icon="Connection"
-                    :loading="actionId === scope.row.id && actionType === 'test'"
-                    @click="handleTest(scope.row)"
-                  />
+                  <el-button v-hasPermi="['iot:device:query']" link type="primary" icon="Connection" :loading="actionId === scope.row.id && actionType === 'test'" @click="handleTest(scope.row)" />
                 </el-tooltip>
                 <el-tooltip content="读取采集" placement="top" effect="dark" :show-after="200">
-                  <el-button
-                    v-hasPermi="['iot:device:query']"
-                    link
-                    type="success"
-                    icon="DataLine"
-                    :loading="actionId === scope.row.id && actionType === 'read'"
-                    @click="handleRead(scope.row)"
-                  />
+                  <el-button v-hasPermi="['iot:device:query']" link type="success" icon="DataLine" :loading="actionId === scope.row.id && actionType === 'read'" @click="handleRead(scope.row)" />
                 </el-tooltip>
-                <el-tooltip :content="isTcpClientRow(scope.row) ? '命令配置（非 Modbus 寄存器）' : '点位配置'" placement="top" effect="dark" :show-after="200">
+                <el-tooltip :content="isTcpClientRow(scope.row) ? '数据解析' : '点位配置'" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:point:list']" link type="primary" icon="Coin" @click="goPoints(scope.row)" />
                 </el-tooltip>
                 <el-tooltip content="编辑设备" placement="top" effect="dark" :show-after="200">
@@ -204,15 +160,6 @@
 
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="820px" destroy-on-close append-to-body>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
-        <el-alert
-          v-if="isTcpClient"
-          class="mb-3"
-          type="info"
-          :closable="false"
-          show-icon
-          title="TCP Client 模式"
-          description="与 Modbus TCP 不同：本模式连接设备 TCP Server，用命令报文交互。保活命令/频率在下方配置；命令点位可选（不是寄存器地址）。连接状态由测试连接或采集结果更新。"
-        />
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="设备编码" prop="deviceCode">
@@ -224,24 +171,10 @@
               <el-input v-model="form.deviceName" placeholder="设备名称" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="24">
             <el-form-item label="协议" prop="protocol">
               <el-select v-model="form.protocol" style="width: 100%" @change="onProtocolChange">
                 <el-option v-for="item in IOT_PROTOCOL_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="传输链路" prop="transportCode">
-              <el-select
-                v-model="form.transportCode"
-                :clearable="!isTcpClient"
-                :disabled="isTcpClient"
-                placeholder="请选择传输链路"
-                style="width: 100%"
-                @change="onTransportChange"
-              >
-                <el-option v-for="item in IOT_TRANSPORT_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -258,7 +191,6 @@
           <el-col :span="8">
             <el-form-item :label="isTcpClient ? '采集频率(ms)' : '采集频率(ms)'" prop="collectInterval">
               <el-input-number v-model="form.collectInterval" :min="100" :step="100" controls-position="right" style="width: 100%" />
-              <div v-if="isTcpClient" class="form-tip">业务命令轮询间隔（有命令点位时）</div>
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -273,9 +205,6 @@
           </el-col>
 
           <template v-if="isTcpClient">
-            <el-col :span="24">
-              <div class="form-section-title">TCP 保活（按品牌协议填写，与 Modbus 无关）</div>
-            </el-col>
             <el-col :span="8">
               <el-form-item label="启用心跳">
                 <el-switch v-model="tcpHeartbeat.heartbeatEnable" />
@@ -283,14 +212,7 @@
             </el-col>
             <el-col :span="8">
               <el-form-item label="保活频率(ms)">
-                <el-input-number
-                  v-model="tcpHeartbeat.heartbeatInterval"
-                  :min="1000"
-                  :step="1000"
-                  :disabled="!tcpHeartbeat.heartbeatEnable"
-                  controls-position="right"
-                  style="width: 100%"
-                />
+                <el-input-number v-model="tcpHeartbeat.heartbeatInterval" :min="1000" :step="1000" :disabled="!tcpHeartbeat.heartbeatEnable" controls-position="right" style="width: 100%" />
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -300,12 +222,14 @@
             </el-col>
             <el-col :span="24">
               <el-form-item label="保活命令">
-                <el-input
-                  v-model="tcpHeartbeat.heartbeat"
-                  :disabled="!tcpHeartbeat.heartbeatEnable"
-                  placeholder='按品牌填写，例 {"Heart":"Ask"} 或 text:PING\r\n 或 hex:FF01...'
-                />
+                <el-input v-model="tcpHeartbeat.heartbeat" :disabled="!tcpHeartbeat.heartbeatEnable" placeholder='按品牌填写，例 {"Heart":"Ask"} 或 text:PING\r\n 或 hex:FF01...' />
                 <div class="form-tip">连接后按保活频率发送；每次业务读写前也会先发一次。不填则不发。</div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-form-item label="业务请求">
+                <el-input v-model="tcpRequest" placeholder="可选。空=被动收帧；例 text:STATUS? 或 hex:FF01..." @change="applyTcpConnectionParamsToForm" />
+                <div class="form-tip">主动轮询时发送；写入 connectionParamsJson.request。点位只做 V.GetData 映射。</div>
               </el-form-item>
             </el-col>
             <el-col v-if="form.id" :span="12">
@@ -319,26 +243,14 @@
           <el-col v-if="isModbus && !isTcpClient" :span="24">
             <el-form-item label="地址编号">
               <el-select v-model="modbusAddressBase" style="width: 100%">
-                <el-option
-                  v-for="item in IOT_MODBUS_ADDRESS_BASE_OPTIONS"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
+                <el-option v-for="item in IOT_MODBUS_ADDRESS_BASE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
-              <div class="form-tip">对应 Modbus Poll：PLC Addresses（从1开始）/ Protocol Addresses（从0开始）。PLC4X 按从1开始寻址，选「协议地址」时采集自动 +1。</div>
             </el-form-item>
           </el-col>
           <el-col :span="24">
-            <el-form-item :label="isTcpClient ? '帧参数JSON' : '连接参数JSON'" prop="connectionParamsJson">
-              <el-input
-                v-model="form.connectionParamsJson"
-                type="textarea"
-                :rows="isTcpClient || isSerialLink ? 5 : 2"
-                :placeholder="connectionParamsPlaceholder"
-              />
-              <div v-if="isModbus && !isTcpClient" class="form-tip">站号等 PLC4X 参数；地址编号请用上方选项，提交时写入 JSON。</div>
-              <div v-if="isTcpClient" class="form-tip">编码/拆包等高级参数；保活请用上方表单，提交时自动写入 JSON。</div>
+            <el-form-item label="连接参数JSON" prop="connectionParamsJson">
+              <el-input v-model="form.connectionParamsJson" type="textarea" :rows="isTcpClient || isSerialLink ? 5 : 3" :placeholder="connectionParamsPlaceholder" @change="onConnectionParamsJsonChange" />
+              <div v-if="isTcpClient" class="form-tip">随上方保活参数自动同步；也可直接改 JSON，失焦后回写到表单。</div>
             </el-form-item>
           </el-col>
           <el-col v-if="!isTcpClient" :span="24">
@@ -346,16 +258,16 @@
               <el-input v-model="form.connectionUrl" placeholder="优先，如 modbus-tcp://192.168.1.1:502 或 s7://10.0.0.1?rack=0&slot=1" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="位置" prop="deviceLocation">
-              <el-input v-model="form.deviceLocation" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
+          <el-col :span="24">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="form.status">
                 <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">{{ dict.label }}</el-radio>
               </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="位置" prop="deviceLocation">
+              <el-input v-model="form.deviceLocation" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -366,25 +278,21 @@
       </template>
     </el-dialog>
 
-    <IotReadCollectDialog
-      v-model:visible="readDialog.visible"
-      :title="readDialog.title"
-      :rows="readDialog.rows"
-      :refreshing="actionType === 'read'"
-      @refresh="refreshRead"
-    />
+    <IotReadCollectDialog v-model:visible="readDialog.visible" :title="readDialog.title" :rows="readDialog.rows" :refreshing="actionType === 'read' && !readDialog.isTcp" @refresh="refreshRead" />
+    <TcpCollectDialog v-model:visible="tcpReadDialog.visible" :title="tcpReadDialog.title" :raw-payload="tcpReadDialog.rawPayload" :points="tcpReadDialog.points" :refreshing="actionType === 'read' && readDialog.isTcp" @refresh="refreshTcpRead" />
   </div>
 </template>
 
 <script setup name="IotDevice" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, computed, reactive, ref, toRefs, onMounted } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, computed, reactive, ref, toRefs, onMounted, watch } from 'vue';
 import type { CheckboxValueType, ElFormInstance } from 'element-plus';
 import { Monitor } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
-import { listDevice, getDevice, addDevice, updateDevice, delDevice, testDeviceConnection, readDevicePoints, PointReadItem } from '@/api/iot/device';
+import { listDevice, getDevice, addDevice, updateDevice, delDevice, testDeviceConnection, readDevicePoints, readDeviceTcpPoints, PointReadItem } from '@/api/iot/device';
 import { listPoint } from '@/api/iot/point';
 import { DeviceForm, DeviceQuery, DeviceVO } from '@/api/iot/device/types';
 import IotReadCollectDialog from '@/views/iot/components/IotReadCollectDialog.vue';
+import TcpCollectDialog from '@/views/iot/components/TcpCollectDialog.vue';
 
 // ===== iot-options (inlined) =====
 /** IoT 前端写死选项（PLC4X 协议编码） */
@@ -402,13 +310,6 @@ const IOT_PROTOCOL_OPTIONS: IotOption[] = [
   { label: 'OPC UA', value: 'opcua' },
   { label: 'EtherNet/IP', value: 'eip' },
   { label: 'TCP Client', value: 'tcp-client' }
-];
-
-/** 传输链路协议（iot_device.transport_code） */
-const IOT_TRANSPORT_OPTIONS: IotOption[] = [
-  { label: 'TCP 客户端', value: 'TCP_CLIENT' },
-  { label: 'RS232 串口', value: 'SERIAL_RS232' },
-  { label: 'RS485 串口', value: 'SERIAL_RS485' }
 ];
 
 /** 历史传输编码兼容映射 */
@@ -435,13 +336,7 @@ function normalizeTransportValue(value?: string): string {
   const raw = value.trim();
   const key = raw.toLowerCase().replace(/[\s]+/g, '-').replace(/_/g, '-');
   const compact = key.replace(/-/g, '');
-  return (
-    TRANSPORT_ALIAS_MAP[raw] ||
-    TRANSPORT_ALIAS_MAP[key] ||
-    TRANSPORT_ALIAS_MAP[compact] ||
-    TRANSPORT_ALIAS_MAP[raw.toUpperCase()] ||
-    raw
-  );
+  return TRANSPORT_ALIAS_MAP[raw] || TRANSPORT_ALIAS_MAP[key] || TRANSPORT_ALIAS_MAP[compact] || TRANSPORT_ALIAS_MAP[raw.toUpperCase()] || raw;
 }
 
 function isTcpTransport(value?: string): boolean {
@@ -519,56 +414,21 @@ interface IotPlcFormatGroup {
   options: IotPlcFormatOption[];
 }
 
-function plcFmt(
-  label: string,
-  value: string,
-  dataType: string,
-  displayFormat: string,
-  byteOrder: string
-): IotPlcFormatOption {
+function plcFmt(label: string, value: string, dataType: string, displayFormat: string, byteOrder: string): IotPlcFormatOption {
   return { label, value, dataType, displayFormat, byteOrder };
 }
 
-const POLL_FMT_INT_OPTIONS: IotPlcFormatOption[] = [
-  plcFmt('Signed', 'SIGNED', 'INT', 'SIGNED', 'ABCD'),
-  plcFmt('Unsigned', 'UNSIGNED', 'UINT', 'UNSIGNED', 'ABCD'),
-  plcFmt('Hex', 'HEX', 'INT', 'HEX', 'ABCD'),
-  plcFmt('Binary', 'BINARY', 'INT', 'BINARY', 'ABCD')
-];
+const POLL_FMT_INT_OPTIONS: IotPlcFormatOption[] = [plcFmt('Signed', 'SIGNED', 'INT', 'SIGNED', 'ABCD'), plcFmt('Unsigned', 'UNSIGNED', 'UINT', 'UNSIGNED', 'ABCD'), plcFmt('Hex', 'HEX', 'INT', 'HEX', 'ABCD'), plcFmt('Binary', 'BINARY', 'INT', 'BINARY', 'ABCD')];
 
-const POLL_FMT_LONG_OPTIONS: IotPlcFormatOption[] = [
-  plcFmt('Long AB CD', 'LONG_ABCD', 'DINT', 'SIGNED', 'ABCD'),
-  plcFmt('Long CD AB', 'LONG_CDAB', 'DINT', 'SIGNED', 'CDAB'),
-  plcFmt('Long BA DC', 'LONG_BADC', 'DINT', 'SIGNED', 'BADC'),
-  plcFmt('Long DC BA', 'LONG_DCBA', 'DINT', 'SIGNED', 'DCBA')
-];
+const POLL_FMT_LONG_OPTIONS: IotPlcFormatOption[] = [plcFmt('Long AB CD', 'LONG_ABCD', 'DINT', 'SIGNED', 'ABCD'), plcFmt('Long CD AB', 'LONG_CDAB', 'DINT', 'SIGNED', 'CDAB'), plcFmt('Long BA DC', 'LONG_BADC', 'DINT', 'SIGNED', 'BADC'), plcFmt('Long DC BA', 'LONG_DCBA', 'DINT', 'SIGNED', 'DCBA')];
 
-const POLL_FMT_FLOAT_OPTIONS: IotPlcFormatOption[] = [
-  plcFmt('Float AB CD', 'FLOAT_ABCD', 'FLOAT', 'SIGNED', 'ABCD'),
-  plcFmt('Float CD AB', 'FLOAT_CDAB', 'FLOAT', 'SIGNED', 'CDAB'),
-  plcFmt('Float BA DC', 'FLOAT_BADC', 'FLOAT', 'SIGNED', 'BADC'),
-  plcFmt('Float DC BA', 'FLOAT_DCBA', 'FLOAT', 'SIGNED', 'DCBA')
-];
+const POLL_FMT_FLOAT_OPTIONS: IotPlcFormatOption[] = [plcFmt('Float AB CD', 'FLOAT_ABCD', 'FLOAT', 'SIGNED', 'ABCD'), plcFmt('Float CD AB', 'FLOAT_CDAB', 'FLOAT', 'SIGNED', 'CDAB'), plcFmt('Float BA DC', 'FLOAT_BADC', 'FLOAT', 'SIGNED', 'BADC'), plcFmt('Float DC BA', 'FLOAT_DCBA', 'FLOAT', 'SIGNED', 'DCBA')];
 
-const POLL_FMT_DOUBLE_OPTIONS: IotPlcFormatOption[] = [
-  plcFmt('Double AB CD EF GH', 'DOUBLE_ABCDEFGH', 'DOUBLE', 'SIGNED', 'ABCDEFGH'),
-  plcFmt('Double GH EF CD AB', 'DOUBLE_GHEFCDAB', 'DOUBLE', 'SIGNED', 'GHEFCDAB'),
-  plcFmt('Double BA DC FE HG', 'DOUBLE_BADCFEHG', 'DOUBLE', 'SIGNED', 'BADCFEHG'),
-  plcFmt('Double HG FE DC BA', 'DOUBLE_HGFEDCBA', 'DOUBLE', 'SIGNED', 'HGFEDCBA')
-];
+const POLL_FMT_DOUBLE_OPTIONS: IotPlcFormatOption[] = [plcFmt('Double AB CD EF GH', 'DOUBLE_ABCDEFGH', 'DOUBLE', 'SIGNED', 'ABCDEFGH'), plcFmt('Double GH EF CD AB', 'DOUBLE_GHEFCDAB', 'DOUBLE', 'SIGNED', 'GHEFCDAB'), plcFmt('Double BA DC FE HG', 'DOUBLE_BADCFEHG', 'DOUBLE', 'SIGNED', 'BADCFEHG'), plcFmt('Double HG FE DC BA', 'DOUBLE_HGFEDCBA', 'DOUBLE', 'SIGNED', 'HGFEDCBA')];
 
-const POLL_FMT_STRING_OPTIONS: IotPlcFormatOption[] = [
-  plcFmt('String AB CD', 'STR_ABCD', 'STRING', 'SIGNED', 'ABCD'),
-  plcFmt('String CD AB', 'STR_CDAB', 'STRING', 'SIGNED', 'CDAB')
-];
+const POLL_FMT_STRING_OPTIONS: IotPlcFormatOption[] = [plcFmt('String AB CD', 'STR_ABCD', 'STRING', 'SIGNED', 'ABCD'), plcFmt('String CD AB', 'STR_CDAB', 'STRING', 'SIGNED', 'CDAB')];
 
-const POLL_UNIFIED_FORMAT_OPTIONS: IotPlcFormatOption[] = [
-  ...POLL_FMT_INT_OPTIONS,
-  ...POLL_FMT_LONG_OPTIONS,
-  ...POLL_FMT_FLOAT_OPTIONS,
-  ...POLL_FMT_DOUBLE_OPTIONS,
-  ...POLL_FMT_STRING_OPTIONS
-];
+const POLL_UNIFIED_FORMAT_OPTIONS: IotPlcFormatOption[] = [...POLL_FMT_INT_OPTIONS, ...POLL_FMT_LONG_OPTIONS, ...POLL_FMT_FLOAT_OPTIONS, ...POLL_FMT_DOUBLE_OPTIONS, ...POLL_FMT_STRING_OPTIONS];
 
 /** Poll 完整 Format 分组（选项英文，与 Modbus Poll 菜单一致） */
 function resolvePollUnifiedFormatGroups(): IotPlcFormatGroup[] {
@@ -600,12 +460,7 @@ function encodePlcFormat(displayFormat?: string, byteOrder?: string, dataType?: 
   const display = (displayFormat || 'SIGNED').toUpperCase();
   const order = (byteOrder || defaultByteOrder(dataType)).toUpperCase();
 
-  const exact = POLL_UNIFIED_FORMAT_OPTIONS.find(
-    (o) =>
-      normalizePlcDataType(o.dataType) === type &&
-      o.displayFormat.toUpperCase() === display &&
-      o.byteOrder.toUpperCase() === order
-  );
+  const exact = POLL_UNIFIED_FORMAT_OPTIONS.find((o) => normalizePlcDataType(o.dataType) === type && o.displayFormat.toUpperCase() === display && o.byteOrder.toUpperCase() === order);
   if (exact) return exact.value;
 
   if (type === 'FLOAT') {
@@ -626,11 +481,7 @@ function encodePlcFormat(displayFormat?: string, byteOrder?: string, dataType?: 
 }
 
 /** Poll Format 值 → 数据类型 + displayFormat + byteOrder */
-function decodePlcFormat(
-  formatValue: string,
-  _dataType?: string,
-  current?: { dataType?: string; displayFormat?: string; byteOrder?: string }
-): { dataType: string; displayFormat: string; byteOrder: string } {
+function decodePlcFormat(formatValue: string, _dataType?: string, current?: { dataType?: string; displayFormat?: string; byteOrder?: string }): { dataType: string; displayFormat: string; byteOrder: string } {
   const option = POLL_UNIFIED_FORMAT_OPTIONS.find((o) => o.value === formatValue);
   if (!option) {
     return {
@@ -823,7 +674,10 @@ interface IotAddressBuilder {
 
 function normalizeProtocolValue(value?: string): string {
   if (!value) return '';
-  const key = value.trim().toLowerCase().replace(/[\s_]+/g, '-');
+  const key = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, '-');
   const compact = key.replace(/-/g, '');
   const map: Record<string, string> = {
     'modbus-tcp': 'modbus-tcp',
@@ -1112,7 +966,8 @@ const IOT_TCP_CLIENT_PARAMS_EXAMPLE = `{
   "frameMode": "json",
   "soTimeout": 5000,
   "maxFrameBytes": 65536,
-  "responseAsHex": false
+  "responseAsHex": false,
+  "request": ""
 }`;
 
 /** TCP Client 保活表单（写入 connectionParamsJson） */
@@ -1171,10 +1026,7 @@ function parseConnectionParamsJson(json?: string): Record<string, any> {
 function parseTcpHeartbeat(json?: string): TcpClientHeartbeatForm {
   const params = parseConnectionParamsJson(json);
   const heartbeat = typeof params.heartbeat === 'string' ? params.heartbeat : '';
-  const enable =
-    typeof params.heartbeatEnable === 'boolean'
-      ? params.heartbeatEnable
-      : !!heartbeat;
+  const enable = typeof params.heartbeatEnable === 'boolean' ? params.heartbeatEnable : !!heartbeat;
   return {
     heartbeatEnable: enable,
     heartbeat,
@@ -1183,19 +1035,28 @@ function parseTcpHeartbeat(json?: string): TcpClientHeartbeatForm {
   };
 }
 
-/** 把保活字段写回连接参数 JSON（保留其它帧参数） */
-function mergeTcpHeartbeat(json: string | undefined, heartbeat: TcpClientHeartbeatForm): string {
+/** 把保活字段 + 业务请求写回连接参数 JSON（保留其它帧参数） */
+function mergeTcpHeartbeat(json: string | undefined, heartbeat: TcpClientHeartbeatForm, request?: string): string {
   const params = parseConnectionParamsJson(json);
-  if (heartbeat.heartbeatEnable && heartbeat.heartbeat?.trim()) {
+  if (heartbeat.heartbeatEnable) {
     params.heartbeatEnable = true;
-    params.heartbeat = heartbeat.heartbeat.trim();
     params.heartbeatInterval = heartbeat.heartbeatInterval > 0 ? heartbeat.heartbeatInterval : 30000;
     params.heartbeatWaitReply = !!heartbeat.heartbeatWaitReply;
+    if (heartbeat.heartbeat?.trim()) {
+      params.heartbeat = heartbeat.heartbeat.trim();
+    } else {
+      delete params.heartbeat;
+    }
   } else {
     delete params.heartbeatEnable;
     delete params.heartbeat;
     delete params.heartbeatInterval;
     delete params.heartbeatWaitReply;
+  }
+  if (request?.trim()) {
+    params.request = request.trim();
+  } else {
+    delete params.request;
   }
   return JSON.stringify(params, null, 2);
 }
@@ -1224,6 +1085,7 @@ const multiple = ref(true);
 const actionId = ref<string | number>();
 const actionType = ref<'test' | 'read'>();
 const tcpHeartbeat = reactive<TcpClientHeartbeatForm>(createDefaultTcpHeartbeat());
+const tcpRequest = ref('');
 const modbusAddressBase = ref('1');
 const formOnlineStatus = ref<string>('0');
 const formLastOnlineTime = ref<string>('');
@@ -1233,7 +1095,15 @@ const readDialog = reactive({
   visible: false,
   title: '采集结果',
   deviceId: undefined as string | number | undefined,
+  isTcp: false,
   rows: [] as PointReadItem[]
+});
+const tcpReadDialog = reactive({
+  visible: false,
+  title: 'TCP 采集结果',
+  deviceId: undefined as string | number | undefined,
+  rawPayload: undefined as unknown,
+  points: [] as PointReadItem[]
 });
 const pageOnlineCount = computed(() => deviceList.value.filter((d) => isOnline(d)).length);
 const pageOfflineCount = computed(() => deviceList.value.length - pageOnlineCount.value);
@@ -1279,8 +1149,7 @@ const { queryParams, form, rules } = toRefs(data);
 
 const isOnline = (row: DeviceVO) => String(row.onlineStatus) === '1';
 
-const protocolLabel = (protocol?: string) =>
-  IOT_PROTOCOL_OPTIONS.find((item) => item.value === protocol)?.label || protocol || '—';
+const protocolLabel = (protocol?: string) => IOT_PROTOCOL_OPTIONS.find((item) => item.value === protocol)?.label || protocol || '—';
 
 const isTcpClientRow = (row: DeviceVO) => isTcpClientProtocol(row.protocol);
 
@@ -1294,9 +1163,7 @@ const hostPlaceholder = computed(() => {
 });
 const connectionParamsPlaceholder = computed(() => {
   if (isSerialLink.value) {
-    return form.value.transportCode === 'SERIAL_RS485'
-      ? IOT_SERIAL_PARAMS_EXAMPLE.replace('"rs485": false', '"rs485": true')
-      : IOT_SERIAL_PARAMS_EXAMPLE;
+    return form.value.transportCode === 'SERIAL_RS485' ? IOT_SERIAL_PARAMS_EXAMPLE.replace('"rs485": false', '"rs485": true') : IOT_SERIAL_PARAMS_EXAMPLE;
   }
   if (isTcpClient.value) return IOT_TCP_CLIENT_PARAMS_EXAMPLE;
   if (isModbus.value) {
@@ -1307,11 +1174,54 @@ const connectionParamsPlaceholder = computed(() => {
 
 const syncTcpHeartbeatFromForm = () => {
   Object.assign(tcpHeartbeat, parseTcpHeartbeat(form.value.connectionParamsJson));
+  const params = parseConnectionParamsJson(form.value.connectionParamsJson);
+  tcpRequest.value = typeof params.request === 'string' ? params.request : '';
 };
 
 const applyTcpHeartbeatToForm = () => {
   if (!isTcpClient.value) return;
-  form.value.connectionParamsJson = mergeTcpHeartbeat(form.value.connectionParamsJson, tcpHeartbeat);
+  form.value.connectionParamsJson = mergeTcpHeartbeat(form.value.connectionParamsJson, tcpHeartbeat, tcpRequest.value);
+};
+
+const applyTcpConnectionParamsToForm = () => {
+  applyTcpHeartbeatToForm();
+};
+
+/** 避免保活表单 ↔ JSON 双向同步互相覆盖 */
+let syncingTcpConnectionParams = false;
+
+watch(
+  tcpHeartbeat,
+  () => {
+    if (!isTcpClient.value || syncingTcpConnectionParams) return;
+    syncingTcpConnectionParams = true;
+    try {
+      applyTcpHeartbeatToForm();
+    } finally {
+      syncingTcpConnectionParams = false;
+    }
+  },
+  { deep: true }
+);
+
+watch(tcpRequest, () => {
+  if (!isTcpClient.value || syncingTcpConnectionParams) return;
+  syncingTcpConnectionParams = true;
+  try {
+    applyTcpHeartbeatToForm();
+  } finally {
+    syncingTcpConnectionParams = false;
+  }
+});
+
+const onConnectionParamsJsonChange = () => {
+  if (!isTcpClient.value || syncingTcpConnectionParams) return;
+  syncingTcpConnectionParams = true;
+  try {
+    syncTcpHeartbeatFromForm();
+  } finally {
+    syncingTcpConnectionParams = false;
+  }
 };
 
 const syncModbusAddressBaseFromForm = () => {
@@ -1378,10 +1288,7 @@ const onTransportChange = (value?: string) => {
     form.value.port = undefined;
     form.value.connectionUrl = undefined;
     if (!form.value.connectionParamsJson) {
-      form.value.connectionParamsJson =
-        transport === 'SERIAL_RS485'
-          ? IOT_SERIAL_PARAMS_EXAMPLE.replace('"rs485": false', '"rs485": true')
-          : IOT_SERIAL_PARAMS_EXAMPLE;
+      form.value.connectionParamsJson = transport === 'SERIAL_RS485' ? IOT_SERIAL_PARAMS_EXAMPLE.replace('"rs485": false', '"rs485": true') : IOT_SERIAL_PARAMS_EXAMPLE;
     }
     if (protocol.startsWith('modbus')) {
       syncModbusAddressBaseFromForm();
@@ -1438,6 +1345,7 @@ const resetQuery = () => {
 const reset = () => {
   form.value = { ...initForm };
   Object.assign(tcpHeartbeat, createDefaultTcpHeartbeat());
+  tcpRequest.value = '';
   modbusAddressBase.value = '1';
   formOnlineStatus.value = '0';
   formLastOnlineTime.value = '';
@@ -1505,11 +1413,22 @@ const handleRead = async (row: DeviceVO) => {
   actionId.value = row.id;
   actionType.value = 'read';
   try {
-    const res = await readDevicePoints(row.id);
-    readDialog.deviceId = row.id;
-    readDialog.title = `采集结果 - ${row.deviceCode}`;
-    await fillReadRows(row.id, (res.data || []) as PointReadItem[]);
-    readDialog.visible = true;
+    if (isTcpClientRow(row)) {
+      const res = await readDeviceTcpPoints(row.id);
+      tcpReadDialog.deviceId = row.id;
+      tcpReadDialog.title = `TCP 采集 - ${row.deviceCode}`;
+      tcpReadDialog.rawPayload = res.data?.rawPayload;
+      tcpReadDialog.points = (res.data?.points || []) as PointReadItem[];
+      readDialog.isTcp = true;
+      tcpReadDialog.visible = true;
+    } else {
+      const res = await readDevicePoints(row.id);
+      readDialog.deviceId = row.id;
+      readDialog.title = `采集结果 - ${row.deviceCode}`;
+      readDialog.isTcp = false;
+      await fillReadRows(row.id, (res.data || []) as PointReadItem[]);
+      readDialog.visible = true;
+    }
     await getList();
   } finally {
     actionId.value = undefined;
@@ -1523,6 +1442,21 @@ const refreshRead = async () => {
   try {
     const res = await readDevicePoints(readDialog.deviceId);
     await fillReadRows(readDialog.deviceId, (res.data || []) as PointReadItem[]);
+    proxy?.$modal.msgSuccess('重新采集完成');
+    await getList();
+  } finally {
+    actionType.value = undefined;
+  }
+};
+
+const refreshTcpRead = async () => {
+  if (!tcpReadDialog.deviceId) return;
+  actionType.value = 'read';
+  readDialog.isTcp = true;
+  try {
+    const res = await readDeviceTcpPoints(tcpReadDialog.deviceId);
+    tcpReadDialog.rawPayload = res.data?.rawPayload;
+    tcpReadDialog.points = (res.data?.points || []) as PointReadItem[];
     proxy?.$modal.msgSuccess('重新采集完成');
     await getList();
   } finally {
@@ -1649,7 +1583,10 @@ onMounted(getList);
   border-radius: 12px;
   border: 1px solid var(--el-border-color-lighter);
   background: var(--el-bg-color);
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.2s;
 
   &:hover {
     border-color: var(--el-color-primary-light-5);
@@ -1819,4 +1756,3 @@ onMounted(getList);
   }
 }
 </style>
-

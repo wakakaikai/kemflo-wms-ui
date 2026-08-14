@@ -30,6 +30,11 @@ export const readDevicePoints = (id: string | number): AxiosPromise<PointReadIte
   return request({ url: '/iot/device/read/' + id, method: 'get' });
 };
 
+/** TCP Client：整帧 JSON + 映射点位 */
+export const readDeviceTcpPoints = (id: string | number): AxiosPromise<TcpCollectResult> => {
+  return request({ url: '/iot/device/readTcp/' + id, method: 'get' });
+};
+
 export interface PointReadItem {
   pointCode: string;
   pointName?: string;
@@ -44,4 +49,9 @@ export interface PointReadItem {
   /** 前端附加：用于数值 × 系数 */
   dataType?: string;
   scaleFactor?: number;
+}
+
+export interface TcpCollectResult {
+  rawPayload?: any;
+  points?: PointReadItem[];
 }

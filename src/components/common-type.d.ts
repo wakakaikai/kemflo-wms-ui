@@ -42,6 +42,7 @@ export type ItemObj = {
 export type ResourceObj = {
   resource: string;
   resourceDesc: string;
+  resourceType?: string;
 };
 
 export type OperationObj = {

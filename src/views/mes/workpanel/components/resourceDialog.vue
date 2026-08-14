@@ -96,6 +96,7 @@ const data = reactive<PageData<ResrceForm, ResrceQuery>>({
     validFrom: undefined,
     validTo: undefined,
     setupState: undefined,
+    resourceType: undefined,
     createUserId: undefined,
     creator: undefined,
     modifyUserId: undefined,
@@ -118,6 +119,13 @@ const { queryParams, form, rules } = toRefs(data);
 const { title, visible, openDialog, closeDialog } = useDialog({
   title: '选择资源'
 });
+
+const openResourceDialog = (params?: { resourceType?: string }) => {
+  queryParams.value.resourceType = params?.resourceType;
+  queryParams.value.pageNum = 1;
+  openDialog();
+  getList();
+};
 
 /** 查询资源列表 */
 const getList = async () => {
@@ -169,11 +177,8 @@ const submitForm = () => {
   });
 };
 
-onMounted(async () => {
-  handleQuery();
-});
 defineExpose({
-  openDialog,
+  openDialog: openResourceDialog,
   closeDialog
 });
 </script>

@@ -31,7 +31,7 @@
             <el-button v-if="routeDeviceId" class="back-btn" type="primary" link icon="ArrowLeft" @click="router.push('/iot/device')"> 返回设备 </el-button>
             <div class="list-title">
               <el-icon class="list-title__icon"><Coin /></el-icon>
-              <span>{{ isTcpClientDevice ? '命令配置' : '采集点位' }}</span>
+              <span>{{ isTcpClientDevice ? '数据解析' : '采集点位' }}</span>
             </div>
             <el-tag v-if="headerDeviceName" type="primary" effect="plain" round class="device-chip">
               {{ headerDeviceName }}
@@ -71,12 +71,14 @@
             <code class="code-text">{{ scope.row.pointCode }}</code>
           </template>
         </el-table-column>
-        <el-table-column label="点位名称" prop="pointName" min-width="120" show-overflow-tooltip />
-        <el-table-column label="点位地址" prop="tagAddress" min-width="200" show-overflow-tooltip>
+        <el-table-column :label="isTcpClientDevice ? '描述' : '点位名称'" prop="pointName" min-width="120" show-overflow-tooltip />
+        <el-table-column :label="isTcpClientDevice ? '数据地址' : '点位地址'" prop="tagAddress" min-width="200" show-overflow-tooltip>
           <template #default="scope">
             <code class="addr-text">{{ scope.row.tagAddress }}</code>
           </template>
         </el-table-column>
+        <el-table-column v-if="isTcpClientDevice" label="类型" prop="dataType" width="100" align="center" />
+        <el-table-column v-if="isTcpClientDevice" label="系数" prop="scaleFactor" width="90" align="center" />
         <el-table-column v-if="isModbusDeviceList" label="功能码" min-width="200" show-overflow-tooltip>
           <template #default="scope">
             <span class="poll-fc-label" :title="modbusFunctionHintFromTag(scope.row.tagAddress)">
@@ -131,11 +133,12 @@
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
     </el-card>
 
-    <IotReadCollectDialog v-model:visible="readDialog.visible" :title="readDialog.title" :rows="readDialog.rows" :refreshing="reading" :empty-text="isTcpClientDevice ? '暂无命令数据，请先配置命令点位或直接在设备页采集' : '暂无点位数据，请先配置点位'" @refresh="handleRead" />
+    <IotReadCollectDialog v-if="!isTcpClientDevice" v-model:visible="readDialog.visible" :title="readDialog.title" :rows="readDialog.rows" :refreshing="reading" empty-text="暂无点位数据，请先配置点位" @refresh="handleRead" />
+    <TcpCollectDialog v-else v-model:visible="tcpReadDialog.visible" :title="tcpReadDialog.title" :raw-payload="tcpReadDialog.rawPayload" :points="tcpReadDialog.points" :refreshing="reading" @refresh="handleRead" />
 
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="760px" destroy-on-close append-to-body class="point-dialog">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-alert v-if="isTcpClientDevice" class="mb-3" type="warning" :closable="false" show-icon title="TCP Client 命令点位" description="此处配置业务命令报文，不是 Modbus 寄存器。保活命令请在「设备」编辑页的 TCP 保活中设置。" />
+        <el-alert v-if="isTcpClientDevice" class="mb-3" type="info" :closable="false" show-icon title="TCP Client 数据解析" description="点位用于从采集 JSON 中取值。数据地址填写 V.GetData(KEY)；明细项会展平为 GB_VALUE / GB_STATUS。业务请求请在设备连接参数 request 中配置。" />
         <div class="form-section">
           <div class="form-section__title">基础信息</div>
           <el-row :gutter="16">
@@ -147,13 +150,43 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="点位编码" prop="pointCode">
-                <el-input v-model="form.pointCode" placeholder="如 temperature" />
+              <el-form-item :label="isTcpClientDevice ? '名称' : '点位编码'" prop="pointCode">
+                <el-input v-model="form.pointCode" :placeholder="isTcpClientDevice ? '如 RESULT / GR_R' : '如 temperature'" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="点位名称" prop="pointName">
-                <el-input v-model="form.pointName" placeholder="点位名称" />
+              <el-form-item :label="isTcpClientDevice ? '描述' : '点位名称'" prop="pointName">
+                <el-input v-model="form.pointName" :placeholder="isTcpClientDevice ? '如 接地电阻值' : '点位名称'" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
+        <!-- TCP 数据解析 -->
+        <div v-if="isTcpClientDevice" class="form-section">
+          <div class="form-section__title">数据解析</div>
+          <el-row :gutter="16">
+            <el-col :span="24">
+              <el-form-item label="数据地址" prop="tagAddress">
+                <el-input v-model="form.tagAddress" placeholder="V.GetData(TEST_STATUS) 或 V.GetData(GB_VALUE)" />
+                <div class="form-tip">快捷：</div>
+                <div class="tcp-expr-chips">
+                  <el-button v-for="item in tcpExprPresets" :key="item" size="small" plain @click="form.tagAddress = `V.GetData(${item})`">{{ item }}</el-button>
+                </div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="数据类型" prop="dataType">
+                <el-select v-model="form.dataType" style="width: 100%">
+                  <el-option v-for="item in IOT_DATA_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="读写" prop="rwMode">
+                <el-select v-model="form.rwMode" style="width: 100%">
+                  <el-option v-for="item in IOT_READ_WRITE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
               </el-form-item>
             </el-col>
           </el-row>
@@ -214,9 +247,9 @@
           </el-row>
         </div>
 
-        <!-- S7 / TCP / 其它协议地址 -->
-        <div v-if="protocolGroup !== 'modbus' && protocolGroup !== 'other'" class="form-section">
-          <div class="form-section__title">{{ isTcpClientDevice ? '命令配置' : '地址配置' }}</div>
+        <!-- S7 / 其它非 TCP 协议地址 -->
+        <div v-if="protocolGroup !== 'modbus' && protocolGroup !== 'other' && !isTcpClientDevice" class="form-section">
+          <div class="form-section__title">地址配置</div>
           <el-row :gutter="16">
             <el-col :span="24">
               <el-form-item label="地址生成">
@@ -227,16 +260,7 @@
                     <el-button size="small" type="primary" plain icon="MagicStick" @click="applyGeneratedAddress">生成地址</el-button>
                   </div>
 
-                  <el-row v-if="protocolGroup === 'tcp'" :gutter="12">
-                    <el-col :span="24">
-                      <div class="addr-field">
-                        <span class="addr-field__label">请求命令</span>
-                        <el-input v-model="addrBuilder.tcpRequest" :disabled="!addrAutoGenerate" placeholder="text:STATUS? 或 hex:01 03 00 00 00 01" @input="syncGeneratedAddress" />
-                      </div>
-                    </el-col>
-                  </el-row>
-
-                  <el-row v-else :gutter="12">
+                  <el-row :gutter="12">
                     <el-col :span="10">
                       <div class="addr-field">
                         <span class="addr-field__label">区类型</span>
@@ -278,7 +302,7 @@
               </el-form-item>
             </el-col>
             <el-col :span="24">
-              <el-form-item :label="isTcpClientDevice ? '命令内容' : '点位地址'" prop="tagAddress">
+              <el-form-item label="点位地址" prop="tagAddress">
                 <el-input v-model="form.tagAddress" :placeholder="addressPlaceholder" :readonly="addrAutoGenerate" @input="onTagAddressManualInput" />
               </el-form-item>
             </el-col>
@@ -334,9 +358,10 @@ import { Coin } from '@element-plus/icons-vue';
 import { useRoute, useRouter } from 'vue-router';
 import { listPoint, getPoint, addPoint, updatePoint, delPoint } from '@/api/iot/point';
 import { PointForm, PointQuery, PointVO } from '@/api/iot/point/types';
-import { listDevice, getDevice, readDevicePoints, PointReadItem } from '@/api/iot/device';
+import { listDevice, getDevice, readDevicePoints, readDeviceTcpPoints, PointReadItem } from '@/api/iot/device';
 import { DeviceVO } from '@/api/iot/device/types';
 import IotReadCollectDialog from '@/views/iot/components/IotReadCollectDialog.vue';
+import TcpCollectDialog from '@/views/iot/components/TcpCollectDialog.vue';
 
 // ===== iot-options (inlined) =====
 /** IoT 前端写死选项（PLC4X 协议编码） */
@@ -1189,6 +1214,13 @@ const readDialog = reactive({
   title: '采集结果',
   rows: [] as PointReadItem[]
 });
+const tcpReadDialog = reactive({
+  visible: false,
+  title: 'TCP 采集结果',
+  rawPayload: undefined as unknown,
+  points: [] as PointReadItem[]
+});
+const tcpExprPresets = ['BARCODE', 'TEST_STATUS', 'WORKCENTER_CODE', 'Group_Code', 'GB_VALUE', 'GB_STATUS', 'ACW_VALUE', 'ACW_STATUS', 'IR_VALUE', 'IR_STATUS'];
 const queryFormRef = ref<ElFormInstance>();
 const formRef = ref<ElFormInstance>();
 
@@ -1200,7 +1232,7 @@ const addressAreaOptions = computed(() => (protocolGroup.value === 's7' ? IOT_S7
 const addressPlaceholder = computed(() => {
   if (protocolGroup.value === 'modbus') return '例如 holding-register:1740:REAL（占 1740-1741 两寄存器）或 holding-register:1:CHAR[10]';
   if (protocolGroup.value === 's7') return '例如 %DB1.DBD0:REAL';
-  if (protocolGroup.value === 'tcp') return '例如 text:STATUS? 或 hex:01 03 00 00 00 01（非 Modbus 寄存器）';
+  if (protocolGroup.value === 'tcp') return 'V.GetData(TEST_STATUS) 或 V.GetData(GB_VALUE)';
   return '请输入协议对应点位地址';
 });
 
@@ -1245,7 +1277,8 @@ const data = reactive<PageData<PointForm, PointQuery>>({
       {
         validator: (_r: any, value: string, cb: (e?: Error) => void) => {
           if (isTcpClientDevice.value) {
-            cb();
+            if (!value || !String(value).trim()) cb(new Error('数据地址不能为空'));
+            else cb();
             return;
           }
           if (!value || !String(value).trim()) cb(new Error('点位地址不能为空'));
@@ -1576,7 +1609,7 @@ const reset = async () => {
 const handleAdd = async () => {
   await reset();
   dialog.visible = true;
-  dialog.title = '新增点位';
+  dialog.title = isTcpClientDevice.value ? '新增数据解析' : '新增点位';
 };
 
 const handleUpdate = async (row: PointVO) => {
@@ -1596,7 +1629,7 @@ const handleUpdate = async (row: PointVO) => {
   syncModbusQuantityFromFormat();
   syncModbusAddress();
   dialog.visible = true;
-  dialog.title = '修改点位';
+  dialog.title = isTcpClientDevice.value ? '修改数据解析' : '修改点位';
 };
 
 const syncFormFromPlcFormat = () => {
@@ -1647,10 +1680,18 @@ const handleRead = async () => {
   }
   reading.value = true;
   try {
-    const res = await readDevicePoints(currentDeviceId.value);
-    readDialog.rows = await attachPointScaleMeta(currentDeviceId.value, (res.data || []) as PointReadItem[]);
-    readDialog.title = `采集结果${headerDeviceName.value ? ` - ${headerDeviceName.value}` : ''}`;
-    readDialog.visible = true;
+    if (isTcpClientDevice.value) {
+      const res = await readDeviceTcpPoints(currentDeviceId.value);
+      tcpReadDialog.rawPayload = res.data?.rawPayload;
+      tcpReadDialog.points = (res.data?.points || []) as PointReadItem[];
+      tcpReadDialog.title = `TCP 采集${headerDeviceName.value ? ` - ${headerDeviceName.value}` : ''}`;
+      tcpReadDialog.visible = true;
+    } else {
+      const res = await readDevicePoints(currentDeviceId.value);
+      readDialog.rows = await attachPointScaleMeta(currentDeviceId.value, (res.data || []) as PointReadItem[]);
+      readDialog.title = `采集结果${headerDeviceName.value ? ` - ${headerDeviceName.value}` : ''}`;
+      readDialog.visible = true;
+    }
     await getList();
   } finally {
     reading.value = false;

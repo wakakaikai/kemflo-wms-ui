@@ -267,6 +267,11 @@ export interface ResrceQuery extends PageQuery {
   setupState?: string;
 
   /**
+   * 资源类型（查询用，如 WGT-PACK）
+   */
+  resourceType?: string;
+
+  /**
    * 记录创建者ID
    */
   createUserId?: string | number;

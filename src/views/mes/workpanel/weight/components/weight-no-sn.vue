@@ -17,13 +17,8 @@
                   </span>
                 </div>
                 <div class="flex items-center gap-1">
-                  <el-button @click="openOperationDialog" class="dashed-blue-btn min-w-[120px]" size="small">
-                    {{ podConfig.operation || '点击选择工序' }}
-                  </el-button>
-                  <el-button v-if="podConfig.operation" @click="clearSelection('operation')" text size="small" class="!text-gray-400 hover:!text-red-500">
-                    <el-icon>
-                      <Close />
-                    </el-icon>
+                  <el-button class="dashed-blue-btn min-w-[120px]" size="small">
+                    {{ podConfig.operation || '' }}
                   </el-button>
                 </div>
               </div>
@@ -66,7 +61,8 @@
               {{ isConnected ? '关闭串口' : '打开串口' }}
             </el-button>
             <el-button size="small" @click="getDataCollectionByShopOrder"> 刷新 </el-button>
-            <el-button color="#10b981" class="text-white" size="small" @click="submitForm" :loading="loading"> <span class="truncate">手动上传</span> </el-button>
+            <el-button color="#10b981" class="text-white" size="small" @click="submitForm" :loading="loading"> <span class="truncate">手动提交</span> </el-button>
+            <el-checkbox v-model="autoUpload">自动上传</el-checkbox>
           </div>
         </div>
       </template>
@@ -175,20 +171,18 @@
         </div>
       </template>
 
-      <el-table :data="paginatedHistoryData" style="width: 100%" size="small" max-height="300">
-        <el-table-column prop="timestamp" label="时间" />
-        <el-table-column label="类型">
+      <el-table :data="paginatedHistoryData" style="width: 100%" size="small" max-height="300" border>
+        <el-table-column prop="timestamp" label="时间" min-width="160" />
+        <el-table-column prop="shopOrder" label="工单号" min-width="140" />
+        <el-table-column prop="item" label="产品编码" min-width="120" />
+        <el-table-column prop="itemDesc" label="物料描述" min-width="150" />
+        <el-table-column prop="actualWeight" label="重量" min-width="90" />
+        <el-table-column prop="lowLimit" label="下限" min-width="80" />
+        <el-table-column prop="hightLimit" label="上限" min-width="80" />
+        <el-table-column label="结果" min-width="80">
           <template #default="scope">
-            <el-tag :type="scope.row.type === 'send' ? 'primary' : 'success'">
-              {{ scope.row.type === 'send' ? '发送' : '接收' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="data" label="数据内容" />
-        <el-table-column label="上传状态" width="100">
-          <template #default="scope">
-            <el-tag :type="getStatusType(scope.row.status)">
-              {{ getStatusText(scope.row.status) }}
+            <el-tag :type="scope.row.result === 'PASS' ? 'success' : scope.row.result === 'FAIL' ? 'danger' : 'warning'">
+              {{ scope.row.result === 'PASS' ? '成功' : scope.row.result === 'FAIL' ? '失败' : scope.row.result }}
             </el-tag>
           </template>
         </el-table-column>
@@ -208,7 +202,6 @@
 
     <!-- 弹框 -->
     <ShopOrderDialog ref="shopOrderDialogRef" :podConfig="podConfig" @shop-order-call-back="shopOrderCallBack" />
-    <OperationDialog ref="operationDialogRef" @operation-call-back="operationCallBack" />
     <ResourceDialog ref="resourceDialogRef" @resource-call-back="resourceCallBack" />
   </div>
 </template>
@@ -219,61 +212,89 @@ import { ShopOrderForm, ShopOrderQuery, ShopOrderVO } from '@/api/mes/shopOrder/
 import type { OperationObj, ResourceObj } from '@/components/common-type';
 import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
 import ResourceDialog from '@/views/mes/workpanel/components/resourceDialog.vue';
-import OperationDialog from '@/views/mes/workpanel/components/operationDialog.vue';
-import { Close, Cpu, Operation } from '@element-plus/icons-vue';
+import { Close, Cpu, Operation, Bell } from '@element-plus/icons-vue';
 import { queryDataCollectionByShopOrder, saveShopOrderWeightNoSn, getShopOrderWeightNoSnInfo } from '@/api/mes/workpanel';
 import { parseTime } from '@/utils/ruoyi';
+import { weightHistoryDB } from '@/utils/indexedDB';
 import { v4 as uuidv4 } from 'uuid';
-// 获取路由参数
-const { currentRoute } = useRouter();
-
-const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-
-const operationDialogRef = ref<InstanceType<typeof OperationDialog>>();
-const resourceDialogRef = ref<InstanceType<typeof ResourceDialog>>();
-const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
-import { Bell } from '@element-plus/icons-vue';
 import { audioPlayer } from '@/utils/audioPlayer';
 import { useSerialPort } from '@/hooks/useSerialPort';
+
+const { currentRoute } = useRouter();
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const resourceDialogRef = ref<InstanceType<typeof ResourceDialog>>();
+const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
+
 const resultMessage = ref('');
 const resultStatus = ref(false);
 
-// 历史数据表格
-const historyData = ref<
-  Array<{
-    timestamp: string;
-    uuid: string;
-    type: 'send' | 'receive';
-    data: string;
-    status: 'pending' | 'success' | 'failed';
-  }>
->([]);
+interface HistoryRow {
+  timestamp: string;
+  uuid: string;
+  shopOrder: string;
+  actualWeight: string;
+  lowLimit: string | number;
+  hightLimit: string | number;
+  result: 'PASS' | 'FAIL' | 'PENDING';
+  itemDesc: string;
+  item: string;
+}
 
-// 表格分页
+const historyData = ref<HistoryRow[]>([]);
+
 const pagination = ref({
   currentPage: 1,
   pageSize: 10,
   total: 0
 });
 
-// 定义类型
-interface SerialPortForm {
-  portName: string;
-  portDesc: string;
-  baudRate: number;
-  dataBits: number;
-  stopBits: number;
-  parity: string;
-  flowControl: string;
-}
+/** 历史数据本地数据库：按路由隔离，仅保留近 7 天（IndexedDB） */
+const HISTORY_DAYS = 7;
 
-interface SerialPortQuery {
-  pageNum: number;
-  pageSize: number;
-  portName?: string;
-  portDesc?: string;
-  baudRate?: number;
-}
+const filterHistoryByDays = (list: HistoryRow[]) => {
+  const cutoff = Date.now() - HISTORY_DAYS * 24 * 60 * 60 * 1000;
+  return (list || []).filter((row: HistoryRow) => {
+    const time = row.timestamp ? new Date(String(row.timestamp).replace(/-/g, '/')).getTime() : 0;
+    return Number.isFinite(time) && time >= cutoff;
+  });
+};
+
+const historyStoreKey = () => currentRoute.value.fullPath;
+
+const loadHistoryFromDb = async () => {
+  try {
+    const list = (await weightHistoryDB.get<HistoryRow[]>(historyStoreKey())) || [];
+    return filterHistoryByDays(list);
+  } catch (e) {
+    return [];
+  }
+};
+
+const saveHistoryToDb = () => {
+  try {
+    void weightHistoryDB.set(historyStoreKey(), filterHistoryByDays(historyData.value));
+  } catch (e) {
+    // ignore
+  }
+};
+
+const pushHistory = (result: HistoryRow['result']) => {
+  const uuid = workOrderQueryParams.value.uuid || uuidv4();
+  historyData.value.push({
+    timestamp: parseTime(new Date(), '{y}-{m}-{d} {h}:{i}:{s}'),
+    uuid,
+    shopOrder: workOrderQueryParams.value.shopOrder || '',
+    actualWeight: workOrderQueryParams.value.actualWeight || '',
+    lowLimit: workOrderQueryParams.value.lowLimit ?? '',
+    hightLimit: workOrderQueryParams.value.hightLimit ?? '',
+    result,
+    itemDesc: workOrderQueryParams.value.itemDesc || '',
+    item: workOrderQueryParams.value.plannedItem || ''
+  });
+  pagination.value.total = historyData.value.length;
+  saveHistoryToDb();
+  return uuid;
+};
 
 interface PageData<T, Q> {
   form: T;
@@ -433,23 +454,10 @@ const handleBoxQtyChange = (selectedIndex: number) => {
     workOrderQueryParams.value.dcParameter = selectedOption.dcParameter;
   }
 };
-// 工序对话框
-const openOperationDialog = () => {
-  operationDialogRef.value.openDialog();
-};
+const RESOURCE_TYPE = 'WGT-PACK';
 
-const operationCallBack = (data: any) => {
-  podConfig.value.operation = data.operation;
-  podConfig.value.operationDesc = data.description;
-  saveOperationToLocalStorage({
-    operation: data.operation,
-    operationDesc: data.description
-  });
-};
-
-// 资源对话框
 const openResourceDialog = () => {
-  resourceDialogRef.value.openDialog();
+  resourceDialogRef.value.openDialog({ resourceType: RESOURCE_TYPE });
 };
 
 const resourceCallBack = (data: any) => {
@@ -457,7 +465,8 @@ const resourceCallBack = (data: any) => {
   podConfig.value.resourceDesc = data.description;
   saveResourceToLocalStorage({
     resource: data.resrce,
-    resourceDesc: data.description
+    resourceDesc: data.description,
+    resourceType: RESOURCE_TYPE
   });
 };
 
@@ -526,56 +535,54 @@ const getOperationFromLocalStorage = () => {
 const removeOperationInLocalStorage = () => {
   saveOperationToLocalStorage(null);
 };
-// 初始化表单数据
-const initFormData: SerialPortForm = {
-  portName: '',
-  portDesc: '',
-  baudRate: 9600,
-  dataBits: 8,
-  stopBits: 1,
-  parity: 'none',
-  flowControl: 'none'
-};
-
-const data = reactive<PageData<SerialPortForm, SerialPortQuery>>({
-  form: { ...initFormData },
-  queryParams: {
-    pageNum: 1,
-    pageSize: 10,
-    portName: '',
-    portDesc: '',
-    baudRate: 9600
-  },
-  rules: {}
-});
-
-const { queryParams, form, rules } = toRefs(data);
-
-// 可用串口列表
-const serialPortVoList = ref<SerialPortForm[]>([]);
-// 常用波特率列表
-const baudRates = [
-  110, 300, 600, 1200, 2400, 4800, 6000, 7200, 9600, 14400, 19200, 28800, 38400, 57600, 76800, 115200, 230400, 250000, 256000, 460800, 500000, 576000, 921600, 1000000, 1500000, 2000000, 3000000,
-  6000000, 12000000
-];
-
-// 发送数据相关
-const sendText = ref('');
-const sendOptions = ref({
-  autoClear: true,
-  hexMode: false,
-  addNewline: true
-});
-
-// 接收数据相关
-const receivedText = ref('');
-const receivedBytes = ref(0);
-const receiveOptions = ref({
-  autoScroll: true
-});
 
 const warnVoice = () => audioPlayer.playWarning();
 const successVoice = () => audioPlayer.playSuccess();
+
+const AUTO_UPLOAD_KEY = 'workPanelNoSnAutoUpload';
+const AUTO_UPLOAD_BURST_MSG = '电子秤出现连续上传，请联系资讯调试电子秤稳定发送重量';
+const autoUpload = ref(false);
+const autoUploadTimes: number[] = [];
+
+const loadAutoUpload = () => {
+  try {
+    const cache = JSON.parse(localStorage.getItem(AUTO_UPLOAD_KEY) || '{}');
+    if (typeof cache[currentRoute.value.fullPath] === 'boolean') {
+      autoUpload.value = cache[currentRoute.value.fullPath];
+    }
+  } catch (e) {
+    // ignore
+  }
+};
+
+const saveAutoUpload = () => {
+  const cache = JSON.parse(localStorage.getItem(AUTO_UPLOAD_KEY) || '{}');
+  cache[currentRoute.value.fullPath] = autoUpload.value;
+  localStorage.setItem(AUTO_UPLOAD_KEY, JSON.stringify(cache));
+};
+
+watch(autoUpload, () => {
+  saveAutoUpload();
+  autoUploadTimes.length = 0;
+});
+
+const isAutoUploadBurst = () => {
+  const now = Date.now();
+  autoUploadTimes.push(now);
+  const recent = autoUploadTimes.filter((t) => now - t <= 1000);
+  autoUploadTimes.length = 0;
+  autoUploadTimes.push(...recent);
+  return recent.length > 2;
+};
+
+const handleAutoUploadBurst = () => {
+  autoUpload.value = false;
+  autoUploadTimes.length = 0;
+  resultMessage.value = AUTO_UPLOAD_BURST_MSG;
+  resultStatus.value = false;
+  warnVoice();
+  ElMessage.error(AUTO_UPLOAD_BURST_MSG);
+};
 
 // 全局键盘事件处理函数
 const handleGlobalKeyDown = (event: KeyboardEvent) => {
@@ -592,66 +599,59 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 };
 
-// 刷新串口列表
-const refreshSerialPortVoList = async () => {
-  try {
-    ElMessage.info('请点击"打开串口"按钮选择串口设备');
-    serialPortVoList.value = [];
-  } catch (error) {
-    ElMessage.error('获取串口列表失败');
-  }
-};
 const submitForm = async () => {
+  if (loading.value) {
+    return;
+  }
+  resultStatus.value = true;
+  resultMessage.value = '';
+  if (!podConfig.value.operation) {
+    resultMessage.value = '请选择对应的工序';
+    resultStatus.value = false;
+    warnVoice();
+    return;
+  }
+  if (!podConfig.value.resource) {
+    resultMessage.value = '请选择对应的资源';
+    resultStatus.value = false;
+    warnVoice();
+    return;
+  }
+  if (!workOrderQueryParams.value.shopOrder) {
+    resultMessage.value = '请选择需要采集数据的工单号';
+    resultStatus.value = false;
+    warnVoice();
+    return;
+  }
+  if ((boxQtyOptions.value || []).length == 0) {
+    resultMessage.value = '未获取到数据收集组，请联系QE维护资料';
+    resultStatus.value = false;
+    warnVoice();
+    return;
+  }
+  if (!workOrderQueryParams.value.actualWeight) {
+    resultMessage.value = '未获取到重量数据，请检查电子秤是否正常';
+    resultStatus.value = false;
+    warnVoice();
+    return;
+  }
+
+  const actualWeight = parseFloat(workOrderQueryParams.value.actualWeight);
+  const lowLimit = parseFloat(workOrderQueryParams.value.lowLimit);
+  const highLimit = parseFloat(workOrderQueryParams.value.hightLimit);
+
+  if (!isNaN(actualWeight) && !isNaN(lowLimit) && !isNaN(highLimit)) {
+    if (actualWeight < lowLimit || actualWeight > highLimit) {
+      resultMessage.value = `重量${actualWeight}超出范围[${lowLimit}~${highLimit}]`;
+      resultStatus.value = false;
+      warnVoice();
+      return;
+    }
+  }
+
+  loading.value = true;
   try {
-    resultStatus.value = true;
-    resultMessage.value = '';
-    if (!podConfig.value.operation) {
-      resultMessage.value = '请选择对应的工序';
-      resultStatus.value = false;
-      warnVoice();
-      return;
-    }
-    if (!podConfig.value.resource) {
-      resultMessage.value = '请选择对应的资源';
-      resultStatus.value = false;
-      warnVoice();
-      return;
-    }
-    if (!workOrderQueryParams.value.shopOrder) {
-      resultMessage.value = '请选择需要采集数据的工单号';
-      resultStatus.value = false;
-      warnVoice();
-      return;
-    }
-    if ((boxQtyOptions.value || []).length == 0) {
-      resultMessage.value = '未获取到数据收集组，请联系QE维护资料';
-      resultStatus.value = false;
-      warnVoice();
-      return;
-    }
-    if (!workOrderQueryParams.value.actualWeight) {
-      resultMessage.value = '未获取到重量数据，请检查上传是否正常';
-      resultStatus.value = false;
-      warnVoice();
-      return;
-    }
-
-    // 比较重量是否在范围内
-    const actualWeight = parseFloat(workOrderQueryParams.value.actualWeight);
-    const lowLimit = parseFloat(workOrderQueryParams.value.lowLimit);
-    const highLimit = parseFloat(workOrderQueryParams.value.hightLimit);
-
-    if (!isNaN(actualWeight) && !isNaN(lowLimit) && !isNaN(highLimit)) {
-      if (actualWeight < lowLimit || actualWeight > highLimit) {
-        resultMessage.value = `重量${actualWeight}超出范围[${lowLimit}~${highLimit}]`;
-        resultStatus.value = false;
-        warnVoice();
-        return;
-      }
-    }
-    loading.value = true;
-    const curUUId = workOrderQueryParams.value.uuid;
-    saveShopOrderWeightNoSn({
+    const res: any = await saveShopOrderWeightNoSn({
       shopOrder: workOrderQueryParams.value.shopOrder,
       operation: podConfig.value.operation,
       resource: podConfig.value.resource,
@@ -666,173 +666,76 @@ const submitForm = async () => {
           units: workOrderQueryParams.value.weightUnit
         }
       ]
-    }).then((res: any) => {
-      if (res.code === 200) {
-        resultStatus.value = true;
-        resultMessage.value = '数据上传成功';
-        successVoice();
-        // 更新historyData.value中uuid为curUUId的status为success
-        historyData.value = historyData.value.map((item: any) => {
-          if (item.uuid === curUUId) {
-            item.status = 'success';
-          }
-          return item;
-        });
-        workOrderQueryParams.value.actualWeight = null;
-        workOrderQueryParams.value.weightUnit = null;
-        getShopOrderWeightNoSnInfo({
-          shopOrder: workOrderQueryParams.value.shopOrder
-        }).then((response: any) => {
-          if (response.code === 200) {
-            workOrderQueryParams.value.doneWeightQty = response.data.doneWeightQty ? parseFloat(response.data.doneWeightQty) : 0;
-            workOrderQueryParams.value.doneBoxQty = response.data.doneBoxQty ? parseFloat(response.data.doneBoxQty) : 0;
-          }
-        });
-      } else {
-        resultMessage.value = res.msg;
-      }
-      loading.value = false;
     });
-  } catch (error) {
-    loading.value = false;
+    if (res.code === 200) {
+      pushHistory('PASS');
+      resultStatus.value = true;
+      resultMessage.value = '数据上传成功';
+      successVoice();
+      workOrderQueryParams.value.actualWeight = null;
+      workOrderQueryParams.value.weightUnit = null;
+      getShopOrderWeightNoSnInfo({
+        shopOrder: workOrderQueryParams.value.shopOrder
+      }).then((response: any) => {
+        if (response.code === 200) {
+          workOrderQueryParams.value.doneWeightQty = response.data.doneWeightQty ? parseFloat(response.data.doneWeightQty) : 0;
+          workOrderQueryParams.value.doneBoxQty = response.data.doneBoxQty ? parseFloat(response.data.doneBoxQty) : 0;
+        }
+      });
+    } else {
+      pushHistory('FAIL');
+      resultMessage.value = res.msg;
+      resultStatus.value = false;
+      warnVoice();
+    }
+  } catch (error: any) {
+    pushHistory('FAIL');
+    resultMessage.value = error?.message || '数据上传失败';
+    resultStatus.value = false;
+    warnVoice();
     console.error('发送数据到后台失败:', error);
+  } finally {
+    loading.value = false;
   }
 };
 
-// 处理数据包
 const processDataPacket = (packet: string) => {
-  // 将完整数据包添加到显示区域（历史数据）
-  receivedText.value = packet;
-  receivedBytes.value = packet.length;
-
-  // 添加到历史数据表格
-  const uuid = uuidv4();
-  historyData.value.push({
-    timestamp: parseTime(new Date(), '{y}-{m}-{d} {h}:{i}:{s}'),
-    uuid: uuid,
-    type: 'receive',
-    data: packet.trim(),
-    status: 'pending'
-  });
-  // 更新分页总数
-  pagination.value.total = historyData.value.length;
-
-  // 处理称重数据
   let processedWeight = '';
   let unit = '';
-  // 去除首尾空格
   const trimmedData = packet.trim();
 
   if (trimmedData.startsWith('=')) {
-    // 老式称重，需要反转
     const reversedStr = trimmedData.split('').reverse().join('');
     processedWeight = reversedStr.replace(/[=+\s]/g, '');
   } else {
-    // 新式称重
     processedWeight = trimmedData.replace(/[a-z\s]/g, '');
     unit = trimmedData.replace(/[^a-zA-Z]/g, '');
   }
 
-  // 设置处理后的重量值
-  // 处理浮点数，去除末尾无效的0
   if (processedWeight && !isNaN(Number(processedWeight))) {
-    // 转换为数字后再转回字符串，自动去除末尾无效的0
     processedWeight = parseFloat(processedWeight).toString();
   }
 
-  // 设置处理后的重量值
   workOrderQueryParams.value.actualWeight = processedWeight;
-  workOrderQueryParams.value.weightUnit = unit;
-  workOrderQueryParams.value.uuid = uuid;
+  workOrderQueryParams.value.weightUnit = unit || workOrderQueryParams.value.weightUnit;
+  workOrderQueryParams.value.uuid = uuidv4();
 
-  // 自动滚动
-  if (receiveOptions.value.autoScroll) {
-    nextTick(() => {
-      const textareas = document.querySelectorAll('.el-textarea__inner');
-      if (textareas.length > 0) {
-        const textarea = textareas[textareas.length - 1] as HTMLTextAreaElement;
-        textarea.scrollTop = textarea.scrollHeight;
-      }
-    });
+  if (autoUpload.value && processedWeight && !isNaN(Number(processedWeight))) {
+    if (isAutoUploadBurst()) {
+      handleAutoUploadBurst();
+    } else if (!loading.value) {
+      submitForm();
+    }
   }
 };
 
-const { isConnected, connecting, portName, handleConnect, disconnect, checkBrowserSupport, setupListeners, teardownListeners } =
-  useSerialPort(processDataPacket, {
-    getConfig: () => ({
-      baudRate: form.value.baudRate,
-      dataBits: form.value.dataBits as 8 | 7 | 6 | 5,
-      stopBits: form.value.stopBits as 1 | 2,
-      parity: form.value.parity as 'none' | 'even' | 'odd',
-      flowControl: form.value.flowControl as 'none' | 'hardware'
-    })
-  });
+const { isConnected, connecting, handleConnect, disconnect, checkBrowserSupport, setupListeners, teardownListeners } = useSerialPort(processDataPacket);
 
-watch(portName, (name) => {
-  form.value.portName = name;
-});
-
-// 清空接收数据
-const clearReceivedData = () => {
-  receivedText.value = '';
-  receivedBytes.value = 0;
-};
-
-// 保存接收数据到文件
-const saveReceivedData = () => {
-  if (!receivedText.value) {
-    ElMessage.warning('没有可保存的数据');
-    return;
-  }
-
-  const blob = new Blob([receivedText.value], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `serial_data_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  ElMessage.success('数据保存成功');
-};
-
-// 计算分页后的数据
 const paginatedHistoryData = computed(() => {
   const start = (pagination.value.currentPage - 1) * pagination.value.pageSize;
   const end = start + pagination.value.pageSize;
   return historyData.value.slice().reverse().slice(start, end);
 });
-
-// 获取状态文本
-const getStatusText = (status: string) => {
-  switch (status) {
-    case 'pending':
-      return '待上传';
-    case 'success':
-      return '成功';
-    case 'failed':
-      return '失败';
-    default:
-      return '未知';
-  }
-};
-
-// 获取状态类型
-const getStatusType = (status: string) => {
-  switch (status) {
-    case 'pending':
-      return 'warning';
-    case 'success':
-      return 'success';
-    case 'failed':
-      return 'danger';
-    default:
-      return 'info';
-  }
-};
-
 // 分页大小改变
 const handleSizeChange = (val: number) => {
   pagination.value.pageSize = val;
@@ -849,6 +752,7 @@ const clearHistoryData = () => {
   historyData.value = [];
   pagination.value.total = 0;
   pagination.value.currentPage = 1;
+  void weightHistoryDB.remove(historyStoreKey());
 };
 
 onMounted(() => {
@@ -871,6 +775,11 @@ onMounted(() => {
   }
 
   findPodConfig();
+  loadAutoUpload();
+  loadHistoryFromDb().then((list) => {
+    historyData.value = list;
+    pagination.value.total = list.length;
+  });
   disconnect(true);
   checkBrowserSupport();
   setupListeners();

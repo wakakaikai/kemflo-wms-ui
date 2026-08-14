@@ -61,24 +61,20 @@
             {{ isConnected ? '已连接' : '未连接' }}
           </el-tag>
           <div class="dc-btn-group">
-            <el-button :type="isConnected ? 'danger' : 'primary'" size="small" @click="handleConnect" :loading="connecting">
+            <el-button :type="isConnected ? 'danger' : 'info'" size="small" @click="handleConnect" :loading="connecting">
               {{ isConnected ? '关闭串口' : '打开串口' }}
             </el-button>
             <el-button size="small" @click="clearFormData">清空</el-button>
-            <el-popover placement="bottom-end" :width="300" trigger="click">
-              <template #reference>
-                <el-button size="small" plain>
-                  <el-icon class="mr-1"><Setting /></el-icon>
-                  设置
-                </el-button>
-              </template>
-              <div class="flex flex-col gap-3 py-1">
-                <div class="flex items-center justify-between gap-4">
-                  <span class="text-sm text-gray-600">先扫码再称重</span>
-                  <el-switch v-model="scanBeforeWeight" />
-                </div>
-              </div>
-            </el-popover>
+            <label class="mode-chip" :class="{ 'is-on': scanBeforeWeight }">
+              <el-checkbox v-model="scanBeforeWeight" />
+              <span class="mode-chip-flow">
+                <span class="mode-chip-n">1</span>
+                <span>扫码</span>
+                <span class="mode-chip-arrow">→</span>
+                <span class="mode-chip-n">2</span>
+                <span>称重</span>
+              </span>
+            </label>
           </div>
         </div>
       </template>
@@ -199,7 +195,7 @@
 import { ElMessage } from 'element-plus';
 import type { OperationObj, ResourceObj } from '@/components/common-type';
 import ResourceDialog from '@/views/mes/workpanel/components/resourceDialog.vue';
-import { Bell, Close, Cpu, Operation, Setting } from '@element-plus/icons-vue';
+import { Bell, Close, Cpu, Operation } from '@element-plus/icons-vue';
 import { queryDataCollectionBySfc, querySfcQueueInfo, querySfcProcessList, dataCollectPassSfc } from '@/api/mes/workpanel';
 import { buildDataCollectPassPayload, formatWeightValue, findWeightDcParameter } from '@/api/mes/workpanel/dataCollection/weight-pass';
 import { parseTime } from '@/utils/ruoyi';
@@ -326,8 +322,10 @@ const clearFormData = () => {
   focusSfcInput();
 };
 
+const RESOURCE_TYPE = 'WGT-PACK';
+
 const openResourceDialog = () => {
-  resourceDialogRef.value.openDialog();
+  resourceDialogRef.value.openDialog({ resourceType: RESOURCE_TYPE });
 };
 
 const resourceCallBack = (data: any) => {
@@ -335,7 +333,8 @@ const resourceCallBack = (data: any) => {
   podConfig.value.resourceDesc = data.description;
   saveResourceToLocalStorage({
     resource: data.resrce,
-    resourceDesc: data.description
+    resourceDesc: data.description,
+    resourceType: RESOURCE_TYPE
   });
 };
 
@@ -918,7 +917,74 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 5px;
+  gap: 8px;
+}
+
+.mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin-left: 4px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-fill-color-blank);
+  cursor: pointer;
+  user-select: none;
+  color: var(--el-text-color-regular);
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.mode-chip.is-on {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.mode-chip-flow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.mode-chip-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.mode-chip.is-on .mode-chip-n {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.mode-chip-arrow {
+  margin: 0 2px;
+  color: #9ca3af;
+}
+
+.mode-chip.is-on .mode-chip-arrow {
+  color: #60a5fa;
+}
+
+.mode-chip :deep(.el-checkbox) {
+  height: auto;
+  margin-right: 0;
+}
+
+.mode-chip :deep(.el-checkbox__label) {
+  display: none;
 }
 
 .text-white {

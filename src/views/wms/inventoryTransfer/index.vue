@@ -57,9 +57,17 @@
         <div class="search-result">
           <el-table ref="inventoryTableRef" :data="inventoryDetailList" height="180" border v-loading="loading" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="40" align="center" />
-            <el-table-column v-if="columns[0].visible" label="物料编码" align="left" prop="itemCode" min-width="100" show-overflow-tooltip />
+            <el-table-column v-if="columns[0].visible" align="left" prop="itemCode" min-width="100" show-overflow-tooltip>
+              <template #header>
+                <InventorySortHeader label="物料编码" v-bind="getSortState('itemCode')" @toggle="toggleSort('itemCode')" />
+              </template>
+            </el-table-column>
             <el-table-column v-if="columns[1].visible" label="物料名称" align="left" prop="itemName" min-width="120" show-overflow-tooltip />
-            <el-table-column v-if="columns[2].visible" label="批次号" align="center" prop="batchCode" min-width="90" show-overflow-tooltip />
+            <el-table-column v-if="columns[2].visible" align="center" prop="batchCode" min-width="90" show-overflow-tooltip>
+              <template #header>
+                <InventorySortHeader label="批次号" v-bind="getSortState('batchCode')" @toggle="toggleSort('batchCode')" />
+              </template>
+            </el-table-column>
             <el-table-column v-if="columns[3].visible" label="非限制数量" align="left" min-width="90">
               <template #default="scope">{{ formatQty(scope.row.availableQuantity) }}</template>
             </el-table-column>
@@ -88,9 +96,17 @@
               </template>
             </el-table-column>
             <el-table-column v-if="columns[10].visible" label="单位" align="center" prop="unit" width="80" />
-            <el-table-column v-if="columns[11].visible" label="仓库" align="left" prop="warehouseCode" min-width="70" show-overflow-tooltip />
+            <el-table-column v-if="columns[11].visible" align="left" prop="warehouseCode" min-width="70" show-overflow-tooltip>
+              <template #header>
+                <InventorySortHeader label="仓库" v-bind="getSortState('warehouseCode')" @toggle="toggleSort('warehouseCode')" />
+              </template>
+            </el-table-column>
             <el-table-column v-if="columns[12].visible" label="库区" align="left" prop="areaCode" min-width="70" show-overflow-tooltip />
-            <el-table-column v-if="columns[13].visible" label="库位" align="left" prop="locationCode" min-width="90" show-overflow-tooltip />
+            <el-table-column v-if="columns[13].visible" align="left" prop="locationCode" min-width="90" show-overflow-tooltip>
+              <template #header>
+                <InventorySortHeader label="库位" v-bind="getSortState('locationCode')" @toggle="toggleSort('locationCode')" />
+              </template>
+            </el-table-column>
           </el-table>
           <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" class="compact-pagination" />
         </div>
@@ -302,6 +318,8 @@ import { SalesOrderDetailVO } from '@/api/wms/salesOrderDetail/types';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { DEFAULT_TRANSFER_MOVE_TYPE, getDefaultSourceInventoryType, getDefaultTargetInventoryType, getTransferMoveTypeDesc, INVENTORY_TRANSFER_MOVE_TYPES, isStockStatusTransfer, needsTargetLocation } from './utils/transferMoveConfig';
+import InventorySortHeader from '@/views/wms/components/InventorySortHeader.vue';
+import { applyInventorySortToQuery, createDefaultInventorySortRules, getInventorySortState, toggleInventorySort, type InventorySortKey, type InventorySortRule } from '@/views/wms/components/inventorySort';
 
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 const salesOrderDetailDialogRef = ref<InstanceType<typeof SalesOrderDetailDialog>>();
@@ -311,6 +329,11 @@ const { wms_inventory_type, wms_inventory_special_flag } = toRefs<any>(proxy?.us
 const showSearch = ref(true);
 /** 库存明细展开状态，默认收起 */
 const inventoryExpanded = ref(true);
+const sortRules = ref<InventorySortRule[]>(createDefaultInventorySortRules());
+const getSortState = (key: InventorySortKey) => getInventorySortState(sortRules.value, key);
+const toggleSort = (key: InventorySortKey) => {
+  sortRules.value = toggleInventorySort(sortRules.value, key);
+};
 const transferTableHeight = 'calc(100vh - 320px)';
 // 响应式数据
 const loading = ref(false);
@@ -550,6 +573,7 @@ const toggleAdvancedSearch = () => {
 /** 查询库存明细记录列表 */
 const getList = async () => {
   loading.value = true;
+  applyInventorySortToQuery(queryParams.value, sortRules.value);
   const res = await listInventoryDetail(queryParams.value);
   inventoryDetailList.value = res.rows;
   total.value = res.total;
@@ -573,6 +597,7 @@ const resetQuery = () => {
   // 清空批量录入的物料编码
   queryParams.value.itemCodeStr = undefined;
   queryParams.value.itemCodeList = [];
+  sortRules.value = createDefaultInventorySortRules();
   batchInputDialogRef.value?.resetInput();
   handleQuery();
 };
