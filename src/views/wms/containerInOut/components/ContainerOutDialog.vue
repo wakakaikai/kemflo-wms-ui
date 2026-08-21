@@ -16,10 +16,23 @@
       <el-form-item label="出库数量" prop="quantity">
         <el-input-number v-model="form.quantity" placeholder="请输入出库数量" :precision="3" :max="maxQuantity" style="width: 100%" />
       </el-form-item>
-      <el-form-item label="客户" prop="businessCode">
+      <el-form-item label="业务伙伴">
+        <el-radio-group v-model="businessPartnerType" @change="handleBusinessPartnerTypeChange">
+          <el-radio value="customer">客户</el-radio>
+          <el-radio value="supplier">托外供应商</el-radio>
+        </el-radio-group>
+      </el-form-item>
+      <el-form-item v-if="businessPartnerType === 'customer'" label="客户" prop="businessCode">
         <HistoryInput v-model="form.businessCode" :config="customerCodeConfig" placeholder="请输入客户代码">
           <template #append>
             <el-button icon="Search" @click="showCustomerDialog()" />
+          </template>
+        </HistoryInput>
+      </el-form-item>
+      <el-form-item v-else label="托外供应商" prop="businessCode">
+        <HistoryInput v-model="form.businessCode" :config="supplierCodeConfig" placeholder="请输入托外供应商代码">
+          <template #append>
+            <el-button icon="Search" @click="showSupplierDialog()" />
           </template>
         </HistoryInput>
       </el-form-item>
@@ -34,6 +47,7 @@
       </div>
     </template>
     <CustomerDialog ref="customerDialogRef" @customer-select-call-back="customerSelectCallBack" />
+    <SupplierDialog ref="supplierDialogRef" @supplier-select-call-back="supplierSelectCallBack" />
   </el-dialog>
 </template>
 
@@ -43,6 +57,7 @@ import { InventoryDetailForm, InventoryDetailVO } from '@/api/wms/inventoryDetai
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import { HistoryConfig } from '@/types/history';
 import CustomerDialog from '@/views/wms/customer/components/customerDialog.vue';
+import SupplierDialog from '@/views/wms/supplier/components/supplierDialog.vue';
 
 defineOptions({ name: 'ContainerOutDialog' });
 
@@ -55,8 +70,10 @@ const visible = defineModel<boolean>({ default: false });
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const buttonLoading = ref(false);
+const businessPartnerType = ref<'customer' | 'supplier'>('customer');
 const formRef = ref<ElFormInstance>();
 const customerDialogRef = ref<InstanceType<typeof CustomerDialog>>();
+const supplierDialogRef = ref<InstanceType<typeof SupplierDialog>>();
 
 const form = reactive<InventoryDetailForm>({
   id: undefined,
@@ -74,19 +91,35 @@ const form = reactive<InventoryDetailForm>({
   remark: undefined
 });
 
-const rules = {
+const rules = computed(() => ({
   quantity: [{ required: true, message: '出库数量不能为空', trigger: 'blur' }],
-  businessCode: [{ required: true, message: '客户编码不能为空', trigger: 'blur' }]
-};
+  businessCode: [
+    {
+      required: true,
+      message: businessPartnerType.value === 'customer' ? '客户编码不能为空' : '托外供应商编码不能为空',
+      trigger: 'blur'
+    }
+  ]
+}));
 
 const customerCodeConfig: HistoryConfig = {
   key: 'customerCode',
   storage: 'indexedDB',
   maxSize: 10,
-  page: 'inventoryDetail',
+  page: 'containerOut',
   autoSave: true,
   component: { showDropdown: true, showTime: false, showDelete: true, dropdownMaxHeight: '300px' }
 };
+
+const supplierCodeConfig: HistoryConfig = {
+  key: 'supplierCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'containerOut',
+  autoSave: true,
+  component: { showDropdown: true, showTime: false, showDelete: true, dropdownMaxHeight: '300px' }
+};
+
 
 const currentStock = computed(() => {
   switch (form.inventoryType) {
@@ -111,11 +144,30 @@ const customerSelectCallBack = (record: any) => {
   form.businessName = record.customerName;
 };
 
+const showSupplierDialog = () => {
+  supplierDialogRef.value?.openDialog();
+  supplierDialogRef.value?.handleQuery();
+};
+
+const supplierSelectCallBack = (record: any) => {
+  form.businessCode = record.supplierCode;
+  form.businessName = record.supplierName;
+};
+
+const handleBusinessPartnerTypeChange = () => {
+  form.businessCode = undefined;
+  form.businessName = undefined;
+  formRef.value?.clearValidate('businessCode');
+};
+
 const open = async (row: InventoryDetailVO) => {
   if (!row?.id) return;
   const res = await getInventoryDetail(row.id);
   Object.assign(form, res.data);
   form.quantity = undefined;
+  businessPartnerType.value = 'customer';
+  form.businessCode = undefined;
+  form.businessName = undefined;
   visible.value = true;
 };
 
@@ -135,6 +187,7 @@ const submitForm = () => {
           availableQuantity: form.quantity,
           locationCode: form.locationCode,
           businessCode: form.businessCode,
+          businessName: form.businessName,
           remark: form.remark,
           itemType: 3
         } as InventoryDetailForm).finally(() => {

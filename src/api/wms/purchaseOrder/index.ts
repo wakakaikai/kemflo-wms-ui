@@ -61,3 +61,30 @@ export const delPurchaseOrder = (id: string | number | Array<string | number>) =
     method: 'delete'
   });
 };
+
+/** 采购入库 */
+export function addPurchaseInbound(data: any) {
+  return request({
+    url: '/wms/purchaseOrder/inbound',
+    method: 'post',
+    data: data
+  });
+}
+
+/** 采购件退货 */
+export const returnPurchaseInventory = (data: any) => {
+  return request({
+    url: '/wms/purchaseOrder/return',
+    method: 'post',
+    data: data
+  });
+};
+
+/** 委外发料（541） */
+export const subcontractIssue = (data: any) => {
+  return request({
+    url: '/wms/purchaseOrder/subcontractIssue',
+    method: 'post',
+    data: data
+  });
+};

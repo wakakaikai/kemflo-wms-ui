@@ -161,20 +161,6 @@ export const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '缺料看板', noCache: true }
       }
     ]
-  },
-  {
-    path: '/dataCollection/deviceDetail',
-    component: Layout,
-    hidden: true,
-    children: [
-      {
-        path: ':deviceId',
-        component: () => import('@/views/dataCollection/device/detail.vue'),
-        name: 'ScCollectDeviceDetail',
-        meta: { title: '设备采集配置', activeMenu: '/dataCollection/device', noCache: true },
-        hidden: true
-      }
-    ]
   }
 ];
 

@@ -61,3 +61,12 @@ export const delPalletInventory = (id: string | number | Array<string | number>)
     method: 'delete'
   });
 };
+
+/** 栈板库存退货 */
+export const returnPalletInventory = (data: any) => {
+  return request({
+    url: '/wms/palletInventory/return',
+    method: 'post',
+    data: data
+  });
+};

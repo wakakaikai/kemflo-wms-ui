@@ -1,5 +1,5 @@
 <template>
-  <div class="p-2 work-order-return-page">
+  <div class="p-2 inventory-reverse-page">
     <el-card shadow="never" class="history-card" :class="{ 'is-history-collapsed': !historyExpanded }">
       <template #header>
         <div class="history-card-header">
@@ -7,7 +7,7 @@
             <el-icon class="history-collapse-icon" :class="{ 'is-expanded': historyExpanded }">
               <ArrowRight />
             </el-icon>
-            <span class="history-header-title">工单凭证记录</span>
+            <span class="history-header-title">凭证记录</span>
           </div>
           <right-toolbar v-model:showSearch="showSearch" :columns="columns" @queryTable="getList"></right-toolbar>
         </div>
@@ -19,8 +19,8 @@
           <el-form-item label="物料凭证号" prop="sapMaterialOrderNo">
             <HistoryInput v-model="queryParams.sapMaterialOrderNo" :config="sapMaterialOrderNoConfig" placeholder="请输入物料凭证号" @keydown.tab.prevent="handleQuery" @keydown.enter.prevent="handleQuery" />
           </el-form-item>
-          <el-form-item label="工单号" prop="sourceDocCode">
-            <HistoryInput v-model="queryParams.sourceDocCode" :config="sourceDocCodeConfig" placeholder="请输入工单号" @keydown.tab.prevent="handleQuery" @keydown.enter.prevent="handleQuery" />
+          <el-form-item label="来源单号" prop="sourceDocCode">
+            <HistoryInput v-model="queryParams.sourceDocCode" :config="sourceDocCodeConfig" placeholder="请输入来源单号" @keydown.tab.prevent="handleQuery" @keydown.enter.prevent="handleQuery" />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" icon="Search" @click="handleQuery" :loading="loading">搜索</el-button>
@@ -34,30 +34,31 @@
             <el-table-column type="selection" width="55" align="center" :selectable="isVoucherRowSelectable" />
             <el-table-column v-if="columns[0].visible" label="物料凭证号" align="left" prop="sapMaterialOrderNo" />
             <el-table-column v-if="columns[1].visible" label="凭证项次" align="left" prop="sapMaterialItem" />
-            <el-table-column v-if="columns[2].visible" label="工单号" align="left" prop="sourceDocCode" />
-            <el-table-column v-if="columns[3].visible" label="物料编码" align="left" prop="itemCode" />
-            <el-table-column v-if="columns[4].visible" label="物料名称" align="left" prop="itemName" show-overflow-tooltip />
-            <el-table-column v-if="columns[5].visible" label="批次号" align="center" prop="batchCode" />
-            <el-table-column v-if="columns[6].visible" label="数量" align="center">
-              <template #default="scope">{{ formatQtyWithUnit(scope.row.quantity, scope.row.unit) }}</template>
+            <el-table-column v-if="columns[2].visible" label="来源单号" align="left" prop="sourceDocCode" />
+            <el-table-column v-if="columns[3].visible" label="来源项次" align="left" prop="poItemNo" />
+            <el-table-column v-if="columns[4].visible" label="物料编码" align="left" prop="itemCode" />
+            <el-table-column v-if="columns[5].visible" label="物料名称" align="left" prop="itemName" show-overflow-tooltip />
+            <el-table-column v-if="columns[6].visible" label="批次号" align="center" prop="batchCode" />
+            <el-table-column v-if="columns[7].visible" label="数量" align="center">
+              <template #default="scope">{{ formatQtyWithUnit(resolveRowQuantity(scope.row), resolveRowUnit(scope.row)) }}</template>
             </el-table-column>
-            <el-table-column v-if="columns[7].visible" label="冲销标识" align="center" prop="reversalFlag" width="100">
+            <el-table-column v-if="columns[8].visible" label="冲销标识" align="center" prop="reversalFlag" width="100">
               <template #default="scope">
                 <el-tag :type="getInventoryMovementReversalTagType(scope.row.reversalFlag)" size="small">
                   {{ formatInventoryMovementReversalFlag(scope.row.reversalFlag) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column v-if="columns[8].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
+            <el-table-column v-if="columns[9].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
               <template #default="scope">
                 <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
               </template>
             </el-table-column>
-            <el-table-column v-if="columns[9].visible" label="业务伙伴" align="center" prop="businessCode" />
-            <el-table-column v-if="columns[10].visible" label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
-            <el-table-column v-if="columns[11].visible" label="仓库编码" align="center" prop="warehouseCode" />
-            <el-table-column v-if="columns[12].visible" label="库区编码" align="center" prop="areaCode" />
-            <el-table-column v-if="columns[13].visible" label="库位编码" align="center" prop="locationCode" fixed="right" />
+            <el-table-column v-if="columns[10].visible" label="业务伙伴" align="center" prop="businessCode" />
+            <el-table-column v-if="columns[11].visible" label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
+            <el-table-column v-if="columns[12].visible" label="仓库编码" align="center" prop="warehouseCode" />
+            <el-table-column v-if="columns[13].visible" label="库区编码" align="center" prop="areaCode" />
+            <el-table-column v-if="columns[14].visible" label="库位编码" align="center" prop="locationCode" fixed="right" />
           </el-table>
 
           <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
@@ -78,7 +79,7 @@
             <el-icon class="history-collapse-icon" :class="{ 'is-expanded': transferExpanded }">
               <ArrowRight />
             </el-icon>
-            <span class="header-title">工单冲销列表</span>
+            <span class="header-title">冲销列表</span>
           </div>
           <div class="header-actions" @click.stop>
             <el-button type="danger" @click="clearTransferList" :disabled="transferList.length === 0">清空列表</el-button>
@@ -117,7 +118,7 @@
           <el-table-column type="index" width="50" align="center" />
           <el-table-column v-if="transferColumns[0].visible" label="物料凭证号" prop="sapMaterialOrderNo" min-width="110" />
           <el-table-column v-if="transferColumns[1].visible" label="凭证项次" prop="sapMaterialItem" />
-          <el-table-column v-if="transferColumns[2].visible" label="物料编码" prop="materialCode" />
+          <el-table-column v-if="transferColumns[2].visible" label="物料编码" prop="itemCode" />
           <el-table-column v-if="transferColumns[3].visible" label="物料名称" prop="itemName" show-overflow-tooltip />
           <el-table-column v-if="transferColumns[4].visible" label="批次号" prop="batchCode" show-overflow-tooltip />
           <el-table-column v-if="transferColumns[5].visible" label="源库位信息" min-width="120">
@@ -141,10 +142,16 @@
               <span v-else />
             </template>
           </el-table-column>
-
-          <el-table-column v-if="transferColumns[8].visible" label="退货数量" align="center">
-            <template #default="scope">{{ formatQtyWithUnit(scope.row.returnQuantity, scope.row.unit) }}</template>
+          <el-table-column v-if="transferColumns[8].visible" label="库存类型" prop="inventoryType" align="center" min-width="130">
+            <template #default="scope">
+              <dict-tag :options="wms_inventory_type" :value="scope.row.inventoryType" />
+            </template>
           </el-table-column>
+          <el-table-column v-if="transferColumns[9].visible" label="冲销数量" align="center">
+            <template #default="scope">{{ formatQtyWithUnit(scope.row.returnQuantity, scope.row.displayUnit) }}</template>
+          </el-table-column>
+          <el-table-column v-if="transferColumns[10].visible" label="库存数量" prop="inventoryQuantity" align="center" />
+          <el-table-column v-if="transferColumns[11].visible" label="库存单位" prop="inventoryUnit" align="center" />
           <el-table-column label="操作" width="80" align="center">
             <template #default="scope">
               <el-button type="danger" link icon="Delete" @click="removeFromTransferList(scope.$index)"></el-button>
@@ -153,42 +160,28 @@
         </el-table>
 
         <div style="margin-top: 20px; text-align: center">
-          <el-button v-hasPermi="['wms:workOrder:return']" :loading="buttonLoading" type="primary" @click="submitTransfer" :disabled="transferList.length === 0">工单冲销</el-button>
+          <el-button :loading="buttonLoading" type="primary" @click="submitTransfer" :disabled="transferList.length === 0">冲销</el-button>
         </div>
       </div>
     </el-card>
-
-    <!-- 库位选择对话框 -->
-    <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
   </div>
 </template>
 
-<script setup name="WorkOrderReverse" lang="ts">
+<script setup name="InventoryReverse" lang="ts">
 import { ref, reactive } from 'vue';
 import { listInventoryMovement } from '@/api/wms/inventoryMovement';
 import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } from '@/api/wms/inventoryMovement/types';
 // 导入图标组件
 import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
 
-import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
-import {
-  buildWorkOrderCancelLineBo,
-  buildWorkOrderCancelPayload,
-  enrichWorkOrderReturnRow,
-  formatInventoryMovementReversalFlag,
-  getInventoryMovementReversalTagType,
-  isInventoryMovementReversed,
-  returnWorkOrderInventory
-} from '@/api/wms/workOrderReturn';
+import { buildInventoryCancelLineBo, buildInventoryCancelPayload, cancelInventoryMovement } from '@/api/wms/inventoryDetail';
+import { formatInventoryMovementReversalFlag, getInventoryMovementReversalTagType, isInventoryMovementReversed } from '@/api/wms/workOrderReturn';
 import { HttpStatus } from '@/enums/RespEnum';
 import { formatQty } from '@/utils/ruoyi';
-import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
 import HistoryInput from '@/components/HistoryInput/index.vue';
-import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
-const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag'));
+const { wms_inventory_type, wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_type', 'wms_inventory_special_flag'));
 
 const showSearch = ref(true);
 const historyExpanded = ref(true);
@@ -200,18 +193,11 @@ const buttonLoading = ref(false);
 const inventoryDetailList = ref<InventoryMovementVO[]>([]);
 const selectedSearchItems = ref<InventoryMovementVO[]>([]);
 const transferList = ref<any[]>([]);
-const showAdvancedSearch = ref(false); // 控制高级搜索显示状态
 const total = ref(0);
-const currenIndex = ref(0);
 const resultMessage = ref('');
 const resultStatus = ref(false);
 
-// 移转模式：fixed-固定库位，multiple-多库位
-const transferMode = ref<'fixed' | 'multiple'>('fixed');
-
-// 固定库位模式下的表单数据
 const fixedTransferForm = ref({
-  targetLocationCode: '',
   bktxt: '',
   postingDate: null as string | null
 });
@@ -255,7 +241,7 @@ const data = reactive<PageData<InventoryMovementForm, InventoryMovementQuery>>({
   form: { ...initFormData },
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 1000,
     moveType: '',
     itemCode: undefined,
     itemName: undefined,
@@ -264,7 +250,7 @@ const data = reactive<PageData<InventoryMovementForm, InventoryMovementQuery>>({
     relatedMoveId: undefined,
     quantity: undefined,
     unit: undefined,
-    sourceDocType: 'WO',
+    sourceDocType: undefined,
     sourceDocCode: undefined,
     warehouseCode: undefined,
     warehouseName: undefined,
@@ -292,7 +278,7 @@ const sapMaterialOrderNoConfig: HistoryConfig = {
   key: 'sapMaterialOrderNo',
   storage: 'indexedDB',
   maxSize: 10,
-  page: 'workOrderReverse',
+  page: 'inventoryReverse',
   autoSave: true,
   component: {
     showDropdown: true,
@@ -306,7 +292,7 @@ const sourceDocCodeConfig: HistoryConfig = {
   key: 'sourceDocCode',
   storage: 'indexedDB',
   maxSize: 10,
-  page: 'workOrderReverse',
+  page: 'inventoryReverse',
   autoSave: true,
   component: {
     showDropdown: true,
@@ -320,7 +306,7 @@ const bktxtConfig: HistoryConfig = {
   key: 'bktxt',
   storage: 'indexedDB',
   maxSize: 10,
-  page: 'workOrderReturn',
+  page: 'inventoryReverse',
   autoSave: true,
   component: {
     showDropdown: true,
@@ -334,18 +320,19 @@ const bktxtConfig: HistoryConfig = {
 const columns = ref<FieldOption[]>([
   { key: 0, label: `物料凭证号`, visible: true, children: [] },
   { key: 1, label: `凭证项次`, visible: true, children: [] },
-  { key: 2, label: `工单号`, visible: true, children: [] },
-  { key: 3, label: `物料编码`, visible: true, children: [] },
-  { key: 4, label: `物料名称`, visible: true, children: [] },
-  { key: 5, label: `批次号`, visible: true, children: [] },
-  { key: 6, label: `数量`, visible: true, children: [] },
-  { key: 7, label: `冲销标识`, visible: true, children: [] },
-  { key: 8, label: `特殊库存`, visible: false, children: [] },
-  { key: 9, label: `业务伙伴`, visible: false, children: [] },
-  { key: 10, label: `伙伴名称`, visible: false, children: [] },
-  { key: 11, label: `仓库编码`, visible: false, children: [] },
-  { key: 12, label: `库区编码`, visible: false, children: [] },
-  { key: 13, label: `库位编码`, visible: true, children: [] }
+  { key: 2, label: `来源单号`, visible: true, children: [] },
+  { key: 3, label: `来源项次`, visible: true, children: [] },
+  { key: 4, label: `物料编码`, visible: true, children: [] },
+  { key: 5, label: `物料名称`, visible: true, children: [] },
+  { key: 6, label: `批次号`, visible: true, children: [] },
+  { key: 7, label: `数量`, visible: true, children: [] },
+  { key: 8, label: `冲销标识`, visible: true, children: [] },
+  { key: 9, label: `特殊库存`, visible: false, children: [] },
+  { key: 10, label: `业务伙伴`, visible: false, children: [] },
+  { key: 11, label: `伙伴名称`, visible: false, children: [] },
+  { key: 12, label: `仓库编码`, visible: false, children: [] },
+  { key: 13, label: `库区编码`, visible: false, children: [] },
+  { key: 14, label: `库位编码`, visible: true, children: [] }
 ]);
 
 const transferColumns = ref<FieldOption[]>([
@@ -357,7 +344,10 @@ const transferColumns = ref<FieldOption[]>([
   { key: 5, label: `源库位信息`, visible: true, children: [] },
   { key: 6, label: `库存标识`, visible: true, children: [] },
   { key: 7, label: `业务伙伴`, visible: true, children: [] },
-  { key: 8, label: `退货数量`, visible: true, children: [] }
+  { key: 8, label: `库存类型`, visible: true, children: [] },
+  { key: 9, label: `冲销数量`, visible: true, children: [] },
+  { key: 10, label: `库存数量`, visible: true, children: [] },
+  { key: 11, label: `库存单位`, visible: true, children: [] }
 ]);
 
 const formatQtyWithUnit = (qty?: number | string | null, unit?: string) => {
@@ -367,6 +357,9 @@ const formatQtyWithUnit = (qty?: number | string | null, unit?: string) => {
   }
   return unit ? `${text} ${unit}` : text;
 };
+
+const resolveRowQuantity = (row: InventoryMovementVO & Record<string, any>) => row.quantity ?? row.poQuantity;
+const resolveRowUnit = (row: InventoryMovementVO & Record<string, any>) => row.unit ?? row.poUnit;
 
 // 禁用未来的时间
 const disabledFutureDate = (time: Date) => {
@@ -380,27 +373,7 @@ const disabledFutureDate = (time: Date) => {
   return time.getTime() > now.getTime();
 };
 
-// 添加一个方法用于计算库存数量
-const calculateInventoryQuantity = (row) => {
-  row.inventoryQuantity = ((row.returnQuantity || 0) * (row.conversionRatio || 1)).toFixed(3);
-};
-
-// 监听收货数量变化的处理方法
-const handleReturnPoQuantityChange = (row) => {
-  // 如果输入为空，则库存数量也设为0
-  if (row.quantity === null || row.quantity === undefined || row.quantity === '') {
-    row.inventoryQuantity = 0;
-  } else {
-    calculateInventoryQuantity(row);
-  }
-};
-
-/** 切换高级搜索显示状态 */
-const toggleAdvancedSearch = () => {
-  showAdvancedSearch.value = !showAdvancedSearch.value;
-};
-
-/** 查询工单凭证记录 */
+/** 查询凭证记录 */
 const getList = async () => {
   if (!queryParams.value.sapMaterialOrderNo && !queryParams.value.sourceDocCode) {
     return;
@@ -418,7 +391,7 @@ const getList = async () => {
 /** 搜索按钮操作 */
 const handleQuery = () => {
   if (!queryParams.value.sapMaterialOrderNo && !queryParams.value.sourceDocCode) {
-    proxy.$modal.msgWarning('请输入物料凭证号或工单号');
+    proxy.$modal.msgWarning('请输入物料凭证号或来源单号');
     return;
   }
   queryParams.value.pageNum = 1;
@@ -428,7 +401,7 @@ const handleQuery = () => {
 /** 重置搜索 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
-  queryParams.value.sourceDocType = 'WO';
+  queryParams.value.sourceDocType = undefined;
   inventoryTableRef.value?.clearSelection();
   selectedSearchItems.value = [];
   inventoryDetailList.value = [];
@@ -455,16 +428,17 @@ const addSelectedToTransferList = () => {
     return;
   }
 
-  const newItems = selectedSearchItems.value.map((item) =>
-    enrichWorkOrderReturnRow({
+  const newItems = selectedSearchItems.value.map((item) => {
+    const rowQty = resolveRowQuantity(item);
+    const rowUnit = resolveRowUnit(item);
+    return {
       ...item,
-      materialCode: item.itemCode,
-      materialName: item.itemName,
       currentQuantity: item.availableQuantity || 0,
       availableQuantity: item.availableQuantity,
       inspectionQuantity: item.inspectionQuantity,
       blockedQuantity: item.blockedQuantity,
-      unit: item.unit,
+      unit: rowUnit,
+      displayUnit: rowUnit,
       sourceWarehouseCode: item.warehouseCode,
       sourceAreaCode: item.areaCode,
       sourceLocationCode: item.locationCode,
@@ -472,11 +446,12 @@ const addSelectedToTransferList = () => {
       targetAreaCode: item.areaCode,
       targetLocationCode: item.locationCode,
       specialInventoryFlag: item.specialInventoryFlag,
-      returnQuantity: item.quantity,
-      inventoryQuantity: (item.quantity * (item.conversionRatio || 1)).toFixed(3),
-      inventoryUnit: item.unit
-    })
-  );
+      inventoryType: item.sapCheckFlag ? 'N' : 'X',
+      returnQuantity: rowQty,
+      inventoryQuantity: (Number(rowQty || 0) * (item.conversionRatio || 1)).toFixed(3),
+      inventoryUnit: rowUnit
+    };
+  });
 
   let addedCount = 0;
 
@@ -525,84 +500,31 @@ const removeFromTransferList = (index: number) => {
 /** 清空移转列表 */
 const clearTransferList = () => {
   transferList.value = [];
-  if (transferMode.value === 'fixed') {
-    fixedTransferForm.value.targetLocationCode = '';
-    fixedTransferForm.value.bktxt = '';
-  }
 };
 
-const locationCodeKeyDownTab = async (locationCode: any) => {
-  if (locationCode) {
-    const res = await listStorageLocation({
-      pageNum: 1,
-      pageSize: 10,
-      locationCode: locationCode
-    });
-    resultMessage.value = '';
-    if ((res.rows || []).length == 0) {
-      resultMessage.value = `库位${locationCode}不存在`;
-      resultStatus.value = false;
-    }
-  }
-};
-
-/** 显示库位选择对话框 */
-const showStorageLocationDialog = (index: number) => {
-  storageLocationDialogRef.value.openDialog();
-  storageLocationDialogRef.value.handleQuery();
-  currenIndex.value = index;
-};
-
-/** 处理移转模式切换 */
-const handleTransferModeChange = (mode: 'fixed' | 'multiple') => {
-  if (mode === 'fixed') {
-    transferList.value.forEach((item) => {
-      item.targetLocationCode = '';
-    });
-  } else {
-    fixedTransferForm.value.targetLocationCode = '';
-  }
-};
-
-/** 库位选择回调 */
-const storageLocationSelectCallBack = (record: any) => {
-  if (transferMode.value === 'fixed') {
-    // 固定库位模式，设置统一的当前库位
-    fixedTransferForm.value.targetLocationCode = record.locationCode;
-  } else {
-    // 多库位模式，设置对应行的当前库位
-    if (currenIndex.value >= 0 && currenIndex.value < transferList.value.length) {
-      const currentItem = transferList.value[currenIndex.value];
-      currentItem.targetLocationCode = record.locationCode;
-    }
-  }
-};
-
-/** 提交移转 */
+/** 提交冲销 */
 const submitTransfer = async () => {
   const validTransfers = transferList.value.filter((item) => item.returnQuantity > 0);
   resultStatus.value = true;
   resultMessage.value = '';
   if (validTransfers.length === 0) {
-    resultMessage.value = '没有有效的移转记录';
+    resultMessage.value = '没有有效的冲销记录';
     resultStatus.value = false;
     return;
   }
 
-  const overQuantityItems = validTransfers.filter((item) => item.returnQuantity > item.quantity);
+  const overQuantityItems = validTransfers.filter((item) => item.returnQuantity > resolveRowQuantity(item));
   if (overQuantityItems.length > 0) {
-    resultMessage.value = '退货数量不能超过当前可用数量';
+    resultMessage.value = '冲销数量不能超过当前可用数量';
     resultStatus.value = false;
     return;
   }
 
   buttonLoading.value = true;
   try {
-    const cancelLines = validTransfers.map((item) => buildWorkOrderCancelLineBo(item));
-
-    const res: any = await returnWorkOrderInventory(
-      buildWorkOrderCancelPayload(cancelLines, {
-        returnType: 2,
+    const cancelLines = validTransfers.map((item) => buildInventoryCancelLineBo(item));
+    const res: any = await cancelInventoryMovement(
+      buildInventoryCancelPayload(cancelLines, {
         bktxt: fixedTransferForm.value.bktxt,
         postingDate: fixedTransferForm.value.postingDate
       })
@@ -613,26 +535,24 @@ const submitTransfer = async () => {
       resultStatus.value = false;
       return;
     }
-    resultMessage.value = res.msg || `成功移转${validTransfers.length}条记录`;
+    resultMessage.value = res.msg || `成功冲销${validTransfers.length}条记录`;
     resultStatus.value = true;
     transferList.value = [];
-    fixedTransferForm.value.targetLocationCode = '';
     fixedTransferForm.value.bktxt = '';
     fixedTransferForm.value.postingDate = null;
     handleQuery();
   } catch (error: any) {
     loading.value = false;
-    resultMessage.value = error.message || '移转失败';
+    resultMessage.value = error.message || '冲销失败';
     resultStatus.value = false;
   } finally {
     buttonLoading.value = false;
   }
 };
-
 </script>
 
 <style scoped>
-.work-order-return-page {
+.inventory-reverse-page {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -713,16 +633,6 @@ const submitTransfer = async () => {
   padding: 10px 16px;
 }
 
-.vertical-layout {
-  flex-direction: column;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .search-result {
-    min-height: 150px;
-  }
-}
 .transfer-header {
   display: flex;
   justify-content: space-between;
@@ -748,7 +658,6 @@ const submitTransfer = async () => {
   margin: 0 auto;
 }
 
-/* 响应式调整 - 在小屏幕上的显示 */
 @media (max-width: 768px) {
   .transfer-header {
     flex-direction: column;

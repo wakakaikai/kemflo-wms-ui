@@ -23,22 +23,22 @@
             </HistoryInput>
           </el-form-item>
           <el-form-item label="仓库编码" prop="warehouseCode">
-            <HistoryInput v-model="queryParams.warehouseCode" :config="warehouseCodeConfig" placeholder="请输入仓库编码" @keyup.enter="handleQuery" />
+            <HistoryInput v-model.trim="queryParams.warehouseCode" :config="warehouseCodeConfig" placeholder="请输入仓库编码" @keyup.enter="handleQuery" />
           </el-form-item>
           <el-form-item label="库位编码" prop="locationCode">
-            <HistoryInput v-model="queryParams.locationCode" :config="locationCodeConfig" placeholder="请输入库位编码" @keyup.enter="handleQuery" />
+            <HistoryInput v-model.trim="queryParams.locationCode" :config="locationCodeConfig" placeholder="请输入库位编码" @keyup.enter="handleQuery" />
           </el-form-item>
           <div v-show="showAdvancedSearch">
-            <el-form-item label="物料名称" prop="itemName">
-              <el-input v-model="queryParams.itemName" placeholder="请输入物料名称" clearable @keyup.enter="handleQuery" />
+            <el-form-item label="特殊库存" prop="specialInventoryFlag">
+              <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable>
+                <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.value + ' - ' + dict.label" :value="dict.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="业务伙伴" prop="businessCode">
+              <HistoryInput v-model="queryParams.businessCode" :config="businessCodeConfig" placeholder="请输入业务伙伴" @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="批次号" prop="batchCode">
               <el-input v-model="queryParams.batchCode" placeholder="请输入批次号" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
-              <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable>
-                <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
-              </el-select>
             </el-form-item>
           </div>
           <el-form-item>
@@ -126,14 +126,15 @@
           <span class="header-title">移转列表</span>
           <div class="header-actions">
             <el-form :inline="true" class="move-type-form">
-              <el-form-item label="移动类型">
-                <el-select v-model="moveType" style="width: 100px" @change="handleMoveTypeChange">
+              <el-form-item label="">
+                <el-select v-model="moveType" style="width: 280px" @change="handleMoveTypeChange">
                   <el-option v-for="item in moveTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
                 </el-select>
                 <span class="move-type-desc">{{ moveTypeDesc }}</span>
               </el-form-item>
             </el-form>
-            <el-radio-group v-if="needsTargetLocationMove" v-model="transferMode" @change="handleTransferModeChange">
+            <el-checkbox v-model="skipSap" :disabled="moveType === '321'">仅WMS移转</el-checkbox>
+            <el-radio-group v-if="canSelectTargetLocationMove" v-model="transferMode" @change="handleTransferModeChange">
               <el-radio-button label="fixed">固定库位</el-radio-button>
               <el-radio-button label="multiple">多库位</el-radio-button>
             </el-radio-group>
@@ -146,8 +147,8 @@
       <div class="transfer-form-bar">
         <el-form :model="fixedTransferForm" ref="fixedTransferFormRef" label-width="auto" :inline="true">
           <el-row :gutter="12">
-            <el-col :sm="24" :md="8" :lg="8" v-if="needsTargetLocationMove && transferMode === 'fixed'">
-              <el-form-item label="目标库位" prop="targetLocationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
+            <el-col :sm="24" :md="8" :lg="8" v-if="canSelectTargetLocationMove && transferMode === 'fixed'">
+              <el-form-item label="目标库位" prop="targetLocationCode" :rules="targetLocationRules">
                 <HistoryInput v-model.trim="fixedTransferForm.targetLocationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)">
                   <template #append>
                     <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
@@ -235,7 +236,7 @@
 
         <el-table-column v-if="transferColumns[8].visible && showInventoryTypeColumn" :label="isStockStatusMove ? '源类型' : '库存类型'" prop="inventoryType" align="center" min-width="110">
           <template #default="scope">
-            <el-select v-model="scope.row.inventoryType" placeholder="请选择库存类型" style="width: 100%" :disabled="isStockStatusMove" @change="handleInventoryTypeChange(scope.$index, scope.row)">
+            <el-select v-model="scope.row.inventoryType" placeholder="请选择库存类型" style="width: 100%" :disabled="isStockStatusMove || isOutboundOnlyMove" @change="handleInventoryTypeChange(scope.$index, scope.row)">
               <el-option label="非限制库存" value="N"></el-option>
               <el-option label="质检库存" value="X"></el-option>
               <el-option label="冻结库存" value="S"></el-option>
@@ -245,7 +246,7 @@
 
         <el-table-column v-if="transferColumns[9].visible && showTargetInventoryTypeColumn" label="目标类型" prop="targetInventoryType" align="center" min-width="110">
           <template #default="scope">
-            <el-select v-model="scope.row.targetInventoryType" placeholder="请选择目标库存类型" style="width: 100%" :disabled="moveType === '413' || moveType === '321' || moveType === '343' || moveType === '344'">
+            <el-select v-model="scope.row.targetInventoryType" placeholder="请选择目标库存类型" style="width: 100%" :disabled="needsTargetSalesOrder || moveType === '321' || moveType === '343' || moveType === '344' || moveType === '551'">
               <el-option label="非限制库存" value="N"></el-option>
               <el-option label="质检库存" value="X"></el-option>
               <el-option label="冻结库存" value="S"></el-option>
@@ -253,7 +254,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column v-if="moveType === '413'" label="目标销售订单" min-width="180">
+        <el-table-column v-if="needsTargetSalesOrder" label="目标销售订单" min-width="180">
           <template #default="scope">
             <el-input v-model="scope.row.targetBusinessCode" placeholder="请选择销售订单明细" readonly>
               <template #append>
@@ -263,7 +264,32 @@
           </template>
         </el-table-column>
 
-        <el-table-column v-if="transferColumns[10].visible && needsTargetLocationMove && transferMode === 'multiple'" label="目标库位" min-width="160">
+        <el-table-column v-if="isMaterialConversionMove" label="目标物料" min-width="180">
+          <template #default="scope">
+            <el-input v-model="scope.row.targetItemCode" placeholder="请选择目标物料" readonly>
+              <template #append>
+                <el-button icon="Search" @click="showTargetItemDialog(scope.$index)"></el-button>
+              </template>
+            </el-input>
+            <div v-if="scope.row.targetItemName" class="target-item-name">{{ scope.row.targetItemName }}</div>
+          </template>
+        </el-table-column>
+
+        <el-table-column v-if="isDepartmentIssueMove" label="成本中心" min-width="200">
+          <template #default="scope">
+            <el-select v-model="scope.row.costCenter" placeholder="请选择成本中心" filterable clearable :loading="costCenterLoading" style="width: 100%">
+              <el-option v-for="item in costCenterOptions" :key="item.costCenter" :label="item.costCenter + ' - ' + item.costCenterName" :value="item.costCenter" />
+            </el-select>
+          </template>
+        </el-table-column>
+
+        <el-table-column v-if="isDeptIssueZ01Move" label="订单号" min-width="140">
+          <template #default="scope">
+            <el-input v-model.trim="scope.row.orderNo" placeholder="可选" clearable />
+          </template>
+        </el-table-column>
+
+        <el-table-column v-if="transferColumns[10].visible && canSelectTargetLocationMove && transferMode === 'multiple'" label="目标库位" min-width="160">
           <template #default="scope">
             <TableHistoryInput v-model="scope.row.targetLocationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)">
               <template #append>
@@ -276,6 +302,14 @@
         <el-table-column v-if="transferColumns[11].visible" label="移转数量" width="115">
           <template #default="scope">
             <el-input-number v-model="scope.row.transferQuantity" :min="0" :max="scope.row.currentQuantity ? parseFloat(scope.row.currentQuantity) : scope.row.currentQuantity" :precision="3" controls-position="right" style="width: 100%" />
+          </template>
+        </el-table-column>
+
+        <el-table-column v-if="transferColumns[12].visible && showMoveReasonColumn" label="移动原因" min-width="180">
+          <template #default="scope">
+            <el-select v-model="scope.row.moveReasonCode" placeholder="请选择移动原因" clearable filterable :loading="moveTypeReasonLoading" style="width: 100%" @change="(code: string) => handleRowMoveReasonChange(scope.row, code)">
+              <el-option v-for="item in moveTypeReasonOptions" :key="item.id" :label="item.moveReasonCode + ' - ' + item.moveReasonDesc" :value="item.moveReasonCode" />
+            </el-select>
           </template>
         </el-table-column>
 
@@ -297,6 +331,8 @@
     <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
     <!-- 销售订单明细选择 -->
     <SalesOrderDetailDialog ref="salesOrderDetailDialogRef" @sales-order-detail-select-call-back="salesOrderDetailSelectCallBack" />
+    <!-- 目标物料选择（309） -->
+    <ItemDialog ref="targetItemDialogRef" @item-select-call-back="targetItemSelectCallBack" />
   </div>
 </template>
 
@@ -310,6 +346,7 @@ import { ArrowDown, ArrowRight, ArrowUp, Bell, Switch } from '@element-plus/icon
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import BatchInputDialog from '@/components/BatchInputDialog/index.vue';
 import SalesOrderDetailDialog from '@/views/wms/salesOrderDetail/components/SalesOrderDetailDialog.vue';
+import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import { HistoryConfig } from '@/types/history';
@@ -317,12 +354,17 @@ import { transferInventory } from '@/api/wms/inventoryDetail';
 import { SalesOrderDetailVO } from '@/api/wms/salesOrderDetail/types';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
-import { DEFAULT_TRANSFER_MOVE_TYPE, getDefaultSourceInventoryType, getDefaultTargetInventoryType, getTransferMoveTypeDesc, INVENTORY_TRANSFER_MOVE_TYPES, isStockStatusTransfer, needsTargetLocation } from './utils/transferMoveConfig';
+import { listMoveTypeReason } from '@/api/wms/moveTypeReason';
+import { listCostCenter } from '@/api/wms/costCenter';
+import type { CostCenterVO } from '@/api/wms/costCenter/types';
+import type { MoveTypeReasonVO } from '@/api/wms/moveTypeReason/types';
+import { DEFAULT_TRANSFER_MOVE_TYPE, canSelectTargetLocation, getDefaultSourceInventoryType, getDefaultTargetInventoryType, getTransferMoveTypeDesc, INVENTORY_TRANSFER_MOVE_TYPES, isDepartmentIssueTransfer, isDeptIssueZ01, isMaterialConversionTransfer, isOutboundOnlyTransfer, isStockStatusTransfer, needsTargetLocation } from './utils/transferMoveConfig';
 import InventorySortHeader from '@/views/wms/components/InventorySortHeader.vue';
 import { applyInventorySortToQuery, createDefaultInventorySortRules, getInventorySortState, toggleInventorySort, type InventorySortKey, type InventorySortRule } from '@/views/wms/components/inventorySort';
 
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 const salesOrderDetailDialogRef = ref<InstanceType<typeof SalesOrderDetailDialog>>();
+const targetItemDialogRef = ref<InstanceType<typeof ItemDialog>>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_type, wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_type', 'wms_inventory_special_flag'));
 
@@ -357,14 +399,31 @@ const batchInputDialogRef = ref<InstanceType<typeof BatchInputDialog>>();
 // 移转模式：fixed-固定库位，multiple-多库位
 const transferMode = ref<'fixed' | 'multiple'>('fixed');
 const moveType = ref(DEFAULT_TRANSFER_MOVE_TYPE);
+/** 当前移动类型对应的移动原因选项 */
+const moveTypeReasonOptions = ref<MoveTypeReasonVO[]>([]);
+const moveTypeReasonLoading = ref(false);
+/** 是否只进行 WMS 移转（跳过 SAP 过账） */
+const skipSap = ref(false);
 const moveTypeOptions = INVENTORY_TRANSFER_MOVE_TYPES;
 const moveTypeDesc = computed(() => getTransferMoveTypeDesc(moveType.value));
 const needsTargetLocationMove = computed(() => needsTargetLocation(moveType.value));
+const canSelectTargetLocationMove = computed(() => canSelectTargetLocation(moveType.value));
 const isStockStatusMove = computed(() => isStockStatusTransfer(moveType.value));
-const showInventoryTypeColumn = computed(() => moveType.value !== '413');
-const showTargetInventoryTypeColumn = computed(() => isStockStatusMove.value && moveType.value !== '413');
+const isMaterialConversionMove = computed(() => isMaterialConversionTransfer(moveType.value));
+const isOutboundOnlyMove = computed(() => isOutboundOnlyTransfer(moveType.value));
+const isDepartmentIssueMove = computed(() => isDepartmentIssueTransfer(moveType.value));
+const isDeptIssueZ01Move = computed(() => isDeptIssueZ01(moveType.value));
+const costCenterOptions = ref<CostCenterVO[]>([]);
+const costCenterLoading = ref(false);
+/** 413 转销售订单库存须选择目标销售订单 */
+const needsTargetSalesOrder = computed(() => moveType.value === '413');
+const showInventoryTypeColumn = computed(() => !needsTargetSalesOrder.value);
+const showTargetInventoryTypeColumn = computed(() => isStockStatusMove.value && !needsTargetSalesOrder.value);
 /** 移转列表中存在非一般库存时显示业务伙伴编码列 */
 const showBusinessPartnerColumn = computed(() => transferList.value.some((item) => item.specialInventoryFlag && item.specialInventoryFlag !== 'N'));
+/** 当前移动类型配置了移动原因时才显示移动原因列 */
+const showMoveReasonColumn = computed(() => moveTypeReasonOptions.value.length > 0);
+const targetLocationRules = computed(() => (needsTargetLocationMove.value ? [{ required: true, message: '请输入目标库位编码', trigger: 'blur' }] : []));
 
 // 固定库位模式下的表单数据
 const fixedTransferForm = ref({
@@ -396,6 +455,20 @@ const itemCodeConfig: HistoryConfig = {
 
 const locationCodeConfig: HistoryConfig = {
   key: 'locationCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryTransfer',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const businessCodeConfig: HistoryConfig = {
+  key: 'businessCode',
   storage: 'indexedDB',
   maxSize: 10,
   page: 'inventoryTransfer',
@@ -544,13 +617,14 @@ const transferColumns = ref<FieldOption[]>([
   { key: 2, label: `批次号`, visible: true, children: [] },
   { key: 3, label: `源库位信息`, visible: true, children: [] },
   { key: 4, label: `数量`, visible: true, children: [] },
-  { key: 5, label: `单位`, visible: true, children: [] },
+  { key: 5, label: `单位`, visible: false, children: [] },
   { key: 6, label: `库存标识`, visible: true, children: [] },
   { key: 7, label: `业务伙伴`, visible: true, children: [] },
   { key: 8, label: `库存类型`, visible: true, children: [] },
   { key: 9, label: `目标类型`, visible: true, children: [] },
   { key: 10, label: `目标库位`, visible: true, children: [] },
-  { key: 11, label: `移转数量`, visible: true, children: [] }
+  { key: 11, label: `移转数量`, visible: true, children: [] },
+  { key: 12, label: `移动原因`, visible: true, children: [] }
 ]);
 
 // 禁用未来的时间
@@ -615,8 +689,10 @@ const addSelectedToTransferList = () => {
   }
 
   const sourceInventoryType = getDefaultSourceInventoryType(moveType.value);
+  const sameLocationMove = isStockStatusMove.value || isOutboundOnlyMove.value;
   const newItems = selectedSearchItems.value.map((item) => {
     const currentQuantity = sourceInventoryType === 'S' ? item.blockedQuantity || 0 : sourceInventoryType === 'X' ? item.inspectionQuantity || 0 : item.availableQuantity || 0;
+    const sameLocation = sameLocationMove;
     return {
       id: item.id,
       itemCode: item.itemCode,
@@ -630,18 +706,26 @@ const addSelectedToTransferList = () => {
       sourceWarehouseCode: item.warehouseCode,
       sourceAreaCode: item.areaCode,
       sourceLocationCode: item.locationCode,
-      targetWarehouseCode: isStockStatusMove.value ? item.warehouseCode : '',
-      targetAreaCode: isStockStatusMove.value ? item.areaCode : '',
-      targetLocationCode: isStockStatusMove.value ? item.locationCode : '',
+      targetWarehouseCode: sameLocation ? item.warehouseCode : '',
+      targetAreaCode: sameLocation ? item.areaCode : '',
+      targetLocationCode: sameLocation ? item.locationCode : '',
       specialInventoryFlag: item.specialInventoryFlag,
       inventoryType: sourceInventoryType,
       targetInventoryType: getDefaultTargetInventoryType(moveType.value),
       transferQuantity: null,
       businessCode: item.businessCode,
       businessName: item.businessName,
+      supplierCode: item.specialInventoryFlag === 'K' ? item.businessCode : '',
+      customerCode: item.specialInventoryFlag === 'W' ? item.businessCode : '',
       targetBusinessCode: '',
       targetSalesOrderNo: '',
-      targetSalesOrderItem: ''
+      targetSalesOrderItem: '',
+      targetItemCode: '',
+      targetItemName: '',
+      costCenter: '',
+      orderNo: '',
+      moveReasonCode: '',
+      moveReasonDesc: ''
     };
   });
 
@@ -728,6 +812,23 @@ const storageLocationSelectCallBack = (record: any) => {
   }
 };
 
+/** 显示目标物料选择对话框（309） */
+const showTargetItemDialog = (index: number) => {
+  currenIndex.value = index;
+  targetItemDialogRef.value?.openDialog();
+  targetItemDialogRef.value?.handleQuery();
+};
+
+/** 目标物料选择回调 */
+const targetItemSelectCallBack = (record: any) => {
+  if (currenIndex.value < 0 || currenIndex.value >= transferList.value.length) {
+    return;
+  }
+  const currentItem = transferList.value[currenIndex.value];
+  currentItem.targetItemCode = record.item;
+  currentItem.targetItemName = record.itemDesc;
+};
+
 /** 显示销售订单明细选择对话框 */
 const showSalesOrderDetailDialog = (index: number) => {
   currenIndex.value = index;
@@ -760,20 +861,83 @@ const handleInventoryTypeChange = (index: number) => {
   syncCurrentQuantity(transferList.value[index]);
 };
 
-const handleMoveTypeChange = () => {
+function resolveMoveReasonDesc(code?: string | null): string | undefined {
+  if (!code) {
+    return undefined;
+  }
+  const matched = moveTypeReasonOptions.value.find((item) => item.moveReasonCode === code);
+  return matched?.moveReasonDesc;
+}
+
+function handleRowMoveReasonChange(row: any, code: string) {
+  row.moveReasonDesc = resolveMoveReasonDesc(code) || '';
+}
+
+const loadMoveTypeReasonOptions = async () => {
+  if (!moveType.value) {
+    moveTypeReasonOptions.value = [];
+    return;
+  }
+  moveTypeReasonLoading.value = true;
+  try {
+    const res = await listMoveTypeReason({
+      moveType: moveType.value,
+      pageNum: 1,
+      pageSize: 500
+    });
+    moveTypeReasonOptions.value = res.rows || [];
+  } catch {
+    moveTypeReasonOptions.value = [];
+  } finally {
+    moveTypeReasonLoading.value = false;
+  }
+};
+
+const loadCostCenterOptions = async () => {
+  if (!isDepartmentIssueMove.value) {
+    costCenterOptions.value = [];
+    return;
+  }
+  costCenterLoading.value = true;
+  try {
+    const res = await listCostCenter({ pageNum: 1, pageSize: 5000 });
+    costCenterOptions.value = res.rows || [];
+  } catch {
+    costCenterOptions.value = [];
+  } finally {
+    costCenterLoading.value = false;
+  }
+};
+
+const handleMoveTypeChange = async () => {
   resultMessage.value = '';
+  skipSap.value = moveType.value === '321';
+  await loadMoveTypeReasonOptions();
+  await loadCostCenterOptions();
   const sourceInventoryType = getDefaultSourceInventoryType(moveType.value);
   const targetInventoryType = getDefaultTargetInventoryType(moveType.value);
   transferList.value.forEach((item) => {
     item.inventoryType = sourceInventoryType;
     item.targetInventoryType = targetInventoryType;
+    item.moveReasonCode = '';
+    item.moveReasonDesc = '';
     syncCurrentQuantity(item);
-    if (moveType.value !== '413') {
+    if (!needsTargetSalesOrder.value) {
       item.targetBusinessCode = '';
       item.targetSalesOrderNo = '';
       item.targetSalesOrderItem = '';
     }
-    if (isStockStatusMove.value) {
+    if (moveType.value !== '309') {
+      item.targetItemCode = '';
+      item.targetItemName = '';
+    }
+    if (!isDepartmentIssueMove.value) {
+      item.costCenter = '';
+      item.orderNo = '';
+    } else if (!isDeptIssueZ01Move.value) {
+      item.orderNo = '';
+    }
+    if (isStockStatusMove.value || isOutboundOnlyMove.value) {
       item.targetWarehouseCode = item.sourceWarehouseCode;
       item.targetAreaCode = item.sourceAreaCode;
       item.targetLocationCode = item.sourceLocationCode;
@@ -783,7 +947,7 @@ const handleMoveTypeChange = () => {
       item.targetLocationCode = '';
     }
   });
-  if (!needsTargetLocationMove.value) {
+  if (!canSelectTargetLocationMove.value) {
     fixedTransferForm.value.targetLocationCode = '';
     fixedTransferForm.value.targetWarehouseCode = '';
     fixedTransferForm.value.targetAreaCode = '';
@@ -801,10 +965,34 @@ const submitTransfer = async () => {
     return;
   }
 
-  if (moveType.value === '413') {
+  if (needsTargetSalesOrder.value) {
     const missingTargetSo = validTransfers.filter((item) => !String(item.targetBusinessCode || '').trim());
     if (missingTargetSo.length > 0) {
       resultMessage.value = '413 移转须选择目标销售订单';
+      resultStatus.value = false;
+      return;
+    }
+  }
+
+  if (moveType.value === '309') {
+    const missingTargetItem = validTransfers.filter((item) => !String(item.targetItemCode || '').trim());
+    if (missingTargetItem.length > 0) {
+      resultMessage.value = '309 物料转换须选择目标物料';
+      resultStatus.value = false;
+      return;
+    }
+    const sameTargetItem = validTransfers.filter((item) => item.targetItemCode === item.itemCode);
+    if (sameTargetItem.length > 0) {
+      resultMessage.value = '目标物料不能与源物料相同';
+      resultStatus.value = false;
+      return;
+    }
+  }
+
+  if (isDepartmentIssueMove.value) {
+    const missingCostCenter = validTransfers.filter((item) => !String(item.costCenter || '').trim());
+    if (missingCostCenter.length > 0) {
+      resultMessage.value = '部门领料须为每行选择成本中心';
       resultStatus.value = false;
       return;
     }
@@ -830,6 +1018,20 @@ const submitTransfer = async () => {
         return;
       }
     }
+  } else if (canSelectTargetLocationMove.value) {
+    if (transferMode.value === 'fixed' && fixedTransferForm.value.targetLocationCode) {
+      validTransfers.forEach((item) => {
+        item.targetWarehouseCode = fixedTransferForm.value.targetWarehouseCode;
+        item.targetAreaCode = fixedTransferForm.value.targetAreaCode;
+        item.targetLocationCode = fixedTransferForm.value.targetLocationCode;
+      });
+    }
+    validTransfers.forEach((item) => {
+      item.targetWarehouseCode = item.targetWarehouseCode || item.sourceWarehouseCode;
+      item.targetAreaCode = item.targetAreaCode || item.sourceAreaCode;
+      item.targetLocationCode = item.targetLocationCode || item.sourceLocationCode;
+      item.targetInventoryType = item.targetInventoryType || getDefaultTargetInventoryType(moveType.value);
+    });
   } else {
     validTransfers.forEach((item) => {
       item.targetWarehouseCode = item.sourceWarehouseCode;
@@ -847,6 +1049,14 @@ const submitTransfer = async () => {
     return;
   }
 
+  if (skipSap.value) {
+    try {
+      await proxy?.$modal.confirm('已开启「仅WMS移转」，本次将跳过 SAP 过账，是否确认继续？');
+    } catch {
+      return;
+    }
+  }
+
   buttonLoading.value = true;
   try {
     // 构造移转请求参数
@@ -858,11 +1068,17 @@ const submitTransfer = async () => {
       targetAreaCode: item.targetAreaCode,
       targetLocationCode: item.targetLocationCode,
       targetInventoryType: item.targetInventoryType,
-      targetBusinessCode: item.targetBusinessCode ? (item.targetBusinessCode === '411' ? undefined : item.targetBusinessCode) : item.businessCode,
+      targetBusinessCode: item.targetBusinessCode || undefined,
+      targetItemCode: item.targetItemCode || undefined,
+      targetItemName: item.targetItemName || undefined,
       transferQuantity: item.transferQuantity,
       specialInventoryFlag: item.specialInventoryFlag,
       businessCode: item.businessCode,
-      businessName: item.businessName
+      businessName: item.businessName,
+      moveReasonCode: item.moveReasonCode || undefined,
+      moveReasonDesc: item.moveReasonDesc || resolveMoveReasonDesc(item.moveReasonCode),
+      costCenter: item.costCenter || undefined,
+      orderNo: isDeptIssueZ01Move.value ? item.orderNo || undefined : undefined
     }));
 
     const res: any = await transferInventory({
@@ -871,7 +1087,8 @@ const submitTransfer = async () => {
       moveType: moveType.value,
       mtsnr: resolveMtsnr(fixedTransferForm.value.mtsnr),
       bktxt: resolveBatchBktxt(fixedTransferForm.value.bktxt),
-      postingDate: formatPostingDate(fixedTransferForm.value.postingDate)
+      postingDate: formatPostingDate(fixedTransferForm.value.postingDate),
+      skipSap: skipSap.value || undefined
     });
 
     if (res.code !== HttpStatus.SUCCESS) {
@@ -910,6 +1127,7 @@ const handleBatchInputConfirm = (values: string[]) => {
 };
 
 onMounted(() => {
+  loadMoveTypeReasonOptions();
   getList();
 });
 </script>
@@ -1101,6 +1319,15 @@ onMounted(() => {
 .transfer-count {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.target-item-name {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 768px) {

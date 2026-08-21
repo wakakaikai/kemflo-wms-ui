@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { InventoryDetailVO, InventoryDetailForm, InventoryDetailQuery, InventoryTransferForm } from '@/api/wms/inventoryDetail/types';
+import { InventoryDetailVO, InventoryDetailForm, InventoryDetailQuery, InventoryTransferForm, InventoryCancelForm, InventoryCancelLineBO, InventoryCancelBatchOptions } from '@/api/wms/inventoryDetail/types';
 
 /**
  * 查询库存明细记录列表
@@ -114,22 +114,50 @@ export const transferInventory = (data: InventoryTransferForm) => {
  * 栈板库存退货
  * @param data
  */
-export const returnPalletInventory = (data: any) => {
+/**
+ * 栈板库存退货（已迁移至 /wms/palletInventory/return，保留兼容导出）
+ */
+export { returnPalletInventory } from '@/api/wms/palletInventory';
+
+/**
+ * 采购件退货（已迁移至 /wms/purchaseOrder/return，保留兼容导出）
+ */
+export { returnPurchaseInventory } from '@/api/wms/purchaseOrder';
+
+/** 库存移动冲销（SAP 物料凭证冲销） */
+export const cancelInventoryMovement = (data: InventoryCancelForm) => {
   return request({
-    url: '/wms/inventoryDetail/palletReturn',
+    url: '/wms/inventoryDetail/cancel',
     method: 'post',
     data: data
   });
 };
 
-/**
- * 库存移转记录
- * @param data
- */
-export const returnPurchaseInventory = (data: any) => {
-  return request({
-    url: '/wms/inventoryDetail/purchaseReturn',
-    method: 'post',
-    data: data
-  });
-};
+function formatCancelPostingDate(postingDate?: string | null): string | undefined {
+  if (!postingDate) {
+    return undefined;
+  }
+  return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
+}
+
+function resolveCancelBktxt(bktxt?: string | null): string | undefined {
+  const value = bktxt?.trim();
+  return value || undefined;
+}
+
+/** 库存冲销行：仅提交 SAP 凭证字段 */
+export function buildInventoryCancelLineBo(item: Record<string, unknown>): InventoryCancelLineBO {
+  return {
+    sapMaterialDocYear: item.sapMaterialDocYear as number | string | undefined,
+    sapMaterialOrderNo: String(item.sapMaterialOrderNo ?? '').trim() || undefined,
+    sapMaterialItem: String(item.sapMaterialItem ?? '').trim() || undefined
+  };
+}
+
+export function buildInventoryCancelPayload(lines: InventoryCancelLineBO[], options: InventoryCancelBatchOptions): InventoryCancelForm {
+  return {
+    inventoryCancelBoList: lines,
+    bktxt: resolveCancelBktxt(options.bktxt),
+    postingDate: formatCancelPostingDate(options.postingDate)
+  };
+}

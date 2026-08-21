@@ -193,7 +193,7 @@
         </el-table>
 
         <div style="margin-top: 20px; text-align: center">
-          <el-button v-hasPermi="['wms:inventoryDetail:workOrderReturn']" :loading="buttonLoading1" type="primary" @click="submitTransfer('262')" :disabled="transferList.length === 0">
+          <el-button v-hasPermi="['wms:workOrder:return']" :loading="buttonLoading1" type="primary" @click="submitTransfer('262')" :disabled="transferList.length === 0">
             工单退料262
             <el-tooltip content="工单领料退库（262）" placement="top">
               <el-icon class="ml-1"><QuestionFilled /></el-icon>

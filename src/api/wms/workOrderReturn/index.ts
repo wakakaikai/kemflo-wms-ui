@@ -6,7 +6,7 @@ import { WORK_ORDER_SOURCE_DOC_TYPE } from './types';
 export { WORK_ORDER_SOURCE_DOC_TYPE };
 export type { WorkOrderCancelLineBO, WorkOrderReturnForm, WorkOrderReturnLineBO };
 
-/** 冲销标识�?0-正常 1-已冲销 2-冲销记录 */
+/** 冲销标识�?0-正常 1-已冲销 2-冲销记录 */
 export const INVENTORY_MOVEMENT_REVERSAL_FLAG = {
   NORMAL: 0,
   REVERSED: 1,
@@ -41,17 +41,17 @@ export function getInventoryMovementReversalTagType(flag?: number | null): 'succ
 }
 
 /**
- * 工单退�?/冲销
+ * 工单退货/冲销
  */
 export const returnWorkOrderInventory = (data: WorkOrderReturnForm): AxiosPromise<void> => {
   return request({
-    url: '/wms/inventoryDetail/workOrderReturn',
+    url: '/wms/workOrder/return',
     method: 'post',
     data
   });
 };
 
-/** sourceDocType=WO �? sourceDocCode 即工单号 */
+/** sourceDocType=WO �? sourceDocCode 即工单号 */
 export function resolveWorkOrderNo(row: WorkOrderReturnSourceRow): string {
   if (row.sourceDocType === WORK_ORDER_SOURCE_DOC_TYPE) {
     return String(row.sourceDocCode ?? '').trim();
@@ -105,7 +105,7 @@ export function buildWorkOrderReturnBo(item: Record<string, unknown>, extra?: Pa
   };
 }
 
-/** 工单冲销行：仅提�? SAP �?证字�? */
+/** 工单冲销行：仅提�? SAP �?证字�? */
 export function buildWorkOrderCancelLineBo(item: Record<string, unknown>): WorkOrderCancelLineBO {
   return {
     sapMaterialDocYear: item.sapMaterialDocYear as number | string | undefined,

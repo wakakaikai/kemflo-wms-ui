@@ -1,11 +1,15 @@
 <template>
   <div class="p-2">
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
-      <div v-show="showSearch" class="mb-[10px]">
-        <el-card shadow="hover">
+      <div v-show="showSearch" class="mb-[10px] search-container">
+        <el-card shadow="hover" class="search-card">
           <el-form ref="queryFormRef" :model="queryParams" :rules="rules" :inline="true">
             <el-form-item label="工单号" prop="shopOrder">
-              <el-input v-model="queryParams.shopOrder" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
+              <HistoryInput ref="shopOrderInputRef" v-model.trim="queryParams.shopOrder" :config="shopOrderConfig" placeholder="请输入工单号" @keyup.enter="handleQuery">
+                <template #append>
+                  <el-button icon="Search" @click="openShopOrderDialog" />
+                </template>
+              </HistoryInput>
             </el-form-item>
             <el-form-item label="条码" prop="sfcStr">
               <el-input v-model="queryParams.sfcStr" placeholder="请输入条码" clearable @keyup.enter="handleQuery" readonly>
@@ -47,7 +51,7 @@
         </el-row>
       </template>
 
-      <el-table v-loading="loading" :data="shopOrderSfcList" @selection-change="handleSelectionChange" row-key="id" border stripe fixed-header fit>
+      <el-table ref="shopOrderSfcTableRef" v-loading="loading" :data="shopOrderSfcList" @selection-change="handleSelectionChange" row-key="id" border stripe fixed-header fit>
         <el-table-column type="selection" width="55" align="center" :reserve-selection="true" />
         <el-table-column label="工单号" align="center" prop="shopOrder" />
         <el-table-column label="条码" align="center" prop="sfc" />
@@ -104,6 +108,7 @@
 
     <!-- 添加打印次数对话框 -->
     <AddPrintCountDialog ref="addPrintCountDialogRef" :selectedShopOrderSfcList="selectedShopOrderSfcList" @confirm="confirmAddPrintCount" />
+    <ShopOrderDialog ref="shopOrderDialogRef" :pod-config="{}" @shop-order-call-back="shopOrderCallBack" />
   </div>
 </template>
 
@@ -111,8 +116,13 @@
 import { listShopOrderSfc, getShopOrderSfc, delShopOrderSfc, addShopOrderSfc, updateShopOrderSfc, pageShopOrderSfc } from '@/api/mes/shopOrderSfc';
 import { ShopOrderSfcVO, ShopOrderSfcQuery, ShopOrderSfcForm } from '@/api/mes/shopOrderSfc/types';
 import BatchInputDialog from '@/components/BatchInputDialog/index.vue';
+import HistoryInput from '@/components/HistoryInput/index.vue';
+import type { HistoryConfig } from '@/types/history';
 import AddPrintCountDialog from './components/addPrintCountDialog.vue';
+import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
 const addPrintCountDialogRef = ref<InstanceType<typeof AddPrintCountDialog>>();
+const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
+const shopOrderInputRef = ref<InstanceType<typeof HistoryInput>>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const batchInputDialogVisible = ref(false);
@@ -130,6 +140,7 @@ const total = ref(0);
 
 const queryFormRef = ref<ElFormInstance>();
 const shopOrderSfcFormRef = ref<ElFormInstance>();
+const shopOrderSfcTableRef = ref<ElTableInstance>();
 
 const dialog = reactive<DialogOption>({
   visible: false,
@@ -183,12 +194,26 @@ const data = reactive<PageData<ShopOrderSfcForm, ShopOrderSfcQuery>>({
   },
   rules: {
     id: [{ required: true, message: '记录唯一ID不能为空', trigger: 'blur' }],
-    shopOrder: [{ required: true, message: '工单行号不能为空', trigger: 'blur' }],
+    shopOrder: [{ required: true, message: '工单号不能为空', trigger: 'blur' }],
     sfcBo: [{ required: true, message: '条码行号不能为空', trigger: 'blur' }]
   }
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const shopOrderConfig: HistoryConfig = {
+  key: 'shopOrder',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'shopOrderSfc',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
 
 /** 查询工单下达的条码列表 */
 const getList = () => {
@@ -223,7 +248,21 @@ const reset = () => {
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
+  shopOrderSfcTableRef.value?.clearSelection();
+  selectedShopOrderSfcList.value = [];
   getList();
+};
+
+const openShopOrderDialog = () => {
+  shopOrderDialogRef.value?.openDialog();
+};
+
+const shopOrderCallBack = (data: any) => {
+  queryParams.value.shopOrder = data?.shopOrder || '';
+  nextTick(() => {
+    shopOrderInputRef.value?.saveHistory();
+    handleQuery();
+  });
 };
 
 /** 重置按钮操作 */
@@ -309,10 +348,15 @@ const handleBatchInputConfirm = (values: string[]) => {
 
 // 增加打印次数
 const handleAddPrintCount = () => {
-  if (!selectedShopOrderSfcList.value) {
+  const currentShopOrder = String(queryParams.value.shopOrder || '').trim();
+  const selectedList = currentShopOrder
+    ? selectedShopOrderSfcList.value.filter((item) => String(item.shopOrder || '').trim() === currentShopOrder)
+    : selectedShopOrderSfcList.value;
+  if (!selectedList.length) {
     proxy.$message.error('请选择一条要增加打印次数的数据');
     return;
   }
+  selectedShopOrderSfcList.value = selectedList;
   addPrintCountDialogRef.value.openDialog();
 };
 // 确定的回调
@@ -327,5 +371,20 @@ onMounted(() => {
 <style lang="scss" scoped>
 .text-white {
   color: white !important;
+}
+
+.search-container {
+  position: relative;
+  z-index: 10;
+}
+
+/* 解决搜索区使用历史记录功能时被遮挡问题 */
+.search-card {
+  overflow: visible !important;
+}
+
+.search-card :deep(.el-card__body),
+:deep(.el-card) {
+  overflow: visible !important;
 }
 </style>

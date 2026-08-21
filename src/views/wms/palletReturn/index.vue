@@ -3,5 +3,5 @@
 </template>
 
 <script setup name="PalletReturn" lang="ts">
-import PalletInventoryReturn from '@/views/wms/inventoryReturn/components/palletInventoryReturn.vue';
+import PalletInventoryReturn from '@/views/wms/palletInventoryReturn/index.vue';
 </script>

@@ -48,7 +48,7 @@
         </el-card>
       </div>
     </transition>
-    <el-card shadow="hover">
+    <el-card shadow="hover" class="weight-form-card">
       <template #header>
         <div class="card-header">
           <span>称重采集</span>
@@ -71,11 +71,11 @@
         <el-row :gutter="24">
           <el-col :lg="8" :md="8" :sm="24">
             <el-form-item label="工单号码" prop="shopOrder">
-              <el-input ref="workOrderInputRef" v-model="workOrderQueryParams.shopOrder" placeholder="请输入工单号码">
+              <HistoryInput ref="workOrderInputRef" v-model.trim="workOrderQueryParams.shopOrder" :config="shopOrderConfig" placeholder="请输入工单号码">
                 <template #append>
                   <el-button icon="Search" @click="openShopOrderDialog" />
                 </template>
-              </el-input>
+              </HistoryInput>
             </el-form-item>
           </el-col>
           <el-col :lg="5" :md="5" :sm="24">
@@ -219,11 +219,28 @@ import { weightHistoryDB } from '@/utils/indexedDB';
 import { v4 as uuidv4 } from 'uuid';
 import { audioPlayer } from '@/utils/audioPlayer';
 import { useSerialPort } from '@/hooks/useSerialPort';
+import HistoryInput from '@/components/HistoryInput/index.vue';
+import type { HistoryConfig } from '@/types/history';
 
 const { currentRoute } = useRouter();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const resourceDialogRef = ref<InstanceType<typeof ResourceDialog>>();
 const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
+const workOrderInputRef = ref<InstanceType<typeof HistoryInput>>();
+
+const shopOrderConfig: HistoryConfig = {
+  key: 'shopOrder',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'weight-no-sn',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
 
 const resultMessage = ref('');
 const resultStatus = ref(false);
@@ -378,6 +395,7 @@ const openShopOrderDialog = () => {
   shopOrderDialogRef.value.openDialog();
 };
 const getDataCollectionByShopOrder = () => {
+  workOrderInputRef.value?.saveHistory();
   queryDataCollectionByShopOrder({
     shopOrder: workOrderQueryParams.value.shopOrder,
     operation: podConfig.value.operation,
@@ -428,6 +446,7 @@ const getDataCollectionByShopOrder = () => {
 };
 const shopOrderCallBack = (data: any) => {
   workOrderQueryParams.value = data;
+  nextTick(() => workOrderInputRef.value?.saveHistory());
   getDataCollectionByShopOrder();
   if (workOrderQueryParams.value.shopOrder) {
     getShopOrderWeightNoSnInfo({
@@ -797,6 +816,18 @@ onBeforeUnmount(async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 解决工单号历史记录被卡片遮挡 */
+.weight-form-card {
+  position: relative;
+  z-index: 10;
+  overflow: visible !important;
+}
+
+.weight-form-card :deep(.el-card__header),
+.weight-form-card :deep(.el-card__body) {
+  overflow: visible !important;
 }
 .dashed-blue-btn {
   border: 1px dashed #3b82f6 !important;

@@ -236,6 +236,15 @@ export interface DeliveryOrderDetailQuery extends PageQuery {
    */
   conversionRatio?: number;
 
+  /**
+   * 显示已收货（未清数量为 0）
+   */
+  showOpenQuantityZero?: boolean;
+
+  enableSapSync?: boolean;
+
+  receiveType?: string | number;
+
     /**
      * 日期范围参数
      */

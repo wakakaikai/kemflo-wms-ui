@@ -16,7 +16,7 @@
       </div>
 
       <el-alert type="info" :closable="false" show-icon class="tip-alert">
-        各库位库存明细如下，勾选并填写「本次领料数量」后点击确认
+        各库位库存明细如下，勾选并填写「本次数量」后点击确认
       </el-alert>
 
       <!-- 工具栏 -->
@@ -56,7 +56,7 @@
         <el-table-column label="冻结数量" width="90" align="right">
           <template #default="{ row }">{{ formatQty(row.blockedQty) }}</template>
         </el-table-column>
-        <el-table-column label="本次领料数量" width="150" align="right" fixed="right">
+        <el-table-column label="本次数量" width="150" align="right" fixed="right">
           <template #default="{ row }">
             <el-input-number
               v-if="isRowSelected(row)"
@@ -110,6 +110,7 @@ interface InventoryPickRow {
   rowKey: string;
   id: string | number;
   warehouseCode: string;
+  areaCode: string;
   locationCode: string;
   batchCode: string;
   availableQuantity: number;
@@ -164,6 +165,11 @@ const formatQty = (val?: number | string) => {
   return Number.isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: 3 }) : '0';
 };
 
+const isGeneralInventory = (flag?: string) => {
+  const value = String(flag ?? '').trim().toUpperCase();
+  return !value || value === 'N';
+};
+
 const isRowSelectable = (row: InventoryPickRow) => row.availableQuantity > 0;
 
 const isRowSelected = (row: InventoryPickRow) => selectedRowKeys.value.has(row.rowKey);
@@ -202,15 +208,17 @@ const loadData = async () => {
   try {
     const res = await listInventoryDetail({
       itemCode: props.materialCode,
+      specialInventoryFlag: 'N',
       pageNum: 1,
       pageSize: 99999,
       params: {}
     });
     const list = (res as any).rows ?? res ?? [];
-    inventoryRows.value = list.map((item: InventoryDetailVO, index: number) => ({
+    inventoryRows.value = list.filter((item: InventoryDetailVO) => isGeneralInventory(item.specialInventoryFlag) && Number(item.availableQuantity ?? 0) > 0).map((item: InventoryDetailVO, index: number) => ({
       rowKey: `inv_${item.id ?? index}`,
       id: item.id,
       warehouseCode: item.warehouseCode ?? '',
+      areaCode: item.areaCode ?? '',
       locationCode: item.locationCode ?? '',
       batchCode: item.batchCode ?? '',
       availableQuantity: Number(item.availableQuantity ?? 0),
@@ -247,7 +255,7 @@ watch(visible, (val) => {
 const handleConfirm = () => {
   const picked = selectedRows.value.map((r) => ({ ...r }));
   if (!picked.length) {
-    ElMessage.warning('请至少选择一条库存明细并填写领料数量');
+    ElMessage.warning('请至少选择一条库存明细并填写本次数量');
     return;
   }
   emit('confirm', { locations: picked });

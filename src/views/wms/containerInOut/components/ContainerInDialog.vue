@@ -95,7 +95,7 @@ const locationCodeConfig: HistoryConfig = {
   key: 'locationCode',
   storage: 'indexedDB',
   maxSize: 10,
-  page: 'inventoryDetail',
+  page: 'containerIn',
   autoSave: true,
   component: { showDropdown: true, showTime: false, showDelete: true, dropdownMaxHeight: '300px' }
 };
@@ -104,7 +104,7 @@ const supplierCodeConfig: HistoryConfig = {
   key: 'supplierCode',
   storage: 'indexedDB',
   maxSize: 10,
-  page: 'inventoryDetail',
+  page: 'containerIn',
   autoSave: true,
   component: { showDropdown: true, showTime: false, showDelete: true, dropdownMaxHeight: '300px' }
 };

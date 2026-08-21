@@ -13,7 +13,7 @@
             </el-form-item>
             <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
               <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable style="width: 160px">
-                <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
+                <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.value + ' - ' + dict.label" :value="dict.value" />
               </el-select>
             </el-form-item>
             <el-form-item label="业务伙伴" prop="businessCode">
@@ -281,7 +281,7 @@ import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import SalesOrderDetailDialog from '@/views/wms/salesOrderDetail/components/SalesOrderDetailDialog.vue';
 import type { SalesOrderDetailVO } from '@/api/wms/salesOrderDetail/types';
-import { historyDB } from '@/store/modules/indexedDB';
+
 import { ref } from 'vue';
 import { globalHeaders } from '@/utils/request';
 import HistoryInput from '@/components/HistoryInput/index.vue';
@@ -799,35 +799,6 @@ function submitFileForm() {
 }
 
 onMounted(() => {
-  // 预置供应商代码历史记录（根据租户区分）
-  const tenantId = localStorage.getItem('tenantId');
-  const presetSupplierCodes = tenantId === '000001' ? ['CN00', 'TW00'] : ['CN10', 'TW00'];
-  historyDB.getHistory('supplierCode', 10, 'inventoryDetail').then((items) => {
-    if (items.length === 0) {
-      presetSupplierCodes.forEach((code) => {
-        historyDB.addHistory({ value: code, key: 'supplierCode', page: 'inventoryDetail', timestamp: Date.now() });
-      });
-    }
-  });
-
-  // 预置库位编码历史记录（根据租户区分）
-  const presetLocationCode = tenantId === '000001' ? 'CN00' : 'CN10';
-  historyDB.getHistory('locationCode', 10, 'inventoryDetail').then((items) => {
-    if (items.length === 0) {
-      historyDB.addHistory({ value: presetLocationCode, key: 'locationCode', page: 'inventoryDetail', timestamp: Date.now() });
-    }
-  });
-
-  // 预置客户代码历史记录（根据租户区分）
-  const presetCustomerCodes = tenantId === '000001' ? ['CN00', 'TW00'] : ['CN10', 'TW00'];
-  historyDB.getHistory('customerCode', 10, 'inventoryDetail').then((items) => {
-    if (items.length === 0) {
-      presetCustomerCodes.forEach((code) => {
-        historyDB.addHistory({ value: code, key: 'customerCode', page: 'inventoryDetail', timestamp: Date.now() });
-      });
-    }
-  });
-
   getList();
 });
 </script>

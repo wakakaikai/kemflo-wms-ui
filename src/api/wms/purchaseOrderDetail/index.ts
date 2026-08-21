@@ -63,11 +63,5 @@ export const delPurchaseOrderDetail = (id: string | number | Array<string | numb
 };
 
 
-// 新增采购入库
-export function addPurchaseInbound(data: any) {
-  return request({
-    url: '/wms/purchaseOrderDetail/inbound',
-    method: 'post',
-    data: data
-  });
-}
+// 新增采购入库（已迁移至 /wms/purchaseOrder/inbound，保留兼容导出）
+export { addPurchaseInbound } from '@/api/wms/purchaseOrder';

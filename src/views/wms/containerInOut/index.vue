@@ -90,6 +90,7 @@ import { ref } from 'vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_special_flag, wms_container_material_code } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag', 'wms_container_material_code'));
+import { historyDB } from '@/store/modules/indexedDB';
 
 const containerList = ref<InventoryDetailVO[]>([]);
 const loading = ref(true);
@@ -244,6 +245,35 @@ const handleExport = () => {
 onMounted(() => {
   const tenantId = localStorage.getItem('tenantId');
   queryParams.value.warehouseCode = tenantId === '000000' ? 'CN00' : 'CN10';
+
+  // 预置供应商代码历史记录（根据租户区分）
+  const presetSupplierCodes = tenantId === '000001' ? ['CN00', 'TW00'] : ['CN10', 'TW00'];
+  historyDB.getHistory('supplierCode', 10, 'containerIn').then((items) => {
+    if (items.length === 0) {
+      presetSupplierCodes.forEach((code) => {
+        historyDB.addHistory({ value: code, key: 'supplierCode', page: 'containerIn', timestamp: Date.now() });
+      });
+    }
+  });
+
+  // 预置库位编码历史记录（根据租户区分）
+  const presetLocationCode = tenantId === '000001' ? 'CN00' : 'CN10';
+  historyDB.getHistory('locationCode', 10, 'containerIn').then((items) => {
+    if (items.length === 0) {
+      historyDB.addHistory({ value: presetLocationCode, key: 'locationCode', page: 'containerIn', timestamp: Date.now() });
+    }
+  });
+
+  // 预置客户代码历史记录（根据租户区分）
+  const presetCustomerCodes = tenantId === '000001' ? ['CN00', 'TW00'] : ['CN10', 'TW00'];
+  historyDB.getHistory('customerCode', 10, 'containerOut').then((items) => {
+    if (items.length === 0) {
+      presetCustomerCodes.forEach((code) => {
+        historyDB.addHistory({ value: code, key: 'customerCode', page: 'containerOut', timestamp: Date.now() });
+      });
+    }
+  });
+
   getList();
 });
 </script>

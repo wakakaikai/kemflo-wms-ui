@@ -11,62 +11,62 @@
     <div ref="captureRef" class="tcp-collect-root">
       <div class="tcp-collect-summary">
         <div class="summary-item total">
-          <span class="summary-label">Ó³ÉäµãÎ»</span>
+          <span class="summary-label">æ˜ å°„ç‚¹ä½</span>
           <span class="summary-value">{{ stats.total }}</span>
         </div>
         <div class="summary-item success">
-          <span class="summary-label">³É¹¦</span>
+          <span class="summary-label">æˆåŠŸ</span>
           <span class="summary-value">{{ stats.success }}</span>
         </div>
         <div class="summary-item fail">
-          <span class="summary-label">Ê§°Ü</span>
+          <span class="summary-label">å¤±è´¥</span>
           <span class="summary-value">{{ stats.fail }}</span>
         </div>
       </div>
 
       <el-row :gutter="16">
         <el-col :span="10">
-          <div class="panel-title">Êµ¼Ê²É¼¯ JSON</div>
+          <div class="panel-title">å®é™…é‡‡é›† JSON</div>
           <pre class="raw-json">{{ rawJsonText }}</pre>
         </el-col>
         <el-col :span="14">
-          <div class="panel-title">Êı¾İ½âÎö½á¹û</div>
-          <el-empty v-if="!points.length" description="ÔİÎŞÓ³ÉäµãÎ»£¬ÇëÏÈÔÚ¡¸Êı¾İ½âÎö¡¹ÖĞÅäÖÃ V.GetData(...) " />
+          <div class="panel-title">æ•°æ®è§£æç»“æœ</div>
+          <el-empty v-if="!points.length" description="è¯·å…ˆé…ç½®æ˜ å°„ç‚¹ä½ï¼Œæ•°æ®åœ°å€è¯·å¡«å†™ V.GetData(...) " />
           <el-table v-else :data="points" border stripe max-height="480" class="map-table" table-layout="auto">
-            <el-table-column label="Ãû³Æ" prop="pointCode" min-width="100" show-overflow-tooltip>
+            <el-table-column label="ç¼–ç " prop="pointCode" min-width="100" show-overflow-tooltip>
               <template #default="scope">
                 <code>{{ scope.row.pointCode }}</code>
               </template>
             </el-table-column>
-            <el-table-column label="ÃèÊö" prop="pointName" min-width="110" show-overflow-tooltip />
-            <el-table-column label="Êı¾İµØÖ·" prop="tagAddress" min-width="160" show-overflow-tooltip>
+            <el-table-column label="åç§°" prop="pointName" min-width="110" show-overflow-tooltip />
+            <el-table-column label="æ•°æ®åœ°å€" prop="tagAddress" min-width="160" show-overflow-tooltip>
               <template #default="scope">
-                <code>{{ scope.row.tagAddress || '¡ª' }}</code>
+                <code>{{ scope.row.tagAddress || 'â€”' }}</code>
               </template>
             </el-table-column>
-            <el-table-column label="²É¼¯Öµ" min-width="140" show-overflow-tooltip>
+            <el-table-column label="é‡‡é›†å€¼" min-width="140" show-overflow-tooltip>
               <template #default="scope">
                 <span v-if="scope.row.success" class="val success">{{ formatValue(scope.row.value) }}</span>
-                <span v-else class="val fail">¡ª</span>
+                <span v-else class="val fail">â€”</span>
               </template>
             </el-table-column>
-            <el-table-column label="½á¹û" width="88" align="center">
+            <el-table-column label="ç»“æœ" width="88" align="center">
               <template #default="scope">
                 <span class="result-badge" :class="scope.row.success ? 'is-success' : 'is-fail'">
-                  {{ scope.row.success ? '³É¹¦' : 'Ê§°Ü' }}
+                  {{ scope.row.success ? 'æˆåŠŸ' : 'å¤±è´¥' }}
                 </span>
               </template>
             </el-table-column>
-            <el-table-column label="Ê§°ÜÔ­Òò" prop="error" min-width="120" show-overflow-tooltip />
+            <el-table-column label="å¤±è´¥åŸå› " prop="error" min-width="120" show-overflow-tooltip />
           </el-table>
         </el-col>
       </el-row>
     </div>
 
     <template #footer>
-      <el-button icon="Camera" :loading="capturing" :disabled="!hasContent" @click="onCapture">½ØÍ¼±£´æ</el-button>
-      <el-button type="primary" icon="DataLine" :loading="refreshing" @click="emit('refresh')">ÖØĞÂ²É¼¯</el-button>
-      <el-button @click="emit('update:visible', false)">¹Ø±Õ</el-button>
+      <el-button icon="Camera" :loading="capturing" :disabled="!hasContent" @click="onCapture">æˆªå›¾ä¿å­˜</el-button>
+      <el-button type="primary" icon="DataLine" :loading="refreshing" @click="emit('refresh')">é‡æ–°é‡‡é›†</el-button>
+      <el-button @click="emit('update:visible', false)">å…³é—­</el-button>
     </template>
   </el-dialog>
 </template>
@@ -87,7 +87,7 @@ const props = withDefaults(
     refreshing?: boolean;
   }>(),
   {
-    title: 'TCP ²É¼¯½á¹û',
+    title: 'TCP é‡‡é›†ç»“æœ',
     points: () => [],
     refreshing: false
   }
@@ -109,7 +109,7 @@ const stats = computed(() => {
 });
 
 const rawJsonText = computed(() => {
-  if (props.rawPayload == null) return '£¨ÎŞÊı¾İ£©';
+  if (props.rawPayload == null) return 'æš‚æ— æ•°æ®ï¼';
   if (typeof props.rawPayload === 'string') {
     try {
       return JSON.stringify(JSON.parse(props.rawPayload), null, 2);
@@ -127,7 +127,7 @@ const rawJsonText = computed(() => {
 const hasContent = computed(() => props.rawPayload != null || points.value.length > 0);
 
 const formatValue = (value: unknown) => {
-  if (value == null) return '¡ª';
+  if (value == null) return 'â€”';
   if (typeof value === 'number') {
     const raw = String(value);
     if (!/[eE]/.test(raw)) return raw;
@@ -188,7 +188,7 @@ async function captureScreenshot(root: HTMLElement, fileName: string) {
     await new Promise<void>((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (!blob) {
-          reject(new Error('½ØÍ¼Éú³ÉÊ§°Ü'));
+          reject(new Error('æˆªå›¾ç”Ÿæˆå¤±è´¥'));
           return;
         }
         FileSaver.saveAs(blob, fileName);
@@ -206,12 +206,12 @@ const onCapture = async () => {
   capturing.value = true;
   try {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const safeTitle = (props.title || 'TCP²É¼¯').replace(/[\\/:*?"<>|]/g, '_');
+    const safeTitle = (props.title || 'TCPé‡‡é›†').replace(/[\\/:*?"<>|]/g, '_');
     await captureScreenshot(captureRef.value, `${safeTitle}_${stamp}.png`);
-    ElMessage.success('½ØÍ¼ÒÑ±£´æ');
+    ElMessage.success('æˆªå›¾å·²ä¿å­˜');
   } catch (e) {
     console.error(e);
-    ElMessage.error('½ØÍ¼Ê§°Ü');
+    ElMessage.error('æˆªå›¾å¤±è´¥');
   } finally {
     capturing.value = false;
   }

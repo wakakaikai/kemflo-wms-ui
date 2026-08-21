@@ -4,6 +4,16 @@ export interface InventoryMovementVO {
    */
   reversalFlag?: number;
 
+  /**
+   * 移动原因编码
+   */
+  moveReasonCode?: string;
+
+  /**
+   * 移动原因描述
+   */
+  moveReasonDesc?: string;
+
 }
 
 export interface InventoryMovementForm extends BaseEntity {

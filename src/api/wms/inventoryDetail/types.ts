@@ -321,6 +321,14 @@ export interface InventoryTransferLineBO {
   targetBusinessCode?: string;
   transferQuantity?: number;
   specialInventoryFlag?: string;
+  /** 移动原因编码 */
+  moveReasonCode?: string;
+  /** 移动原因描述 */
+  moveReasonDesc?: string;
+  /** 成本中心（Z01/Z03/201 部门领料） */
+  costCenter?: string;
+  /** 订单号（Z01 可选） */
+  orderNo?: string;
   [key: string]: unknown;
 }
 
@@ -335,4 +343,26 @@ export interface InventoryTransferForm {
   bktxt?: string;
   /** 过账日期 */
   postingDate?: string;
+  /** 是否只进行 WMS 移转（跳过 SAP） */
+  skipSap?: boolean;
+}
+
+/** 库存移动冲销行（SAP 凭证） */
+export interface InventoryCancelLineBO {
+  sapMaterialDocYear?: number | string;
+  sapMaterialOrderNo?: string;
+  sapMaterialItem?: string;
+}
+
+/** 库存移动冲销提交 */
+export interface InventoryCancelForm {
+  inventoryCancelBoList: InventoryCancelLineBO[];
+  bktxt?: string;
+  postingDate?: string;
+}
+
+/** 构建库存冲销批次选项 */
+export interface InventoryCancelBatchOptions {
+  bktxt?: string;
+  postingDate?: string | null;
 }

@@ -125,6 +125,8 @@
         <el-table-column v-if="columns[22].visible" label="创建者" align="center" prop="createByName" />
         <el-table-column v-if="columns[23].visible" label="更新时间" align="center" prop="updateTime" width="180" />
         <el-table-column v-if="columns[24].visible" label="更新者" align="center" prop="updateByName" />
+        <el-table-column v-if="columns[26].visible" label="移动原因编码" align="center" prop="moveReasonCode" min-width="110" show-overflow-tooltip />
+        <el-table-column v-if="columns[27].visible" label="移动原因描述" align="center" prop="moveReasonDesc" min-width="140" show-overflow-tooltip />
         <el-table-column v-if="columns[25].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
@@ -492,7 +494,9 @@ const columns = ref<FieldOption[]>([
   { key: 22, label: `创建者`, visible: false, children: [] },
   { key: 23, label: `更新时间`, visible: false, children: [] },
   { key: 24, label: `更新者`, visible: false, children: [] },
-  { key: 25, label: `备注`, visible: false, children: [] }
+  { key: 26, label: `移动原因编码`, visible: false, children: [] },
+  { key: 27, label: `移动原因描述`, visible: false, children: [] },
+  { key: 25, label: `备注`, visible: false, children: [] },
 ]);
 
 /** 查询库存移动记录列表 */

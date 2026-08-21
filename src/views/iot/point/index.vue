@@ -1421,9 +1421,13 @@ const formatValue = (value?: unknown) => {
   }
   return num.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 6 });
 };
-/** 数值类型当前值 = 原始值 × 系数 */
+/** 数值类型当前值 = 原始值 × 系数；STRING 原样显示不做格式化 */
 const formatPointValue = (row: PointVO) => {
   if (isEmptyValue(row.currentValue)) return '—';
+  const dataType = (row.dataType || '').toUpperCase();
+  if (dataType === 'STRING' || dataType === 'CHAR') {
+    return String(row.currentValue);
+  }
   const scaled = applyNumericScale(row.currentValue, row.dataType, row.scaleFactor);
   return formatValue(scaled);
 };
