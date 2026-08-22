@@ -52,10 +52,10 @@
             <el-input ref="scanInputRef" v-model="scanInput" placeholder="请扫描条码" @keydown.enter.prevent="keyDownTab" @keydown.tab.prevent="keyDownTab" autofocus clearable />
           </el-form-item>
 
-          <!-- 打印份数 -->
-          <!--          <el-form-item label="打印份数">
-            <el-input-number v-model="copies" :min="1" :max="9999" controls-position="right" style="width: 100%" />
-          </el-form-item>-->
+          <!-- 扫描打印张数 -->
+          <el-form-item label="扫描打印张数">
+            <el-input-number v-model="scanPrintCount" :min="1" :max="9999" :precision="0" controls-position="right" style="width: 100%" />
+          </el-form-item>
 
           <!-- 操作按钮 -->
           <!--          <div class="action-buttons">
@@ -154,6 +154,7 @@ const podConfig = ref<{ [key: string]: any }>({});
 
 // 用户输入
 const scanInput = ref('');
+const scanPrintCount = ref(2);
 const loading = ref(false);
 // 扫描历史
 const scanHistory = ref<Array<{ content: string; time: string }>>([]);
@@ -366,11 +367,18 @@ const keyDownTab = async () => {
       LODOP.SET_PRINT_PAGESIZE(0, 0, 0, '50mm 25mm'); // 设置纸张大小
     }
 
-    // 设置默认字体
-    LODOP.ADD_PRINT_BARCODE('4mm', '20mm', '17.99mm', '17.99mm', 'QRCode', `${workOrderInfo.value.sfc}`);
-    LODOP.ADD_PRINT_TEXT('17.01mm', '7.99mm', '40mm', '6.01mm', `MAC:${workOrderInfo.value.sfc}`);
-    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'Arial');
-    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10);
+    const labelCount = Number(scanPrintCount.value) || 1;
+    for (let i = 0; i < labelCount; i++) {
+      if (i > 0) {
+        LODOP.NEWPAGE();
+      }
+
+      // 设置默认字体
+      LODOP.ADD_PRINT_BARCODE('4mm', '20mm', '17.99mm', '17.99mm', 'QRCode', `${workOrderInfo.value.sfc}`);
+      LODOP.ADD_PRINT_TEXT('17.01mm', '7.99mm', '40mm', '6.01mm', `MAC:${workOrderInfo.value.sfc}`);
+      LODOP.SET_PRINT_STYLEA(0, 'FontName', 'Arial');
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10);
+    }
 
     // ========== 预览或打印 ==========
     // LODOP.PRINT_DESIGN();
@@ -491,9 +499,7 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   padding: 15px;
-  background:
-    linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
-    linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
+  background: linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%), linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
   background-size: 20px 20px;
   background-position:
     0 0,

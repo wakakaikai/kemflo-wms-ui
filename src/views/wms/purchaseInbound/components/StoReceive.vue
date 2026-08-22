@@ -1,60 +1,65 @@
 <template>
   <el-row :gutter="20">
     <el-col :span="24">
-      <el-card shadow="never" class="search-card">
+      <el-card shadow="never" class="search-card history-card" :class="{ 'is-history-collapsed': !historyExpanded }">
         <template #header>
-          <el-row :gutter="10" class="mb8">
-            <el-col :span="1.5">
-              <span>STO订单明细</span>
-            </el-col>
+          <div class="history-card-header">
+            <div class="history-header-left" @click="historyExpanded = !historyExpanded">
+              <el-icon class="history-collapse-icon" :class="{ 'is-expanded': historyExpanded }">
+                <ArrowRight />
+              </el-icon>
+              <span class="history-header-title">STO订单明细</span>
+            </div>
             <right-toolbar v-model:showSearch="showStoSearch" :columns="stoColumns" @queryTable="getStoList"></right-toolbar>
-          </el-row>
+          </div>
         </template>
 
-        <el-form ref="stoQueryFormRef" :model="stoQueryParams" :rules="stoRules" :inline="true" label-width="auto">
-          <el-form-item label="交货单号" prop="deliveryOrderNo">
-            <HistoryInput v-model="stoQueryParams.deliveryOrderNo" :config="deliveryOrderNoConfig" placeholder="请输入交货单号" @keydown.tab.prevent="handleStoQuery" @keydown.enter.prevent="handleStoQuery"> </HistoryInput>
-          </el-form-item>
-          <el-form-item label="显示已收货" prop="showOpenQuantityZero">
-            <el-checkbox v-model="stoQueryParams.showOpenQuantityZero" @change="handleShowReceivedChange" />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleStoQuery" :loading="stoLoading">搜索</el-button>
-            <el-button icon="Refresh" @click="resetStoQuery">重置</el-button>
-          </el-form-item>
-        </el-form>
+        <div v-show="historyExpanded" class="history-card-body">
+          <el-form v-show="showStoSearch" ref="stoQueryFormRef" :model="stoQueryParams" :rules="stoRules" :inline="true" label-width="auto">
+            <el-form-item label="交货单号" prop="deliveryOrderNo">
+              <HistoryInput v-model="stoQueryParams.deliveryOrderNo" :config="deliveryOrderNoConfig" placeholder="请输入交货单号" @keydown.tab.prevent="handleStoQuery" @keydown.enter.prevent="handleStoQuery"> </HistoryInput>
+            </el-form-item>
+            <el-form-item label="显示已收货" prop="showOpenQuantityZero">
+              <el-checkbox v-model="stoQueryParams.showOpenQuantityZero" @change="handleShowReceivedChange" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" icon="Search" @click="handleStoQuery" :loading="stoLoading">搜索</el-button>
+              <el-button icon="Refresh" @click="resetStoQuery">重置</el-button>
+            </el-form-item>
+          </el-form>
 
-        <div class="search-result">
-          <el-table ref="stoTableRef" :data="stoOrderDetailList" height="300" border v-loading="stoLoading" @selection-change="handleStoSelectionChange">
-            <el-table-column type="selection" width="55" align="center" />
-            <el-table-column v-if="stoColumns[0].visible" label="交货单号" align="left" prop="deliveryOrderNo" fixed="left" min-width="120" />
-            <el-table-column v-if="stoColumns[1].visible" label="交货单项次" align="left" prop="deliveryItemNo" fixed="left" />
-            <el-table-column v-if="stoColumns[2].visible" label="采购单号" align="left" prop="purchaseOrderNo" fixed="left" min-width="120" />
-            <el-table-column v-if="stoColumns[3].visible" label="采购单项次" align="left" prop="purchaseItemNo" fixed="left" min-width="80" />
-            <el-table-column label="交货状态" align="center" width="100" fixed="left">
-              <template #default="scope">
-                <el-tooltip :content="getEarlyDeliveryTooltip(scope.row)" placement="top">
-                  <el-tag :type="getEarlyDeliveryTagType(scope.row)">
-                    {{ getEarlyDeliveryText(scope.row) }}
-                  </el-tag>
-                </el-tooltip>
-              </template>
-            </el-table-column>
-            <el-table-column v-if="stoColumns[4].visible" label="交货日期" align="center" prop="deliveryDate" min-width="100" />
-            <el-table-column v-if="stoColumns[5].visible" label="料号" align="left" prop="materialCode" min-width="135" />
-            <el-table-column v-if="stoColumns[6].visible" label="旧料号" align="left" prop="oldMaterialCode" />
-            <el-table-column v-if="stoColumns[7].visible" label="物料描述" align="left" prop="materialDesc" show-overflow-tooltip />
-            <el-table-column v-if="stoColumns[8].visible" label="订单数量" align="left" prop="orderQuantity" min-width="100" />
-            <el-table-column v-if="stoColumns[9].visible" label="已收数量" align="left" prop="receivedQuantity" min-width="100" />
-            <el-table-column v-if="stoColumns[10].visible" label="未清数量" align="left" prop="openQuantity" min-width="100" />
-            <el-table-column v-if="stoColumns[11].visible" label="订单单位" align="center" prop="orderUnit" />
-            <el-table-column v-if="stoColumns[12].visible" label="需质检" align="center" prop="inspectionFlag" />
-            <el-table-column v-if="stoColumns[13].visible" label="库存单位" align="center" prop="inventoryUnit" />
-            <el-table-column v-if="stoColumns[14].visible" label="换算比例" align="center" prop="conversionRatio" />
-            <el-table-column v-if="stoColumns[15].visible" label="供应商代码" align="center" prop="supplierCode" min-width="120" />
-            <el-table-column v-if="stoColumns[16].visible" label="供应商名称" align="center" prop="supplierName" show-overflow-tooltip min-width="120" />
-          </el-table>
-          <pagination v-show="stoTotal > 0" :total="stoTotal" v-model:page="stoQueryParams.pageNum" v-model:limit="stoQueryParams.pageSize" @pagination="getStoList" />
+          <div class="search-result">
+            <el-table ref="stoTableRef" :data="stoOrderDetailList" height="300" border v-loading="stoLoading" @selection-change="handleStoSelectionChange">
+              <el-table-column type="selection" width="55" align="center" />
+              <el-table-column v-if="stoColumns[0].visible" label="交货单号" align="left" prop="deliveryOrderNo" fixed="left" min-width="120" />
+              <el-table-column v-if="stoColumns[1].visible" label="交货单项次" align="left" prop="deliveryItemNo" fixed="left" />
+              <el-table-column v-if="stoColumns[2].visible" label="采购单号" align="left" prop="purchaseOrderNo" fixed="left" min-width="120" />
+              <el-table-column v-if="stoColumns[3].visible" label="采购单项次" align="left" prop="purchaseItemNo" fixed="left" min-width="80" />
+              <el-table-column label="交货状态" align="center" width="100" fixed="left">
+                <template #default="scope">
+                  <el-tooltip :content="getEarlyDeliveryTooltip(scope.row)" placement="top">
+                    <el-tag :type="getEarlyDeliveryTagType(scope.row)">
+                      {{ getEarlyDeliveryText(scope.row) }}
+                    </el-tag>
+                  </el-tooltip>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="stoColumns[4].visible" label="交货日期" align="center" prop="deliveryDate" min-width="100" />
+              <el-table-column v-if="stoColumns[5].visible" label="料号" align="left" prop="materialCode" min-width="135" />
+              <el-table-column v-if="stoColumns[6].visible" label="旧料号" align="left" prop="oldMaterialCode" />
+              <el-table-column v-if="stoColumns[7].visible" label="物料描述" align="left" prop="materialDesc" show-overflow-tooltip />
+              <el-table-column v-if="stoColumns[8].visible" label="订单数量" align="left" prop="orderQuantity" min-width="100" />
+              <el-table-column v-if="stoColumns[9].visible" label="已收数量" align="left" prop="receivedQuantity" min-width="100" />
+              <el-table-column v-if="stoColumns[10].visible" label="未清数量" align="left" prop="openQuantity" min-width="100" />
+              <el-table-column v-if="stoColumns[11].visible" label="订单单位" align="center" prop="orderUnit" />
+              <el-table-column v-if="stoColumns[12].visible" label="需质检" align="center" prop="inspectionFlag" />
+              <el-table-column v-if="stoColumns[13].visible" label="库存单位" align="center" prop="inventoryUnit" />
+              <el-table-column v-if="stoColumns[14].visible" label="换算比例" align="center" prop="conversionRatio" />
+              <el-table-column v-if="stoColumns[15].visible" label="供应商代码" align="center" prop="supplierCode" min-width="120" />
+              <el-table-column v-if="stoColumns[16].visible" label="供应商名称" align="center" prop="supplierName" show-overflow-tooltip min-width="120" />
+            </el-table>
+            <pagination v-show="stoTotal > 0" :total="stoTotal" v-model:page="stoQueryParams.pageNum" v-model:limit="stoQueryParams.pageSize" @pagination="getStoList" />
+          </div>
         </div>
       </el-card>
     </el-col>
@@ -66,11 +71,16 @@
     </div>
 
     <el-col :span="24">
-      <el-card shadow="never">
+      <el-card shadow="never" class="transfer-main-card" :class="{ 'is-transfer-collapsed': !transferExpanded }">
         <template #header>
           <div class="transfer-header">
-            <span class="header-title">STO入库列表</span>
-            <div class="header-actions">
+            <div class="history-header-left" @click="transferExpanded = !transferExpanded">
+              <el-icon class="history-collapse-icon" :class="{ 'is-expanded': transferExpanded }">
+                <ArrowRight />
+              </el-icon>
+              <span class="header-title">STO入库列表</span>
+            </div>
+            <div class="header-actions" @click.stop>
               <el-radio-group v-model="stoInboundMode">
                 <el-radio-button label="fixed">固定库位</el-radio-button>
                 <el-radio-button label="multiple">多库位</el-radio-button>
@@ -80,102 +90,84 @@
           </div>
         </template>
 
-        <el-form :model="stoFixedInboundForm" ref="stoFixedInboundFormRef" label-width="auto" :inline="true">
-          <el-row :gutter="20">
-            <el-col :sm="24" :md="6" :lg="6" v-if="stoInboundMode === 'fixed'">
-              <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
-                <HistoryInput
-                  v-model.trim="stoFixedInboundForm.locationCode"
-                  :config="locationCodeConfig"
-                  placeholder="请输入目标库位编码"
-                  @keydown.tab.prevent="locationCodeKeyDownTab(stoFixedInboundForm.locationCode)"
-                  @keydown.enter.prevent="locationCodeKeyDownTab(stoFixedInboundForm.locationCode)"
-                >
+        <div v-show="transferExpanded" class="transfer-card-body">
+          <el-form :model="stoFixedInboundForm" ref="stoFixedInboundFormRef" label-width="auto" :inline="true">
+            <el-row :gutter="20">
+              <el-col :sm="24" :md="6" :lg="6" v-if="stoInboundMode === 'fixed'">
+                <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
+                  <HistoryInput v-model.trim="stoFixedInboundForm.locationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(stoFixedInboundForm.locationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(stoFixedInboundForm.locationCode)">
+                    <template #append>
+                      <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
+                    </template>
+                  </HistoryInput>
+                </el-form-item>
+              </el-col>
+              <el-col :sm="24" :md="6" :lg="6">
+                <el-form-item label="收货人">
+                  <HistoryInput v-model="stoFixedInboundForm.targetUserName" :config="targetUserNameConfig" placeholder="请输入收货人">
+                    <template #append>
+                      <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
+                    </template>
+                  </HistoryInput>
+                </el-form-item>
+              </el-col>
+              <el-col :sm="24" :md="6" :lg="6">
+                <el-form-item label="发票号" prop="invoiceNo">
+                  <HistoryInput v-model="stoFixedInboundForm.invoiceNo" :config="invoiceNoConfig" placeholder="请输入发票号"> </HistoryInput>
+                </el-form-item>
+              </el-col>
+              <el-col :sm="24" :md="6" :lg="6">
+                <el-form-item label="过账日期" prop="postingDate">
+                  <el-date-picker clearable v-model="stoFixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
+
+          <div v-if="stoResultMessage" class="m-y-2">
+            <el-alert show-icon center :title="stoResultMessage" :type="stoResultStatus ? 'success' : 'error'">
+              <template #icon>
+                <Bell />
+              </template>
+            </el-alert>
+          </div>
+
+          <el-table :data="stoInboundList" border style="width: 100%" v-loading="stoTableLoading" max-height="400">
+            <el-table-column type="index" width="50" align="center" />
+            <el-table-column label="交货单号" prop="deliveryOrderNo" />
+            <el-table-column label="交货单项次" prop="deliveryItemNo" />
+            <el-table-column label="采购订单号" prop="poNumber" />
+            <el-table-column label="采购单项次" prop="itemNumber" />
+            <el-table-column label="料号" prop="materialCode" min-width="100" />
+            <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip />
+            <el-table-column label="订单数量" align="center" prop="orderQuantity" min-width="100" />
+            <el-table-column label="未清数量" prop="openQuantity" align="center" />
+            <el-table-column label="目标库位" width="220" v-if="stoInboundMode === 'multiple'">
+              <template #default="scope">
+                <TableHistoryInput v-model="scope.row.locationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.locationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.locationCode)">
                   <template #append>
-                    <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
+                    <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
                   </template>
-                </HistoryInput>
-              </el-form-item>
-            </el-col>
-            <el-col :sm="24" :md="6" :lg="6">
-              <el-form-item label="收货人">
-                <HistoryInput v-model="stoFixedInboundForm.targetUserName" :config="targetUserNameConfig" placeholder="请输入收货人">
-                  <template #append>
-                    <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
-                  </template>
-                </HistoryInput>
-              </el-form-item>
-            </el-col>
-            <el-col :sm="24" :md="6" :lg="6">
-              <el-form-item label="发票号" prop="invoiceNo">
-                <HistoryInput v-model="stoFixedInboundForm.invoiceNo" :config="invoiceNoConfig" placeholder="请输入发票号"> </HistoryInput>
-              </el-form-item>
-            </el-col>
-            <el-col :sm="24" :md="6" :lg="6">
-              <el-form-item label="过账日期" prop="postingDate">
-                <el-date-picker clearable v-model="stoFixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-form>
+                </TableHistoryInput>
+              </template>
+            </el-table-column>
+            <el-table-column label="收货数量" align="center" width="150">
+              <template #default="scope">
+                <el-input-number v-model="scope.row.receivePoQuantity" :min="0" :max="parseFloat(scope.row.openQuantity || 0)" :precision="3" size="small" controls-position="right" @change="handleReceivePoQuantityChange(scope.row)" />
+              </template>
+            </el-table-column>
+            <el-table-column label="库存数量" prop="inventoryQuantity" align="center" />
+            <el-table-column label="库存单位" prop="inventoryUnit" align="center" />
+            <el-table-column label="操作" width="80" align="center">
+              <template #default="scope">
+                <el-button type="danger" link icon="Delete" @click="removeFromStoInboundList(scope.$index)"></el-button>
+              </template>
+            </el-table-column>
+          </el-table>
 
-        <div v-if="stoResultMessage" class="m-y-2">
-          <el-alert show-icon center :title="stoResultMessage" :type="stoResultStatus ? 'success' : 'error'">
-            <template #icon>
-              <Bell />
-            </template>
-          </el-alert>
-        </div>
-
-        <el-table :data="stoInboundList" border style="width: 100%" v-loading="stoTableLoading" max-height="400">
-          <el-table-column type="index" width="50" align="center" />
-          <el-table-column label="交货单号" prop="deliveryOrderNo" />
-          <el-table-column label="交货单项次" prop="deliveryItemNo" />
-          <el-table-column label="采购订单号" prop="poNumber" />
-          <el-table-column label="采购单项次" prop="itemNumber" />
-          <el-table-column label="料号" prop="materialCode" min-width="100" />
-          <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip />
-          <el-table-column label="订单数量" align="center" prop="orderQuantity" min-width="100" />
-          <el-table-column label="未清数量" prop="openQuantity" align="center" />
-          <el-table-column label="目标库位" width="220" v-if="stoInboundMode === 'multiple'">
-            <template #default="scope">
-              <TableHistoryInput
-                v-model="scope.row.locationCode"
-                :config="locationCodeConfig"
-                placeholder="请输入目标库位编码"
-                @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.locationCode)"
-                @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.locationCode)"
-              >
-                <template #append>
-                  <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
-                </template>
-              </TableHistoryInput>
-            </template>
-          </el-table-column>
-          <el-table-column label="收货数量" align="center" width="150">
-            <template #default="scope">
-              <el-input-number
-                v-model="scope.row.receivePoQuantity"
-                :min="0"
-                :max="parseFloat(scope.row.openQuantity || 0)"
-                :precision="3"
-                size="small"
-                controls-position="right"
-                @change="handleReceivePoQuantityChange(scope.row)"
-              />
-            </template>
-          </el-table-column>
-          <el-table-column label="库存数量" prop="inventoryQuantity" align="center" />
-          <el-table-column label="库存单位" prop="inventoryUnit" align="center" />
-          <el-table-column label="操作" width="80" align="center">
-            <template #default="scope">
-              <el-button type="danger" link icon="Delete" @click="removeFromStoInboundList(scope.$index)"></el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div style="margin-top: 20px; text-align: center">
-          <el-button :loading="stoButtonLoading" type="primary" @click="submitStoForm" :disabled="stoInboundList.length === 0">STO收货</el-button>
+          <div style="margin-top: 20px; text-align: center">
+            <el-button :loading="stoButtonLoading" type="primary" @click="submitStoForm" :disabled="stoInboundList.length === 0">STO收货</el-button>
+          </div>
         </div>
       </el-card>
     </el-col>
@@ -193,7 +185,7 @@ import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
-import { Bell, Switch } from '@element-plus/icons-vue';
+import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
@@ -205,6 +197,8 @@ const userCollectionsDialogRef = ref<InstanceType<typeof UserCollectionsDialog>>
 const stoOrderDetailList = ref<DeliveryOrderDetailVO[]>([]);
 const stoLoading = ref(false);
 const showStoSearch = ref(true);
+const historyExpanded = ref(true);
+const transferExpanded = ref(true);
 const stoTotal = ref(0);
 const stoSelectedItems = ref<DeliveryOrderDetailVO[]>([]);
 const stoInboundList = ref<any[]>([]);
@@ -549,10 +543,45 @@ const submitStoForm = async () => {
   height: 100%;
   min-height: 300px;
 }
+.history-card.is-history-collapsed :deep(.el-card__body),
+.transfer-main-card.is-transfer-collapsed :deep(.el-card__body) {
+  display: none;
+}
+.history-card.is-history-collapsed {
+  min-height: 0;
+}
+.history-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.history-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.history-collapse-icon {
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+  transition: transform 0.2s;
+}
+.history-collapse-icon.is-expanded {
+  transform: rotate(90deg);
+}
+.history-header-title {
+  font-size: 14px;
+  font-weight: 600;
+}
 .search-result {
   flex: 1;
   overflow: auto;
   min-height: 200px;
+}
+.transfer-card-body {
+  padding: 12px 16px 16px;
 }
 .transfer-header {
   display: flex;

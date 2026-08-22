@@ -86,6 +86,19 @@ export const constantRoutes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/iot/injection-display',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/iot/injection/index.vue'),
+        name: 'IotInjectionDisplay',
+        meta: { title: '射出设备显示', activeMenu: '/iot/device', noCache: true }
+      }
+    ]
+  },
+  {
     path: '/:pathMatch(.*)*',
     component: () => import('@/views/error/404.vue'),
     hidden: true

@@ -71,7 +71,7 @@
               <span class="header-title">发料清单</span>
             </div>
             <div class="header-actions" @click.stop>
-              <el-button type="danger" @click="clearIssueList" :disabled="issueList.length === 0">清空清单</el-button>
+              <el-button type="danger" @click="clearIssueList" :disabled="issueList.length === 0">清空列表</el-button>
             </div>
           </div>
         </template>

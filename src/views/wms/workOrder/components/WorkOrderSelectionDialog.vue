@@ -14,6 +14,11 @@
           <el-form-item label="产品料号" prop="item">
             <el-input v-model="queryParams.item" placeholder="请输入产品料号" clearable @keyup.enter="handleQuery" />
           </el-form-item>
+          <el-form-item label="工单类型" prop="workOrderType">
+            <el-select v-model="queryParams.workOrderType" placeholder="请选择工单类型" clearable filterable :disabled="!!props.workOrderType" style="width: 180px" @change="handleQuery">
+              <el-option v-for="item in workOrderTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-form-item>
           <el-form-item label="计划开始日期" prop="plannedStartDateRange">
             <el-date-picker v-model="queryParams.plannedStartDateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" />
           </el-form-item>
@@ -133,6 +138,16 @@ const showBomAction = computed(() => props.showBomAction);
 
 const emit = defineEmits(['update:modelValue', 'confirm']);
 
+const workOrderTypeOptions = [
+  { label: 'ZP81-重工', value: 'ZP81' },
+  { label: 'ZP82-打样', value: 'ZP82' },
+  { label: 'ZP83-RMA返修', value: 'ZP83' },
+  { label: 'ZP91-研发工单', value: 'ZP91' },
+  { label: 'ZP92-拆解工单', value: 'ZP92' },
+  { label: 'ZP93-粉碎工单', value: 'ZP93' },
+  { label: 'ZP94-采购重工工单', value: 'ZP94' }
+];
+
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_work_order_status } = toRefs<any>(proxy?.useDict('wms_work_order_status'));
 
@@ -175,6 +190,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
     pageNum: 1,
     pageSize: 10,
     workOrderNo: undefined,
+    workOrderType: undefined,
     status: '',
     item: undefined,
     itemDesc: undefined,
@@ -316,7 +332,11 @@ const handleBatchInputConfirm = (values: string[]) => {
 const getList = async () => {
   loading.value = true;
   try {
-    const res = await listWorkOrder({ ...queryParams.value, workOrderType: props.workOrderType, statusList: props.statusList });
+    const res = await listWorkOrder({
+      ...queryParams.value,
+      workOrderType: props.workOrderType || queryParams.value.workOrderType,
+      statusList: props.statusList
+    });
     workOrderList.value = res.rows;
     total.value = res.total;
     if (visible.value) {

@@ -18,6 +18,7 @@
           <el-descriptions v-if="workOrder" :column="4" border class="wo-summary">
             <el-descriptions-item label="工单号">{{ workOrder.workOrderNo }}</el-descriptions-item>
             <el-descriptions-item label="工单类型">{{ workOrder.workOrderType || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="移动类型">{{ currentReceiveRule.moveType }} {{ currentReceiveRule.moveTypeName }}</el-descriptions-item>
             <el-descriptions-item label="产品料号">{{ workOrder.item || '-' }}</el-descriptions-item>
             <el-descriptions-item label="产品描述">{{ workOrder.itemDesc || '-' }}</el-descriptions-item>
           </el-descriptions>
@@ -26,9 +27,7 @@
         <!-- 添加物料行 -->
         <div v-if="workOrder" class="material-add-row">
           <el-radio-group v-model="materialSource" class="material-source-radio" @change="onMaterialSourceChange">
-            <el-radio value="workOrder">工单料号</el-radio>
-            <el-radio value="bom">BOM料号</el-radio>
-            <el-radio value="all">所有料号</el-radio>
+            <el-radio v-for="option in materialSourceOptions" :key="option.value" :value="option.value">{{ option.label }}</el-radio>
           </el-radio-group>
           <el-input v-if="materialSource === 'workOrder'" :model-value="workOrderItemDisplay" readonly placeholder="当前工单无产品料号" style="width: 320px" />
           <el-input v-else-if="materialSource === 'bom'" v-model="selectedBomDisplay" readonly placeholder="请选择BOM物料" style="width: 320px">
@@ -36,14 +35,7 @@
               <el-button icon="Search" @click="openBomDialog" />
             </template>
           </el-input>
-          <HistoryInput
-            v-else
-            v-model="manualMaterialCode"
-            :config="materialCodeConfig"
-            placeholder="请输入物料编码"
-            style="width: 240px"
-            @keydown.enter.prevent="handleAddMaterial"
-          >
+          <HistoryInput v-else v-model="manualMaterialCode" :config="materialCodeConfig" placeholder="请输入物料编码" style="width: 240px" @keydown.enter.prevent="handleAddMaterial">
             <template #append>
               <el-button icon="Search" @click="showItemDialog" />
             </template>
@@ -62,6 +54,11 @@
 
         <el-table :data="receiveLines" border stripe max-height="420" empty-text="请选择工单后添加入库物料">
           <el-table-column type="index" label="序号" width="56" align="center" />
+          <el-table-column prop="moveType" label="移动类型" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag>{{ row.moveType }}</el-tag>
+            </template>
+          </el-table-column>
           <el-table-column prop="materialCode" label="物料编码" min-width="120" />
           <el-table-column prop="materialName" label="物料描述" min-width="150" show-overflow-tooltip />
           <el-table-column prop="unit" label="单位" width="70" align="center" />
@@ -72,13 +69,7 @@
           </el-table-column>
           <el-table-column label="库位编码" min-width="180">
             <template #default="{ row, $index }">
-              <TableHistoryInput
-                v-model="row.locationCode"
-                :config="locationCodeConfig"
-                placeholder="请输入库位编码"
-                @keydown.tab.prevent="locationCodeKeyDownTab(row)"
-                @keydown.enter.prevent="locationCodeKeyDownTab(row)"
-              >
+              <TableHistoryInput v-model="row.locationCode" :config="locationCodeConfig" placeholder="请输入库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(row)" @keydown.enter.prevent="locationCodeKeyDownTab(row)">
                 <template #append>
                   <el-button icon="Search" @click="showStorageLocationDialog($index)" />
                 </template>
@@ -94,19 +85,11 @@
 
         <!-- 提交 -->
         <div class="submit-row">
-          <el-button type="primary" size="large" :loading="submitting" :disabled="!receiveLines.length" @click="handleSubmit">
-            提交入库
-          </el-button>
+          <el-button type="primary" size="large" :loading="submitting" :disabled="!receiveLines.length" @click="handleSubmit"> 提交入库 </el-button>
         </div>
 
         <!-- 工单选择弹窗 -->
-        <work-order-selection-dialog
-          v-model="showOrderDialog"
-          :selected-orders="[]"
-          :show-bom-action="false"
-          :single-select="true"
-          @confirm="handleOrderSelection"
-        />
+        <work-order-selection-dialog v-model="showOrderDialog" :selected-orders="[]" :show-bom-action="false" :single-select="true" @confirm="handleOrderSelection" />
 
         <!-- 物料选择弹窗 -->
         <ItemDialog ref="itemDialogRef" @item-select-call-back="itemSelectCallBack" />
@@ -159,6 +142,7 @@ import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 
 interface ReceiveLine {
+  moveType: string;
   materialCode: string;
   materialName: string;
   unit: string;
@@ -181,10 +165,65 @@ interface WorkOrderVO {
   [key: string]: unknown;
 }
 
+type MaterialSource = 'workOrder' | 'bom' | 'all';
+
+interface ReceiveRule {
+  moveType: string;
+  moveTypeName: string;
+  defaultSource: MaterialSource;
+  sources: MaterialSource[];
+  autoAddWorkOrderItem: boolean;
+}
+
+const MATERIAL_SOURCE_LABELS: Record<MaterialSource, string> = {
+  workOrder: '工单料号',
+  bom: 'BOM料号',
+  all: '所有料号'
+};
+
+const DEFAULT_RECEIVE_RULE: ReceiveRule = {
+  moveType: '101',
+  moveTypeName: '入库',
+  defaultSource: 'workOrder',
+  sources: ['workOrder'],
+  autoAddWorkOrderItem: true
+};
+
+const WORK_ORDER_RECEIVE_RULES: Record<string, ReceiveRule> = {
+  ZP83: {
+    moveType: '262',
+    moveTypeName: '入库',
+    defaultSource: 'workOrder',
+    sources: ['workOrder'],
+    autoAddWorkOrderItem: true
+  },
+  ZP92: {
+    moveType: '262',
+    moveTypeName: '入库',
+    defaultSource: 'all',
+    sources: ['all'],
+    autoAddWorkOrderItem: false
+  },
+  ZP93: {
+    moveType: '531',
+    moveTypeName: '次料入库',
+    defaultSource: 'bom',
+    sources: ['bom', 'all'],
+    autoAddWorkOrderItem: false
+  },
+  ZP94: {
+    moveType: '262',
+    moveTypeName: '入库',
+    defaultSource: 'workOrder',
+    sources: ['workOrder'],
+    autoAddWorkOrderItem: true
+  }
+};
+
 const showOrderDialog = ref(false);
 const workOrder = ref<WorkOrderVO | null>(null);
 const bomList = ref<WorkOrderBomVO[]>([]);
-const materialSource = ref<'workOrder' | 'bom' | 'all'>('workOrder');
+const materialSource = ref<MaterialSource>('workOrder');
 const selectedBomMaterial = ref('');
 const selectedBomDisplay = ref('');
 const manualMaterialCode = ref('');
@@ -218,6 +257,20 @@ const filteredBomList = computed(() => {
     return code.includes(keyword) || desc.includes(keyword);
   });
 });
+
+const currentReceiveRule = computed(() => {
+  const type = String(workOrder.value?.workOrderType || '')
+    .trim()
+    .toUpperCase();
+  return WORK_ORDER_RECEIVE_RULES[type] || DEFAULT_RECEIVE_RULE;
+});
+
+const materialSourceOptions = computed(() =>
+  currentReceiveRule.value.sources.map((value) => ({
+    value,
+    label: MATERIAL_SOURCE_LABELS[value]
+  }))
+);
 
 const materialCodeConfig: HistoryConfig = {
   key: 'materialCode',
@@ -260,8 +313,23 @@ function resolveWorkOrderItemDefaultQty(order: WorkOrderVO): number {
   return remain > 0 ? remain : planned;
 }
 
-function appendReceiveLine(matCode: string, matName: string, matUnit: string, qty: number) {
-  const existing = receiveLines.value.findIndex((r) => r.materialCode === matCode);
+function normalizeBomList(rows: WorkOrderBomVO[]): WorkOrderBomVO[] {
+  if (currentReceiveRule.value.moveType === '531') return rows;
+  return rows.filter((row) => !(Number(row.componentQty) < 0));
+}
+
+function resolveBomDefaultQty(row: WorkOrderBomVO): number {
+  const componentQty = Number(row.componentQty) || 0;
+  const issuedQty = Number(row.issuedQty) || 0;
+  if (currentReceiveRule.value.moveType === '531') {
+    const remain = Math.abs(componentQty) - Math.abs(issuedQty);
+    return remain > 0 ? remain : Math.abs(componentQty);
+  }
+  return Math.max(0, componentQty - issuedQty);
+}
+
+function appendReceiveLine(matCode: string, matName: string, matUnit: string, qty: number, moveType = currentReceiveRule.value.moveType) {
+  const existing = receiveLines.value.findIndex((r) => r.materialCode === matCode && r.moveType === moveType);
   if (existing >= 0) {
     receiveLines.value[existing].quantity = qty;
     receiveLines.value[existing].materialName = matName || receiveLines.value[existing].materialName;
@@ -270,6 +338,7 @@ function appendReceiveLine(matCode: string, matName: string, matUnit: string, qt
     return;
   }
   receiveLines.value.push({
+    moveType,
     materialCode: matCode,
     materialName: matName,
     unit: matUnit,
@@ -286,12 +355,16 @@ function appendReceiveLine(matCode: string, matName: string, matUnit: string, qt
 const canAdd = computed(() => {
   if (!workOrder.value) return false;
   if (addQty.value <= 0) return false;
+  if (!currentReceiveRule.value.sources.includes(materialSource.value)) return false;
   if (materialSource.value === 'workOrder') return !!workOrder.value.item;
   if (materialSource.value === 'bom') return !!selectedBomMaterial.value;
   return !!manualMaterialCode.value?.trim();
 });
 
 const onMaterialSourceChange = () => {
+  if (!currentReceiveRule.value.sources.includes(materialSource.value)) {
+    materialSource.value = currentReceiveRule.value.defaultSource;
+  }
   selectedBomMaterial.value = '';
   selectedBomDisplay.value = '';
   manualMaterialCode.value = '';
@@ -300,6 +373,21 @@ const onMaterialSourceChange = () => {
   } else {
     addQty.value = 0;
   }
+};
+
+const appendWorkOrderItemLine = async (order: WorkOrderVO, moveType: string) => {
+  const matCode = String(order.item || '').trim();
+  if (!matCode) return;
+
+  let matName = String(order.itemDesc || '').trim();
+  let matUnit = String(order.unit || '').trim();
+  if (!matName || !matUnit) {
+    const item = await resolveMaterial(matCode);
+    matName = item?.itemDesc || matName;
+    matUnit = item?.unit || matUnit;
+  }
+
+  appendReceiveLine(matCode, matName, matUnit, resolveWorkOrderItemDefaultQty(order), moveType);
 };
 
 const handleOrderSelection = async (orders: WorkOrderVO[]) => {
@@ -312,17 +400,26 @@ const handleOrderSelection = async (orders: WorkOrderVO[]) => {
   selectedBomMaterial.value = '';
   selectedBomDisplay.value = '';
   manualMaterialCode.value = '';
-  materialSource.value = 'workOrder';
-  addQty.value = resolveWorkOrderItemDefaultQty(order);
+  materialSource.value = currentReceiveRule.value.defaultSource;
+  addQty.value = materialSource.value === 'workOrder' ? resolveWorkOrderItemDefaultQty(order) : 0;
 
   bomLoading.value = true;
   try {
     const res = await listWorkOrderBom({ workOrderNo: order.workOrderNo, pageNum: 1, pageSize: 2000 } as any);
-    bomList.value = (res.rows || []).filter((row: WorkOrderBomVO) => !(Number(row.componentQty) < 0));
+    bomList.value = normalizeBomList(res.rows || []);
   } catch {
     bomList.value = [];
   } finally {
     bomLoading.value = false;
+  }
+
+  if (currentReceiveRule.value.autoAddWorkOrderItem) {
+    loadingAdd.value = true;
+    try {
+      await appendWorkOrderItemLine(order, currentReceiveRule.value.moveType);
+    } finally {
+      loadingAdd.value = false;
+    }
   }
 };
 
@@ -337,7 +434,7 @@ const openBomDialog = async () => {
     bomLoading.value = true;
     try {
       const res = await listWorkOrderBom({ workOrderNo: workOrder.value.workOrderNo, pageNum: 1, pageSize: 2000 } as any);
-      bomList.value = (res.rows || []).filter((row: WorkOrderBomVO) => !(Number(row.componentQty) < 0));
+      bomList.value = normalizeBomList(res.rows || []);
     } catch {
       bomList.value = [];
     } finally {
@@ -364,7 +461,7 @@ const confirmBomSelect = () => {
   }
   selectedBomMaterial.value = bom.componentMaterial;
   selectedBomDisplay.value = `${bom.componentMaterial}${bom.componentDesc ? ` - ${bom.componentDesc}` : ''}`;
-  addQty.value = Math.max(0, Number(bom.componentQty) - Number(bom.issuedQty || 0));
+  addQty.value = resolveBomDefaultQty(bom);
   bomDialogVisible.value = false;
 };
 
@@ -373,7 +470,14 @@ async function resolveMaterial(code: string): Promise<ItemVO | null> {
   if (res.code !== 200) return null;
   const rows = (res.rows || []) as ItemVO[];
   const normalized = code.trim().toUpperCase();
-  return rows.find((r) => String(r.item || '').trim().toUpperCase() === normalized) || null;
+  return (
+    rows.find(
+      (r) =>
+        String(r.item || '')
+          .trim()
+          .toUpperCase() === normalized
+    ) || null
+  );
 }
 
 const handleAddMaterial = async () => {
@@ -384,6 +488,10 @@ const handleAddMaterial = async () => {
   const qty = Number(addQty.value) || 0;
   if (qty <= 0) {
     ElMessage.warning('请输入入库数量');
+    return;
+  }
+  if (!currentReceiveRule.value.sources.includes(materialSource.value)) {
+    ElMessage.warning('当前工单类型不支持该物料来源');
     return;
   }
 
@@ -424,7 +532,7 @@ const handleAddMaterial = async () => {
     }
   }
 
-  appendReceiveLine(matCode, matName, matUnit, qty);
+  appendReceiveLine(matCode, matName, matUnit, qty, currentReceiveRule.value.moveType);
 
   if (materialSource.value === 'bom') {
     selectedBomMaterial.value = '';
@@ -450,11 +558,7 @@ const handleSubmit = async () => {
   }
 
   try {
-    await ElMessageBox.confirm(
-      `将对 ${lines.length} 条物料执行入库，是否确认？`,
-      '确认入库',
-      { type: 'warning' }
-    );
+    await ElMessageBox.confirm(`将对 ${lines.length} 条物料执行入库，是否确认？`, '确认入库', { type: 'warning' });
   } catch {
     return;
   }
@@ -466,6 +570,7 @@ const handleSubmit = async () => {
       receiveList: lines.map((line) => ({
         workOrderNo: workOrder.value!.workOrderNo,
         workOrderType: workOrder.value!.workOrderType,
+        moveType: line.moveType,
         materialCode: line.materialCode,
         materialName: line.materialName,
         quantity: line.quantity,

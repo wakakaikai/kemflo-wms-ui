@@ -1,10 +1,6 @@
 <template>
   <div ref="totalRef" class="total">
-    <div
-      v-for="(card, index) in slotCards"
-      :key="card.key"
-      :class="'data' + (index + 1)"
-    >
+    <div v-for="(card, index) in slotCards" :key="card.key" :class="'data' + (index + 1)">
       <span>{{ card.title }}</span>
       <p>{{ card.value }}</p>
     </div>
@@ -452,10 +448,10 @@ onUnmounted(() => {
 }
 
 .sphere {
-  width: 20em;
-  height: 20em;
+  width: 23em;
+  height: 23em;
   position: relative;
-  margin: 14% auto 0;
+  margin: 11% auto 0;
 }
 
 .sphere-bg {
@@ -477,22 +473,29 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   background: url('@/assets/images/scada/shortageTask/hub/53cloud.png') no-repeat center;
-  background-size: 55%;
+  background-size: 60% auto;
 
   span {
     display: block;
-    margin-top: 30%;
-    padding-left: 32%;
+    margin-top: 33%;
+    padding-left: 0;
     color: #005a79;
-    font-size: 0.9em;
+    font-size: 0.78em;
+    text-align: center;
+    white-space: nowrap;
   }
 
   p {
-    margin-top: 2%;
+    width: 52%;
+    margin: 1% auto 0;
     text-align: center;
     color: #003c63;
     font-family: 'LCdd', Consolas, 'Courier New', monospace;
-    font-size: 2em;
+    font-size: 1.55em;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 

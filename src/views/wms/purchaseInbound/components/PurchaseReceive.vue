@@ -1,72 +1,77 @@
 <template>
   <el-row :gutter="20">
     <el-col :span="24">
-      <el-card shadow="never" class="search-card">
+      <el-card shadow="never" class="search-card history-card" :class="{ 'is-history-collapsed': !historyExpanded }">
         <template #header>
-          <el-row :gutter="10" class="mb8">
-            <el-col :span="1.5">
-              <span>采购订单明细</span>
-            </el-col>
+          <div class="history-card-header">
+            <div class="history-header-left" @click="historyExpanded = !historyExpanded">
+              <el-icon class="history-collapse-icon" :class="{ 'is-expanded': historyExpanded }">
+                <ArrowRight />
+              </el-icon>
+              <span class="history-header-title">采购订单明细</span>
+            </div>
             <right-toolbar v-model:showSearch="showSearch" :columns="columns" @queryTable="getList"></right-toolbar>
-          </el-row>
+          </div>
         </template>
 
-        <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
-          <el-form-item label="采购单" prop="poNumber">
-            <HistoryInput v-model="queryParams.poNumber" :config="poNumberConfig" placeholder="请输入采购单" @keyup.enter="handleQuery" />
-          </el-form-item>
-          <el-form-item label="项次" prop="itemNumber">
-            <HistoryInput v-model="queryParams.itemNumber" :config="itemNoConfig" placeholder="请输入项次" @keyup.enter="handleQuery" />
-          </el-form-item>
-          <el-form-item label="采购类别" prop="poCategory">
-            <el-select v-model="queryParams.poCategory" placeholder="请选择采购类别" clearable>
-              <el-option v-for="dict in wms_purchase_category" :key="dict.value" :label="dict.label" :value="dict.value" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="显示已收货" prop="showOpenQuantityZero">
-            <el-checkbox v-model="queryParams.showOpenQuantityZero" @change="handleQuery" />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery" :loading="loading">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-          </el-form-item>
-        </el-form>
+        <div v-show="historyExpanded" class="history-card-body">
+          <el-form v-show="showSearch" ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
+            <el-form-item label="采购单" prop="poNumber">
+              <HistoryInput v-model="queryParams.poNumber" :config="poNumberConfig" placeholder="请输入采购单" @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="项次" prop="itemNumber">
+              <HistoryInput v-model="queryParams.itemNumber" :config="itemNoConfig" placeholder="请输入项次" @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="采购类别" prop="poCategory">
+              <el-select v-model="queryParams.poCategory" placeholder="请选择采购类别" clearable>
+                <el-option v-for="dict in wms_purchase_category" :key="dict.value" :label="dict.label" :value="dict.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="显示已收货" prop="showOpenQuantityZero">
+              <el-checkbox v-model="queryParams.showOpenQuantityZero" @change="handleQuery" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" icon="Search" @click="handleQuery" :loading="loading">搜索</el-button>
+              <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            </el-form-item>
+          </el-form>
 
-        <div class="search-result">
-          <el-table ref="purchaseTableRef" :data="purchaseOrderDetailList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
-            <el-table-column type="selection" width="55" align="center" />
-            <el-table-column v-if="columns[0].visible" label="采购单" align="left" prop="poNumber" fixed="left" min-width="120" />
-            <el-table-column v-if="columns[1].visible" label="项次" align="left" prop="itemNumber" fixed="left" min-width="65" />
-            <el-table-column v-if="columns[17].visible" label="采购类别" align="center" prop="poCategory" min-width="100">
-              <template #default="scope">
-                <dict-tag :options="wms_purchase_category" :value="scope.row.poCategory" />
-              </template>
-            </el-table-column>
-            <el-table-column label="交货状态" align="center" width="100" fixed="left">
-              <template #default="scope">
-                <el-tooltip :content="getEarlyDeliveryTooltip(scope.row)" placement="top">
-                  <el-tag :type="getEarlyDeliveryTagType(scope.row)">
-                    {{ getEarlyDeliveryText(scope.row) }}
-                  </el-tag>
-                </el-tooltip>
-              </template>
-            </el-table-column>
-            <el-table-column v-if="columns[2].visible" label="排程" align="left" prop="scheduleNumber" min-width="60" />
-            <el-table-column v-if="columns[3].visible" label="交货日期" align="center" prop="deliveryDate" min-width="100" />
-            <el-table-column v-if="columns[4].visible" label="料号" align="left" prop="materialCode" min-width="135" />
-            <el-table-column v-if="columns[5].visible" label="旧料号" align="left" prop="oldMaterialCode" />
-            <el-table-column v-if="columns[6].visible" label="物料描述" align="left" prop="materialDesc" show-overflow-tooltip />
-            <el-table-column v-if="columns[7].visible" label="订单数量" align="left" prop="orderQuantity" min-width="100" />
-            <el-table-column v-if="columns[8].visible" label="已收数量" align="left" prop="receivedQuantity" min-width="100" />
-            <el-table-column v-if="columns[9].visible" label="未清数量" align="left" prop="openQuantity" min-width="100" />
-            <el-table-column v-if="columns[10].visible" label="订单单位" align="center" prop="orderUnit" />
-            <el-table-column v-if="columns[11].visible" label="需质检" align="center" prop="inspectionFlag" />
-            <el-table-column v-if="columns[13].visible" label="库存单位" align="center" prop="inventoryUnit" />
-            <el-table-column v-if="columns[14].visible" label="换算比例" align="center" prop="conversionRatio" />
-            <el-table-column v-if="columns[15].visible" label="供应商代码" align="center" prop="supplierCode" min-width="120" />
-            <el-table-column v-if="columns[16].visible" label="供应商名称" align="center" prop="supplierName" show-overflow-tooltip min-width="100" />
-          </el-table>
-          <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+          <div class="search-result">
+            <el-table ref="purchaseTableRef" :data="purchaseOrderDetailList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
+              <el-table-column type="selection" width="55" align="center" />
+              <el-table-column v-if="columns[0].visible" label="采购单" align="left" prop="poNumber" fixed="left" min-width="120" />
+              <el-table-column v-if="columns[1].visible" label="项次" align="left" prop="itemNumber" fixed="left" min-width="65" />
+              <el-table-column v-if="columns[17].visible" label="采购类别" align="center" prop="poCategory" min-width="100">
+                <template #default="scope">
+                  <dict-tag :options="wms_purchase_category" :value="scope.row.poCategory" />
+                </template>
+              </el-table-column>
+              <el-table-column label="交货状态" align="center" width="100" fixed="left">
+                <template #default="scope">
+                  <el-tooltip :content="getEarlyDeliveryTooltip(scope.row)" placement="top">
+                    <el-tag :type="getEarlyDeliveryTagType(scope.row)">
+                      {{ getEarlyDeliveryText(scope.row) }}
+                    </el-tag>
+                  </el-tooltip>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="columns[2].visible" label="排程" align="left" prop="scheduleNumber" min-width="60" />
+              <el-table-column v-if="columns[3].visible" label="交货日期" align="center" prop="deliveryDate" min-width="100" />
+              <el-table-column v-if="columns[4].visible" label="料号" align="left" prop="materialCode" min-width="135" />
+              <el-table-column v-if="columns[5].visible" label="旧料号" align="left" prop="oldMaterialCode" />
+              <el-table-column v-if="columns[6].visible" label="物料描述" align="left" prop="materialDesc" show-overflow-tooltip />
+              <el-table-column v-if="columns[7].visible" label="订单数量" align="left" prop="orderQuantity" min-width="100" />
+              <el-table-column v-if="columns[8].visible" label="已收数量" align="left" prop="receivedQuantity" min-width="100" />
+              <el-table-column v-if="columns[9].visible" label="未清数量" align="left" prop="openQuantity" min-width="100" />
+              <el-table-column v-if="columns[10].visible" label="订单单位" align="center" prop="orderUnit" />
+              <el-table-column v-if="columns[11].visible" label="需质检" align="center" prop="inspectionFlag" />
+              <el-table-column v-if="columns[13].visible" label="库存单位" align="center" prop="inventoryUnit" />
+              <el-table-column v-if="columns[14].visible" label="换算比例" align="center" prop="conversionRatio" />
+              <el-table-column v-if="columns[15].visible" label="供应商代码" align="center" prop="supplierCode" min-width="120" />
+              <el-table-column v-if="columns[16].visible" label="供应商名称" align="center" prop="supplierName" show-overflow-tooltip min-width="100" />
+            </el-table>
+            <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+          </div>
         </div>
       </el-card>
     </el-col>
@@ -78,11 +83,16 @@
     </div>
 
     <el-col :span="24">
-      <el-card shadow="never">
+      <el-card shadow="never" class="transfer-main-card" :class="{ 'is-transfer-collapsed': !transferExpanded }">
         <template #header>
           <div class="transfer-header">
-            <span class="header-title">入库列表</span>
-            <div class="header-actions">
+            <div class="history-header-left" @click="transferExpanded = !transferExpanded">
+              <el-icon class="history-collapse-icon" :class="{ 'is-expanded': transferExpanded }">
+                <ArrowRight />
+              </el-icon>
+              <span class="header-title">入库列表</span>
+            </div>
+            <div class="header-actions" @click.stop>
               <el-radio-group v-model="inboundMode">
                 <el-radio-button label="fixed">固定库位</el-radio-button>
                 <el-radio-button label="multiple">多库位</el-radio-button>
@@ -92,105 +102,87 @@
           </div>
         </template>
 
-        <el-form :model="fixedInboundForm" ref="fixedInboundFormRef" label-width="auto" :inline="true">
-          <el-row :gutter="20">
-            <el-col :sm="24" :md="6" :lg="6" v-if="inboundMode === 'fixed'">
-              <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
-                <HistoryInput
-                  v-model="fixedInboundForm.locationCode"
-                  :config="locationCodeConfig"
-                  placeholder="请输入目标库位编码"
-                  @keydown.tab.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
-                  @keydown.enter.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)"
-                >
+        <div v-show="transferExpanded" class="transfer-card-body">
+          <el-form :model="fixedInboundForm" ref="fixedInboundFormRef" label-width="auto" :inline="true">
+            <el-row :gutter="20">
+              <el-col :sm="24" :md="6" :lg="6" v-if="inboundMode === 'fixed'">
+                <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
+                  <HistoryInput v-model="fixedInboundForm.locationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)">
+                    <template #append>
+                      <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
+                    </template>
+                  </HistoryInput>
+                </el-form-item>
+              </el-col>
+              <el-col :sm="24" :md="6" :lg="6">
+                <el-form-item label="收货人">
+                  <HistoryInput v-model="fixedInboundForm.targetUserName" :config="targetUserNameConfig" placeholder="请输入收货人">
+                    <template #append>
+                      <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
+                    </template>
+                  </HistoryInput>
+                </el-form-item>
+              </el-col>
+              <el-col :sm="24" :md="6" :lg="6">
+                <el-form-item label="发票号" prop="invoiceNo">
+                  <HistoryInput v-model="fixedInboundForm.invoiceNo" :config="invoiceNoConfig" placeholder="请输入发票号"> </HistoryInput>
+                </el-form-item>
+              </el-col>
+              <el-col :sm="24" :md="6" :lg="6">
+                <el-form-item label="过账日期" prop="postingDate">
+                  <el-date-picker clearable v-model="fixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
+
+          <div v-if="resultMessage" class="m-y-2">
+            <el-alert show-icon center :title="resultMessage" :type="resultStatus ? 'success' : 'error'">
+              <template #icon>
+                <Bell />
+              </template>
+            </el-alert>
+          </div>
+
+          <el-table :data="inboundList" border style="width: 100%" v-loading="tableLoading" max-height="400">
+            <el-table-column type="index" width="50" align="center" />
+            <el-table-column label="采购单" prop="poNumber" />
+            <el-table-column label="项次" prop="itemNumber" />
+            <el-table-column label="采购类别" prop="poCategory" align="center">
+              <template #default="scope">
+                <dict-tag :options="wms_purchase_category" :value="scope.row.poCategory" />
+              </template>
+            </el-table-column>
+            <el-table-column label="料号" prop="materialCode" />
+            <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip />
+            <el-table-column label="订单数量" align="left" prop="orderQuantity" min-width="100" />
+            <el-table-column label="未清数量" prop="openQuantity" />
+            <el-table-column label="目标库位" width="220" v-if="inboundMode === 'multiple'">
+              <template #default="scope">
+                <TableHistoryInput v-model="scope.row.locationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.locationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.locationCode)">
                   <template #append>
-                    <el-button icon="Search" @click="showStorageLocationDialog(-1)"></el-button>
+                    <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
                   </template>
-                </HistoryInput>
-              </el-form-item>
-            </el-col>
-            <el-col :sm="24" :md="6" :lg="6">
-              <el-form-item label="收货人">
-                <HistoryInput v-model="fixedInboundForm.targetUserName" :config="targetUserNameConfig" placeholder="请输入收货人">
-                  <template #append>
-                    <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
-                  </template>
-                </HistoryInput>
-              </el-form-item>
-            </el-col>
-            <el-col :sm="24" :md="6" :lg="6">
-              <el-form-item label="发票号" prop="invoiceNo">
-                <HistoryInput v-model="fixedInboundForm.invoiceNo" :config="invoiceNoConfig" placeholder="请输入发票号"> </HistoryInput>
-              </el-form-item>
-            </el-col>
-            <el-col :sm="24" :md="6" :lg="6">
-              <el-form-item label="过账日期" prop="postingDate">
-                <el-date-picker clearable v-model="fixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-form>
+                </TableHistoryInput>
+              </template>
+            </el-table-column>
+            <el-table-column label="收货数量" align="center" width="150">
+              <template #default="scope">
+                <el-input-number v-model="scope.row.receivePoQuantity" :min="0" :max="parseFloat(scope.row.openQuantity || 0)" :precision="3" size="small" controls-position="right" @change="handleReceivePoQuantityChange(scope.row)" />
+              </template>
+            </el-table-column>
+            <el-table-column label="库存数量" prop="inventoryQuantity" />
+            <el-table-column label="库存单位" prop="inventoryUnit" />
+            <el-table-column label="操作" width="80" align="center">
+              <template #default="scope">
+                <el-button type="danger" link icon="Delete" @click="removeFromInboundList(scope.$index)"></el-button>
+              </template>
+            </el-table-column>
+          </el-table>
 
-        <div v-if="resultMessage" class="m-y-2">
-          <el-alert show-icon center :title="resultMessage" :type="resultStatus ? 'success' : 'error'">
-            <template #icon>
-              <Bell />
-            </template>
-          </el-alert>
-        </div>
-
-        <el-table :data="inboundList" border style="width: 100%" v-loading="tableLoading" max-height="400">
-          <el-table-column type="index" width="50" align="center" />
-          <el-table-column label="采购单" prop="poNumber" />
-          <el-table-column label="项次" prop="itemNumber" />
-          <el-table-column label="采购类别" prop="poCategory" align="center">
-            <template #default="scope">
-              <dict-tag :options="wms_purchase_category" :value="scope.row.poCategory" />
-            </template>
-          </el-table-column>
-          <el-table-column label="料号" prop="materialCode" />
-          <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip />
-          <el-table-column label="订单数量" align="left" prop="orderQuantity" min-width="100" />
-          <el-table-column label="未清数量" prop="openQuantity" />
-          <el-table-column label="目标库位" width="220" v-if="inboundMode === 'multiple'">
-            <template #default="scope">
-              <TableHistoryInput
-                v-model="scope.row.locationCode"
-                :config="locationCodeConfig"
-                placeholder="请输入目标库位编码"
-                @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.locationCode)"
-                @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.locationCode)"
-              >
-                <template #append>
-                  <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
-                </template>
-              </TableHistoryInput>
-            </template>
-          </el-table-column>
-          <el-table-column label="收货数量" align="center" width="150">
-            <template #default="scope">
-              <el-input-number
-                v-model="scope.row.receivePoQuantity"
-                :min="0"
-                :max="parseFloat(scope.row.openQuantity || 0)"
-                :precision="3"
-                size="small"
-                controls-position="right"
-                @change="handleReceivePoQuantityChange(scope.row)"
-              />
-            </template>
-          </el-table-column>
-          <el-table-column label="库存数量" prop="inventoryQuantity" />
-          <el-table-column label="库存单位" prop="inventoryUnit" />
-          <el-table-column label="操作" width="80" align="center">
-            <template #default="scope">
-              <el-button type="danger" link icon="Delete" @click="removeFromInboundList(scope.$index)"></el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div style="margin-top: 20px; text-align: center">
-          <el-button :loading="buttonLoading" type="primary" @click="submitForm" :disabled="inboundList.length === 0">采购收货</el-button>
+          <div style="margin-top: 20px; text-align: center">
+            <el-button :loading="buttonLoading" type="primary" @click="submitForm" :disabled="inboundList.length === 0">采购收货</el-button>
+          </div>
         </div>
       </el-card>
     </el-col>
@@ -207,7 +199,7 @@ import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
-import { Bell, Switch } from '@element-plus/icons-vue';
+import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
@@ -220,6 +212,8 @@ const userCollectionsDialogRef = ref<InstanceType<typeof UserCollectionsDialog>>
 const purchaseOrderDetailList = ref<PurchaseOrderDetailVO[]>([]);
 const loading = ref(true);
 const showSearch = ref(true);
+const historyExpanded = ref(true);
+const transferExpanded = ref(true);
 const ids = ref<Array<string | number>>([]);
 const single = ref(true);
 const multiple = ref(true);
@@ -603,10 +597,45 @@ onMounted(() => {
   height: 100%;
   min-height: 300px;
 }
+.history-card.is-history-collapsed :deep(.el-card__body),
+.transfer-main-card.is-transfer-collapsed :deep(.el-card__body) {
+  display: none;
+}
+.history-card.is-history-collapsed {
+  min-height: 0;
+}
+.history-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.history-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.history-collapse-icon {
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+  transition: transform 0.2s;
+}
+.history-collapse-icon.is-expanded {
+  transform: rotate(90deg);
+}
+.history-header-title {
+  font-size: 14px;
+  font-weight: 600;
+}
 .search-result {
   flex: 1;
   overflow: auto;
   min-height: 200px;
+}
+.transfer-card-body {
+  padding: 12px 16px 16px;
 }
 .transfer-header {
   display: flex;

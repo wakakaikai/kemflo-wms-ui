@@ -38,6 +38,7 @@
             <span class="toolbar-stat">共 {{ total }} 台设备</span>
             <span class="toolbar-stat online">在线 {{ pageOnlineCount }}</span>
             <span class="toolbar-stat offline">离线 {{ pageOfflineCount }}</span>
+            <el-button type="warning" plain icon="Monitor" @click="goInjectionDisplay()">射出显示</el-button>
           </div>
           <div class="toolbar-right">
             <el-radio-group v-model="viewMode" size="small">
@@ -95,6 +96,9 @@
                 <el-tooltip content="读取采集" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:device:query']" link type="success" icon="DataLine" :loading="actionId === row.id && actionType === 'read'" @click="handleRead(row)" />
                 </el-tooltip>
+                <el-tooltip content="射出显示" placement="top" effect="dark" :show-after="200">
+                  <el-button link type="warning" icon="Monitor" @click="goInjectionDisplay(row)" />
+                </el-tooltip>
                 <el-tooltip :content="isTcpClientRow(row) ? '数据解析' : '点位配置'" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:point:list']" link type="primary" icon="Coin" @click="goPoints(row)" />
                 </el-tooltip>
@@ -139,6 +143,9 @@
                 </el-tooltip>
                 <el-tooltip content="读取采集" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:device:query']" link type="success" icon="DataLine" :loading="actionId === scope.row.id && actionType === 'read'" @click="handleRead(scope.row)" />
+                </el-tooltip>
+                <el-tooltip content="射出显示" placement="top" effect="dark" :show-after="200">
+                  <el-button link type="warning" icon="Monitor" @click="goInjectionDisplay(scope.row)" />
                 </el-tooltip>
                 <el-tooltip :content="isTcpClientRow(scope.row) ? '数据解析' : '点位配置'" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:point:list']" link type="primary" icon="Coin" @click="goPoints(scope.row)" />
@@ -1374,6 +1381,10 @@ const handleUpdate = async (row: DeviceVO) => {
 
 const goPoints = (row: DeviceVO) => {
   router.push({ path: '/iot/point', query: { deviceId: String(row.id), deviceName: row.deviceName } });
+};
+
+const goInjectionDisplay = (row?: DeviceVO) => {
+  router.push({ path: '/iot/injection-display', query: row?.id ? { deviceId: String(row.id) } : {} });
 };
 
 const handleTest = async (row: DeviceVO) => {

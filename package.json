@@ -13,7 +13,9 @@
     "preview": "vite preview",
     "lint:eslint": "eslint",
     "lint:eslint:fix": "eslint --fix",
-    "prettier": "prettier --write ."
+    "prettier": "prettier --write .",
+    "fix:trace-i18n": "node scripts/generate-mesProductTraceData.mjs",
+    "fix:home-i18n": "node scripts/generate-home.mjs"
   },
   "repository": {
     "type": "git",
