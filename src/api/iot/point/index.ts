@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { PointVO, PointForm, PointQuery } from './types';
+import { PointVO, PointForm, PointQuery, PointDisplayConfigForm } from './types';
 
 export const listPoint = (query?: PointQuery): AxiosPromise<PointVO[]> => {
   return request({ url: '/iot/point/list', method: 'get', params: query });
@@ -16,6 +16,14 @@ export const addPoint = (data: PointForm) => {
 
 export const updatePoint = (data: PointForm) => {
   return request({ url: '/iot/point', method: 'put', data });
+};
+
+export const getPointDisplayConfig = (deviceId: string | number): AxiosPromise<PointVO[]> => {
+  return request({ url: '/iot/point/displayConfig/' + deviceId, method: 'get' });
+};
+
+export const savePointDisplayConfig = (deviceId: string | number, data: PointDisplayConfigForm[]) => {
+  return request({ url: '/iot/point/displayConfig/' + deviceId, method: 'put', data });
 };
 
 export const delPoint = (id: string | number | Array<string | number>) => {

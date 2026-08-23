@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { DeviceVO, DeviceForm, DeviceQuery } from './types';
+import { DeviceVO, DeviceForm, DeviceQuery, DeviceCopyForm } from './types';
 
 export const listDevice = (query?: DeviceQuery): AxiosPromise<DeviceVO[]> => {
   return request({ url: '/iot/device/list', method: 'get', params: query });
@@ -16,6 +16,10 @@ export const addDevice = (data: DeviceForm) => {
 
 export const updateDevice = (data: DeviceForm) => {
   return request({ url: '/iot/device', method: 'put', data });
+};
+
+export const copyDevice = (data: DeviceCopyForm): AxiosPromise<DeviceVO> => {
+  return request({ url: '/iot/device/copy', method: 'post', data });
 };
 
 export const delDevice = (id: string | number | Array<string | number>) => {

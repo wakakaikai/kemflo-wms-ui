@@ -2,6 +2,8 @@ export interface DeviceVO {
   id: string | number;
   deviceCode: string;
   deviceName: string;
+  deviceBrand?: string;
+  systemBrand?: string;
   protocol: string;
   transportCode?: string;
   host?: string;
@@ -22,6 +24,8 @@ export interface DeviceForm extends BaseEntity {
   id?: string | number;
   deviceCode?: string;
   deviceName?: string;
+  deviceBrand?: string;
+  systemBrand?: string;
   protocol?: string;
   transportCode?: string;
   host?: string;
@@ -38,7 +42,16 @@ export interface DeviceForm extends BaseEntity {
 export interface DeviceQuery extends PageQuery {
   deviceCode?: string;
   deviceName?: string;
+  deviceBrand?: string;
+  systemBrand?: string;
   protocol?: string;
   onlineStatus?: string;
   status?: string;
+}
+
+export interface DeviceCopyForm {
+  sourceDeviceId?: string | number;
+  deviceCode?: string;
+  deviceName?: string;
+  copyPoints?: boolean;
 }

@@ -53,6 +53,11 @@
               </span>
             </el-tooltip>
             <el-button v-hasPermi="['iot:point:add']" type="primary" plain icon="Plus" @click="handleAdd">新增</el-button>
+            <el-tooltip :disabled="!!currentDeviceId" content="请先选择设备" placement="top" effect="dark">
+              <span>
+                <el-button v-hasPermi="['iot:point:edit']" type="warning" plain icon="Setting" :disabled="!currentDeviceId" @click="openDisplayConfig">采集视图配置</el-button>
+              </span>
+            </el-tooltip>
             <el-button v-hasPermi="['iot:point:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()"> 删除 </el-button>
             <right-toolbar v-model:show-search="showSearch" @query-table="getList" />
           </div>
@@ -135,6 +140,55 @@
 
     <IotReadCollectDialog v-if="!isTcpClientDevice" v-model:visible="readDialog.visible" :title="readDialog.title" :rows="readDialog.rows" :refreshing="reading" empty-text="暂无点位数据，请先配置点位" @refresh="handleRead" />
     <TcpCollectDialog v-else v-model:visible="tcpReadDialog.visible" :title="tcpReadDialog.title" :raw-payload="tcpReadDialog.rawPayload" :points="tcpReadDialog.points" :refreshing="reading" @refresh="handleRead" />
+
+    <el-dialog v-model="displayConfigDialog.visible" :title="displayConfigDialog.title" width="980px" destroy-on-close append-to-body class="display-config-dialog">
+      <el-table v-loading="displayConfigLoading" :data="displayConfigRows" border stripe max-height="560">
+        <el-table-column label="点位编码" prop="pointCode" min-width="130">
+          <template #default="scope">
+            <code class="code-text">{{ scope.row.pointCode }}</code>
+          </template>
+        </el-table-column>
+        <el-table-column label="点位名称" prop="pointName" min-width="130" show-overflow-tooltip />
+        <el-table-column label="显示" width="90" align="center">
+          <template #default="scope">
+            <el-switch v-model="scope.row.displayEnabled" active-value="1" inactive-value="0" />
+          </template>
+        </el-table-column>
+        <el-table-column label="显示名称" min-width="150">
+          <template #default="scope">
+            <el-input v-model="scope.row.displayName" placeholder="默认点位名称" />
+          </template>
+        </el-table-column>
+        <el-table-column label="模式" width="150">
+          <template #default="scope">
+            <el-select v-model="scope.row.displayMode" clearable placeholder="自动" style="width: 100%">
+              <el-option v-for="item in IOT_POINT_DISPLAY_MODE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </template>
+        </el-table-column>
+        <el-table-column label="分类" min-width="130">
+          <template #default="scope">
+            <el-input v-model="scope.row.displayCategory" placeholder="如 状态、温度" />
+          </template>
+        </el-table-column>
+        <el-table-column label="类型" width="150">
+          <template #default="scope">
+            <el-select v-model="scope.row.displayType" clearable placeholder="自动" style="width: 100%">
+              <el-option v-for="item in IOT_POINT_DISPLAY_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </template>
+        </el-table-column>
+        <el-table-column label="排序" width="110">
+          <template #default="scope">
+            <el-input-number v-model="scope.row.displayOrder" :min="0" controls-position="right" style="width: 100%" />
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button type="primary" :loading="displayConfigSaving" @click="saveDisplayConfig">保存</el-button>
+        <el-button @click="displayConfigDialog.visible = false">取消</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="760px" destroy-on-close append-to-body class="point-dialog">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
@@ -342,6 +396,45 @@
             </el-col>
           </el-row>
         </div>
+        <div class="form-section">
+          <div class="form-section__title">看板显示</div>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="是否显示" prop="displayEnabled">
+                <el-switch v-model="form.displayEnabled" active-value="1" inactive-value="0" active-text="显示" inactive-text="隐藏" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="显示名称" prop="displayName">
+                <el-input v-model="form.displayName" placeholder="为空时使用点位名称" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="显示模式" prop="displayMode">
+                <el-select v-model="form.displayMode" clearable placeholder="未配置时自动判断" style="width: 100%">
+                  <el-option v-for="item in IOT_POINT_DISPLAY_MODE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="显示分类" prop="displayCategory">
+                <el-input v-model="form.displayCategory" placeholder="如 状态、合模、射胶、温度" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="显示类型" prop="displayType">
+                <el-select v-model="form.displayType" clearable placeholder="未配置时自动判断" style="width: 100%">
+                  <el-option v-for="item in IOT_POINT_DISPLAY_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="显示排序" prop="displayOrder">
+                <el-input-number v-model="form.displayOrder" :min="0" controls-position="right" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
       </el-form>
       <template #footer>
         <el-button type="primary" @click="submitForm">确定</el-button>
@@ -356,8 +449,8 @@ import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, c
 import type { ElFormInstance } from 'element-plus';
 import { Coin } from '@element-plus/icons-vue';
 import { useRoute, useRouter } from 'vue-router';
-import { listPoint, getPoint, addPoint, updatePoint, delPoint } from '@/api/iot/point';
-import { PointForm, PointQuery, PointVO } from '@/api/iot/point/types';
+import { listPoint, getPoint, addPoint, updatePoint, getPointDisplayConfig, savePointDisplayConfig, delPoint } from '@/api/iot/point';
+import { PointDisplayConfigForm, PointForm, PointQuery, PointVO } from '@/api/iot/point/types';
 import { listDevice, getDevice, readDevicePoints, readDeviceTcpPoints, PointReadItem } from '@/api/iot/device';
 import { DeviceVO } from '@/api/iot/device/types';
 import IotReadCollectDialog from '@/views/iot/components/IotReadCollectDialog.vue';
@@ -483,6 +576,16 @@ const IOT_DISPLAY_FORMAT_OPTIONS: IotOption[] = [
 ];
 
 /** Modbus Poll Format（数据类型 + 格式 + 字节序合一，选项英文） */
+const IOT_POINT_DISPLAY_MODE_OPTIONS: IotOption[] = [
+  { label: '状态显示值参数', value: 'current' },
+  { label: '设定值参数', value: 'setting' }
+];
+
+const IOT_POINT_DISPLAY_TYPE_OPTIONS: IotOption[] = [
+  { label: '数值卡片', value: 'metric' },
+  { label: '状态指示', value: 'indicator' }
+];
+
 interface IotPlcFormatOption {
   label: string;
   value: string;
@@ -1198,6 +1301,9 @@ const pointList = ref<PointVO[]>([]);
 const deviceOptions = ref<DeviceVO[]>([]);
 const loading = ref(true);
 const reading = ref(false);
+const displayConfigLoading = ref(false);
+const displayConfigSaving = ref(false);
+const displayConfigRows = ref<PointVO[]>([]);
 const showSearch = ref(true);
 const total = ref(0);
 const ids = ref<Array<string | number>>([]);
@@ -1209,6 +1315,7 @@ const addrAutoGenerate = ref(true);
 const addrBuilder = reactive<IotAddressBuilder>(createDefaultAddressBuilder('modbus-tcp', 'FLOAT'));
 
 const dialog = reactive<DialogOption>({ visible: false, title: '' });
+const displayConfigDialog = reactive<DialogOption>({ visible: false, title: '采集视图配置' });
 const readDialog = reactive({
   visible: false,
   title: '采集结果',
@@ -1253,6 +1360,12 @@ const initForm: PointForm = {
   displayFormat: 'SIGNED',
   byteOrder: 'CDAB',
   unit: undefined,
+  displayEnabled: '1',
+  displayMode: undefined,
+  displayCategory: undefined,
+  displayType: undefined,
+  displayName: undefined,
+  displayOrder: undefined,
   rwMode: 'R',
   scaleFactor: 1,
   offsetValue: 0,
@@ -1623,6 +1736,7 @@ const handleUpdate = async (row: PointVO) => {
     ...res.data,
     deviceId: toIdStr(res.data?.deviceId) || undefined,
     displayFormat: res.data?.displayFormat || 'SIGNED',
+    displayEnabled: res.data?.displayEnabled || '1',
     byteOrder: res.data?.byteOrder || defaultByteOrder(res.data?.dataType)
   };
   await resolveDeviceProtocol(form.value.deviceId);
@@ -1675,6 +1789,47 @@ const handleDelete = async (row?: PointVO) => {
   await delPoint(_ids);
   proxy?.$modal.msgSuccess('删除成功');
   await getList();
+};
+
+const openDisplayConfig = async () => {
+  if (!currentDeviceId.value) {
+    proxy?.$modal.msgWarning('请先选择设备');
+    return;
+  }
+  displayConfigDialog.visible = true;
+  displayConfigDialog.title = `采集视图配置${headerDeviceName.value ? ` - ${headerDeviceName.value}` : ''}`;
+  displayConfigLoading.value = true;
+  try {
+    const res = await getPointDisplayConfig(currentDeviceId.value);
+    displayConfigRows.value = ((res.data || []) as PointVO[]).map((row) => ({
+      ...row,
+      displayEnabled: row.displayEnabled || '1'
+    }));
+  } finally {
+    displayConfigLoading.value = false;
+  }
+};
+
+const saveDisplayConfig = async () => {
+  if (!currentDeviceId.value) return;
+  const payload: PointDisplayConfigForm[] = displayConfigRows.value.map((row) => ({
+    id: row.id,
+    displayEnabled: row.displayEnabled,
+    displayMode: row.displayMode,
+    displayCategory: row.displayCategory,
+    displayType: row.displayType,
+    displayName: row.displayName,
+    displayOrder: row.displayOrder
+  }));
+  displayConfigSaving.value = true;
+  try {
+    await savePointDisplayConfig(currentDeviceId.value, payload);
+    proxy?.$modal.msgSuccess('保存成功');
+    displayConfigDialog.visible = false;
+    await getList();
+  } finally {
+    displayConfigSaving.value = false;
+  }
 };
 
 const handleRead = async () => {

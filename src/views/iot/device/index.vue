@@ -10,6 +10,16 @@
             <el-form-item label="设备名称" prop="deviceName">
               <el-input v-model="queryParams.deviceName" placeholder="设备名称" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="设备品牌" prop="deviceBrand">
+              <el-select v-model="queryParams.deviceBrand" placeholder="设备品牌" clearable filterable style="width: 140px">
+                <el-option v-for="dict in iot_device_brand" :key="dict.value" :label="dict.label" :value="dict.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="系统品牌" prop="systemBrand">
+              <el-select v-model="queryParams.systemBrand" placeholder="系统品牌" clearable filterable style="width: 140px">
+                <el-option v-for="dict in iot_device_system_brand" :key="dict.value" :label="dict.label" :value="dict.value" />
+              </el-select>
+            </el-form-item>
             <el-form-item label="协议" prop="protocol">
               <el-select v-model="queryParams.protocol" placeholder="协议" clearable style="width: 150px">
                 <el-option v-for="item in IOT_PROTOCOL_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
@@ -52,7 +62,17 @@
 
       <div v-loading="loading">
         <div v-if="viewMode === 'card'" class="device-card-grid">
-          <div v-for="row in deviceList" :key="row.id" class="device-card" :class="{ online: isOnline(row), selected: isCardSelected(row.id) }">
+          <div
+            v-for="row in deviceList"
+            :key="row.id"
+            class="device-card"
+            :class="{ online: isOnline(row), selected: isCardSelected(row.id) }"
+            role="button"
+            tabindex="0"
+            @click="goPoints(row)"
+            @keydown.enter.prevent="goPoints(row)"
+            @keydown.space.prevent="goPoints(row)"
+          >
             <div class="device-card__top">
               <el-checkbox :model-value="isCardSelected(row.id)" @change="(val: CheckboxValueType) => toggleCardSelect(row, !!val)" @click.stop />
               <div class="device-avatar" :class="{ online: isOnline(row) }">
@@ -74,6 +94,13 @@
                 <el-tag size="small" effect="plain" type="primary">{{ protocolLabel(row.protocol) }}</el-tag>
               </div>
               <div class="meta-row">
+                <span class="meta-label">品牌</span>
+                <span class="meta-value">
+                  <dict-tag :options="iot_device_brand" :value="row.deviceBrand" />
+                  <span v-if="!row.deviceBrand">—</span>
+                </span>
+              </div>
+              <div class="meta-row">
                 <span class="meta-label">地址</span>
                 <span class="meta-value mono" :title="formatEndpoint(row)">{{ formatEndpoint(row) }}</span>
               </div>
@@ -89,12 +116,9 @@
 
             <div class="device-card__footer">
               <dict-tag :options="sys_normal_disable" :value="row.status" />
-              <div class="device-card__actions">
+              <div class="device-card__actions" @click.stop>
                 <el-tooltip content="测试连接" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:device:query']" link type="primary" icon="Connection" :loading="actionId === row.id && actionType === 'test'" @click="handleTest(row)" />
-                </el-tooltip>
-                <el-tooltip content="读取采集" placement="top" effect="dark" :show-after="200">
-                  <el-button v-hasPermi="['iot:device:query']" link type="success" icon="DataLine" :loading="actionId === row.id && actionType === 'read'" @click="handleRead(row)" />
                 </el-tooltip>
                 <el-tooltip content="射出显示" placement="top" effect="dark" :show-after="200">
                   <el-button link type="warning" icon="Monitor" @click="goInjectionDisplay(row)" />
@@ -104,6 +128,9 @@
                 </el-tooltip>
                 <el-tooltip content="编辑设备" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:device:edit']" link type="primary" icon="Edit" @click="handleUpdate(row)" />
+                </el-tooltip>
+                <el-tooltip content="复制设备" placement="top" effect="dark" :show-after="200">
+                  <el-button v-hasPermi="['iot:device:add']" link type="primary" icon="CopyDocument" @click="handleCopy(row)" />
                 </el-tooltip>
                 <el-tooltip content="删除设备" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:device:remove']" link type="danger" icon="Delete" @click="handleDelete(row)" />
@@ -118,6 +145,16 @@
           <el-table-column type="selection" width="50" align="center" />
           <el-table-column label="设备编码" prop="deviceCode" min-width="130" />
           <el-table-column label="设备名称" prop="deviceName" min-width="140" />
+          <el-table-column label="设备品牌" align="center" width="110">
+            <template #default="scope">
+              <dict-tag :options="iot_device_brand" :value="scope.row.deviceBrand" />
+            </template>
+          </el-table-column>
+          <el-table-column label="系统品牌" align="center" width="120">
+            <template #default="scope">
+              <dict-tag :options="iot_device_system_brand" :value="scope.row.systemBrand" />
+            </template>
+          </el-table-column>
           <el-table-column label="协议" align="center" width="120">
             <template #default="scope">
               <dict-tag :options="IOT_PROTOCOL_OPTIONS" :value="scope.row.protocol" />
@@ -141,9 +178,6 @@
                 <el-tooltip content="测试连接" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:device:query']" link type="primary" icon="Connection" :loading="actionId === scope.row.id && actionType === 'test'" @click="handleTest(scope.row)" />
                 </el-tooltip>
-                <el-tooltip content="读取采集" placement="top" effect="dark" :show-after="200">
-                  <el-button v-hasPermi="['iot:device:query']" link type="success" icon="DataLine" :loading="actionId === scope.row.id && actionType === 'read'" @click="handleRead(scope.row)" />
-                </el-tooltip>
                 <el-tooltip content="射出显示" placement="top" effect="dark" :show-after="200">
                   <el-button link type="warning" icon="Monitor" @click="goInjectionDisplay(scope.row)" />
                 </el-tooltip>
@@ -152,6 +186,9 @@
                 </el-tooltip>
                 <el-tooltip content="编辑设备" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:device:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row)" />
+                </el-tooltip>
+                <el-tooltip content="复制设备" placement="top" effect="dark" :show-after="200">
+                  <el-button v-hasPermi="['iot:device:add']" link type="primary" icon="CopyDocument" @click="handleCopy(scope.row)" />
                 </el-tooltip>
                 <el-tooltip content="删除设备" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:device:remove']" link type="danger" icon="Delete" @click="handleDelete(scope.row)" />
@@ -170,12 +207,26 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="设备编码" prop="deviceCode">
-              <el-input v-model="form.deviceCode" :disabled="!!form.id" placeholder="唯一编码" />
+              <el-input v-model="form.deviceCode" placeholder="唯一编码" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="设备名称" prop="deviceName">
               <el-input v-model="form.deviceName" placeholder="设备名称" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="设备品牌" prop="deviceBrand">
+              <el-select v-model="form.deviceBrand" clearable filterable placeholder="请选择设备品牌" style="width: 100%">
+                <el-option v-for="dict in iot_device_brand" :key="dict.value" :label="dict.label" :value="dict.value" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="系统品牌" prop="systemBrand">
+              <el-select v-model="form.systemBrand" clearable filterable placeholder="请选择系统品牌" style="width: 100%">
+                <el-option v-for="dict in iot_device_system_brand" :key="dict.value" :label="dict.label" :value="dict.value" />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -229,7 +280,7 @@
             </el-col>
             <el-col :span="24">
               <el-form-item label="保活命令">
-                <el-input v-model="tcpHeartbeat.heartbeat" :disabled="!tcpHeartbeat.heartbeatEnable" placeholder='按品牌填写，例 {"Heart":"Ask"} 或 text:PING\r\n 或 hex:FF01...' />
+                <el-input v-model="tcpHeartbeat.heartbeat" :disabled="!tcpHeartbeat.heartbeatEnable" placeholder='按品牌填写，例如 {"Heart":"Ask"} 或 text:PING\r\n 或 hex:FF01...' />
                 <div class="form-tip">连接后按保活频率发送；每次业务读写前也会先发一次。不填则不发。</div>
               </el-form-item>
             </el-col>
@@ -254,10 +305,49 @@
               </el-select>
             </el-form-item>
           </el-col>
+          <template v-if="isOpcUa">
+            <el-col :span="8">
+              <el-form-item label="鉴权方式">
+                <el-select v-model="opcUaAuth.authType" style="width: 100%" @change="applyOpcUaAuthToForm">
+                  <el-option v-for="item in IOT_OPCUA_AUTH_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="用户名">
+                <el-input v-model="opcUaAuth.username" :disabled="opcUaAuth.authType === 'anonymous'" placeholder="OPC UA 用户名" @change="applyOpcUaAuthToForm" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="密码">
+                <el-input v-model="opcUaAuth.password" :disabled="opcUaAuth.authType === 'anonymous'" type="password" show-password placeholder="OPC UA 密码" @change="applyOpcUaAuthToForm" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="安全策略">
+                <el-select v-model="opcUaAuth.securityPolicy" style="width: 100%" @change="onOpcUaSecurityPolicyChange">
+                  <el-option v-for="item in IOT_OPCUA_SECURITY_POLICY_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="安全模式">
+                <el-select v-model="opcUaAuth.messageSecurity" style="width: 100%" @change="applyOpcUaAuthToForm">
+                  <el-option v-for="item in IOT_OPCUA_MESSAGE_SECURITY_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="Discovery">
+                <el-switch v-model="opcUaAuth.discovery" @change="applyOpcUaAuthToForm" />
+              </el-form-item>
+            </el-col>
+          </template>
           <el-col :span="24">
             <el-form-item label="连接参数JSON" prop="connectionParamsJson">
-              <el-input v-model="form.connectionParamsJson" type="textarea" :rows="isTcpClient || isSerialLink ? 5 : 3" :placeholder="connectionParamsPlaceholder" @change="onConnectionParamsJsonChange" />
+              <el-input v-model="form.connectionParamsJson" type="textarea" :rows="isTcpClient || isSerialLink || isOpcUa ? 5 : 3" :placeholder="connectionParamsPlaceholder" @change="onConnectionParamsJsonChange" />
               <div v-if="isTcpClient" class="form-tip">随上方保活参数自动同步；也可直接改 JSON，失焦后回写到表单。</div>
+              <div v-if="isOpcUa" class="form-tip">随上方鉴权参数自动同步；也可直接改 JSON，失焦后回写到表单。</div>
             </el-form-item>
           </el-col>
           <el-col v-if="!isTcpClient" :span="24">
@@ -285,30 +375,41 @@
       </template>
     </el-dialog>
 
-    <IotReadCollectDialog v-model:visible="readDialog.visible" :title="readDialog.title" :rows="readDialog.rows" :refreshing="actionType === 'read' && !readDialog.isTcp" @refresh="refreshRead" />
-    <TcpCollectDialog v-model:visible="tcpReadDialog.visible" :title="tcpReadDialog.title" :raw-payload="tcpReadDialog.rawPayload" :points="tcpReadDialog.points" :refreshing="actionType === 'read' && readDialog.isTcp" @refresh="refreshTcpRead" />
+    <el-dialog v-model="copyDialog.visible" :title="copyDialog.title" width="520px" destroy-on-close append-to-body>
+      <el-form ref="copyFormRef" :model="copyForm" :rules="copyRules" label-width="110px">
+        <el-form-item label="来源设备">
+          <el-input :model-value="copySourceText" disabled />
+        </el-form-item>
+        <el-form-item label="新设备编码" prop="deviceCode">
+          <el-input v-model="copyForm.deviceCode" placeholder="请输入新设备编码" />
+        </el-form-item>
+        <el-form-item label="新设备名称" prop="deviceName">
+          <el-input v-model="copyForm.deviceName" placeholder="请输入新设备名称" />
+        </el-form-item>
+        <el-form-item label="采集参数">
+          <el-checkbox v-model="copyForm.copyPoints">复制点位采集参数和视图配置</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button type="primary" :loading="copySubmitting" @click="submitCopy">确定</el-button>
+        <el-button @click="copyDialog.visible = false">取消</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup name="IotDevice" lang="ts">
 import { getCurrentInstance, ComponentInternalInstance, computed, reactive, ref, toRefs, onMounted, watch } from 'vue';
-import type { CheckboxValueType, ElFormInstance } from 'element-plus';
+import type { CheckboxValueType, FormInstance } from 'element-plus';
 import { Monitor } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
-import { listDevice, getDevice, addDevice, updateDevice, delDevice, testDeviceConnection, readDevicePoints, readDeviceTcpPoints, PointReadItem } from '@/api/iot/device';
-import { listPoint } from '@/api/iot/point';
-import { DeviceForm, DeviceQuery, DeviceVO } from '@/api/iot/device/types';
-import IotReadCollectDialog from '@/views/iot/components/IotReadCollectDialog.vue';
-import TcpCollectDialog from '@/views/iot/components/TcpCollectDialog.vue';
+import { listDevice, getDevice, addDevice, updateDevice, copyDevice, delDevice, testDeviceConnection } from '@/api/iot/device';
+import { DeviceCopyForm, DeviceForm, DeviceQuery, DeviceVO } from '@/api/iot/device/types';
 
 // ===== iot-options (inlined) =====
 /** IoT 前端写死选项（PLC4X 协议编码） */
 
-interface IotOption {
-  label: string;
-  value: string;
-  elTagType?: string;
-}
+interface IotOption extends DictDataOption {}
 
 const IOT_PROTOCOL_OPTIONS: IotOption[] = [
   { label: 'Modbus TCP', value: 'modbus-tcp' },
@@ -441,10 +542,10 @@ const POLL_UNIFIED_FORMAT_OPTIONS: IotPlcFormatOption[] = [...POLL_FMT_INT_OPTIO
 function resolvePollUnifiedFormatGroups(): IotPlcFormatGroup[] {
   return [
     { label: '整数 (INT)', options: POLL_FMT_INT_OPTIONS },
-    { label: '长整型 (DINT)', options: POLL_FMT_LONG_OPTIONS },
+    { label: '长整数(DINT)', options: POLL_FMT_LONG_OPTIONS },
     { label: '浮点 (FLOAT)', options: POLL_FMT_FLOAT_OPTIONS },
-    { label: '双精度 (DOUBLE)', options: POLL_FMT_DOUBLE_OPTIONS },
-    { label: '字符串 (STRING)', options: POLL_FMT_STRING_OPTIONS }
+    { label: '双精度(DOUBLE)', options: POLL_FMT_DOUBLE_OPTIONS },
+    { label: '字符串(STRING)', options: POLL_FMT_STRING_OPTIONS }
   ];
 }
 
@@ -461,7 +562,7 @@ function normalizePlcDataType(dataType?: string): string {
   return type;
 }
 
-/** 反查 Poll Format 值 */
+/** 反查 Poll Format */
 function encodePlcFormat(displayFormat?: string, byteOrder?: string, dataType?: string): string {
   const type = normalizePlcDataType(dataType);
   const display = (displayFormat || 'SIGNED').toUpperCase();
@@ -487,7 +588,7 @@ function encodePlcFormat(displayFormat?: string, byteOrder?: string, dataType?: 
   return POLL_FMT_INT_OPTIONS.find((o) => o.displayFormat === display)?.value || 'SIGNED';
 }
 
-/** Poll Format 值 → 数据类型 + displayFormat + byteOrder */
+/** Poll Format -> 数据类型 + displayFormat + byteOrder */
 function decodePlcFormat(formatValue: string, _dataType?: string, current?: { dataType?: string; displayFormat?: string; byteOrder?: string }): { dataType: string; displayFormat: string; byteOrder: string } {
   const option = POLL_UNIFIED_FORMAT_OPTIONS.find((o) => o.value === formatValue);
   if (!option) {
@@ -967,6 +1068,52 @@ const IOT_MODBUS_TCP_PARAMS_EXAMPLE = `{
   "addressBase": 1
 }`;
 
+const IOT_OPCUA_PARAMS_EXAMPLE = `{
+  "discovery": false,
+  "security-policy": "NONE",
+  "message-security": "NONE"
+}`;
+
+const IOT_OPCUA_AUTH_TYPE_OPTIONS: IotOption[] = [
+  { label: '匿名', value: 'anonymous' },
+  { label: '用户名密码', value: 'username' }
+];
+
+const IOT_OPCUA_SECURITY_POLICY_OPTIONS: IotOption[] = [
+  { label: 'None', value: 'NONE' },
+  { label: 'Basic128Rsa15', value: 'Basic128Rsa15' },
+  { label: 'Basic256', value: 'Basic256' },
+  { label: 'Basic256Sha256', value: 'Basic256Sha256' },
+  { label: 'Aes128 Sha256 RsaOaep', value: 'Aes128_Sha256_RsaOaep' },
+  { label: 'Aes256 Sha256 RsaPss', value: 'Aes256_Sha256_RsaPss' }
+];
+
+const IOT_OPCUA_MESSAGE_SECURITY_OPTIONS: IotOption[] = [
+  { label: 'None', value: 'NONE' },
+  { label: 'Sign', value: 'SIGN' },
+  { label: 'Sign & Encrypt', value: 'SIGN_ENCRYPT' }
+];
+
+interface OpcUaAuthForm {
+  authType: 'anonymous' | 'username';
+  username: string;
+  password: string;
+  securityPolicy: string;
+  messageSecurity: string;
+  discovery: boolean;
+}
+
+function createDefaultOpcUaAuth(): OpcUaAuthForm {
+  return {
+    authType: 'anonymous',
+    username: '',
+    password: '',
+    securityPolicy: 'NONE',
+    messageSecurity: 'NONE',
+    discovery: false
+  };
+}
+
 /** TCP Client 设备连接参数示例（帧参数；保活在设备表单单独配置） */
 const IOT_TCP_CLIENT_PARAMS_EXAMPLE = `{
   "encoding": "UTF-8",
@@ -1003,6 +1150,10 @@ function isModbusProtocol(protocol?: string): boolean {
   return getProtocolGroup(protocol) === 'modbus';
 }
 
+function isOpcUaProtocol(protocol?: string): boolean {
+  return normalizeProtocolValue(protocol) === 'opcua';
+}
+
 function isModbusFloatDataType(dataType?: string): boolean {
   const type = (dataType || '').toUpperCase();
   return type === 'FLOAT' || type === 'REAL' || type === 'DOUBLE' || type === 'LREAL';
@@ -1011,7 +1162,7 @@ function isModbusFloatDataType(dataType?: string): boolean {
 /** 字节序表单项提示（对齐 Modbus Poll Float 字节序选项） */
 function byteOrderFieldTip(protocol?: string, dataType?: string): string {
   if (isModbusProtocol(protocol) && isModbusFloatDataType(dataType)) {
-    return 'Modbus REAL 占连续 2 个寄存器；默认 Float CD AB。值异常时先核对 Poll 原始寄存器与设备「地址编号」。';
+    return 'Modbus REAL 占连续 2 个寄存器；默认 Float CD AB。值异常时先核对 Poll 原始寄存器与设备地址编号。';
   }
   if (isModbusProtocol(protocol) && ((dataType || '').toUpperCase() === 'STRING' || (dataType || '').toUpperCase() === 'CHAR')) {
     return '字符串乱序（如 42A7 显示为 247A）时尝试 CD AB。';
@@ -1027,6 +1178,87 @@ function parseConnectionParamsJson(json?: string): Record<string, any> {
   } catch {
     return {};
   }
+}
+
+function compactJsonKey(key: string): string {
+  return key.trim().replace(/[-_\s]/g, '').toLowerCase();
+}
+
+function getParamValue(params: Record<string, any>, keys: string[]): any {
+  const compactKeys = keys.map(compactJsonKey);
+  const matched = Object.keys(params).find((key) => compactKeys.includes(compactJsonKey(key)));
+  return matched ? params[matched] : undefined;
+}
+
+function normalizeOpcUaSecurityPolicy(value?: any): string {
+  const compact = String(value ?? 'NONE').replace(/[-_\s]/g, '').toLowerCase();
+  const map: Record<string, string> = {
+    none: 'NONE',
+    basic128rsa15: 'Basic128Rsa15',
+    basic256: 'Basic256',
+    basic256sha256: 'Basic256Sha256',
+    aes128sha256rsaoaep: 'Aes128_Sha256_RsaOaep',
+    aes256sha256rsapss: 'Aes256_Sha256_RsaPss'
+  };
+  return map[compact] || String(value || 'NONE');
+}
+
+function normalizeOpcUaMessageSecurity(value?: any): string {
+  const compact = String(value ?? 'NONE').replace(/[-_\s&]/g, '').toLowerCase();
+  const map: Record<string, string> = {
+    none: 'NONE',
+    sign: 'SIGN',
+    signencrypt: 'SIGN_ENCRYPT',
+    signandencrypt: 'SIGN_ENCRYPT'
+  };
+  return map[compact] || String(value || 'NONE');
+}
+
+function isAnonymousOpcUaAuthValue(value: any): boolean {
+  const compact = String(value ?? '').trim().replace(/[-_\s]/g, '').toLowerCase();
+  return compact === 'anonymous' || compact === 'none' || compact === 'noauth';
+}
+
+function parseOpcUaAuth(json?: string): OpcUaAuthForm {
+  const params = parseConnectionParamsJson(json);
+  const authGroup = getParamValue(params, ['authentication', 'auth', 'identity', 'userIdentity', 'userIdentityToken']);
+  const authParams = authGroup && typeof authGroup === 'object' && !Array.isArray(authGroup) ? authGroup : {};
+  const username = getParamValue(authParams, ['username', 'userName', 'user', 'userId', 'account']) ?? getParamValue(params, ['username', 'userName', 'user', 'userId', 'account']);
+  const password = getParamValue(authParams, ['password', 'pwd', 'pass']) ?? getParamValue(params, ['password', 'pwd', 'pass']);
+  const authType = getParamValue(authParams, ['type', 'authType', 'identityType', 'loginMode']) ?? getParamValue(params, ['authType', 'authentication', 'identityType', 'loginMode']);
+  const anonymous = getParamValue(params, ['anonymous']) === true || getParamValue(authParams, ['anonymous']) === true || isAnonymousOpcUaAuthValue(authType);
+  return {
+    authType: !anonymous && (username || password) ? 'username' : 'anonymous',
+    username: username == null ? '' : String(username),
+    password: password == null ? '' : String(password),
+    securityPolicy: normalizeOpcUaSecurityPolicy(getParamValue(params, ['security-policy', 'securityPolicy'])),
+    messageSecurity: normalizeOpcUaMessageSecurity(getParamValue(params, ['message-security', 'messageSecurity', 'messageSecurityMode', 'securityMode'])),
+    discovery: getParamValue(params, ['discovery']) === true || String(getParamValue(params, ['discovery'])).toLowerCase() === 'true'
+  };
+}
+
+function deleteParamsByAliases(params: Record<string, any>, keys: string[]) {
+  const compactKeys = keys.map(compactJsonKey);
+  Object.keys(params).forEach((key) => {
+    if (compactKeys.includes(compactJsonKey(key))) {
+      delete params[key];
+    }
+  });
+}
+
+function mergeOpcUaAuth(json: string | undefined, auth: OpcUaAuthForm): string {
+  const params = parseConnectionParamsJson(json);
+  deleteParamsByAliases(params, ['authentication', 'auth', 'authType', 'anonymous', 'identity', 'identityType', 'userIdentity', 'userIdentityType', 'userIdentityToken', 'loginMode']);
+  deleteParamsByAliases(params, ['username', 'userName', 'user', 'userId', 'account', 'password', 'pwd', 'pass']);
+  deleteParamsByAliases(params, ['security-policy', 'securityPolicy', 'message-security', 'messageSecurity', 'messageSecurityMode', 'securityMode']);
+  params.discovery = !!auth.discovery;
+  params['security-policy'] = normalizeOpcUaSecurityPolicy(auth.securityPolicy);
+  params['message-security'] = normalizeOpcUaMessageSecurity(auth.messageSecurity);
+  if (auth.authType === 'username') {
+    params.username = auth.username.trim();
+    params.password = auth.password;
+  }
+  return JSON.stringify(params, null, 2);
 }
 
 /** 从连接参数 JSON 解析保活字段 */
@@ -1080,7 +1312,7 @@ const IOT_SERIAL_PARAMS_EXAMPLE = `{
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const router = useRouter();
-const { sys_normal_disable } = toRefs<any>(proxy?.useDict('sys_normal_disable'));
+const { sys_normal_disable, iot_device_brand, iot_device_system_brand } = toRefs<any>(proxy?.useDict('sys_normal_disable', 'iot_device_brand', 'iot_device_system_brand'));
 
 const deviceList = ref<DeviceVO[]>([]);
 const loading = ref(true);
@@ -1090,37 +1322,30 @@ const total = ref(0);
 const ids = ref<Array<string | number>>([]);
 const multiple = ref(true);
 const actionId = ref<string | number>();
-const actionType = ref<'test' | 'read'>();
+const actionType = ref<'test'>();
+const copySubmitting = ref(false);
+const copySource = ref<DeviceVO>();
 const tcpHeartbeat = reactive<TcpClientHeartbeatForm>(createDefaultTcpHeartbeat());
 const tcpRequest = ref('');
 const modbusAddressBase = ref('1');
+const opcUaAuth = reactive<OpcUaAuthForm>(createDefaultOpcUaAuth());
 const formOnlineStatus = ref<string>('0');
 const formLastOnlineTime = ref<string>('');
 
 const dialog = reactive<DialogOption>({ visible: false, title: '' });
-const readDialog = reactive({
-  visible: false,
-  title: '采集结果',
-  deviceId: undefined as string | number | undefined,
-  isTcp: false,
-  rows: [] as PointReadItem[]
-});
-const tcpReadDialog = reactive({
-  visible: false,
-  title: 'TCP 采集结果',
-  deviceId: undefined as string | number | undefined,
-  rawPayload: undefined as unknown,
-  points: [] as PointReadItem[]
-});
+const copyDialog = reactive<DialogOption>({ visible: false, title: '复制采集设备' });
 const pageOnlineCount = computed(() => deviceList.value.filter((d) => isOnline(d)).length);
 const pageOfflineCount = computed(() => deviceList.value.length - pageOnlineCount.value);
 
-const queryFormRef = ref<ElFormInstance>();
-const formRef = ref<ElFormInstance>();
+const queryFormRef = ref<FormInstance>();
+const formRef = ref<FormInstance>();
+const copyFormRef = ref<FormInstance>();
 
 const initForm: DeviceForm = {
   deviceCode: undefined,
   deviceName: undefined,
+  deviceBrand: undefined,
+  systemBrand: undefined,
   protocol: 'modbus-tcp',
   transportCode: undefined,
   host: undefined,
@@ -1134,9 +1359,36 @@ const initForm: DeviceForm = {
   status: '0'
 };
 
+const initCopyForm: DeviceCopyForm = {
+  sourceDeviceId: undefined,
+  deviceCode: undefined,
+  deviceName: undefined,
+  copyPoints: true
+};
+
+const copyForm = ref<DeviceCopyForm>({ ...initCopyForm });
+const copyRules = {
+  deviceCode: [{ required: true, message: '新设备编码不能为空', trigger: 'blur' }],
+  deviceName: [{ required: true, message: '新设备名称不能为空', trigger: 'blur' }]
+};
+const copySourceText = computed(() => {
+  if (!copySource.value) return '';
+  return `${copySource.value.deviceName || ''}（${copySource.value.deviceCode || ''}）`;
+});
+
 const data = reactive<PageData<DeviceForm, DeviceQuery>>({
   form: { ...initForm },
-  queryParams: { pageNum: 1, pageSize: 10, deviceCode: undefined, deviceName: undefined, protocol: undefined, onlineStatus: undefined, status: undefined },
+  queryParams: {
+    pageNum: 1,
+    pageSize: 10,
+    deviceCode: undefined,
+    deviceName: undefined,
+    deviceBrand: undefined,
+    systemBrand: undefined,
+    protocol: undefined,
+    onlineStatus: undefined,
+    status: undefined
+  },
   rules: {
     deviceCode: [{ required: true, message: '设备编码不能为空', trigger: 'blur' }],
     deviceName: [{ required: true, message: '设备名称不能为空', trigger: 'blur' }],
@@ -1156,16 +1408,18 @@ const { queryParams, form, rules } = toRefs(data);
 
 const isOnline = (row: DeviceVO) => String(row.onlineStatus) === '1';
 
-const protocolLabel = (protocol?: string) => IOT_PROTOCOL_OPTIONS.find((item) => item.value === protocol)?.label || protocol || '—';
+const protocolLabel = (protocol?: string) => IOT_PROTOCOL_OPTIONS.find((item) => item.value === protocol)?.label || protocol || '-';
 
 const isTcpClientRow = (row: DeviceVO) => isTcpClientProtocol(row.protocol);
 
 const isTcpClient = computed(() => isTcpClientProtocol(form.value.protocol));
 const isModbus = computed(() => isModbusProtocol(form.value.protocol));
+const isOpcUa = computed(() => isOpcUaProtocol(form.value.protocol));
 const isSerialLink = computed(() => isSerialTransport(form.value.transportCode));
 const hostPlaceholder = computed(() => {
   if (isSerialLink.value) return '如 COM3 或 /dev/ttyUSB0';
   if (isTcpClient.value) return '设备 TCP Server IP';
+  if (isOpcUa.value) return 'OPC UA Server IP';
   return 'IP/主机名';
 });
 const connectionParamsPlaceholder = computed(() => {
@@ -1173,6 +1427,7 @@ const connectionParamsPlaceholder = computed(() => {
     return form.value.transportCode === 'SERIAL_RS485' ? IOT_SERIAL_PARAMS_EXAMPLE.replace('"rs485": false', '"rs485": true') : IOT_SERIAL_PARAMS_EXAMPLE;
   }
   if (isTcpClient.value) return IOT_TCP_CLIENT_PARAMS_EXAMPLE;
+  if (isOpcUa.value) return IOT_OPCUA_PARAMS_EXAMPLE;
   if (isModbus.value) {
     return IOT_MODBUS_TCP_PARAMS_EXAMPLE;
   }
@@ -1194,8 +1449,27 @@ const applyTcpConnectionParamsToForm = () => {
   applyTcpHeartbeatToForm();
 };
 
+const syncOpcUaAuthFromForm = () => {
+  Object.assign(opcUaAuth, parseOpcUaAuth(form.value.connectionParamsJson));
+};
+
+const applyOpcUaAuthToForm = () => {
+  if (!isOpcUa.value) return;
+  form.value.connectionParamsJson = mergeOpcUaAuth(form.value.connectionParamsJson, opcUaAuth);
+};
+
+const onOpcUaSecurityPolicyChange = () => {
+  if (opcUaAuth.securityPolicy === 'NONE') {
+    opcUaAuth.messageSecurity = 'NONE';
+  } else if (opcUaAuth.messageSecurity === 'NONE') {
+    opcUaAuth.messageSecurity = 'SIGN_ENCRYPT';
+  }
+  applyOpcUaAuthToForm();
+};
+
 /** 避免保活表单 ↔ JSON 双向同步互相覆盖 */
 let syncingTcpConnectionParams = false;
+let syncingOpcUaConnectionParams = false;
 
 watch(
   tcpHeartbeat,
@@ -1221,13 +1495,36 @@ watch(tcpRequest, () => {
   }
 });
 
+watch(
+  opcUaAuth,
+  () => {
+    if (!isOpcUa.value || syncingOpcUaConnectionParams) return;
+    syncingOpcUaConnectionParams = true;
+    try {
+      applyOpcUaAuthToForm();
+    } finally {
+      syncingOpcUaConnectionParams = false;
+    }
+  },
+  { deep: true }
+);
+
 const onConnectionParamsJsonChange = () => {
-  if (!isTcpClient.value || syncingTcpConnectionParams) return;
-  syncingTcpConnectionParams = true;
-  try {
-    syncTcpHeartbeatFromForm();
-  } finally {
-    syncingTcpConnectionParams = false;
+  if (isTcpClient.value && !syncingTcpConnectionParams) {
+    syncingTcpConnectionParams = true;
+    try {
+      syncTcpHeartbeatFromForm();
+    } finally {
+      syncingTcpConnectionParams = false;
+    }
+  }
+  if (isOpcUa.value && !syncingOpcUaConnectionParams) {
+    syncingOpcUaConnectionParams = true;
+    try {
+      syncOpcUaAuthFromForm();
+    } finally {
+      syncingOpcUaConnectionParams = false;
+    }
   }
 };
 
@@ -1266,6 +1563,15 @@ const onProtocolChange = (value?: string) => {
       form.value.connectionParamsJson = IOT_MODBUS_TCP_PARAMS_EXAMPLE;
     }
     syncModbusAddressBaseFromForm();
+  } else if (protocol === 'opcua') {
+    if (isTcpTransport(form.value.transportCode)) {
+      form.value.transportCode = undefined;
+    }
+    if (!form.value.port) form.value.port = 4840;
+    if (!form.value.connectionParamsJson) {
+      form.value.connectionParamsJson = IOT_OPCUA_PARAMS_EXAMPLE;
+    }
+    syncOpcUaAuthFromForm();
   }
 };
 
@@ -1307,7 +1613,7 @@ const formatEndpoint = (row: DeviceVO) => {
   if (row.host && row.port) return `${row.host}:${row.port}`;
   if (row.host) return row.host;
   if (row.connectionUrl) return row.connectionUrl;
-  return '—';
+  return '-';
 };
 
 const isCardSelected = (id: string | number) => ids.value.includes(id);
@@ -1354,6 +1660,7 @@ const reset = () => {
   Object.assign(tcpHeartbeat, createDefaultTcpHeartbeat());
   tcpRequest.value = '';
   modbusAddressBase.value = '1';
+  Object.assign(opcUaAuth, createDefaultOpcUaAuth());
   formOnlineStatus.value = '0';
   formLastOnlineTime.value = '';
   formRef.value?.resetFields();
@@ -1375,8 +1682,36 @@ const handleUpdate = async (row: DeviceVO) => {
   formLastOnlineTime.value = res.data?.lastOnlineTime || '';
   syncTcpHeartbeatFromForm();
   syncModbusAddressBaseFromForm();
+  syncOpcUaAuthFromForm();
   dialog.visible = true;
   dialog.title = '修改采集设备';
+};
+
+const handleCopy = (row: DeviceVO) => {
+  copySource.value = row;
+  copyForm.value = {
+    sourceDeviceId: row.id,
+    deviceCode: `${row.deviceCode || ''}_COPY`,
+    deviceName: `${row.deviceName || ''}-复制`,
+    copyPoints: true
+  };
+  copyDialog.visible = true;
+  copyDialog.title = '复制采集设备';
+};
+
+const submitCopy = () => {
+  copyFormRef.value?.validate(async (valid: boolean) => {
+    if (!valid) return;
+    copySubmitting.value = true;
+    try {
+      await copyDevice(copyForm.value);
+      proxy?.$modal.msgSuccess('复制成功');
+      copyDialog.visible = false;
+      await getList();
+    } finally {
+      copySubmitting.value = false;
+    }
+  });
 };
 
 const goPoints = (row: DeviceVO) => {
@@ -1400,80 +1735,9 @@ const handleTest = async (row: DeviceVO) => {
   }
 };
 
-const fillReadRows = async (deviceId: string | number, rows: PointReadItem[]) => {
-  let points: Array<{ pointCode?: string; dataType?: string; scaleFactor?: number }> = [];
-  try {
-    const pointRes = await listPoint({ deviceId, pageNum: 1, pageSize: 500 });
-    points = ((pointRes as any).rows ?? []) as Array<{ pointCode?: string; dataType?: string; scaleFactor?: number }>;
-  } catch {
-    points = [];
-  }
-  const byCode = new Map(points.map((p) => [p.pointCode, p]));
-  readDialog.rows = (rows || []).map((row) => {
-    const point = byCode.get(row.pointCode);
-    if (!point) return row;
-    return {
-      ...row,
-      dataType: point.dataType ?? row.dataType,
-      scaleFactor: point.scaleFactor ?? row.scaleFactor
-    };
-  });
-};
 
-const handleRead = async (row: DeviceVO) => {
-  actionId.value = row.id;
-  actionType.value = 'read';
-  try {
-    if (isTcpClientRow(row)) {
-      const res = await readDeviceTcpPoints(row.id);
-      tcpReadDialog.deviceId = row.id;
-      tcpReadDialog.title = `TCP 采集 - ${row.deviceCode}`;
-      tcpReadDialog.rawPayload = res.data?.rawPayload;
-      tcpReadDialog.points = (res.data?.points || []) as PointReadItem[];
-      readDialog.isTcp = true;
-      tcpReadDialog.visible = true;
-    } else {
-      const res = await readDevicePoints(row.id);
-      readDialog.deviceId = row.id;
-      readDialog.title = `采集结果 - ${row.deviceCode}`;
-      readDialog.isTcp = false;
-      await fillReadRows(row.id, (res.data || []) as PointReadItem[]);
-      readDialog.visible = true;
-    }
-    await getList();
-  } finally {
-    actionId.value = undefined;
-    actionType.value = undefined;
-  }
-};
 
-const refreshRead = async () => {
-  if (!readDialog.deviceId) return;
-  actionType.value = 'read';
-  try {
-    const res = await readDevicePoints(readDialog.deviceId);
-    await fillReadRows(readDialog.deviceId, (res.data || []) as PointReadItem[]);
-    proxy?.$modal.msgSuccess('重新采集完成');
-    await getList();
-  } finally {
-    actionType.value = undefined;
-  }
-};
 
-const refreshTcpRead = async () => {
-  if (!tcpReadDialog.deviceId) return;
-  actionType.value = 'read';
-  readDialog.isTcp = true;
-  try {
-    const res = await readDeviceTcpPoints(tcpReadDialog.deviceId);
-    tcpReadDialog.rawPayload = res.data?.rawPayload;
-    tcpReadDialog.points = (res.data?.points || []) as PointReadItem[];
-    proxy?.$modal.msgSuccess('重新采集完成');
-    await getList();
-  } finally {
-    actionType.value = undefined;
-  }
-};
 
 const submitForm = () => {
   formRef.value?.validate(async (valid: boolean) => {
@@ -1488,6 +1752,14 @@ const submitForm = () => {
       applyTcpHeartbeatToForm();
       form.value.transportCode = 'TCP_CLIENT';
       form.value.connectionUrl = undefined;
+    }
+    if (isOpcUa.value) {
+      if (opcUaAuth.authType === 'username' && !opcUaAuth.username.trim()) {
+        proxy?.$modal.msgError('OPC UA 用户名不能为空');
+        return;
+      }
+      applyOpcUaAuthToForm();
+      if (!form.value.port) form.value.port = 4840;
     }
     applyModbusAddressBaseToForm();
     form.value.id ? await updateDevice(form.value) : await addDevice(form.value);
@@ -1594,15 +1866,18 @@ onMounted(getList);
   border-radius: 12px;
   border: 1px solid var(--el-border-color-lighter);
   background: var(--el-bg-color);
+  cursor: pointer;
   transition:
     border-color 0.2s,
     box-shadow 0.2s,
     transform 0.2s;
 
-  &:hover {
+  &:hover,
+  &:focus-visible {
     border-color: var(--el-color-primary-light-5);
     box-shadow: 0 8px 22px rgba(0, 0, 0, 0.06);
     transform: translateY(-2px);
+    outline: none;
   }
 
   &.online {
@@ -1651,6 +1926,7 @@ onMounted(getList);
       font-size: 16px;
     }
   }
+
 }
 
 .device-avatar {

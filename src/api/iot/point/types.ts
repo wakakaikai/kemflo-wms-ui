@@ -9,6 +9,12 @@ export interface PointVO {
   displayFormat?: string;
   byteOrder?: string;
   unit?: string;
+  displayEnabled?: string;
+  displayMode?: string;
+  displayCategory?: string;
+  displayType?: string;
+  displayName?: string;
+  displayOrder?: number;
   rwMode?: string;
   scaleFactor?: number;
   offsetValue?: number;
@@ -30,6 +36,12 @@ export interface PointForm extends BaseEntity {
   displayFormat?: string;
   byteOrder?: string;
   unit?: string;
+  displayEnabled?: string;
+  displayMode?: string;
+  displayCategory?: string;
+  displayType?: string;
+  displayName?: string;
+  displayOrder?: number;
   rwMode?: string;
   scaleFactor?: number;
   offsetValue?: number;
@@ -42,4 +54,14 @@ export interface PointQuery extends PageQuery {
   pointCode?: string;
   pointName?: string;
   status?: string;
+}
+
+export interface PointDisplayConfigForm {
+  id?: string | number;
+  displayEnabled?: string;
+  displayMode?: string;
+  displayCategory?: string;
+  displayType?: string;
+  displayName?: string;
+  displayOrder?: number;
 }

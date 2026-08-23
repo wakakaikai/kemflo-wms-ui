@@ -136,6 +136,7 @@ interface DisplayCard {
   setting: boolean;
   kind: CardKind;
   sortText: string;
+  displayOrder?: number;
   active: boolean;
   warn: boolean;
   quality?: string;
@@ -205,10 +206,14 @@ let refreshTimer: number | undefined;
 
 const currentDevice = computed(() => deviceOptions.value.find((item) => toIdStr(item.id) === selectedDeviceId.value) || null);
 const activeModeLabel = computed(() => modeOptions.find((item) => item.value === activeMode.value)?.label || '');
-const visibleCategories = computed(() => (activeMode.value === 'current' ? currentCategories : settingCategories));
+const visibleCategories = computed(() => {
+  const base = activeMode.value === 'current' ? currentCategories : settingCategories;
+  const configured = modeCards.value.map((card) => card.category).filter(Boolean);
+  return Array.from(new Set([...base, ...configured]));
+});
 const lastRefreshText = computed(() => (lastRefreshTime.value ? formatTime(lastRefreshTime.value) : '未刷新'));
 
-const normalizedCards = computed<DisplayCard[]>(() => pointList.value.map(toDisplayCard));
+const normalizedCards = computed<DisplayCard[]>(() => pointList.value.filter(isDisplayPoint).map(toDisplayCard));
 const modeCards = computed(() => normalizedCards.value.filter((card) => card.setting === (activeMode.value === 'setting')));
 const displayCards = computed(() => modeCards.value.filter((card) => card.category === activeCategory.value).sort((a, b) => sortCards(a, b)));
 const modeCardCount = computed(() => modeCards.value.length);
@@ -233,6 +238,8 @@ watch(
 const toIdStr = (id?: string | number | null) => (id == null || id === '' ? '' : String(id));
 const isOnline = (row?: DeviceVO | null) => String(row?.onlineStatus ?? '0') === '1';
 const categoryCount = (category: string) => modeCards.value.filter((card) => card.category === category).length;
+const normalizeConfig = (value?: string | null) => String(value || '').trim();
+const isDisplayPoint = (point: PointVO) => normalizeConfig(point.displayEnabled) !== '0';
 
 const isTcpClient = (protocol?: string) => {
   const value = (protocol || '').trim().toLowerCase().replace(/[\s_]+/g, '-');
@@ -319,11 +326,13 @@ const ensureCategoryHasCards = () => {
 };
 
 const toDisplayCard = (point: PointVO): DisplayCard => {
-  const name = point.pointName || point.pointCode;
+  const name = normalizeConfig(point.displayName) || point.pointName || point.pointCode;
   const source = `${point.pointCode || ''} ${point.pointName || ''} ${point.tagAddress || ''}`.toLowerCase();
-  const setting = isSettingPoint(source);
-  const category = resolveCategory(source, setting);
-  const kind = isIndicatorPoint(point, source) ? 'indicator' : 'metric';
+  const configuredMode = normalizeConfig(point.displayMode).toLowerCase();
+  const setting = configuredMode === 'setting' ? true : configuredMode === 'current' ? false : isSettingPoint(source);
+  const category = normalizeConfig(point.displayCategory) || resolveCategory(source, setting);
+  const configuredType = normalizeConfig(point.displayType).toLowerCase();
+  const kind = configuredType === 'indicator' ? 'indicator' : configuredType === 'metric' ? 'metric' : isIndicatorPoint(point, source) ? 'indicator' : 'metric';
   const active = isActiveValue(point.currentValue);
   const warn = source.includes('alarm') || source.includes('报警') || String(point.quality || '').toUpperCase() === 'BAD';
 
@@ -336,6 +345,7 @@ const toDisplayCard = (point: PointVO): DisplayCard => {
     setting,
     kind,
     sortText: source,
+    displayOrder: Number.isFinite(Number(point.displayOrder)) ? Number(point.displayOrder) : undefined,
     active,
     warn,
     quality: point.quality
@@ -388,6 +398,11 @@ const inferUnit = (source: string) => {
 };
 
 const sortCards = (a: DisplayCard, b: DisplayCard) => {
+  const aConfigured = Number.isFinite(Number(a.displayOrder)) ? Number(a.displayOrder) : undefined;
+  const bConfigured = Number.isFinite(Number(b.displayOrder)) ? Number(b.displayOrder) : undefined;
+  if (aConfigured !== undefined || bConfigured !== undefined) {
+    return (aConfigured ?? 100000) - (bConfigured ?? 100000);
+  }
   const aOrder = resolveDisplayOrder(a);
   const bOrder = resolveDisplayOrder(b);
   if (aOrder !== bOrder) return aOrder - bOrder;
