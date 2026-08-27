@@ -15,9 +15,7 @@
         </el-descriptions>
       </div>
 
-      <el-alert type="info" :closable="false" show-icon class="tip-alert">
-        各库位库存明细如下，勾选并填写「本次数量」后点击确认
-      </el-alert>
+      <el-alert type="info" :closable="false" show-icon class="tip-alert"> 各库位库存明细如下，勾选并填写「本次数量」后点击确认 </el-alert>
 
       <!-- 工具栏 -->
       <div class="toolbar">
@@ -31,16 +29,7 @@
       </div>
 
       <!-- 库存表格 -->
-      <el-table
-        ref="tableRef"
-        :data="inventoryRows"
-        row-key="rowKey"
-        border
-        stripe
-        size="small"
-        max-height="420"
-        @selection-change="onSelectionChange"
-      >
+      <el-table ref="tableRef" :data="inventoryRows" row-key="rowKey" border stripe size="small" max-height="420" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="46" :selectable="isRowSelectable" />
         <el-table-column prop="warehouseCode" label="仓库" width="110" show-overflow-tooltip />
         <el-table-column prop="locationCode" label="库位" min-width="140" show-overflow-tooltip />
@@ -58,20 +47,7 @@
         </el-table-column>
         <el-table-column label="本次数量" width="150" align="right" fixed="right">
           <template #default="{ row }">
-            <el-input-number
-              v-if="isRowSelected(row)"
-              :model-value="row.pickQty"
-              :min="0"
-              :max="row.availableQuantity"
-              :precision="3"
-              :step="1"
-              controls-position="right"
-              size="small"
-              class="pick-qty-input"
-              :disabled="!isRowSelected(row)"
-              @click.stop
-              @change="(val: number | undefined) => onPickQtyChange(row, val)"
-            />
+            <el-input-number v-if="isRowSelected(row)" :model-value="row.pickQty" :min="0" :max="row.availableQuantity" :precision="3" :step="1" controls-position="right" size="small" class="pick-qty-input" :disabled="!isRowSelected(row)" @click.stop @change="(val: number | undefined) => onPickQtyChange(row, val)" />
             <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
@@ -79,6 +55,9 @@
           <template #default="scope">
             <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
           </template>
+        </el-table-column>
+        <el-table-column v-if="!generalOnly" prop="businessCode" label="业务伙伴" width="120" fixed="right">
+          <template #default="{ row }">{{ row.businessCode || '-' }}</template>
         </el-table-column>
       </el-table>
     </div>
@@ -117,6 +96,8 @@ interface InventoryPickRow {
   inspectionQty: number;
   blockedQty: number;
   specialInventoryFlag: string;
+  businessCode: string;
+  businessName: string;
   unit: string;
   pickQty: number;
 }
@@ -127,11 +108,13 @@ interface Props {
   materialDesc?: string;
   issueQty: number;
   unit?: string;
+  generalOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   materialDesc: '',
-  unit: ''
+  unit: '',
+  generalOnly: true
 });
 
 const emit = defineEmits<{
@@ -166,7 +149,9 @@ const formatQty = (val?: number | string) => {
 };
 
 const isGeneralInventory = (flag?: string) => {
-  const value = String(flag ?? '').trim().toUpperCase();
+  const value = String(flag ?? '')
+    .trim()
+    .toUpperCase();
   return !value || value === 'N';
 };
 
@@ -208,26 +193,30 @@ const loadData = async () => {
   try {
     const res = await listInventoryDetail({
       itemCode: props.materialCode,
-      specialInventoryFlag: 'N',
+      specialInventoryFlag: props.generalOnly ? 'N' : undefined,
       pageNum: 1,
       pageSize: 99999,
       params: {}
     });
     const list = (res as any).rows ?? res ?? [];
-    inventoryRows.value = list.filter((item: InventoryDetailVO) => isGeneralInventory(item.specialInventoryFlag) && Number(item.availableQuantity ?? 0) > 0).map((item: InventoryDetailVO, index: number) => ({
-      rowKey: `inv_${item.id ?? index}`,
-      id: item.id,
-      warehouseCode: item.warehouseCode ?? '',
-      areaCode: item.areaCode ?? '',
-      locationCode: item.locationCode ?? '',
-      batchCode: item.batchCode ?? '',
-      availableQuantity: Number(item.availableQuantity ?? 0),
-      inspectionQty: Number(item.inspectionQuantity ?? 0),
-      blockedQty: Number(item.blockedQuantity ?? 0),
-      specialInventoryFlag: item.specialInventoryFlag ?? '',
-      unit: item.unit ?? props.unit ?? '',
-      pickQty: 0
-    }));
+    inventoryRows.value = list
+      .filter((item: InventoryDetailVO) => (!props.generalOnly || isGeneralInventory(item.specialInventoryFlag)) && Number(item.availableQuantity ?? 0) > 0)
+      .map((item: InventoryDetailVO, index: number) => ({
+        rowKey: `inv_${item.id ?? index}`,
+        id: item.id,
+        warehouseCode: item.warehouseCode ?? '',
+        areaCode: item.areaCode ?? '',
+        locationCode: item.locationCode ?? '',
+        batchCode: item.batchCode ?? '',
+        availableQuantity: Number(item.availableQuantity ?? 0),
+        inspectionQty: Number(item.inspectionQuantity ?? 0),
+        blockedQty: Number(item.blockedQuantity ?? 0),
+        specialInventoryFlag: item.specialInventoryFlag ?? '',
+        businessCode: item.businessCode ?? '',
+        businessName: item.businessName ?? '',
+        unit: item.unit ?? props.unit ?? '',
+        pickQty: 0
+      }));
   } catch (error) {
     ElMessage.error('查询库存失败');
     inventoryRows.value = [];

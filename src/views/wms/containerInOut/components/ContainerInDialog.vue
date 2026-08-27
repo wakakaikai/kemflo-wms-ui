@@ -44,7 +44,7 @@ import { InventoryDetailForm } from '@/api/wms/inventoryDetail/types';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import { HistoryConfig } from '@/types/history';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
-import SupplierDialog from '@/views/wms/supplier/components/supplierDialog.vue';
+import SupplierDialog from '@/views/wms/supplier/components/SupplierDialog.vue';
 
 defineOptions({ name: 'ContainerInDialog' });
 

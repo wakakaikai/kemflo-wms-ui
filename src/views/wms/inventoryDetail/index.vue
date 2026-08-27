@@ -148,7 +148,7 @@
           </el-input>
         </el-form-item>
         <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
-          <el-select v-model="form.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable @change="onSpecialInventoryFlagChange">
+          <el-select v-model="form.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable>
             <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
           </el-select>
         </el-form-item>
@@ -156,12 +156,7 @@
           <el-input v-model="form.batchCode" placeholder="请输入批次码" />
         </el-form-item>
         <el-form-item label="业务伙伴" prop="businessCode">
-          <el-input v-if="form.specialInventoryFlag === 'E'" v-model="form.businessCode" placeholder="请选择销售订单明细" readonly clearable @clear="clearSalesOrderBusiness">
-            <template #append>
-              <el-button icon="Search" @click="showSalesOrderDetailDialog"></el-button>
-            </template>
-          </el-input>
-          <el-input v-else v-model="form.businessCode" placeholder="请输入业务伙伴" />
+          <BusinessPartnerInput v-model:business-code="form.businessCode" v-model:business-name="form.businessName" :special-inventory-flag="form.specialInventoryFlag" :material-code="form.itemCode" />
         </el-form-item>
         <el-form-item label="伙伴名称" prop="businessName">
           <el-input v-model="form.businessName" placeholder="请输入伙伴名称" />
@@ -266,9 +261,6 @@
     <!-- 库位选择对话框 -->
     <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
     <ItemDialog ref="itemDialogRef" @item-select-call-back="itemSelectCallBack" />
-    <!-- 销售订单明细选择 -->
-    <SalesOrderDetailDialog ref="salesOrderDetailDialogRef" @sales-order-detail-select-call-back="salesOrderDetailSelectCallBack" />
-
     <!-- 物料编码批量输入对话框 -->
     <BatchInputDialog ref="batchInputDialogRef" v-model="batchInputDialogVisible" title="批量录入物料编码" placeholder="请输入物料编码，支持多行粘贴" @confirm="handleBatchInputConfirm" />
   </div>
@@ -279,8 +271,7 @@ import { addInventoryDetail, delInventoryDetail, getInventoryDetail, listInvento
 import { InventoryDetailForm, InventoryDetailQuery, InventoryDetailVO } from '@/api/wms/inventoryDetail/types';
 import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
-import SalesOrderDetailDialog from '@/views/wms/salesOrderDetail/components/SalesOrderDetailDialog.vue';
-import type { SalesOrderDetailVO } from '@/api/wms/salesOrderDetail/types';
+import BusinessPartnerInput from '@/views/wms/components/BusinessPartnerInput.vue';
 
 import { ref } from 'vue';
 import { globalHeaders } from '@/utils/request';
@@ -324,7 +315,6 @@ const inventoryTableRef = ref<ElTableInstance>();
 const inventoryDetailFormRef = ref<ElFormInstance>();
 const itemDialogRef = ref<InstanceType<typeof ItemDialog>>();
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
-const salesOrderDetailDialogRef = ref<InstanceType<typeof SalesOrderDetailDialog>>();
 const batchInputDialogVisible = ref(false);
 const batchInputDialogRef = ref<InstanceType<typeof BatchInputDialog>>();
 
@@ -745,27 +735,6 @@ const storageLocationSelectCallBack = (record: any) => {
   form.value.warehouseCode = record.warehouseCode;
   form.value.areaCode = record.areaCode;
   form.value.locationCode = record.locationCode;
-};
-
-/** 特殊库存标识变更时清空业务伙伴，避免 E/非 E 混用旧值 */
-const onSpecialInventoryFlagChange = () => {
-  clearSalesOrderBusiness();
-};
-
-const clearSalesOrderBusiness = () => {
-  form.value.businessCode = undefined;
-  form.value.businessName = undefined;
-};
-
-/** 显示销售订单明细选择对话框 */
-const showSalesOrderDetailDialog = () => {
-  salesOrderDetailDialogRef.value?.openDialog({});
-  salesOrderDetailDialogRef.value?.handleQuery();
-};
-
-/** 销售订单明细选择回调：业务伙伴 = 销售订单号-项次 */
-const salesOrderDetailSelectCallBack = (record: SalesOrderDetailVO) => {
-  form.value.businessCode = `${record.salesOrderNo}-${record.salesItemNo}`;
 };
 
 /** 导入按钮操作 */

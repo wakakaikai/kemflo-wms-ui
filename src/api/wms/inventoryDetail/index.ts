@@ -156,7 +156,8 @@ export function buildInventoryCancelLineBo(item: Record<string, unknown>): Inven
 
 export function buildInventoryCancelPayload(lines: InventoryCancelLineBO[], options: InventoryCancelBatchOptions): InventoryCancelForm {
   return {
-    inventoryCancelBoList: lines,
+    cancelList: lines,
+    mtsnr: resolveCancelBktxt(options.mtsnr),
     bktxt: resolveCancelBktxt(options.bktxt),
     postingDate: formatCancelPostingDate(options.postingDate)
   };

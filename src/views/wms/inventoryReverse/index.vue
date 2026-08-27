@@ -94,6 +94,11 @@
           <el-form :model="fixedTransferForm" ref="fixedTransferFormRef" label-width="auto" :inline="true">
             <el-row :gutter="20">
               <el-col :sm="24" :md="8" :lg="8">
+                <el-form-item label="物料单">
+                  <HistoryInput v-model="fixedTransferForm.mtsnr" :config="mtsnrConfig" placeholder="请输入物料单" />
+                </el-form-item>
+              </el-col>
+              <el-col :sm="24" :md="8" :lg="8">
                 <el-form-item label="凭证抬头文本">
                   <HistoryInput v-model="fixedTransferForm.bktxt" :config="bktxtConfig" placeholder="请输入凭证抬头文本" />
                 </el-form-item>
@@ -135,7 +140,7 @@
               <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
             </template>
           </el-table-column>
-          <el-table-column v-if="transferColumns[7].visible" label="业务伙伴" align="center">
+          <el-table-column v-if="transferColumns[7].visible  && showBusinessPartnerColumn" label="业务伙伴" align="center">
             <template #default="scope">
               <el-input v-model="scope.row.supplierCode" placeholder="供应商寄售编码" v-if="scope.row.specialInventoryFlag == 'K'" />
               <el-input v-model="scope.row.customerCode" placeholder="客户寄售编码" v-else-if="scope.row.specialInventoryFlag == 'W'" />
@@ -168,7 +173,7 @@
 </template>
 
 <script setup name="InventoryReverse" lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { listInventoryMovement } from '@/api/wms/inventoryMovement';
 import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } from '@/api/wms/inventoryMovement/types';
 // 导入图标组件
@@ -196,8 +201,10 @@ const transferList = ref<any[]>([]);
 const total = ref(0);
 const resultMessage = ref('');
 const resultStatus = ref(false);
+const showBusinessPartnerColumn = computed(() => transferList.value.some((item) => item.businessCode));
 
 const fixedTransferForm = ref({
+  mtsnr: '',
   bktxt: '',
   postingDate: null as string | null
 });
@@ -302,6 +309,19 @@ const sourceDocCodeConfig: HistoryConfig = {
   }
 };
 
+const mtsnrConfig: HistoryConfig = {
+  key: 'mtsnr',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryReverse',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
 const bktxtConfig: HistoryConfig = {
   key: 'bktxt',
   storage: 'indexedDB',
@@ -372,6 +392,13 @@ const disabledFutureDate = (time: Date) => {
   // 禁止选择当前时间之后的日期
   return time.getTime() > now.getTime();
 };
+
+function formatPostingDate(postingDate?: string | null): string | undefined {
+  if (!postingDate) {
+    return undefined;
+  }
+  return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
+}
 
 /** 查询凭证记录 */
 const getList = async () => {
@@ -446,7 +473,7 @@ const addSelectedToTransferList = () => {
       targetAreaCode: item.areaCode,
       targetLocationCode: item.locationCode,
       specialInventoryFlag: item.specialInventoryFlag,
-      inventoryType: item.sapCheckFlag ? 'N' : 'X',
+      inventoryType: item.inventoryType || 'N',
       returnQuantity: rowQty,
       inventoryQuantity: (Number(rowQty || 0) * (item.conversionRatio || 1)).toFixed(3),
       inventoryUnit: rowUnit
@@ -525,8 +552,9 @@ const submitTransfer = async () => {
     const cancelLines = validTransfers.map((item) => buildInventoryCancelLineBo(item));
     const res: any = await cancelInventoryMovement(
       buildInventoryCancelPayload(cancelLines, {
+        mtsnr: fixedTransferForm.value.mtsnr,
         bktxt: fixedTransferForm.value.bktxt,
-        postingDate: fixedTransferForm.value.postingDate
+        postingDate: formatPostingDate(fixedTransferForm.value.postingDate)
       })
     );
 
@@ -538,6 +566,7 @@ const submitTransfer = async () => {
     resultMessage.value = res.msg || `成功冲销${validTransfers.length}条记录`;
     resultStatus.value = true;
     transferList.value = [];
+    fixedTransferForm.value.mtsnr = '';
     fixedTransferForm.value.bktxt = '';
     fixedTransferForm.value.postingDate = null;
     handleQuery();

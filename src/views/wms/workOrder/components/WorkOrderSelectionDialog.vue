@@ -16,7 +16,7 @@
           </el-form-item>
           <el-form-item label="工单类型" prop="workOrderType">
             <el-select v-model="queryParams.workOrderType" placeholder="请选择工单类型" clearable filterable :disabled="!!props.workOrderType" style="width: 180px" @change="handleQuery">
-              <el-option v-for="item in workOrderTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+              <el-option v-for="item in wms_work_order_type" :key="item.value" :label="item.value + '-' + item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="计划开始日期" prop="plannedStartDateRange">
@@ -138,18 +138,8 @@ const showBomAction = computed(() => props.showBomAction);
 
 const emit = defineEmits(['update:modelValue', 'confirm']);
 
-const workOrderTypeOptions = [
-  { label: 'ZP81-重工', value: 'ZP81' },
-  { label: 'ZP82-打样', value: 'ZP82' },
-  { label: 'ZP83-RMA返修', value: 'ZP83' },
-  { label: 'ZP91-研发工单', value: 'ZP91' },
-  { label: 'ZP92-拆解工单', value: 'ZP92' },
-  { label: 'ZP93-粉碎工单', value: 'ZP93' },
-  { label: 'ZP94-采购重工工单', value: 'ZP94' }
-];
-
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_work_order_status } = toRefs<any>(proxy?.useDict('wms_work_order_status'));
+const { wms_work_order_status, wms_work_order_type } = toRefs<any>(proxy?.useDict('wms_work_order_status', 'wms_work_order_type'));
 
 const visible = ref(false);
 const queryFormRef = ref<ElFormInstance>();

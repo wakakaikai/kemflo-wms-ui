@@ -357,12 +357,14 @@ export interface InventoryCancelLineBO {
 /** 库存移动冲销提交 */
 export interface InventoryCancelForm {
   inventoryCancelBoList: InventoryCancelLineBO[];
+  mtsnr?: string;
   bktxt?: string;
   postingDate?: string;
 }
 
 /** 构建库存冲销批次选项 */
 export interface InventoryCancelBatchOptions {
+  mtsnr?: string;
   bktxt?: string;
   postingDate?: string | null;
 }

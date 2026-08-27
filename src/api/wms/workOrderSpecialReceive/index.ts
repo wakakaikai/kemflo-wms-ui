@@ -4,25 +4,14 @@
  */
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import type {
-  SpecialReceiveQuery,
-  SpecialReceiveForm,
-  SpecialReceiveVO,
-  SpecialReceiveItem,
-  ReceiveLineItem,
-  SpecialWorkOrderType,
-  SpecialReceiveMoveType,
-  WORK_ORDER_MOVE_TYPES,
-  WORK_ORDER_TYPE_REMARKS,
-  ReceiveStatus
-} from './types';
+import type { SpecialReceiveQuery, SpecialReceiveForm, SpecialReceiveVO, SpecialReceiveItem, ReceiveLineItem, SpecialWorkOrderType, SpecialReceiveMoveType, WORK_ORDER_MOVE_TYPES, WORK_ORDER_TYPE_REMARKS } from './types';
 
 /**
  * 提交特殊工单入库（直接调后端入库接口）
  */
 export function submitWorkOrderSpecialReceive(data: {
   bktxt?: string;
-  receiveList: Array<{
+  workOrderInOutBoundList: Array<{
     workOrderNo: string;
     workOrderType?: string;
     moveType?: string;
@@ -48,19 +37,6 @@ export function submitWorkOrderSpecialReceive(data: {
 }
 
 // 导出类型供页面使用
-export type {
-  SpecialReceiveQuery,
-  SpecialReceiveForm,
-  SpecialReceiveVO,
-  SpecialReceiveItem,
-  ReceiveLineItem,
-  SpecialWorkOrderType,
-  SpecialReceiveMoveType,
-  ReceiveStatus
-};
+export type { SpecialReceiveQuery, SpecialReceiveForm, SpecialReceiveVO, SpecialReceiveItem, ReceiveLineItem, SpecialWorkOrderType, SpecialReceiveMoveType };
 
-export {
-  WORK_ORDER_MOVE_TYPES,
-  WORK_ORDER_TYPE_REMARKS,
-  ReceiveStatus
-};
+export { WORK_ORDER_MOVE_TYPES, WORK_ORDER_TYPE_REMARKS };

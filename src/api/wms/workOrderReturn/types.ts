@@ -1,4 +1,4 @@
-/** 工单来源单据类型 */
+﻿/** 工单来源单据类型 */
 export const WORK_ORDER_SOURCE_DOC_TYPE = 'WO';
 
 /** 工单退料行 */
@@ -14,6 +14,7 @@ export interface WorkOrderReturnLineBO {
   sourceDocCode?: string;
   sourceDocType?: string;
   returnQuantity?: number | string;
+  quantity?: number | string;
   unit?: string;
   specialInventoryFlag?: string;
   /** 前端表单字段，提交时映射为 locationCode */
@@ -32,6 +33,7 @@ export interface WorkOrderReturnForm {
   workOrderReturnBoList: Array<WorkOrderReturnLineBO | WorkOrderCancelLineBO>;
   /** 1-退料 2-冲销 */
   returnType: 1 | 2;
+  lfsnr?: string;
   bktxt?: string;
   postingDate?: string;
 }
@@ -39,6 +41,7 @@ export interface WorkOrderReturnForm {
 /** 构建批量提交参数时的批次选项 */
 export interface WorkOrderReturnBatchOptions {
   returnType: 1 | 2;
+  lfsnr?: string;
   bktxt?: string;
   postingDate?: string | null;
 }

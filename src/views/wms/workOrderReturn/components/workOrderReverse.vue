@@ -93,6 +93,11 @@
           <el-form :model="fixedTransferForm" ref="fixedTransferFormRef" label-width="auto" :inline="true">
             <el-row :gutter="20">
               <el-col :sm="24" :md="8" :lg="8">
+                <el-form-item label="交货单">
+                  <HistoryInput v-model="fixedTransferForm.lfsnr" :config="lfsnrConfig" placeholder="请输入交货单" />
+                </el-form-item>
+              </el-col>
+              <el-col :sm="24" :md="8" :lg="8">
                 <el-form-item label="凭证抬头文本">
                   <HistoryInput v-model="fixedTransferForm.bktxt" :config="bktxtConfig" placeholder="请输入凭证抬头文本" />
                 </el-form-item>
@@ -134,11 +139,11 @@
               <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
             </template>
           </el-table-column>
-          <el-table-column v-if="transferColumns[7].visible" label="业务伙伴" align="center">
+          <el-table-column v-if="transferColumns[7].visible" label="业务伙伴" align="center" min-width="140">
             <template #default="scope">
-              <el-input v-model="scope.row.supplierCode" placeholder="供应商寄售编码" v-if="scope.row.specialInventoryFlag == 'K'" />
-              <el-input v-model="scope.row.customerCode" placeholder="客户寄售编码" v-else-if="scope.row.specialInventoryFlag == 'W'" />
-              <span v-else />
+              <el-input v-model="scope.row.businessCode" placeholder="供应商寄售编码" v-if="scope.row.specialInventoryFlag == 'K'" />
+              <el-input v-model="scope.row.businessCode" placeholder="客户寄售编码" v-else-if="scope.row.specialInventoryFlag == 'W'" />
+              <span v-else>{{ scope.row.businessCode || '-' }}</span>
             </template>
           </el-table-column>
 
@@ -212,6 +217,7 @@ const transferMode = ref<'fixed' | 'multiple'>('fixed');
 // 固定库位模式下的表单数据
 const fixedTransferForm = ref({
   targetLocationCode: '',
+  lfsnr: '',
   bktxt: '',
   postingDate: null as string | null
 });
@@ -316,11 +322,25 @@ const sourceDocCodeConfig: HistoryConfig = {
   }
 };
 
+const lfsnrConfig: HistoryConfig = {
+  key: 'lfsnr',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'workOrderReverse',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
 const bktxtConfig: HistoryConfig = {
   key: 'bktxt',
   storage: 'indexedDB',
   maxSize: 10,
-  page: 'workOrderReturn',
+  page: 'workOrderReverse',
   autoSave: true,
   component: {
     showDropdown: true,
@@ -379,6 +399,13 @@ const disabledFutureDate = (time: Date) => {
   // 禁止选择当前时间之后的日期
   return time.getTime() > now.getTime();
 };
+
+function formatPostingDate(postingDate?: string | null): string | undefined {
+  if (!postingDate) {
+    return undefined;
+  }
+  return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
+}
 
 // 添加一个方法用于计算库存数量
 const calculateInventoryQuantity = (row) => {
@@ -472,6 +499,8 @@ const addSelectedToTransferList = () => {
       targetAreaCode: item.areaCode,
       targetLocationCode: item.locationCode,
       specialInventoryFlag: item.specialInventoryFlag,
+      businessCode: item.businessCode,
+      businessName: item.businessName,
       returnQuantity: item.quantity,
       inventoryQuantity: (item.quantity * (item.conversionRatio || 1)).toFixed(3),
       inventoryUnit: item.unit
@@ -603,8 +632,9 @@ const submitTransfer = async () => {
     const res: any = await returnWorkOrderInventory(
       buildWorkOrderCancelPayload(cancelLines, {
         returnType: 2,
+        lfsnr: fixedTransferForm.value.lfsnr,
         bktxt: fixedTransferForm.value.bktxt,
-        postingDate: fixedTransferForm.value.postingDate
+        postingDate: formatPostingDate(fixedTransferForm.value.postingDate)
       })
     );
 

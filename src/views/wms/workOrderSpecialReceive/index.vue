@@ -567,7 +567,7 @@ const handleSubmit = async () => {
   resultMessage.value = '';
   try {
     const res = await submitWorkOrderSpecialReceive({
-      receiveList: lines.map((line) => ({
+      workOrderInOutBoundList: lines.map((line) => ({
         workOrderNo: workOrder.value!.workOrderNo,
         workOrderType: workOrder.value!.workOrderType,
         moveType: line.moveType,

@@ -56,8 +56,8 @@ import { containerOutbound, getInventoryDetail } from '@/api/wms/inventoryDetail
 import { InventoryDetailForm, InventoryDetailVO } from '@/api/wms/inventoryDetail/types';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import { HistoryConfig } from '@/types/history';
-import CustomerDialog from '@/views/wms/customer/components/customerDialog.vue';
-import SupplierDialog from '@/views/wms/supplier/components/supplierDialog.vue';
+import CustomerDialog from '@/views/wms/customer/components/CustomerDialog.vue';
+import SupplierDialog from '@/views/wms/supplier/components/SupplierDialog.vue';
 
 defineOptions({ name: 'ContainerOutDialog' });
 

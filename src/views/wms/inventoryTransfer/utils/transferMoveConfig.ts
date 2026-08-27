@@ -6,7 +6,7 @@ export interface TransferMoveOption {
 
 /** 库存移转支持的移动类型（变体由行项目特殊库存标识判断） */
 export const INVENTORY_TRANSFER_MOVE_TYPES: TransferMoveOption[] = [
-  { value: '201', label: '201 生产部门领用', desc: '生产部门领用' },
+  { value: '201', label: '201 成本中心领用', desc: '成本中心领用' },
   { value: '309', label: '309 物料到物料的转账', desc: '物料->新物料的转账' },
   { value: '311', label: '311 库存地点转帐 (一步)', desc: '库存地点转帐 (一步)' },
   { value: '321', label: '321 质检->非限制', desc: '质检->非限制' },

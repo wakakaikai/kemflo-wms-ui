@@ -270,6 +270,13 @@ const disabledFutureDate = (time: Date) => {
   return time.getTime() > now.getTime();
 };
 
+function formatPostingDate(postingDate?: string | null): string | undefined {
+  if (!postingDate) {
+    return undefined;
+  }
+  return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
+}
+
 const getList = async () => {
   loading.value = true;
   try {
@@ -398,14 +405,14 @@ const submitForm = async () => {
   }
   const submitList = validList.map((item) => ({
     ...item,
-    postingDate: fixedIssueForm.value.postingDate ? fixedIssueForm.value.postingDate + ' 00:00:00' : undefined
+    postingDate: formatPostingDate(fixedIssueForm.value.postingDate)
   }));
 
   buttonLoading.value = true;
   try {
     const res: any = await subcontractIssue({
       purchaseOrderSubcontractIssueBoList: submitList,
-      postingDate: fixedIssueForm.value.postingDate ? fixedIssueForm.value.postingDate + ' 00:00:00' : undefined,
+      postingDate: formatPostingDate(fixedIssueForm.value.postingDate),
       mtsnr: fixedIssueForm.value.mtsnr || undefined,
       bktxt: fixedIssueForm.value.bktxt || undefined
     });

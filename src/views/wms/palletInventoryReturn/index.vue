@@ -426,6 +426,13 @@ const disabledFutureDate = (time: Date) => {
   return time.getTime() > now.getTime();
 };
 
+function formatPostingDate(postingDate?: string | null): string | undefined {
+  if (!postingDate) {
+    return undefined;
+  }
+  return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
+}
+
 /** 切换高级搜索显示状态 */
 const toggleAdvancedSearch = () => {
   showAdvancedSearch.value = !showAdvancedSearch.value;
@@ -639,7 +646,7 @@ const submit = async () => {
     validTransfers.forEach((item) => {
       item.targetLocationCode = fixedTransferForm.value.targetLocationCode ? fixedTransferForm.value.targetLocationCode : item.locationCode;
       item.targetUserName = fixedTransferForm.value.targetUserName || '';
-      item.postingDate = fixedTransferForm.value.postingDate ? fixedTransferForm.value.postingDate + ' 00:00:00' : '';
+      item.postingDate = formatPostingDate(fixedTransferForm.value.postingDate) || '';
       item.remark = fixedTransferForm.value.remark;
     });
   } else {
@@ -653,7 +660,7 @@ const submit = async () => {
     // 为所有记录设置统一的接收方、过账日期、备注
     validTransfers.forEach((item) => {
       item.targetUserName = fixedTransferForm.value.targetUserName || '';
-      item.postingDate = fixedTransferForm.value.postingDate ? fixedTransferForm.value.postingDate + ' 00:00:00' : '';
+      item.postingDate = formatPostingDate(fixedTransferForm.value.postingDate) || '';
       item.remark = fixedTransferForm.value.remark;
     });
   }

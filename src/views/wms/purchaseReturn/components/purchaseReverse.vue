@@ -93,17 +93,17 @@
           <div style="padding: 10px; background-color: #f5f7fa; border-radius: 4px">
             <el-form :model="fixedTransferForm" ref="fixedTransferFormRef" label-width="auto" :inline="true">
               <el-row :gutter="20">
-                <el-col :sm="24" :md="8" :lg="8">
-                  <el-form-item label="凭证抬头文本">
-                    <!--                    <el-input v-model="fixedTransferForm.targetUserName" placeholder="请输入接收方">
-                      <template #append>
-                        <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
-                      </template>
-                    </el-input>-->
-                    <HistoryInput v-model="fixedTransferForm.targetUserName" :config="targetUserNameConfig" placeholder="请输入接收方" />
+                <el-col :sm="24" :md="6" :lg="6">
+                  <el-form-item label="交货单">
+                    <HistoryInput v-model="fixedTransferForm.lfsnr" :config="lfsnrConfig" placeholder="请输入交货单" />
                   </el-form-item>
                 </el-col>
-                <el-col :sm="24" :md="8" :lg="8">
+                <el-col :sm="24" :md="6" :lg="6">
+                  <el-form-item label="抬头文本" prop="bktxt">
+                    <HistoryInput v-model="fixedTransferForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
+                  </el-form-item>
+                </el-col>
+                <el-col :sm="24" :md="6" :lg="6">
                   <el-form-item label="过账日期" prop="postingDate">
                     <el-date-picker clearable v-model="fixedTransferForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
                   </el-form-item>
@@ -171,8 +171,6 @@
     </el-card>
     <!-- 库位选择对话框 -->
     <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
-    <!-- 用户收藏 -->
-    <UserCollectionsDialog ref="userCollectionsDialogRef" @user-collections-call-back="userCollectionsSelectCallBack" />
   </div>
 </template>
 
@@ -184,7 +182,6 @@ import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } fr
 import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
 
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
-import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
 import { returnPurchaseInventory } from '@/api/wms/inventoryDetail';
 import {
   formatInventoryMovementReversalFlag,
@@ -194,12 +191,10 @@ import {
 import { HttpStatus } from '@/enums/RespEnum';
 import { formatQty } from '@/utils/ruoyi';
 import { listStorageLocation } from '@/api/wms/storageLocation';
-import { listUserCollections } from '@/api/wms/userCollections';
 import { HistoryConfig } from '@/types/history';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
-const userCollectionsDialogRef = ref<InstanceType<typeof UserCollectionsDialog>>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_type, wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_type', 'wms_inventory_special_flag'));
 
@@ -225,7 +220,8 @@ const transferMode = ref<'fixed' | 'multiple'>('fixed');
 // 固定库位模式下的表单数据
 const fixedTransferForm = ref({
   targetLocationCode: '',
-  targetUserName: '',
+  lfsnr: '',
+  bktxt: '',
   postingDate: null,
   remark: ''
 });
@@ -330,8 +326,22 @@ const sourceDocCodeConfig: HistoryConfig = {
   }
 };
 
-const targetUserNameConfig: HistoryConfig = {
-  key: 'targetUserName',
+const lfsnrConfig: HistoryConfig = {
+  key: 'lfsnr',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'purchaseReverse',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const bktxtConfig: HistoryConfig = {
+  key: 'bktxt',
   storage: 'indexedDB',
   maxSize: 10,
   page: 'purchaseReverse',
@@ -397,6 +407,13 @@ const disabledFutureDate = (time: Date) => {
   // 禁止选择当前时间之后的日期
   return time.getTime() > now.getTime();
 };
+
+function formatPostingDate(postingDate?: string | null): string | undefined {
+  if (!postingDate) {
+    return undefined;
+  }
+  return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
+}
 
 // 添加一个方法用于计算库存数量
 const calculateInventoryQuantity = (row) => {
@@ -542,8 +559,11 @@ const clearTransferList = () => {
   transferList.value = [];
   if (transferMode.value === 'fixed') {
     fixedTransferForm.value.targetLocationCode = '';
-    fixedTransferForm.value.remark = '';
   }
+  fixedTransferForm.value.lfsnr = '';
+  fixedTransferForm.value.bktxt = '';
+  fixedTransferForm.value.postingDate = null;
+  fixedTransferForm.value.remark = '';
 };
 
 const locationCodeKeyDownTab = async (locationCode: any) => {
@@ -579,8 +599,11 @@ const handleTransferModeChange = (mode: 'fixed' | 'multiple') => {
   } else {
     // 切换到多库位模式时，清空固定库位的当前库位
     fixedTransferForm.value.targetLocationCode = '';
-    fixedTransferForm.value.remark = '';
   }
+  fixedTransferForm.value.lfsnr = '';
+  fixedTransferForm.value.bktxt = '';
+  fixedTransferForm.value.postingDate = null;
+  fixedTransferForm.value.remark = '';
 };
 
 /** 库位选择回调 */
@@ -593,44 +616,6 @@ const storageLocationSelectCallBack = (record: any) => {
     if (currenIndex.value >= 0 && currenIndex.value < transferList.value.length) {
       const currentItem = transferList.value[currenIndex.value];
       currentItem.targetLocationCode = record.locationCode;
-    }
-  }
-};
-
-/** 显示用户收藏选择对话框 */
-const showUserCollectionsDialog = (index: number) => {
-  userCollectionsDialogRef.value.openDialog();
-  userCollectionsDialogRef.value.handleQuery();
-  currenIndex.value = index;
-};
-
-/** 用户收藏回调 **/
-const userCollectionsSelectCallBack = (record: any) => {
-  console.log(record);
-  if (transferMode.value === 'fixed') {
-    // 固定库位模式，设置统一的目标用户
-    fixedTransferForm.value.targetUserName = record.nickName;
-  } else {
-    // 多库位模式，设置对应行的目标用户
-    if (currenIndex.value >= 0 && currenIndex.value < transferList.value.length) {
-      const currentItem = transferList.value[currenIndex.value];
-      currentItem.targetUserName = record.nickName;
-    }
-  }
-};
-
-const targetUserNameKeyDownTab = async () => {
-  if (fixedTransferForm.value.targetUserName) {
-    fixedTransferForm.value.targetUserName = fixedTransferForm.value.targetUserName.trim();
-    const res = await listUserCollections({
-      pageNum: 1,
-      pageSize: 10,
-      nickName: fixedTransferForm.value.targetUserName
-    });
-    resultMessage.value = '';
-    if ((res.rows || []).length == 0) {
-      resultMessage.value = `收藏用户${fixedTransferForm.value.targetUserName}不存在`;
-      resultStatus.value = false;
     }
   }
 };
@@ -665,11 +650,12 @@ const submitTransfer = async () => {
     //   return;
     // }
 
-    // 为所有记录设置统一的当前库位、接收方、过账日期、备注
+    // 为所有记录设置统一的当前库位、交货单、抬头文本、过账日期、备注
     validTransfers.forEach((item) => {
       item.targetLocationCode = fixedTransferForm.value.targetLocationCode ? fixedTransferForm.value.targetLocationCode : item.locationCode;
-      item.targetUserName = fixedTransferForm.value.targetUserName || '';
-      item.postingDate = fixedTransferForm.value.postingDate ? fixedTransferForm.value.postingDate + ' 00:00:00' : '';
+      item.lfsnr = fixedTransferForm.value.lfsnr || '';
+      item.bktxt = fixedTransferForm.value.bktxt || '';
+      item.postingDate = formatPostingDate(fixedTransferForm.value.postingDate) || '';
       item.remark = fixedTransferForm.value.remark;
     });
   } else {
@@ -680,10 +666,11 @@ const submitTransfer = async () => {
       resultStatus.value = false;
       return;
     }
-    // 为所有记录设置统一的接收方、过账日期、备注
+    // 为所有记录设置统一的交货单、抬头文本、过账日期、备注
     validTransfers.forEach((item) => {
-      item.targetUserName = fixedTransferForm.value.targetUserName || '';
-      item.postingDate = fixedTransferForm.value.postingDate ? fixedTransferForm.value.postingDate + ' 00:00:00' : '';
+      item.lfsnr = fixedTransferForm.value.lfsnr || '';
+      item.bktxt = fixedTransferForm.value.bktxt || '';
+      item.postingDate = formatPostingDate(fixedTransferForm.value.postingDate) || '';
       item.remark = fixedTransferForm.value.remark;
     });
   }
@@ -720,7 +707,8 @@ const submitTransfer = async () => {
       sapMaterialItem: item.sapMaterialItem,
       specialInventoryFlag: item.specialInventoryFlag,
       targetLocationCode: item.targetLocationCode,
-      targetUserName: item.targetUserName,
+      lfsnr: item.lfsnr,
+      bktxt: item.bktxt,
       postingDate: item.postingDate
     }));
 
@@ -738,7 +726,8 @@ const submitTransfer = async () => {
     resultStatus.value = true;
     transferList.value = [];
     fixedTransferForm.value.targetLocationCode = '';
-    fixedTransferForm.value.targetUserName = '';
+    fixedTransferForm.value.lfsnr = '';
+    fixedTransferForm.value.bktxt = '';
     fixedTransferForm.value.postingDate = null;
     fixedTransferForm.value.remark = '';
     handleQuery();

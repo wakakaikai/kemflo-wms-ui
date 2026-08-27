@@ -1,4 +1,4 @@
-import request from '@/utils/request';
+﻿import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
 import type { WorkOrderCancelLineBO, WorkOrderReturnBatchOptions, WorkOrderReturnForm, WorkOrderReturnLineBO, WorkOrderReturnMaterialRow, WorkOrderReturnSourceRow } from './types';
 import { WORK_ORDER_SOURCE_DOC_TYPE } from './types';
@@ -46,6 +46,17 @@ export function getInventoryMovementReversalTagType(flag?: number | null): 'succ
 export const returnWorkOrderInventory = (data: WorkOrderReturnForm): AxiosPromise<void> => {
   return request({
     url: '/wms/workOrder/return',
+    method: 'post',
+    data
+  });
+};
+
+/**
+ * 工单退货/冲销
+ */
+export const workOrderOutbound = (data: any): AxiosPromise<void> => {
+  return request({
+    url: '/wms/workOrder/outbound',
     method: 'post',
     data
   });
@@ -99,13 +110,14 @@ export function buildWorkOrderReturnBo(item: Record<string, unknown>, extra?: Pa
     sourceDocCode: item.sourceDocCode as string | undefined,
     sourceDocType,
     returnQuantity: item.returnQuantity as number | string | undefined,
+    quantity: item.returnQuantity as number | string | undefined,
     unit: item.unit as string | undefined,
     specialInventoryFlag: item.specialInventoryFlag as string | undefined,
     ...extra
   };
 }
 
-/** 工单冲销行：仅提�? SAP �?证字�? */
+/** 工单冲销行*/
 export function buildWorkOrderCancelLineBo(item: Record<string, unknown>): WorkOrderCancelLineBO {
   return {
     sapMaterialDocYear: item.sapMaterialDocYear as number | string | undefined,
@@ -119,9 +131,15 @@ function resolveBatchBktxt(bktxt?: string | null): string | undefined {
   return value || undefined;
 }
 
+function resolveBatchLfsnr(lfsnr?: string | null): string | undefined {
+  const value = lfsnr?.trim();
+  return value || undefined;
+}
+
 export function buildWorkOrderReturnPayload(lines: WorkOrderReturnLineBO[], options: WorkOrderReturnBatchOptions): WorkOrderReturnForm {
   return {
     returnType: options.returnType,
+    lfsnr: resolveBatchLfsnr(options.lfsnr),
     bktxt: resolveBatchBktxt(options.bktxt),
     postingDate: formatPostingDate(options.postingDate),
     workOrderReturnBoList: lines
@@ -131,6 +149,7 @@ export function buildWorkOrderReturnPayload(lines: WorkOrderReturnLineBO[], opti
 export function buildWorkOrderCancelPayload(lines: WorkOrderCancelLineBO[], options: WorkOrderReturnBatchOptions): WorkOrderReturnForm {
   return {
     returnType: 2,
+    lfsnr: resolveBatchLfsnr(options.lfsnr),
     bktxt: resolveBatchBktxt(options.bktxt),
     postingDate: formatPostingDate(options.postingDate),
     workOrderReturnBoList: lines

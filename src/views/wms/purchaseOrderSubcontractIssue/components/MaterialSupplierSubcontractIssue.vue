@@ -122,7 +122,7 @@
 import { subcontractIssue } from '@/api/wms/purchaseOrderSubcontractIssue';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
-import SupplierDialog from '@/views/wms/supplier/components/supplierDialog.vue';
+import SupplierDialog from '@/views/wms/supplier/components/SupplierDialog.vue';
 import InventorySelectionDialog from '@/views/wms/inventoryDetail/components/InventorySelectionDialog.vue';
 import { Bell } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
@@ -206,6 +206,13 @@ const disabledFutureDate = (time: Date) => {
   now.setSeconds(now.getSeconds() + 3);
   return time.getTime() > now.getTime();
 };
+
+function formatPostingDate(postingDate?: string | null): string | undefined {
+  if (!postingDate) {
+    return undefined;
+  }
+  return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
+}
 
 const showItemDialog = () => {
   itemDialogRef.value?.openDialog();
@@ -412,14 +419,14 @@ const submitForm = async () => {
   }
   const submitList = validList.map((item) => ({
     ...item,
-    postingDate: fixedIssueForm.value.postingDate ? fixedIssueForm.value.postingDate + ' 00:00:00' : undefined
+    postingDate: formatPostingDate(fixedIssueForm.value.postingDate)
   }));
 
   buttonLoading.value = true;
   try {
     const res: any = await subcontractIssue({
       purchaseOrderSubcontractIssueBoList: submitList,
-      postingDate: fixedIssueForm.value.postingDate ? fixedIssueForm.value.postingDate + ' 00:00:00' : undefined,
+      postingDate: formatPostingDate(fixedIssueForm.value.postingDate),
       mtsnr: fixedIssueForm.value.mtsnr || undefined,
       bktxt: fixedIssueForm.value.bktxt || undefined
     });

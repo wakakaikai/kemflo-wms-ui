@@ -35,19 +35,11 @@
               <el-table-column v-if="stoColumns[1].visible" label="交货单项次" align="left" prop="deliveryItemNo" fixed="left" />
               <el-table-column v-if="stoColumns[2].visible" label="采购单号" align="left" prop="purchaseOrderNo" fixed="left" min-width="120" />
               <el-table-column v-if="stoColumns[3].visible" label="采购单项次" align="left" prop="purchaseItemNo" fixed="left" min-width="80" />
-              <el-table-column label="交货状态" align="center" width="100" fixed="left">
-                <template #default="scope">
-                  <el-tooltip :content="getEarlyDeliveryTooltip(scope.row)" placement="top">
-                    <el-tag :type="getEarlyDeliveryTagType(scope.row)">
-                      {{ getEarlyDeliveryText(scope.row) }}
-                    </el-tag>
-                  </el-tooltip>
-                </template>
-              </el-table-column>
               <el-table-column v-if="stoColumns[4].visible" label="交货日期" align="center" prop="deliveryDate" min-width="100" />
               <el-table-column v-if="stoColumns[5].visible" label="料号" align="left" prop="materialCode" min-width="135" />
               <el-table-column v-if="stoColumns[6].visible" label="旧料号" align="left" prop="oldMaterialCode" />
               <el-table-column v-if="stoColumns[7].visible" label="物料描述" align="left" prop="materialDesc" show-overflow-tooltip />
+              <el-table-column v-if="stoColumns[17].visible" label="批次号" align="center" prop="batchCode" />
               <el-table-column v-if="stoColumns[8].visible" label="订单数量" align="left" prop="orderQuantity" min-width="100" />
               <el-table-column v-if="stoColumns[9].visible" label="已收数量" align="left" prop="receivedQuantity" min-width="100" />
               <el-table-column v-if="stoColumns[10].visible" label="未清数量" align="left" prop="openQuantity" min-width="100" />
@@ -102,18 +94,14 @@
                   </HistoryInput>
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="6" :lg="6">
-                <el-form-item label="收货人">
-                  <HistoryInput v-model="stoFixedInboundForm.targetUserName" :config="targetUserNameConfig" placeholder="请输入收货人">
-                    <template #append>
-                      <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
-                    </template>
-                  </HistoryInput>
+<!--              <el-col :sm="24" :md="6" :lg="6">
+                <el-form-item label="交货单">
+                  <HistoryInput v-model="stoFixedInboundForm.lfsnr" :config="lfsnrConfig" placeholder="请输入交货单" />
                 </el-form-item>
-              </el-col>
+              </el-col>-->
               <el-col :sm="24" :md="6" :lg="6">
-                <el-form-item label="发票号" prop="invoiceNo">
-                  <HistoryInput v-model="stoFixedInboundForm.invoiceNo" :config="invoiceNoConfig" placeholder="请输入发票号"> </HistoryInput>
+                <el-form-item label="抬头文本" prop="bktxt">
+                  <HistoryInput v-model="stoFixedInboundForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
                 </el-form-item>
               </el-col>
               <el-col :sm="24" :md="6" :lg="6">
@@ -174,7 +162,6 @@
   </el-row>
 
   <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
-  <UserCollectionsDialog ref="userCollectionsDialogRef" @user-collections-call-back="userCollectionsSelectCallBack" />
 </template>
 
 <script setup name="StoReceive" lang="ts">
@@ -184,7 +171,6 @@ import { DeliveryOrderDetailVO } from '@/api/wms/deliveryOrderDetail/types';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
-import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
 import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
@@ -193,7 +179,6 @@ import { HistoryConfig } from '@/types/history';
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
-const userCollectionsDialogRef = ref<InstanceType<typeof UserCollectionsDialog>>();
 const stoOrderDetailList = ref<DeliveryOrderDetailVO[]>([]);
 const stoLoading = ref(false);
 const showStoSearch = ref(true);
@@ -210,8 +195,8 @@ const stoTableLoading = ref(false);
 const currenIndex = ref(0);
 const stoFixedInboundForm = ref({
   locationCode: '',
-  targetUserName: '',
-  invoiceNo: '',
+  lfsnr: '',
+  bktxt: '',
   postingDate: null
 });
 const stoQueryFormRef = ref<ElFormInstance>();
@@ -239,16 +224,16 @@ const locationCodeConfig: HistoryConfig = {
   autoSave: true,
   component: { showDropdown: true, showTime: false, showDelete: true, dropdownMaxHeight: '300px' }
 };
-const targetUserNameConfig: HistoryConfig = {
-  key: 'targetUserName',
+const lfsnrConfig: HistoryConfig = {
+  key: 'lfsnr',
   storage: 'indexedDB',
   maxSize: 10,
   page: 'purchaseInbound',
   autoSave: true,
   component: { showDropdown: true, showTime: false, showDelete: true, dropdownMaxHeight: '300px' }
 };
-const invoiceNoConfig: HistoryConfig = {
-  key: 'invoiceNo',
+const bktxtConfig: HistoryConfig = {
+  key: 'bktxt',
   storage: 'indexedDB',
   maxSize: 10,
   page: 'purchaseInbound',
@@ -269,17 +254,18 @@ const stoColumns = ref([
   { key: 1, label: `交货单项次`, visible: true, children: [] },
   { key: 2, label: `采购单号`, visible: true, children: [] },
   { key: 3, label: `采购单项次`, visible: true, children: [] },
-  { key: 4, label: `交货日期`, visible: true, children: [] },
+  { key: 4, label: `交货日期`, visible: false, children: [] },
   { key: 5, label: `料号`, visible: true, children: [] },
   { key: 6, label: `旧料号`, visible: false, children: [] },
   { key: 7, label: `物料描述`, visible: true, children: [] },
+  { key: 17, label: `批次号`, visible: true, children: [] },
   { key: 8, label: `订单数量`, visible: true, children: [] },
   { key: 9, label: `已收数量`, visible: true, children: [] },
   { key: 10, label: `未清数量`, visible: true, children: [] },
   { key: 11, label: `订单单位`, visible: false, children: [] },
   { key: 12, label: `需质检`, visible: false, children: [] },
   { key: 13, label: `库存单位`, visible: false, children: [] },
-  { key: 14, label: `换算比例`, visible: true, children: [] },
+  { key: 14, label: `换算比例`, visible: false, children: [] },
   { key: 15, label: `供应商代码`, visible: true, children: [] },
   { key: 16, label: `供应商名称`, visible: true, children: [] }
 ]);
@@ -290,6 +276,13 @@ const disabledFutureDate = (time: Date) => {
   now.setMilliseconds(0);
   return time.getTime() > now.getTime();
 };
+
+function formatPostingDate(postingDate?: string | null): string | undefined {
+  if (!postingDate) {
+    return undefined;
+  }
+  return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
+}
 
 const getEarlyDeliveryText = (row) => {
   if (isEarlyDeliveryForbidden(row)) {
@@ -418,8 +411,8 @@ const removeFromStoInboundList = (index: number) => {
 const clearStoInboundList = () => {
   stoInboundList.value = [];
   stoFixedInboundForm.value.locationCode = '';
-  stoFixedInboundForm.value.targetUserName = '';
-  stoFixedInboundForm.value.invoiceNo = '';
+  stoFixedInboundForm.value.lfsnr = '';
+  stoFixedInboundForm.value.bktxt = '';
   stoFixedInboundForm.value.postingDate = null;
 };
 
@@ -436,22 +429,6 @@ const storageLocationSelectCallBack = (record: any) => {
   } else if (stoInboundMode.value === 'multiple') {
     if (currenIndex.value >= 0 && currenIndex.value < stoInboundList.value.length) {
       stoInboundList.value[currenIndex.value].locationCode = record.locationCode;
-    }
-  }
-};
-
-const showUserCollectionsDialog = (index: number) => {
-  userCollectionsDialogRef.value?.openDialog();
-  userCollectionsDialogRef.value?.handleQuery();
-  currenIndex.value = index;
-};
-
-const userCollectionsSelectCallBack = (record: any) => {
-  if (stoInboundMode.value === 'fixed') {
-    stoFixedInboundForm.value.targetUserName = record.nickName;
-  } else if (stoInboundMode.value === 'multiple') {
-    if (currenIndex.value >= 0 && currenIndex.value < stoInboundList.value.length) {
-      stoInboundList.value[currenIndex.value].targetUserName = record.nickName;
     }
   }
 };
@@ -474,9 +451,9 @@ const submitStoForm = async () => {
     }
     validStoInboundList.forEach((item) => {
       item.locationCode = stoFixedInboundForm.value.locationCode || '';
-      item.targetUserName = stoFixedInboundForm.value.targetUserName || '';
-      item.invoiceNo = stoFixedInboundForm.value.invoiceNo || '';
-      item.postingDate = stoFixedInboundForm.value.postingDate ? stoFixedInboundForm.value.postingDate + ' 00:00:00' : '';
+      item.lfsnr = stoFixedInboundForm.value.lfsnr || '';
+      item.bktxt = stoFixedInboundForm.value.bktxt || '';
+      item.postingDate = formatPostingDate(stoFixedInboundForm.value.postingDate) || '';
     });
   } else {
     const invalidItems = validStoInboundList.filter((item) => !item.locationCode);
@@ -486,9 +463,9 @@ const submitStoForm = async () => {
       return;
     }
     validStoInboundList.forEach((item) => {
-      item.targetUserName = stoFixedInboundForm.value.targetUserName || '';
-      item.invoiceNo = stoFixedInboundForm.value.invoiceNo || '';
-      item.postingDate = stoFixedInboundForm.value.postingDate ? stoFixedInboundForm.value.postingDate + ' 00:00:00' : '';
+      item.lfsnr = stoFixedInboundForm.value.lfsnr || '';
+      item.bktxt = stoFixedInboundForm.value.bktxt || '';
+      item.postingDate = formatPostingDate(stoFixedInboundForm.value.postingDate) || '';
     });
   }
 
@@ -506,10 +483,12 @@ const submitStoForm = async () => {
       receivePoQuantity: item.receivePoQuantity,
       receivePoUnit: item.orderUnit,
       receiveQuantity: item.inventoryQuantity,
-      receiveUnit: item.inventoryUnit,
-      receiveType: '2'
+      receiveUnit: item.inventoryUnit
     }));
     const res: any = await addPurchaseInbound({
+      receiveType: '2',
+      bktxt: stoFixedInboundForm.value.bktxt || '',
+      postingDate: formatPostingDate(stoFixedInboundForm.value.postingDate) || '',
       purchaseOrderInboundBoList: stoInboundRequests
     });
     if (res.code !== HttpStatus.SUCCESS) {
@@ -521,8 +500,8 @@ const submitStoForm = async () => {
     stoResultStatus.value = true;
     stoInboundList.value = [];
     stoFixedInboundForm.value.locationCode = '';
-    stoFixedInboundForm.value.targetUserName = '';
-    stoFixedInboundForm.value.invoiceNo = '';
+    stoFixedInboundForm.value.lfsnr = '';
+    stoFixedInboundForm.value.bktxt = '';
     stoFixedInboundForm.value.postingDate = null;
     if (stoQueryParams.value.deliveryOrderNo) {
       getStoList(false);

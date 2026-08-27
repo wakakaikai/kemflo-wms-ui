@@ -115,17 +115,13 @@
                 </el-form-item>
               </el-col>
               <el-col :sm="24" :md="6" :lg="6">
-                <el-form-item label="收货人">
-                  <HistoryInput v-model="fixedInboundForm.targetUserName" :config="targetUserNameConfig" placeholder="请输入收货人">
-                    <template #append>
-                      <el-button icon="Search" @click="showUserCollectionsDialog(-1)"></el-button>
-                    </template>
-                  </HistoryInput>
+                <el-form-item label="交货单">
+                  <HistoryInput v-model="fixedInboundForm.lfsnr" :config="lfsnrConfig" placeholder="请输入交货单" />
                 </el-form-item>
               </el-col>
               <el-col :sm="24" :md="6" :lg="6">
-                <el-form-item label="发票号" prop="invoiceNo">
-                  <HistoryInput v-model="fixedInboundForm.invoiceNo" :config="invoiceNoConfig" placeholder="请输入发票号"> </HistoryInput>
+                <el-form-item label="抬头文本" prop="bktxt">
+                  <HistoryInput v-model="fixedInboundForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
                 </el-form-item>
               </el-col>
               <el-col :sm="24" :md="6" :lg="6">
@@ -228,8 +224,8 @@ const inboundList = ref<any[]>([]);
 const inboundMode = ref<'fixed' | 'multiple'>('fixed');
 const fixedInboundForm = ref({
   locationCode: '',
-  targetUserName: '',
-  invoiceNo: '',
+  lfsnr: '',
+  bktxt: '',
   postingDate: null
 });
 const queryFormRef = ref<ElFormInstance>();
@@ -297,16 +293,16 @@ const locationCodeConfig: HistoryConfig = {
   autoSave: true,
   component: { showDropdown: true, showTime: false, showDelete: true, dropdownMaxHeight: '300px' }
 };
-const targetUserNameConfig: HistoryConfig = {
-  key: 'targetUserName',
+const lfsnrConfig: HistoryConfig = {
+  key: 'lfsnr',
   storage: 'indexedDB',
   maxSize: 10,
   page: 'purchaseInbound',
   autoSave: true,
   component: { showDropdown: true, showTime: false, showDelete: true, dropdownMaxHeight: '300px' }
 };
-const invoiceNoConfig: HistoryConfig = {
-  key: 'invoiceNo',
+const bktxtConfig: HistoryConfig = {
+  key: 'bktxt',
   storage: 'indexedDB',
   maxSize: 10,
   page: 'purchaseInbound',
@@ -349,6 +345,13 @@ const disabledFutureDate = (time: Date) => {
   now.setMilliseconds(0);
   return time.getTime() > now.getTime();
 };
+
+function formatPostingDate(postingDate?: string | null): string | undefined {
+  if (!postingDate) {
+    return undefined;
+  }
+  return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
+}
 
 const getEarlyDeliveryText = (row) => {
   if (isEarlyDeliveryForbidden(row)) {
@@ -462,8 +465,8 @@ const removeFromInboundList = (index: number) => {
 const clearInboundList = () => {
   inboundList.value = [];
   fixedInboundForm.value.locationCode = '';
-  fixedInboundForm.value.targetUserName = '';
-  fixedInboundForm.value.invoiceNo = '';
+  fixedInboundForm.value.lfsnr = '';
+  fixedInboundForm.value.bktxt = '';
   fixedInboundForm.value.postingDate = null;
 };
 
@@ -492,10 +495,10 @@ const showUserCollectionsDialog = (index: number) => {
 
 const userCollectionsSelectCallBack = (record: any) => {
   if (inboundMode.value === 'fixed') {
-    fixedInboundForm.value.targetUserName = record.nickName;
+    fixedInboundForm.value.lfsnr = record.nickName;
   } else if (inboundMode.value === 'multiple') {
     if (currenIndex.value >= 0 && currenIndex.value < inboundList.value.length) {
-      inboundList.value[currenIndex.value].targetUserName = record.nickName;
+      inboundList.value[currenIndex.value].lfsnr = record.nickName;
     }
   }
 };
@@ -527,9 +530,6 @@ const submitForm = async () => {
     }
     validPurchaseInboundList.forEach((item) => {
       item.locationCode = fixedInboundForm.value.locationCode || '';
-      item.targetUserName = fixedInboundForm.value.targetUserName || '';
-      item.invoiceNo = fixedInboundForm.value.invoiceNo || '';
-      item.postingDate = fixedInboundForm.value.postingDate ? fixedInboundForm.value.postingDate + ' 00:00:00' : '';
     });
   } else {
     const invalidItems = validPurchaseInboundList.filter((item) => !item.locationCode);
@@ -538,11 +538,6 @@ const submitForm = async () => {
       resultStatus.value = false;
       return;
     }
-    validPurchaseInboundList.forEach((item) => {
-      item.targetUserName = fixedInboundForm.value.targetUserName || '';
-      item.invoiceNo = fixedInboundForm.value.invoiceNo || '';
-      item.postingDate = fixedInboundForm.value.postingDate ? fixedInboundForm.value.postingDate + ' 00:00:00' : '';
-    });
   }
 
   const overQuantityItems = validPurchaseInboundList.filter((item) => item.receivePoQuantity > item.openQuantity);
@@ -562,6 +557,10 @@ const submitForm = async () => {
       receiveUnit: item.inventoryUnit
     }));
     const res: any = await addPurchaseInbound({
+      receiveType: '1',
+      lfsnr: fixedInboundForm.value.lfsnr || '',
+      bktxt: fixedInboundForm.value.bktxt || '',
+      postingDate: formatPostingDate(fixedInboundForm.value.postingDate) || '',
       purchaseOrderInboundBoList: purchaseInboundRequests
     });
     if (res.code !== HttpStatus.SUCCESS) {
@@ -573,8 +572,8 @@ const submitForm = async () => {
     resultStatus.value = true;
     inboundList.value = [];
     fixedInboundForm.value.locationCode = '';
-    fixedInboundForm.value.targetUserName = '';
-    fixedInboundForm.value.invoiceNo = '';
+    fixedInboundForm.value.lfsnr = '';
+    fixedInboundForm.value.bktxt = '';
     fixedInboundForm.value.postingDate = null;
     handleQuery();
   } catch (error) {

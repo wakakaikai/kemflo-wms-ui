@@ -205,7 +205,93 @@ export interface ShopOrderReportVO {
    * 实际人员操作时长
    */
   employeeOperationDuration: number;
+}
 
+export interface ShopOrderReportEmployeeDurationQuery {
+  pageNum?: number;
+  pageSize?: number;
+  workCenterList?: string[];
+  /**
+   * 单个工号（兼容旧入参）
+   */
+  employeeId?: string;
+  /**
+   * 多个工号
+   */
+  employeeIdList?: string[];
+  /**
+   * 工号批量字符串（逗号分隔）
+   */
+  employeeIdStr?: string;
+  shiftTimeRange?: string;
+  reportBeginTime?: string;
+  reportEndTime?: string;
+}
+
+export interface ShopOrderReportEmployeeDurationSummaryVO {
+  reportDate: string;
+  employeeId: string;
+  employeeName: string;
+  /**
+   * 人员上线总时长（分钟）
+   */
+  totalDuration: number;
+  /**
+   * 总操作时长（分钟）
+   */
+  operationDuration: number;
+  /**
+   * 总有效时长（分钟）
+   */
+  effectiveDuration: number;
+  /**
+   * 去重后上线总时长（分钟）
+   */
+  distinctDuration: number;
+  /**
+   * 重复上线总时长（分钟）
+   */
+  duplicateDuration: number;
+  employeeCount: number;
+  onlineRecordCount: number;
+}
+
+export interface ShopOrderReportEmployeeDurationDuplicateVO {
+  reportDate: string;
+  employeeId: string;
+  employeeName: string;
+  /**
+   * 重复上线总时长（分钟）
+   */
+  duplicateDuration: number;
+  onlineRecordCount: number;
+}
+
+export interface ShopOrderReportEmployeeDurationDetailVO {
+  reportDate: string;
+  reportId: string | number;
+  workCenter: string;
+  shopOrder: string;
+  employeeId: string;
+  employeeName: string;
+  onLineTime: string;
+  offLineTime: string;
+  /**
+   * 出勤时长（分钟）
+   */
+  duration: number;
+  /**
+   * 操作时长（分钟）
+   */
+  operationDuration: number;
+  /**
+   * 有效时长（分钟）
+   */
+  effectiveDuration: number;
+  /**
+   * 重复上线时长（分钟）
+   */
+  duplicateDuration: number;
 }
 
 export interface ShopOrderReportForm extends BaseEntity {
@@ -415,11 +501,9 @@ export interface ShopOrderReportForm extends BaseEntity {
    * 实际人员操作时长
    */
   employeeOperationDuration?: number;
-
 }
 
 export interface ShopOrderReportQuery extends PageQuery {
-
   /**
    * 工单号
    */
@@ -617,11 +701,8 @@ export interface ShopOrderReportQuery extends PageQuery {
    */
   employeeOperationDuration?: number;
 
-    /**
-     * 日期范围参数
-     */
-    params?: any;
+  /**
+   * 日期范围参数
+   */
+  params?: any;
 }
-
-
-

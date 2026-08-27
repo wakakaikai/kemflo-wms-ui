@@ -1,8 +1,11 @@
 <template>
   <div class="p-2">
     <el-tabs v-model="activeTab" :tab-position="'top'" @tab-click="handleTabClick">
-      <el-tab-pane name="work-order-return" label="工单退料">
+      <el-tab-pane name="work-order-return" label="工单退货">
         <WorkOrderReturn />
+      </el-tab-pane>
+      <el-tab-pane name="work-order-return-material" label="工单退料">
+        <WorkOrderReturnMaterial />
       </el-tab-pane>
       <el-tab-pane name="work-order-reverse" label="工单冲销">
         <WorkOrderReverse />
@@ -13,6 +16,7 @@
 
 <script setup name="WorkOrderReturnIndex" lang="ts">
 import { ref } from 'vue';
+import WorkOrderReturnMaterial from '@/views/wms/workOrderReturn/components/workOrderReturnMaterial.vue';
 import WorkOrderReturn from '@/views/wms/workOrderReturn/components/workOrderReturn.vue';
 import WorkOrderReverse from '@/views/wms/workOrderReturn/components/workOrderReverse.vue';
 
