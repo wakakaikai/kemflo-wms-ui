@@ -6,6 +6,8 @@ export interface IssueTaskLineVO {
   id: number | string;
   demandId?: number | string;
   demandNo?: string;
+  materialUserCode?: string;
+  materialUserName?: string;
   /** 单据类型：NORMAL-普通领料单, OVER_PICK-超领单 */
   demandType?: string;
   demandStatus?: string;
@@ -59,6 +61,8 @@ export interface IssueTaskLineVO {
 
 /** 备料库位明细 261 领料单行 */
 export interface PrepLocationRecIssueOutBo {
+  demandId: number | string;
+  demandNo?: string;
   locationCode: string;
   materialCode?: string;
   batchCode?: string;
@@ -99,8 +103,6 @@ export type PrepIssueMode = 'DIRECT_DEDUCT' | 'ACTUAL_DEDUCT_TRANS';
 
 /** 备料库位明细领料批量请求 */
 export interface PrepLocationRecIssueOutBatchBo {
-  demandId: number | string;
-  demandNo?: string;
   /** DIRECT_DEDUCT-直领全额扣料；ACTUAL_DEDUCT_TRANS-实发扣料+超量移转 */
   issueMode?: PrepIssueMode;
   issueOutBoList: PrepLocationRecIssueOutBo[];
@@ -144,6 +146,8 @@ export interface IssueTaskQuery extends PageQuery {
   demandId?: number | string;
   demandNo?: string;
   workOrderNo?: string;
+  materialUserCode?: string;
+  materialUserName?: string;
   materialCode?: string;
   lineStatus?: string;
   warehouseRoute?: string;

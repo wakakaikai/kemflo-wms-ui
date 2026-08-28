@@ -122,10 +122,11 @@ const props = withDefaults(
     selected: false
   }
 );
-defineEmits<{
+const emit = defineEmits<{
   issue: [row: IssueTaskLineVO];
   print: [row: IssueTaskLineVO];
   'toggle-select': [row: IssueTaskLineVO, selected: boolean];
+  'actual-issue-change': [row: IssueTaskLineVO, value: number | undefined];
 }>();
 
 const { proxy } = getCurrentInstance()!;
@@ -194,7 +195,7 @@ const actualIssueQty = computed({
     return displayActualIssueQty.value;
   },
   set(value: number | undefined) {
-    props.row.actualIssueQty = value;
+    emit('actual-issue-change', props.row, value);
   }
 });
 
@@ -278,6 +279,20 @@ function formatQtyWithUnit(value?: number | string, unit?: string) {
   font-size: 14px;
   font-weight: 700;
   color: var(--el-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-user-row {
+  display: flex;
+  min-width: 0;
+}
+
+.material-user-name {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--el-text-color-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

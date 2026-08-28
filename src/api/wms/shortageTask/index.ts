@@ -70,7 +70,7 @@ export function getShortageTaskLine(id: number | string) {
 /** 缺料任务：在原备料需求单上补充库位备料 */
 export function generateShortagePrep(data: ShortageTaskGeneratePrepRequest) {
   return request<ShortageTaskGeneratePrepResult>({
-    url: '/wms/materialIssueWorkbench/generateShortagePrepareDemand',
+    url: '/wms/workOrderPrepDemand/generateShortagePrepareDemand',
     method: 'post',
     data
   });

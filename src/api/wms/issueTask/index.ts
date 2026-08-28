@@ -15,7 +15,7 @@ const EMPTY_TOKEN = '-';
 /** 分页查询发料任务聚合（按需求单汇总） */
 export function listIssueTaskGroup(query?: IssueTaskQuery): AxiosPromise<IssueTaskDemandGroupVO[]> {
   return request({
-    url: '/wms/materialIssueWorkbench/prepLocationRec/demandSummary/list',
+    url: '/wms/workOrderPrepLocationRec/demandSummary/list',
     method: 'get',
     params: query
   });
@@ -24,7 +24,7 @@ export function listIssueTaskGroup(query?: IssueTaskQuery): AxiosPromise<IssueTa
 /** 查询指定需求单的备料库位明细 */
 export function listIssueTaskDemandDetail(demandNo: string, query?: IssueTaskQuery): AxiosPromise<IssueTaskLineVO[]> {
   return request({
-    url: `/wms/materialIssueWorkbench/prepLocationRec/demand/${encodeURIComponent(demandNo)}/detail`,
+    url: `/wms/workOrderPrepLocationRec/demand/${encodeURIComponent(demandNo)}/detail`,
     method: 'get',
     params: query
   });
@@ -33,17 +33,9 @@ export function listIssueTaskDemandDetail(demandNo: string, query?: IssueTaskQue
 /** 分页查询发料任务明细（库位行，明细视图） */
 export function listIssueTaskDetail(query?: IssueTaskQuery): AxiosPromise<IssueTaskLineVO[]> {
   return request({
-    url: '/wms/materialIssueWorkbench/prepLocationRec/list',
+    url: '/wms/workOrderPrepLocationRec/list',
     method: 'get',
     params: query
-  });
-}
-
-/** 获取发料任务行详情 */
-export function getIssueTaskLine(id: number | string) {
-  return request<IssueTaskLineVO>({
-    url: `/wms/issueTask/${id}`,
-    method: 'get'
   });
 }
 
@@ -52,7 +44,7 @@ export { isOverPickPrepDemand } from '@/api/wms/workOrderPrepDemand/index';
 
 export function prepLocationRecIssueOut(data: PrepLocationRecIssueOutBatchBo) {
   return request({
-    url: '/wms/materialIssueWorkbench/prepLocationRec/issueOut',
+    url: '/wms/workOrderPrepLocationRec/prepLocationRec/issueOut',
     method: 'post',
     data: {
       ...data,
@@ -64,7 +56,7 @@ export function prepLocationRecIssueOut(data: PrepLocationRecIssueOutBatchBo) {
 /** 备料库位明细实发扣料+超量移转（自动拆分261/311）；成功时凭证号在响应 msg 中 */
 export function prepLocationRecActualDeductTransIssueOut(data: PrepLocationRecIssueOutBatchBo) {
   return request<void>({
-    url: '/wms/materialIssueWorkbench/prepLocationRec/issueOut/actualDeductTrans',
+    url: '/wms/workOrderPrepLocationRec/prepLocationRec/issueOut/actualDeductTrans',
     method: 'post',
     data: {
       ...data,
@@ -564,6 +556,8 @@ export function buildPrepLocationRecIssueOutBoFromLine(row: IssueTaskLineVO): Pr
   }
 
   const issueOutBo: PrepLocationRecIssueOutBo = {
+    demandId: row.demandId!,
+    demandNo: row.demandNo,
     locationCode: normalizeField(row.locationCode)!,
     materialCode: normalizeField(row.materialCode),
     batchCode: normalizeField(row.batchCode),
@@ -589,6 +583,8 @@ export function buildPrepLocationRecIssueOutBoFromLine(row: IssueTaskLineVO): Pr
 /** 由发料任务行构建实发扣料+超量移转明细 */
 export function buildPrepLocationRecActualDeductTransBoFromLine(row: IssueTaskLineVO): PrepLocationRecIssueOutBo {
   return {
+    demandId: row.demandId!,
+    demandNo: row.demandNo,
     locationCode: normalizeField(row.locationCode)!,
     materialCode: normalizeField(row.materialCode),
     batchCode: normalizeField(row.batchCode),
@@ -607,8 +603,6 @@ export function buildPrepLocationRecActualDeductTransBoFromLine(row: IssueTaskLi
 /** 发料任务行执行领料：261 走 issueOut；261+311 走 issueOut/actualDeductTrans */
 export function executeIssueTaskLineIssueOut(row: IssueTaskLineVO) {
   const batch: PrepLocationRecIssueOutBatchBo = {
-    demandId: row.demandId!,
-    demandNo: row.demandNo,
     issueOutBoList: hasIssueTaskLine311Transfer(row) ? [buildPrepLocationRecActualDeductTransBoFromLine(row)] : [buildPrepLocationRecIssueOutBoFromLine(row)]
   };
   if (hasIssueTaskLine311Transfer(row)) {

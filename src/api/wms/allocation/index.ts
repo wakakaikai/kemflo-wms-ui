@@ -8,7 +8,7 @@ import type { AllocationRequest, AllocationGenerateResult, AllocationPlanVO, All
 /** 生成单一分配方案 / 备料需求（工作台） */
 export function generateAllocation(data: AllocationRequest) {
   return request<AllocationGenerateResult | AllocationPlanVO>({
-    url: '/wms/materialIssueWorkbench/generate',
+    url: '/wms/workOrderPrepDemand/generate',
     method: 'post',
     data
   }).then((res: any) => {

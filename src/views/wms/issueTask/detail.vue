@@ -29,7 +29,7 @@
             <el-radio-button value="table">表格</el-radio-button>
           </el-radio-group>
         </div>
-        <div v-if="lineViewMode === 'card'" class="card-batch-toolbar">
+        <div class="card-batch-toolbar">
           <el-checkbox :model-value="isAllCardsSelected" :indeterminate="isCardSelectionIndeterminate" @change="toggleSelectAllCards">全选当前页</el-checkbox>
           <span class="card-batch-meta">已选 {{ selectedLineIds.size }} / {{ lineList.length }}</span>
           <el-button color="#626aef" icon="Printer" :disabled="!selectedLineIds.size" @click="printSelectedLines">批量打印</el-button>
@@ -45,12 +45,14 @@
       </div>
 
       <div v-if="lineViewMode === 'card'" v-loading="loading" class="card-grid">
-        <issue-task-line-card v-for="row in lineList" :key="String(row.id)" :row="row" selectable :selected="isLineSelected(row)" @toggle-select="toggleLineSelect" @print="printSingleLine" @issue="openLineIssueAction" />
+        <issue-task-line-card v-for="row in lineList" :key="String(row.id)" :row="row" selectable :selected="isLineSelected(row)" @actual-issue-change="updateLineActualIssueQty" @toggle-select="toggleLineSelect" @print="printSingleLine" @issue="openLineIssueAction" />
         <el-empty v-if="!loading && !lineList.length" description="暂无备料明细" />
       </div>
 
-      <el-table v-else v-loading="loading" :data="lineList" border stripe>
+      <el-table v-else ref="lineTableRef" v-loading="loading" :data="lineList" border stripe row-key="id" @selection-change="handleTableSelectionChange">
+        <el-table-column type="selection" width="50" fixed="left" />
         <el-table-column label="工单号" align="center" prop="workOrderNo" min-width="120" show-overflow-tooltip />
+        <el-table-column label="需求人姓名" align="center" prop="materialUserName" min-width="110" show-overflow-tooltip />
         <el-table-column label="物料编码" align="center" prop="materialCode" min-width="120" show-overflow-tooltip />
         <el-table-column label="物料描述" align="left" prop="materialName" min-width="160" show-overflow-tooltip />
         <el-table-column label="仓别" align="center" prop="warehouseCode" width="90" />
@@ -77,9 +79,10 @@
             <el-tag :type="lineStatusTag(row.lineStatus)" size="small">{{ lineStatusLabel(row.lineStatus) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" align="center" width="160" fixed="right">
+        <el-table-column label="操作" align="center" width="190" fixed="right">
           <template #default="{ row }">
             <div class="line-action-cell">
+              <el-button link type="primary" icon="Printer" @click="printSingleLine(row)">打印</el-button>
               <el-button v-if="canIssueTaskLine261(row)" link type="success" :disabled="!canExecuteIssueTaskLine261(row)" @click="openLineIssueAction(row)" v-hasPermi="['wms:materialIssue:issue']">
                 {{ getIssueTaskLineActionLabel(row) }}
               </el-button>
@@ -101,7 +104,7 @@
 
 <script setup name="IssueTaskDemandDetail" lang="ts">
 import { formatQty, formatQtyWithUnit } from '@/utils/ruoyi';
-import { computed, getCurrentInstance, ref, watch } from 'vue';
+import { computed, getCurrentInstance, nextTick, ref, watch } from 'vue';
 import type { ComponentInternalInstance } from 'vue';
 import { Bell, ArrowLeftBold } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
@@ -130,6 +133,8 @@ const resultMessage = ref('');
 const resultStatus = ref(false);
 const selectedLineIds = ref<Set<string>>(new Set());
 const issuePrintRef = ref<InstanceType<typeof IssuePrint>>();
+const lineTableRef = ref();
+const syncingTableSelection = ref(false);
 
 const demandNo = computed(() => {
   const fromParam = String(route.params.demandNo || '').trim();
@@ -208,18 +213,44 @@ const toggleLineSelect = (row: IssueTaskLineVO, selected: boolean) => {
   if (selected) next.add(key);
   else next.delete(key);
   selectedLineIds.value = next;
+  syncTableSelection();
+};
+
+const syncTableSelection = async () => {
+  const selectedKeys = new Set(selectedLineIds.value);
+  await nextTick();
+  const table = lineTableRef.value;
+  if (!table) return;
+  syncingTableSelection.value = true;
+  try {
+    table.clearSelection?.();
+    lineList.value.forEach((row) => {
+      table.toggleRowSelection?.(row, selectedKeys.has(resolveLineKey(row)));
+    });
+    selectedLineIds.value = selectedKeys;
+  } finally {
+    syncingTableSelection.value = false;
+  }
+};
+
+const handleTableSelectionChange = (selection: IssueTaskLineVO[]) => {
+  if (syncingTableSelection.value) return;
+  selectedLineIds.value = new Set(selection.map((row) => resolveLineKey(row)));
 };
 
 const toggleSelectAllCards = (checked: boolean | string | number) => {
   if (!checked) {
     selectedLineIds.value = new Set();
+    syncTableSelection();
     return;
   }
   selectedLineIds.value = new Set(lineList.value.map((row) => resolveLineKey(row)));
+  syncTableSelection();
 };
 
 const resetCardSelection = () => {
   selectedLineIds.value = new Set();
+  syncTableSelection();
 };
 
 const restoreSummaryFromState = () => {
@@ -293,6 +324,10 @@ const openLineIssueAction = (row: IssueTaskLineVO) => {
   issueDialogVisible.value = true;
 };
 
+const updateLineActualIssueQty = (row: IssueTaskLineVO, value?: number) => {
+  row.actualIssueQty = value;
+};
+
 const onLineIssueResult = (payload: { message: string; success: boolean }) => {
   resultMessage.value = payload.message;
   resultStatus.value = payload.success;
@@ -310,6 +345,12 @@ watch(
   },
   { immediate: true }
 );
+
+watch(lineViewMode, (mode) => {
+  if (mode === 'table') {
+    syncTableSelection();
+  }
+});
 </script>
 
 <style scoped lang="scss">
