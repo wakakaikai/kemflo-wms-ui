@@ -84,6 +84,9 @@ function formatQty(value?: number | string) {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 16px;
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 10px;

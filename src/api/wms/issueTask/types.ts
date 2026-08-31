@@ -1,4 +1,4 @@
-import type { PrepDemandLocationSource } from '@/api/wms/workOrderPrepDemand/types';
+import type { PrepDemandLocationSource, PrepDemandShortageType } from '@/api/wms/workOrderPrepDemand/types';
 import type { PrepLocationRecommendationSource } from '@/api/wms/workOrderPrepDemand/locationSource';
 
 /** 发料任务行（工单备料库位明细） */
@@ -27,6 +27,7 @@ export interface IssueTaskLineVO {
   batchCode?: string;
   /** 发料数量 */
   issueQty?: number | string;
+  unit?: string;
   /** 实际发货数量 */
   actualIssueQty?: number | string;
   /** 已发数量（261领料累计，库存单位） */
@@ -42,18 +43,22 @@ export interface IssueTaskLineVO {
   locationSource?: PrepDemandLocationSource;
   remark?: string;
   specialInventoryFlag?: string;
+  shortageInventoryType?: PrepDemandShortageType;
   businessCode?: string;
   businessName?: string;
   salesOrderNo?: string;
   salesOrderItem?: string;
   targetDemandLocationCode?: string;
   targetDemandWarehouseCode?: string;
+  targetDemandLocationCodeDesc?: string;
   reserveNo?: string;
   reserveItemNo?: string;
   /** 超领编码（SAP grund） */
   overPickCode?: string;
   /** 超领原因 */
   overPickReason?: string;
+  /** 是否紧急 */
+  isEmergency?: boolean;
   createTime?: string;
   issueTime?: string;
   receiveTime?: string;
@@ -62,7 +67,7 @@ export interface IssueTaskLineVO {
 /** 备料库位明细 261 领料单行 */
 export interface PrepLocationRecIssueOutBo {
   demandId: number | string;
-  demandNo?: string;
+  demandNo: string;
   locationCode: string;
   materialCode?: string;
   batchCode?: string;
@@ -149,6 +154,7 @@ export interface IssueTaskQuery extends PageQuery {
   materialUserCode?: string;
   materialUserName?: string;
   materialCode?: string;
+  specialInventoryFlag?: string;
   lineStatus?: string;
   warehouseRoute?: string;
 }

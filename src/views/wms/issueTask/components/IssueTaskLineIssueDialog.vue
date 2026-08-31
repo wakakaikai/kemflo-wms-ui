@@ -1,11 +1,12 @@
 <template>
-  <el-dialog v-model="visible" :title="confirmView.title" width="720px" destroy-on-close append-to-body @closed="handleClosed">
+  <el-dialog v-model="visible" :title="confirmView.title" width="820px" destroy-on-close append-to-body @closed="handleClosed">
     <el-table :data="confirmView.rows" border size="small">
-      <el-table-column prop="action" label="操作" width="100" align="center" />
+      <el-table-column prop="action" label="操作" min-width="140" align="center" show-overflow-tooltip />
       <el-table-column prop="locationCode" label="库位" min-width="120" show-overflow-tooltip />
-      <el-table-column prop="materialCode" label="物料" min-width="140" show-overflow-tooltip />
-      <el-table-column prop="qtyText" label="数量" width="120" align="right" />
-      <el-table-column v-if="hasTargetColumn" prop="targetLocationCode" label="目标库位" min-width="120" show-overflow-tooltip>
+      <el-table-column prop="materialCode" label="物料" min-width="130" show-overflow-tooltip />
+      <el-table-column prop="pendingQtyText" label="待发数量" width="110" align="right" />
+      <el-table-column prop="actualQtyText" label="实发数量" width="110" align="right" />
+      <el-table-column prop="targetLocationCode" label="目标库位" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">{{ row.targetLocationCode || '-' }}</template>
       </el-table-column>
     </el-table>
@@ -48,8 +49,6 @@ const confirmView = computed(() => {
   }
   return buildIssueTaskLineIssueConfirmView(props.row, issueOutBo.value);
 });
-
-const hasTargetColumn = computed(() => confirmView.value.rows.some((row) => row.targetLocationCode));
 
 const handleClosed = () => {
   submitting.value = false;

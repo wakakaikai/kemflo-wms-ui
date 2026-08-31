@@ -201,11 +201,13 @@ export function resolvePrepRowInventoryFlag(row: Pick<PrepDemandDisplayRow, 'spe
   return 'N';
 }
 
-export function isPrepRowSpecialInventory(row: PrepDemandDisplayRow): boolean {
+export function isPrepRowSpecialInventory(row: Pick<PrepDemandDisplayRow, 'specialInventoryFlag' | 'shortageInventoryType'>): boolean {
   return resolvePrepRowInventoryFlag(row) !== 'N';
 }
 
-export function resolvePrepRowBusinessPartner(row: PrepDemandDisplayRow): { businessCode?: string; businessName?: string } {
+export function resolvePrepRowBusinessPartner(
+  row: Pick<PrepDemandDisplayRow, 'specialInventoryFlag' | 'shortageInventoryType' | 'businessCode' | 'businessName' | 'salesOrderNo' | 'salesOrderItem'>
+): { businessCode?: string; businessName?: string } {
   if (!isPrepRowSpecialInventory(row)) return {};
   const isSalesOrder = resolvePrepRowInventoryFlag(row) === 'E';
   return {

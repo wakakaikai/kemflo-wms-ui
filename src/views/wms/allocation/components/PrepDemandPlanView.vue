@@ -322,8 +322,6 @@ const resolvedMaterialUserName = computed(() => props.materialUserName || userSt
 const isOverPickDemand = computed(() => isOverPickPrepDemand(props.demand));
 
 const buildIssueOutBatchPayload = (issueOutBoList: ReturnType<typeof buildPrepLocationRecIssueOutBoList>) => ({
-  demandId: props.demand.id,
-  demandNo: props.demand.demandNo,
   issueOutBoList
 });
 
@@ -385,7 +383,7 @@ const validateOverPickIssueOut = (issueOutBoList: ReturnType<typeof buildPrepLoc
 const submitWarehouseIssue = async (routeLabel: string, routes: PrepDemand261Route[]) => {
   resultStatus.value = true;
   resultMessage.value = '';
-  const issueOutBoList = buildPrepLocationRecIssueOutBoList(displayRows.value, routes);
+  const issueOutBoList = buildPrepLocationRecIssueOutBoList(displayRows.value, routes, { demandId: props.demand.id, demandNo: props.demand.demandNo });
   if (!issueOutBoList.length) {
     resultMessage.value = `没有可扣料的${routeLabel}需求`;
     resultStatus.value = false;
@@ -437,7 +435,7 @@ const submitLineIssue = async () => {
 const submitCombinedIssue = async () => {
   resultStatus.value = true;
   resultMessage.value = '';
-  const issueOutBoList = buildPrepLocationRecIssueOutBoList(displayRows.value, ['AUTO', 'LINE']);
+  const issueOutBoList = buildPrepLocationRecIssueOutBoList(displayRows.value, ['AUTO', 'LINE'], { demandId: props.demand.id, demandNo: props.demand.demandNo });
   if (!issueOutBoList.length) {
     resultMessage.value = '没有可扣料的自动仓或线边仓需求';
     resultStatus.value = false;

@@ -4,6 +4,8 @@ import type { PrepDemand261Route, PrepDemandDisplayRow } from '@/api/wms/workOrd
 import { resolveOverPickReasonLabel, resolvePrepRowLocationAdjustRemark } from '@/api/wms/workOrderPrepDemand/index';
 import type { IssueTaskDemandGroup, IssueTaskDemandGroupVO, IssueTaskGroupLayoutMode, IssueTaskLineLayoutMode, IssueTaskLineVO, IssueTaskQuery, IssueTaskViewMode, IssueTaskWarehouseCache, PrepLocationRecIssueOutBatchBo, PrepLocationRecIssueOutBo } from './types';
 
+export type { IssueTaskLineVO } from './types';
+
 type IssueTaskLineListResponse = {
   rows?: IssueTaskLineVO[];
   data?: IssueTaskLineVO[] | { rows?: IssueTaskLineVO[]; total?: number };
@@ -44,7 +46,7 @@ export { isOverPickPrepDemand } from '@/api/wms/workOrderPrepDemand/index';
 
 export function prepLocationRecIssueOut(data: PrepLocationRecIssueOutBatchBo) {
   return request({
-    url: '/wms/workOrderPrepLocationRec/prepLocationRec/issueOut',
+    url: '/wms/workOrderPrepLocationRec/issueOut',
     method: 'post',
     data: {
       ...data,
@@ -56,7 +58,20 @@ export function prepLocationRecIssueOut(data: PrepLocationRecIssueOutBatchBo) {
 /** 备料库位明细实发扣料+超量移转（自动拆分261/311）；成功时凭证号在响应 msg 中 */
 export function prepLocationRecActualDeductTransIssueOut(data: PrepLocationRecIssueOutBatchBo) {
   return request<void>({
-    url: '/wms/workOrderPrepLocationRec/prepLocationRec/issueOut/actualDeductTrans',
+    url: '/wms/workOrderPrepLocationRec/issueOut/actualDeductTrans',
+    method: 'post',
+    data: {
+      ...data,
+      issueMode: data.issueMode ?? 'ACTUAL_DEDUCT_TRANS'
+    }
+  });
+}
+
+
+
+export function prepLocationRecActualDeductTransBatchIssueOut(data: PrepLocationRecIssueOutBatchBo) {
+  return request({
+    url: '/wms/workOrderPrepLocationRec/issueOut/actualDeductTrans/batch',
     method: 'post',
     data: {
       ...data,
@@ -170,9 +185,10 @@ export function resolveIssueTaskLineRemark(row: Pick<IssueTaskLineVO, 'remark'>)
   return String(row.remark ?? '').trim();
 }
 
-export function canExecuteIssueTaskLine261(row: { lineStatus?: string; locationCode?: string; demandId?: number | string }) {
+export function canExecuteIssueTaskLine261(row: { lineStatus?: string; locationCode?: string; demandId?: number | string; demandNo?: string }) {
   const locationCode = String(row.locationCode || '').trim();
-  return canIssueTaskLine261(row) && !!locationCode && locationCode !== '-' && row.demandId != null && row.demandId !== '';
+  const demandNo = String(row.demandNo || '').trim();
+  return canIssueTaskLine261(row) && !!locationCode && locationCode !== '-' && row.demandId != null && row.demandId !== '' && !!demandNo;
 }
 
 /** 是否可编辑实发数量（仅待拣货、拣货中且待发数量有效） */
@@ -271,8 +287,12 @@ export interface IssueTaskLineIssueConfirmRow {
   action: string;
   locationCode: string;
   materialCode: string;
+  pendingQtyText: string;
+  actualQtyText: string;
   qtyText: string;
   targetLocationCode?: string;
+  workOrderNo?: string;
+  demandNo?: string;
 }
 
 /** 发料任务行领料确认弹窗视图 */
@@ -286,25 +306,26 @@ function formatIssueConfirmQtyText(qty: number | string, unit: string) {
 }
 
 /** 构建发料任务行领料确认弹窗视图 */
-export function buildIssueTaskLineIssueConfirmView(row: Pick<IssueTaskLineVO, 'locationCode' | 'materialCode' | 'inventoryUnit'>, issueBo: PrepLocationRecIssueOutBo): IssueTaskLineIssueConfirmView {
+export function buildIssueTaskLineIssueConfirmView(row: Pick<IssueTaskLineVO, 'locationCode' | 'materialCode' | 'inventoryUnit' | 'issueQty' | 'actualIssueQty' | 'targetDemandLocationCode'>, issueBo: PrepLocationRecIssueOutBo): IssueTaskLineIssueConfirmView {
   const locationCode = normalizeField(row.locationCode) || '-';
   const materialCode = normalizeField(row.materialCode) || '-';
   const unit = normalizeField(issueBo.issueUnit) || normalizeField(row.inventoryUnit) || '';
+  const pendingQtyText = formatIssueConfirmQtyText(normalizeQty(row.issueQty) ?? '-', unit);
+  const actualQtyText = formatIssueConfirmQtyText(resolveLineActualIssueQty(row), unit);
   const issueQtyText = formatIssueConfirmQtyText(issueBo.issueQuantity ?? '-', unit);
-  const transferQty = normalizeQty(issueBo.transferQuantity);
-  const targetLocation = normalizeField(issueBo.targetLocationCode);
+  const withTransfer = hasIssueTaskLine311Transfer(row);
+  const targetLocation = normalizeField(issueBo.targetLocationCode) || normalizeField(row.targetDemandLocationCode);
+  const baseRow = { locationCode, materialCode, pendingQtyText, actualQtyText, qtyText: issueQtyText };
+  const targetRow = targetLocation ? { targetLocationCode: targetLocation } : {};
 
-  if (transferQty && targetLocation) {
+  if (withTransfer && targetLocation) {
     return {
       title: '确认 261领料+311移转',
       rows: [
-        { action: '261领料', locationCode, materialCode, qtyText: issueQtyText },
         {
-          action: '311移转',
-          locationCode,
-          materialCode,
-          qtyText: formatIssueConfirmQtyText(transferQty, unit),
-          targetLocationCode: targetLocation
+          action: getIssueTaskLineActionLabel(row),
+          ...baseRow,
+          ...targetRow
         }
       ]
     };
@@ -312,7 +333,45 @@ export function buildIssueTaskLineIssueConfirmView(row: Pick<IssueTaskLineVO, 'l
 
   return {
     title: '确认 261 领料',
-    rows: [{ action: '261领料', locationCode, materialCode, qtyText: issueQtyText }]
+    rows: [{ action: '261领料', ...baseRow, ...targetRow }]
+  };
+}
+
+/** 构建批量领料确认弹窗视图 */
+export function buildIssueTaskBatchIssueConfirmView(rows: IssueTaskLineVO[]): IssueTaskLineIssueConfirmView {
+  const confirmRows: IssueTaskLineIssueConfirmRow[] = [];
+  let directCount = 0;
+  let actualDeductTransCount = 0;
+
+  rows.forEach((row) => {
+    if (!canExecuteIssueTaskLine261(row)) return;
+    syncIssueTaskLineActualIssueDefault(row);
+    const withTransfer = hasIssueTaskLine311Transfer(row);
+    const issueBo = buildPrepLocationRecIssueOutBoFromLine(row);
+    const view = buildIssueTaskLineIssueConfirmView(row, issueBo);
+    if (withTransfer) actualDeductTransCount += 1;
+    else directCount += 1;
+    const workOrderNo = normalizeField(row.workOrderNo) || '-';
+    const demandNo = normalizeField(row.demandNo) || '-';
+    view.rows.forEach((item) => {
+      confirmRows.push({ ...item, workOrderNo, demandNo });
+    });
+  });
+
+  if (!confirmRows.length) {
+    return { title: '确认批量领料', rows: [] };
+  }
+
+  if (actualDeductTransCount > 0) {
+    return {
+      title: `确认批量领料（261 ${directCount} 条，261+311 ${actualDeductTransCount} 条）`,
+      rows: confirmRows
+    };
+  }
+
+  return {
+    title: `确认批量 261 领料（${directCount} 条）`,
+    rows: confirmRows
   };
 }
 
@@ -334,6 +393,7 @@ export function normalizeIssueTaskLine(row: IssueTaskLineVO): IssueTaskLineVO {
     issue_qty?: number | string;
     inventory_unit?: string;
     line_status?: string;
+    is_emergency?: boolean;
   };
   const lineStatus = String(row.lineStatus ?? raw.line_status ?? '').toUpperCase();
   const rawIssued = row.issuedQty ?? raw.issued_qty;
@@ -343,7 +403,8 @@ export function normalizeIssueTaskLine(row: IssueTaskLineVO): IssueTaskLineVO {
     issueQty: row.issueQty ?? raw.issue_qty,
     actualIssueQty: row.actualIssueQty ?? raw.actual_issue_qty,
     issuedQty,
-    inventoryUnit: row.inventoryUnit ?? raw.inventory_unit
+    inventoryUnit: row.inventoryUnit ?? raw.inventory_unit,
+    isEmergency: row.isEmergency ?? raw.is_emergency
   };
 }
 
@@ -526,8 +587,12 @@ function resolveIssueUnit(row: Pick<PrepDemandDisplayRow, 'inventoryUnit'>): str
   return normalizeField(row.inventoryUnit);
 }
 
-export function buildPrepLocationRecIssueOutBoFromDisplayRow(row: PrepDemandDisplayRow): PrepLocationRecIssueOutBo {
+type PrepLocationRecIssueDemandRef = Pick<PrepLocationRecIssueOutBo, 'demandId' | 'demandNo'>;
+
+export function buildPrepLocationRecIssueOutBoFromDisplayRow(row: PrepDemandDisplayRow, demand: PrepLocationRecIssueDemandRef): PrepLocationRecIssueOutBo {
   return {
+    demandId: demand.demandId,
+    demandNo: normalizeField(demand.demandNo)!,
     locationCode: normalizeField(row.locationCode)!,
     materialCode: normalizeField(row.materialCode),
     batchCode: normalizeField(row.batchCode),
@@ -557,7 +622,7 @@ export function buildPrepLocationRecIssueOutBoFromLine(row: IssueTaskLineVO): Pr
 
   const issueOutBo: PrepLocationRecIssueOutBo = {
     demandId: row.demandId!,
-    demandNo: row.demandNo,
+    demandNo: normalizeField(row.demandNo)!,
     locationCode: normalizeField(row.locationCode)!,
     materialCode: normalizeField(row.materialCode),
     batchCode: normalizeField(row.batchCode),
@@ -574,6 +639,9 @@ export function buildPrepLocationRecIssueOutBoFromLine(row: IssueTaskLineVO): Pr
 
   if (transfer311Qty && transfer311Qty > 0) {
     issueOutBo.transferQuantity = transfer311Qty;
+  }
+
+  if (targetLocation) {
     issueOutBo.targetLocationCode = targetLocation;
   }
 
@@ -584,7 +652,7 @@ export function buildPrepLocationRecIssueOutBoFromLine(row: IssueTaskLineVO): Pr
 export function buildPrepLocationRecActualDeductTransBoFromLine(row: IssueTaskLineVO): PrepLocationRecIssueOutBo {
   return {
     demandId: row.demandId!,
-    demandNo: row.demandNo,
+    demandNo: normalizeField(row.demandNo)!,
     locationCode: normalizeField(row.locationCode)!,
     materialCode: normalizeField(row.materialCode),
     batchCode: normalizeField(row.batchCode),
@@ -592,6 +660,7 @@ export function buildPrepLocationRecActualDeductTransBoFromLine(row: IssueTaskLi
     reserveItemNo: normalizeField(row.reserveItemNo),
     specialInventoryFlag: normalizeField(row.specialInventoryFlag),
     businessCode: normalizeField(row.businessCode),
+    issueQuantity: normalizeQty(row.issueQty),
     actualIssueQuantity: resolveLineActualIssueQty(row),
     issueUnit: normalizeField(row.inventoryUnit),
     remark: normalizeField(row.remark),
@@ -618,7 +687,38 @@ export function executeIssueTaskLineIssueOut(row: IssueTaskLineVO) {
 }
 
 /** 由备料计划展示行构建 261 领料明细 */
-export function buildPrepLocationRecIssueOutBoList(rows: PrepDemandDisplayRow[], routes: PrepDemand261Route[]): PrepLocationRecIssueOutBo[] {
+export function splitIssueTaskLineIssueOutRows(rows: IssueTaskLineVO[]) {
+  const directRows: IssueTaskLineVO[] = [];
+  const actualDeductTransRows: IssueTaskLineVO[] = [];
+  rows.forEach((row) => {
+    if (!canExecuteIssueTaskLine261(row)) return;
+    syncIssueTaskLineActualIssueDefault(row);
+    if (hasIssueTaskLine311Transfer(row)) {
+      actualDeductTransRows.push(row);
+      return;
+    }
+    directRows.push(row);
+  });
+  return { directRows, actualDeductTransRows };
+}
+
+export async function executeIssueTaskBatchIssueOut(rows: IssueTaskLineVO[]) {
+  const { directRows, actualDeductTransRows } = splitIssueTaskLineIssueOutRows(rows);
+  const res = await prepLocationRecActualDeductTransBatchIssueOut({
+    issueMode: 'ACTUAL_DEDUCT_TRANS',
+    issueOutBoList: [...directRows.map((row) => buildPrepLocationRecIssueOutBoFromLine(row)), ...actualDeductTransRows.map((row) => buildPrepLocationRecActualDeductTransBoFromLine(row))]
+  });
+  if (res.code !== 200) {
+    throw new Error(res.msg || '批量领料失败');
+  }
+  return {
+    directCount: directRows.length,
+    actualDeductTransCount: actualDeductTransRows.length,
+    messages: res.msg ? [res.msg] : []
+  };
+}
+
+export function buildPrepLocationRecIssueOutBoList(rows: PrepDemandDisplayRow[], routes: PrepDemand261Route[], demand: PrepLocationRecIssueDemandRef): PrepLocationRecIssueOutBo[] {
   const routeSet = new Set(routes);
-  return rows.filter((row) => isIssuablePrepLocationRecRow(row) && routeSet.has(row.warehouseRoute as PrepDemand261Route)).map((row) => buildPrepLocationRecIssueOutBoFromDisplayRow(row));
+  return rows.filter((row) => isIssuablePrepLocationRecRow(row) && routeSet.has(row.warehouseRoute as PrepDemand261Route)).map((row) => buildPrepLocationRecIssueOutBoFromDisplayRow(row, demand));
 }

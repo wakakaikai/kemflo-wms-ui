@@ -1152,7 +1152,7 @@ function useZpIssue() {
     }
     resultStatus.value = true;
     resultMessage.value = '';
-    const issueOutBoList = buildPrepLocationRecIssueOutBoList(prepDisplayRows.value, routes);
+    const issueOutBoList = buildPrepLocationRecIssueOutBoList(prepDisplayRows.value, routes, { demandId: generatedDemand.value.id, demandNo: generatedDemand.value.demandNo });
     if (!issueOutBoList.length) {
       resultStatus.value = false;
       resultMessage.value = `没有可扣料的${routeLabel}需求`;
@@ -1160,11 +1160,7 @@ function useZpIssue() {
     }
     try {
       await ElMessageBox.confirm(`将对 ${issueOutBoList.length} 条${routeLabel}库位需求执行 ${movementType.value} 扣料，是否继续？`, `确认 ${movementType.value} 扣料`, { type: 'warning' });
-      const res = await prepLocationRecIssueOut({
-        demandId: generatedDemand.value.id,
-        demandNo: generatedDemand.value.demandNo,
-        issueOutBoList
-      });
+      const res = await prepLocationRecIssueOut({ issueOutBoList });
       if (res.code !== HttpStatus.SUCCESS) {
         resultStatus.value = false;
         resultMessage.value = res.msg || `${movementType.value} 扣料失败`;
@@ -1213,7 +1209,7 @@ function useZpIssue() {
     }
     resultStatus.value = true;
     resultMessage.value = '';
-    const issueOutBoList = buildPrepLocationRecIssueOutBoList(prepDisplayRows.value, ['AUTO', 'LINE']);
+    const issueOutBoList = buildPrepLocationRecIssueOutBoList(prepDisplayRows.value, ['AUTO', 'LINE'], { demandId: generatedDemand.value.id, demandNo: generatedDemand.value.demandNo });
     if (!issueOutBoList.length) {
       resultStatus.value = false;
       resultMessage.value = '没有可扣料的自动仓或线边仓需求';
@@ -1222,11 +1218,7 @@ function useZpIssue() {
     submittingCombined.value = true;
     try {
       await ElMessageBox.confirm(`将对 ${issueOutBoList.length} 条自动仓+线边仓需求合并执行 ${movementType.value} 扣料，是否继续？`, `确认 ${movementType.value} 扣料`, { type: 'warning' });
-      const res = await prepLocationRecIssueOut({
-        demandId: generatedDemand.value.id,
-        demandNo: generatedDemand.value.demandNo,
-        issueOutBoList
-      });
+      const res = await prepLocationRecIssueOut({ issueOutBoList });
       if (res.code !== HttpStatus.SUCCESS) {
         resultStatus.value = false;
         resultMessage.value = res.msg || `${movementType.value} 扣料失败`;
