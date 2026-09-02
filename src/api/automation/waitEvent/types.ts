@@ -1,5 +1,3 @@
-import { PageQuery } from '@/api/types';
-
 export interface AutoWaitEventQuery extends PageQuery {
   instanceId?: number | string;
   waitType?: string;

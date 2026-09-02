@@ -1,5 +1,3 @@
-import { PageQuery } from '@/api/types';
-
 export interface AutoVersionQuery extends PageQuery {
   definitionId?: number | string;
   version?: number;

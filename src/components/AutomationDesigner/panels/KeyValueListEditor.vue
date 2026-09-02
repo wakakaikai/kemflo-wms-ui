@@ -13,7 +13,15 @@
         class="kv-key"
         @change="emitChange"
       />
+      <VariableAwareInput
+        v-if="enableVariablePicker"
+        v-model="row.value"
+        :placeholder="valuePlaceholder"
+        :options="variableOptions"
+        @change="emitChange"
+      />
       <el-input
+        v-else
         v-model="row.value"
         :placeholder="valuePlaceholder"
         size="default"
@@ -23,7 +31,7 @@
       <button
         type="button"
         class="kv-remove"
-        :disabled="rows.length <= 1"
+        :disabled="rows.length <= minRows"
         title="删除"
         @click="removeRow(index)"
       >
@@ -38,6 +46,8 @@
 import { ref, watch } from 'vue';
 import { Delete } from '@element-plus/icons-vue';
 import type { KeyValueRow } from './keyValueUtils';
+import VariableAwareInput from './VariableAwareInput.vue';
+import type { VariableOption } from './useUpstreamVariables';
 
 const props = withDefaults(defineProps<{
   modelValue?: KeyValueRow[];
@@ -47,6 +57,9 @@ const props = withDefaults(defineProps<{
   showHeader?: boolean;
   keyColumnLabel?: string;
   valueColumnLabel?: string;
+  enableVariablePicker?: boolean;
+  variableOptions?: VariableOption[];
+  minRows?: number;
 }>(), {
   modelValue: () => [{ key: '', value: '' }],
   keyPlaceholder: 'key',
@@ -55,6 +68,9 @@ const props = withDefaults(defineProps<{
   showHeader: false,
   keyColumnLabel: '名称',
   valueColumnLabel: '值',
+  enableVariablePicker: false,
+  variableOptions: () => [],
+  minRows: 1,
 });
 
 const emit = defineEmits<{
@@ -67,10 +83,12 @@ const rows = ref<KeyValueRow[]>([{ key: '', value: '' }]);
 watch(
   () => props.modelValue,
   (val) => {
-    const next = val?.length ? val.map(r => ({ key: r.key ?? '', value: r.value ?? '' })) : [{ key: '', value: '' }];
-    rows.value = next;
+    const mapped = val?.length
+      ? val.map((r) => ({ key: r.key ?? '', value: r.value ?? '' }))
+      : [];
+    rows.value = mapped.length || props.minRows > 0 ? (mapped.length ? mapped : [{ key: '', value: '' }]) : [];
   },
-  { immediate: true, deep: true }
+  { immediate: true, deep: true },
 );
 
 function emitChange() {
@@ -84,7 +102,7 @@ function addRow() {
 }
 
 function removeRow(index: number) {
-  if (rows.value.length <= 1) return;
+  if (rows.value.length <= props.minRows) return;
   rows.value.splice(index, 1);
   emitChange();
 }
@@ -142,11 +160,11 @@ function removeRow(index: number) {
   background: none;
   padding: 4px 0 0;
   font-size: 13px;
-  color: #5b8ff9;
+  color: #1677ff;
   cursor: pointer;
   line-height: 1.5;
 }
 .kv-add:hover {
-  color: #3d7ef5;
+  color: #0958d9;
 }
 </style>

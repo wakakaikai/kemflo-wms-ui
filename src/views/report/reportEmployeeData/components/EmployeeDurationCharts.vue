@@ -1,4 +1,5 @@
 <template>
+  <div class="employee-duration-charts" :class="{ 'is-fill': fillHeight }">
   <div class="chart-summary">
     <div class="summary-item primary">
       <span>总出勤</span>
@@ -53,6 +54,7 @@
       <div ref="dailyCompareRef" class="chart-box"></div>
     </div>
   </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -64,6 +66,7 @@ const props = defineProps<{
   duplicateList: ShopOrderReportEmployeeDurationDuplicateVO[];
   employeeId?: string;
   displayUnit?: 'hour' | 'minute';
+  fillHeight?: boolean;
 }>();
 
 type SummaryDisplayRow = Omit<ShopOrderReportEmployeeDurationSummaryVO, 'totalDuration' | 'operationDuration' | 'effectiveDuration' | 'distinctDuration' | 'duplicateDuration'> & {
@@ -551,6 +554,10 @@ defineExpose({
 });
 
 watch(() => [props.summaryList, props.duplicateList, props.employeeId, props.displayUnit], renderCharts, { deep: true });
+watch(
+  () => props.fillHeight,
+  () => nextTick(resizeCharts)
+);
 
 onMounted(() => {
   nextTick(renderCharts);
@@ -567,6 +574,40 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.employee-duration-charts.is-fill {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.employee-duration-charts.is-fill .chart-summary {
+  flex-shrink: 0;
+}
+
+.employee-duration-charts.is-fill .chart-grid {
+  flex: 1;
+  min-height: 0;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.employee-duration-charts.is-fill .chart-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.employee-duration-charts.is-fill .chart-title,
+.employee-duration-charts.is-fill .trend-employee {
+  flex-shrink: 0;
+}
+
+.employee-duration-charts.is-fill .chart-box {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
 .chart-summary {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

@@ -138,8 +138,8 @@
 </template>
 
 <script setup name="AutomationInstance" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
-import { ElFormInstance } from 'element-plus';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed, onMounted } from 'vue';
+import { FormInstance } from 'element-plus';
 import { listInstance, getInstance, terminateInstance, getInstanceNodes } from '@/api/automation/instance';
 import { AutoInstanceQuery, AutoInstanceVo, AutoInstanceNodeStatus } from '@/api/automation/instance/types';
 import { useRouter } from 'vue-router';
@@ -162,7 +162,7 @@ const currentInstance = ref<AutoInstanceVo | null>(null);
 const traceNodes = ref<AutoInstanceNodeStatus[]>([]);
 
 const detailDialog = reactive<DialogOption>({ visible: false, title: '' });
-const queryFormRef = ref<ElFormInstance>();
+const queryFormRef = ref<FormInstance>();
 
 const data = reactive<PageData<{}, AutoInstanceQuery>>({
   form: {},

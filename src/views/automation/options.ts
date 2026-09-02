@@ -3,7 +3,7 @@
 export interface AutoDictOption {
   label: string;
   value: string;
-  elTagType?: string;
+  elTagType?: ElTagType;
 }
 
 export const AUTO_TRIGGER_TYPE_OPTIONS: AutoDictOption[] = [
@@ -11,7 +11,7 @@ export const AUTO_TRIGGER_TYPE_OPTIONS: AutoDictOption[] = [
   { label: '定时触发', value: 'CRON_TRIGGER', elTagType: 'success' },
   { label: 'Webhook触发', value: 'WEBHOOK_TRIGGER', elTagType: 'warning' },
   { label: '数据触发', value: 'DATA_TRIGGER', elTagType: 'info' },
-  { label: '消息触发', value: 'MESSAGE_TRIGGER', elTagType: '' },
+  { label: '消息触发', value: 'MESSAGE_TRIGGER' },
   { label: '设备触发', value: 'DEVICE_PROPERTY_TRIGGER', elTagType: 'danger' }
 ];
 
@@ -70,6 +70,6 @@ export const AUTO_OUTBOX_STATUS_OPTIONS: AutoDictOption[] = [
 ];
 
 /** 优先使用系统字典，未配置时回退本地选项 */
-export function resolveDictOptions(dictOptions: any, fallback: AutoDictOption[]): AutoDictOption[] {
+export function resolveDictOptions(dictOptions: any, fallback: AutoDictOption[]): DictDataOption[] {
   return Array.isArray(dictOptions) && dictOptions.length > 0 ? dictOptions : fallback;
 }

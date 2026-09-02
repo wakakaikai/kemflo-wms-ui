@@ -1,29 +1,12 @@
 <template>
   <div class="component-upload-image">
-    <el-upload
-      ref="imageUploadRef"
-      multiple
-      :action="uploadImgUrl"
-      list-type="picture-card"
-      :on-success="handleUploadSuccess"
-      :before-upload="handleBeforeUpload"
-      :limit="limit"
-      :accept="fileAccept"
-      :on-error="handleUploadError"
-      :on-exceed="handleExceed"
-      :before-remove="handleDelete"
-      :show-file-list="true"
-      :headers="headers"
-      :file-list="fileList"
-      :on-preview="handlePictureCardPreview"
-      :class="{ hide: fileList.length >= limit }"
-    >
+    <el-upload ref="imageUploadRef" multiple :action="uploadImgUrl" list-type="picture-card" :on-success="handleUploadSuccess" :before-upload="handleBeforeUpload" :limit="limit" :accept="fileAccept" :on-error="handleUploadError" :on-exceed="handleExceed" :before-remove="handleDelete" :show-file-list="true" :headers="headers" :file-list="fileList" :on-preview="handlePictureCardPreview" :disabled="disabled" :class="{ hide: fileList.length >= limit }">
       <el-icon class="avatar-uploader-icon">
         <plus />
       </el-icon>
     </el-upload>
     <!-- 上传提示 -->
-    <div v-if="showTip" class="el-upload__tip">
+    <div v-if="showTip && !disabled" class="el-upload__tip">
       请上传
       <template v-if="fileSize">
         大小不超过 <b style="color: #f56c6c">{{ fileSize }}MB</b>
@@ -69,7 +52,9 @@ const props = defineProps({
     default: false
   },
   // 压缩目标大小，单位KB。默认300KB以上文件才压缩，并压缩至300KB以内
-  compressTargetSize: propTypes.number.def(300)
+  compressTargetSize: propTypes.number.def(300),
+  // 禁用组件（仅查看图片）
+  disabled: propTypes.bool.def(false)
 });
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;

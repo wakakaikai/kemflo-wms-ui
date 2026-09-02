@@ -2,6 +2,7 @@
 export enum NodeCategory {
   TRIGGER = 'trigger',
   CONTROL = 'control',
+  AI = 'ai',
   DATA = 'data',
   INTEGRATION = 'integration',
   DEVICE = 'device',
@@ -11,6 +12,7 @@ export enum NodeCategory {
 export const NodeCategoryLabels: Record<NodeCategory, string> = {
   [NodeCategory.TRIGGER]: '触发',
   [NodeCategory.CONTROL]: '控制',
+  [NodeCategory.AI]: 'AI',
   [NodeCategory.DATA]: '数据',
   [NodeCategory.INTEGRATION]: '集成',
   [NodeCategory.DEVICE]: '设备',
@@ -29,7 +31,7 @@ export interface NodeConfigItem {
 
 // 触发节点
 const triggerNodes: NodeConfigItem[] = [
-  { type: 'MANUAL_TRIGGER', category: NodeCategory.TRIGGER, label: '手工触发', icon: 'Hand', color: '#1677ff', shape: 'ellipse', defaultConfig: { description: '' } },
+  { type: 'MANUAL_TRIGGER', category: NodeCategory.TRIGGER, label: '开始', icon: 'Hand', color: '#1677ff', shape: 'ellipse', defaultConfig: { description: '', inputFields: [{ name: 'content', displayName: '用户问题', type: 'text', required: true }, { name: 'history', displayName: '对话历史', type: 'text', required: false }, { name: 'images', displayName: '图片', type: 'image', required: false }] } },
   { type: 'CRON_TRIGGER', category: NodeCategory.TRIGGER, label: '定时触发', icon: 'Clock', color: '#1677ff', shape: 'ellipse', defaultConfig: { cronExpression: '0 * * * * ?', timeZone: 'Asia/Shanghai' } },
   { type: 'WEBHOOK_TRIGGER', category: NodeCategory.TRIGGER, label: 'Webhook触发', icon: 'Link', color: '#1677ff', shape: 'ellipse', defaultConfig: { path: '/webhook/' } },
   { type: 'DATA_TRIGGER', category: NodeCategory.TRIGGER, label: '数据触发', icon: 'DataBoard', color: '#1677ff', shape: 'ellipse', defaultConfig: { worksheetId: '', eventType: 'INSERT' } },
@@ -40,11 +42,139 @@ const triggerNodes: NodeConfigItem[] = [
 // 控制节点
 const controlNodes: NodeConfigItem[] = [
   { type: 'CONDITION', category: NodeCategory.CONTROL, label: '分支', icon: 'QuestionFilled', color: '#5b8ff9', shape: 'rect', defaultConfig: { expression: '', alias: '', description: '' } },
-  { type: 'SWITCH', category: NodeCategory.CONTROL, label: '多路分支', icon: 'Share', color: '#5b8ff9', shape: 'rect', defaultConfig: { expression: '', cases: [{ value: '', label: '分支1' }], alias: '', description: '' } },
-  { type: 'LOOP', category: NodeCategory.CONTROL, label: '循环', icon: 'Refresh', color: '#fa8c16', shape: 'rect', defaultConfig: { collectionExpression: '', variableName: 'item', maxIterations: 100 } },
+  { type: 'SWITCH', category: NodeCategory.CONTROL, label: '条件分支', icon: 'Share', color: '#5b8ff9', shape: 'rect', defaultConfig: { expression: '', branches: [], cases: [{ value: '', label: 'IF', type: 'IF', remarks: 'IF' }, { value: 'default', label: 'ELSE', type: 'DEFAULT', remarks: '默认分支' }], alias: '', description: '' } },
+  { type: 'LOOP', category: NodeCategory.CONTROL, label: '循环', icon: 'Refresh', color: '#fa8c16', shape: 'rect', defaultConfig: { loopType: 'counted', maxLoopTimes: 3, collectionExpression: '', variableName: 'item', loopParams: [], inputMapping: {}, outputVar: 'loopResult' } },
   { type: 'DELAY', category: NodeCategory.CONTROL, label: '延时等待', icon: 'Timer', color: '#fa8c16', shape: 'rect', defaultConfig: { delaySeconds: 60 } },
   { type: 'WAIT', category: NodeCategory.CONTROL, label: '等待事件', icon: 'Stopwatch', color: '#fa8c16', shape: 'rect', defaultConfig: { waitType: 'APPROVAL', waitKey: '', timeout: 86400 } },
   { type: 'END', category: NodeCategory.CONTROL, label: '结束', icon: 'CircleCloseFilled', color: '#fa8c16', shape: 'ellipse', defaultConfig: {} },
+];
+
+// AI 节点
+const aiNodes: NodeConfigItem[] = [
+  {
+    type: 'AI_PROMPT_TEMPLATE',
+    category: NodeCategory.AI,
+    label: '提示词模板',
+    icon: 'ChatLineRound',
+    color: '#2f6fed',
+    shape: 'rect',
+    defaultConfig: {
+      systemPrompt: '你是企业流程自动化助手，请基于输入变量完成任务。',
+      userPrompt: '请处理以下业务输入：${input}',
+      variables: [{ field: 'input', description: '用户输入或上游节点输出', required: true }],
+      outputVar: 'prompt',
+    },
+  },
+  {
+    type: 'AI_LLM_CHAT',
+    category: NodeCategory.AI,
+    label: '大模型对话',
+    icon: 'ChatDotRound',
+    color: '#2f6fed',
+    shape: 'rect',
+    defaultConfig: {
+      modelId: '',
+      modelName: '',
+      promptVar: 'prompt',
+      temperature: 0.7,
+      maxTokens: 2048,
+      stream: false,
+      outputVar: 'aiResponse',
+    },
+  },
+  {
+    type: 'AI_KNOWLEDGE_RETRIEVE',
+    category: NodeCategory.AI,
+    label: '知识库检索',
+    icon: 'Reading',
+    color: '#00a870',
+    shape: 'rect',
+    defaultConfig: {
+      knowledgeIds: [],
+      queryExpression: '${input}',
+      topK: 4,
+      similarity: 0.76,
+      outputVar: 'knowledgeContext',
+    },
+  },
+  {
+    type: 'AI_MCP_TOOL',
+    category: NodeCategory.AI,
+    label: 'MCP工具',
+    icon: 'Tools',
+    color: '#7b61ff',
+    shape: 'rect',
+    defaultConfig: {
+      mcpId: '',
+      toolName: '',
+      arguments: {},
+      outputVar: 'toolResult',
+    },
+  },
+  {
+    type: 'AI_FLOW_CALL',
+    category: NodeCategory.AI,
+    label: 'AI流程调用',
+    icon: 'Operation',
+    color: '#13a8a8',
+    shape: 'rect',
+    defaultConfig: {
+      flowId: '',
+      inputMapping: {},
+      outputVar: 'flowResult',
+    },
+  },
+  {
+    type: 'AI_MEMORY',
+    category: NodeCategory.AI,
+    label: '上下文记忆',
+    icon: 'Notebook',
+    color: '#fa8c16',
+    shape: 'rect',
+    defaultConfig: {
+      memoryKey: '${sessionId}',
+      writeMode: 'APPEND',
+      contentExpression: '${aiResponse.content}',
+      outputVar: 'memory',
+    },
+  },
+  {
+    type: 'CHAT_VAR_GET',
+    category: NodeCategory.AI,
+    label: '变量读取',
+    icon: 'Download',
+    color: '#13c2c2',
+    shape: 'rect',
+    defaultConfig: {
+      variables: [{ name: 'question', description: '用户问题' }],
+      outputVar: 'chatVars',
+    },
+  },
+  {
+    type: 'CHAT_VAR_SET',
+    category: NodeCategory.AI,
+    label: '变量赋值',
+    icon: 'Upload',
+    color: '#13c2c2',
+    shape: 'rect',
+    defaultConfig: {
+      variables: [{ name: 'answer', valueExpression: '${aiResponse.content}' }],
+      outputVar: 'chatVars',
+    },
+  },
+  {
+    type: 'AI_RESPONSE',
+    category: NodeCategory.AI,
+    label: '回复输出',
+    icon: 'Finished',
+    color: '#ff7a45',
+    shape: 'rect',
+    defaultConfig: {
+      responseTemplate: '${aiResponse.content}',
+      includeSources: true,
+      outputVar: 'response',
+    },
+  },
 ];
 
 // 数据节点
@@ -59,21 +189,27 @@ const dataNodes: NodeConfigItem[] = [
 
 // 集成节点
 const integrationNodes: NodeConfigItem[] = [
-  { type: 'HTTP_CALL', category: NodeCategory.INTEGRATION, label: '发送自定义请求', icon: 'Connection', color: '#5b8ff9', shape: 'rect', defaultConfig: {
+  { type: 'HTTP_CALL', category: NodeCategory.INTEGRATION, label: 'HTTP 请求', icon: 'Connection', color: '#1677ff', shape: 'rect', defaultConfig: {
     method: 'GET',
     url: '',
     contentType: 'application/json',
     headers: {},
     queryParams: {},
+    inputMapping: {},
     bodyType: 'none',
     body: '',
     formBody: {},
-    timeoutMs: 30000,
+    timeoutMs: 120000,
     successCodes: '200,201,204',
     responseType: 'json',
-    outputVar: 'httpResponse',
+    outputVar: 'body',
+    outputMapping: { statusCode: 'result.status', body: 'result.body' },
+    outputVariables: [
+      { name: 'statusCode', displayName: 'statusCode', type: 'number', sourcePath: 'result.status', description: 'HTTP请求返回的状态码', builtin: true },
+      { name: 'body', displayName: 'body', type: 'string', sourcePath: 'result.body', description: 'HTTP请求的返回结果', builtin: true },
+    ],
   }},
-  { type: 'JDBC_CALL', category: NodeCategory.INTEGRATION, label: 'JDBC查询', icon: 'Coin', color: '#722ed1', shape: 'rect', defaultConfig: { connectionId: '', sql: '', params: [] } },
+  { type: 'JDBC_CALL', category: NodeCategory.INTEGRATION, label: '自定义 SQL', icon: 'Coin', color: '#722ed1', shape: 'rect', defaultConfig: { dataSourceName: '', connectionId: '', sql: '', params: [], inputMapping: {}, outputType: 'object[]', outputVar: 'sqlResult' } },
   { type: 'SAP_CALL', category: NodeCategory.INTEGRATION, label: 'SAP调用', icon: 'Cloud', color: '#722ed1', shape: 'rect', defaultConfig: { operationCode: '', inputMapping: {} } },
   { type: 'MQTT_CALL', category: NodeCategory.INTEGRATION, label: 'MQTT发布', icon: 'Send', color: '#722ed1', shape: 'rect', defaultConfig: { connectionId: '', topic: '', payload: '' } },
   { type: 'SFTP_CALL', category: NodeCategory.INTEGRATION, label: 'SFTP操作', icon: 'FolderOpened', color: '#722ed1', shape: 'rect', defaultConfig: { connectionId: '', action: 'UPLOAD', remotePath: '', localPath: '' } },
@@ -101,6 +237,7 @@ const approvalNodes: NodeConfigItem[] = [
 export const ALL_NODE_CONFIGS: NodeConfigItem[] = [
   ...triggerNodes,
   ...controlNodes,
+  ...aiNodes,
   ...dataNodes,
   ...integrationNodes,
   ...deviceNodes,

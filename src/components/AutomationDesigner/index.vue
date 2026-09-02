@@ -14,8 +14,11 @@
 
       <!-- 画布区域 -->
       <main class="canvas-panel">
-        <div class="toolbar">
+        <div v-if="!externalToolbar" class="toolbar">
           <div v-if="!readonly" class="toolbar-group">
+            <el-button size="small" type="primary" plain @click="aiComposeDialogVisible = true">
+              <el-icon><MagicStick /></el-icon>AI编排
+            </el-button>
             <el-button size="small" type="primary" @click="handleSave">
               <el-icon><Check /></el-icon>保存
             </el-button>
@@ -32,21 +35,6 @@
           <div v-else class="toolbar-group">
             <el-tag type="warning" effect="plain" size="small">历史版本预览（只读）</el-tag>
           </div>
-          <template v-if="!readonly">
-            <div class="toolbar-divider" />
-            <div class="toolbar-group">
-              <el-tooltip content="撤销 (Ctrl+Z)" placement="bottom">
-                <button class="tool-icon-btn" :disabled="!canUndo" @click="handleUndo">
-                  <el-icon><RefreshLeft /></el-icon>
-                </button>
-              </el-tooltip>
-              <el-tooltip content="重做 (Ctrl+Shift+Z)" placement="bottom">
-                <button class="tool-icon-btn" :disabled="!canRedo" @click="handleRedo">
-                  <el-icon><RefreshRight /></el-icon>
-                </button>
-              </el-tooltip>
-            </div>
-          </template>
           <div class="toolbar-divider" />
           <div class="toolbar-group">
             <el-tooltip content="节点物料" placement="bottom">
@@ -93,33 +81,50 @@
                 <line x1="8" y1="12" x2="16" y2="12" />
               </svg>
             </div>
-            <p class="empty-title">{{ readonly ? '该版本暂无流程设计数据' : '点击节点底部 + 添加下一步' }}</p>
-            <p v-if="!readonly" class="empty-desc">竖向编排 · 节点 ··· 打开设置 · 工具栏可展开节点物料</p>
+            <p class="empty-title">{{ readonly ? '该版本暂无流程设计数据' : '点击节点右侧 + 添加下一步' }}</p>
+            <p v-if="!readonly" class="empty-desc">横向编排 · 平滑曲线连线 · 左下角可缩放与撤销</p>
           </div>
 
-          <!-- 浮动缩放工具栏（明道云风格） -->
-          <div class="floating-zoom-bar">
-            <el-tooltip content="适应画布" placement="right">
-              <button class="float-btn" @click="handleZoomToFit">
-                <el-icon><FullScreen /></el-icon>
+          <!-- 左下角画布控制条（Jeecg 风格） -->
+          <div class="canvas-controls-bar">
+            <el-tooltip content="缩小" placement="top">
+              <button type="button" class="canvas-ctrl-btn" @click="handleZoomOut">
+                <el-icon :size="16"><ZoomOut /></el-icon>
               </button>
             </el-tooltip>
-            <div class="float-divider" />
-            <el-tooltip content="缩小" placement="right">
-              <button class="float-btn" @click="handleZoomOut">
-                <el-icon><ZoomOut /></el-icon>
+            <el-tooltip content="放大" placement="top">
+              <button type="button" class="canvas-ctrl-btn" @click="handleZoomIn">
+                <el-icon :size="16"><ZoomIn /></el-icon>
               </button>
             </el-tooltip>
-            <span class="float-zoom-label">{{ zoomPercent }}%</span>
-            <el-tooltip content="放大" placement="right">
-              <button class="float-btn" @click="handleZoomIn">
-                <el-icon><ZoomIn /></el-icon>
+            <el-tooltip content="恢复 100%" placement="top">
+              <button type="button" class="canvas-ctrl-btn" @click="handleZoomReset">
+                <svg class="ctrl-icon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2">
+                  <path d="M2.5 5.5V2.5H5.5" />
+                  <path d="M10.5 2.5H13.5V5.5" />
+                  <path d="M13.5 10.5V13.5H10.5" />
+                  <path d="M5.5 13.5H2.5V10.5" />
+                  <circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none" />
+                </svg>
               </button>
             </el-tooltip>
+            <div v-if="!readonly" class="canvas-ctrl-divider" />
+            <template v-if="!readonly">
+              <el-tooltip content="撤销 (Ctrl+Z)" placement="top">
+                <button type="button" class="canvas-ctrl-btn" :disabled="!canUndo" @click="handleUndo">
+                  <el-icon :size="16"><RefreshLeft /></el-icon>
+                </button>
+              </el-tooltip>
+              <el-tooltip content="重做 (Ctrl+Shift+Z)" placement="top">
+                <button type="button" class="canvas-ctrl-btn" :disabled="!canRedo" @click="handleRedo">
+                  <el-icon :size="16"><RefreshRight /></el-icon>
+                </button>
+              </el-tooltip>
+            </template>
           </div>
         </div>
 
-        <div ref="minimapRef" class="designer-minimap" />
+        <div ref="minimapRef" v-if="!externalToolbar" class="designer-minimap" />
 
         <!-- 底部日志 -->
         <transition name="slide-up">
@@ -168,6 +173,34 @@
         <el-button type="primary" :loading="running" @click="confirmRun">开始执行</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="aiComposeDialogVisible" title="AI流程编排" width="640px" destroy-on-close append-to-body>
+      <div class="ai-compose">
+        <div class="ai-template-row">
+          <button
+            v-for="item in aiComposeTemplates"
+            :key="item.title"
+            type="button"
+            class="ai-template-btn"
+            @click="applyAiComposeTemplate(item.prompt)"
+          >
+            {{ item.title }}
+          </button>
+        </div>
+        <el-input
+          v-model="aiComposePrompt"
+          type="textarea"
+          :rows="7"
+          maxlength="500"
+          show-word-limit
+          placeholder="例如：客户提问先检索知识库，再调用大模型生成答案，必要时调用MCP工单工具，最后返回回复"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="aiComposeDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="aiComposing" @click="handleAiCompose">生成草稿</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -176,9 +209,10 @@ import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue';
 import { Graph, Node, Edge, MiniMap } from '@antv/x6';
 import {
   Check, Select, Upload, RefreshLeft, RefreshRight,
-  ZoomOut, ZoomIn, FullScreen, Download, Document, Close, VideoPlay, Grid,
+  ZoomOut, ZoomIn, Download, Document, Close, VideoPlay, Grid, MagicStick,
 } from '@element-plus/icons-vue';
-import { useGraph, resizeGraph, addNodeToGraph, exportDesignJson, importDesignJson, applyNodeRuntimeStatus, clearNodeRuntimeStatus, applyVerticalEdgeStyle, alignNodeBelow, CARD_WIDTH, CARD_HEIGHT } from './graph/useGraph';
+import { useGraph, resizeGraph, addNodeToGraph, exportDesignJson, importDesignJson, applyNodeRuntimeStatus, clearNodeRuntimeStatus, applyFlowEdgeStyle, alignNodeRight, CARD_WIDTH, CARD_HEIGHT } from './graph/useGraph';
+import { getDefaultSourcePort, getDefaultTargetPort } from './nodes/registerNodes';
 import { getNodeConfig } from './types';
 import BottomPanel from './panels/bottomPanel.vue';
 import NodePicker from './panels/NodePicker.vue';
@@ -195,6 +229,7 @@ const props = defineProps<{
   versionId?: string | number;
   automationName?: string;
   readonly?: boolean;
+  externalToolbar?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -203,6 +238,7 @@ const emit = defineEmits<{
 }>();
 
 const readonly = computed(() => !!props.readonly);
+const externalToolbar = computed(() => !!props.externalToolbar);
 
 const canvasAreaRef = ref<HTMLDivElement>();
 const canvasRef = ref<HTMLDivElement>();
@@ -233,6 +269,23 @@ const runDialogVisible = ref(false);
 const runVariablesText = ref('{\n  "orderId": "SO-10086",\n  "amount": 15000\n}');
 const runningInstanceId = ref<string | number | ''>('');
 const runningInstanceStatus = ref('');
+const aiComposeDialogVisible = ref(false);
+const aiComposing = ref(false);
+const aiComposePrompt = ref('');
+const aiComposeTemplates = [
+  {
+    title: '智能客服',
+    prompt: '客户提问先检索知识库，再调用大模型生成答案，必要时调用MCP工单工具，最后返回回复',
+  },
+  {
+    title: '设备异常',
+    prompt: '设备属性触发后判断温度阈值，调用大模型分析异常原因，发送HTTP告警并输出处理建议',
+  },
+  {
+    title: '订单审核',
+    prompt: 'Webhook接收订单数据，知识库检索业务规则，大模型判断风险，风险高时发起审批，否则直接回复结果',
+  },
+];
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 let graph: Graph | null = null;
@@ -286,7 +339,7 @@ onMounted(async () => {
   graph = useGraph(canvasRef.value, { readonly: readonly.value });
   syncCanvasSize();
 
-  if (minimapRef.value) {
+  if (minimapRef.value && !externalToolbar.value) {
     graph.use(new MiniMap({
       container: minimapRef.value,
       width: 160,
@@ -409,7 +462,7 @@ onMounted(async () => {
   });
 
   graph.on('edge:added', ({ edge }: { edge: Edge }) => {
-    applyVerticalEdgeStyle(edge);
+    applyFlowEdgeStyle(edge);
     [edge.getSourceCellId(), edge.getTargetCellId()].forEach((cid, i) => {
       const portId = i === 0 ? edge.getSourcePortId() : edge.getTargetPortId();
       if (!cid || !portId) return;
@@ -570,32 +623,47 @@ function handlePickerSelect(type: string) {
 
     const newNode = addNodeToGraph(graph, type, rawX - CARD_WIDTH / 2, rawY - CARD_HEIGHT / 2);
     if (sourceNode) {
-      alignNodeBelow(sourceNode, newNode, 48);
+      alignNodeRight(sourceNode, newNode, 80);
     }
-    const e1 = graph.addEdge({ source: { cell: sourceNode!.id, port: sourcePort || 'bottom' }, target: { cell: newNode.id, port: 'top' }, shape: 'automation-edge' });
-    applyVerticalEdgeStyle(e1);
+    const sourceType = sourceNode?.getData()?.nodeType || '';
+    const e1 = graph.addEdge({
+      source: { cell: sourceNode!.id, port: sourcePort || getDefaultSourcePort(sourceType) },
+      target: { cell: newNode.id, port: 'left' },
+      shape: 'automation-edge',
+    });
+    applyFlowEdgeStyle(e1);
     if (targetNode) {
-      alignNodeBelow(newNode, targetNode, 48);
-      const e2 = graph.addEdge({ source: { cell: newNode.id, port: 'bottom' }, target: { cell: targetNode.id, port: targetPort || 'top' }, shape: 'automation-edge' });
-      applyVerticalEdgeStyle(e2);
+      alignNodeRight(newNode, targetNode, 80);
+      const targetType = targetNode.getData()?.nodeType || '';
+      const e2 = graph.addEdge({
+        source: { cell: newNode.id, port: getDefaultSourcePort(type) },
+        target: { cell: targetNode.id, port: targetPort || getDefaultTargetPort(targetType) },
+        shape: 'automation-edge',
+      });
+      applyFlowEdgeStyle(e2);
     }
     addLog('success', '在连线中插入节点');
   } else if (src.sourceNode) {
     const sourceNode = src.sourceNode;
-    const newNode = addNodeToGraph(graph, type, rawX - CARD_WIDTH / 2, rawY);
-    alignNodeBelow(sourceNode, newNode, 48);
+    const sourceType = sourceNode.getData()?.nodeType || '';
+    const newNode = addNodeToGraph(graph, type, rawX, rawY - CARD_HEIGHT / 2);
+    alignNodeRight(sourceNode, newNode, 80);
 
-    // 分支节点：第二路分支偏右排列
+    // 分支节点：第二路分支向下排列
     if (type === 'CONDITION' || type === 'SWITCH') {
       const outs = graph.getOutgoingEdges(sourceNode) || [];
       if (outs.length >= 1) {
         const pos = newNode.getPosition();
-        newNode.setPosition({ x: pos.x + (outs.length > 1 ? 0 : 160), y: pos.y });
+        newNode.setPosition({ x: pos.x, y: pos.y + (outs.length > 1 ? 0 : 120) });
       }
     }
 
-    const e = graph.addEdge({ source: { cell: sourceNode.id, port: 'bottom' }, target: { cell: newNode.id, port: 'top' }, shape: 'automation-edge' });
-    applyVerticalEdgeStyle(e);
+    const e = graph.addEdge({
+      source: { cell: sourceNode.id, port: getDefaultSourcePort(sourceType) },
+      target: { cell: newNode.id, port: 'left' },
+      shape: 'automation-edge',
+    });
+    applyFlowEdgeStyle(e);
     addLog('success', `添加节点: ${getNodeConfig(type)?.label || type}`);
   } else {
     handleAddNode(type, rawX - CARD_WIDTH / 2, rawY - CARD_HEIGHT / 2);
@@ -692,6 +760,209 @@ function handleRun() {
   runDialogVisible.value = true;
 }
 
+type AiComposeStep = {
+  type: string;
+  label?: string;
+  config?: Record<string, any>;
+};
+
+function applyAiComposeTemplate(prompt: string) {
+  aiComposePrompt.value = prompt;
+}
+
+function hasPromptKeyword(text: string, words: string[]) {
+  return words.some((word) => text.includes(word.toLowerCase()));
+}
+
+function buildAiComposeSteps(prompt: string): AiComposeStep[] {
+  const text = prompt.toLowerCase();
+  const steps: AiComposeStep[] = [];
+  const hasWebhook = hasPromptKeyword(text, ['webhook', '接口', 'api', '回调']);
+  const hasCron = hasPromptKeyword(text, ['定时', 'cron', '每天', '每小时', '周期']);
+  const hasDevice = hasPromptKeyword(text, ['设备', '点位', '温度', 'plc', '传感器']);
+  const hasData = hasPromptKeyword(text, ['数据', '表', '记录', '订单', '工单']);
+  const hasCondition = hasPromptKeyword(text, ['判断', '条件', '如果', '分支', '风险', '阈值']);
+  const hasKnowledge = hasPromptKeyword(text, ['知识库', '知识', 'rag', '检索', '规则', '文档']);
+  const hasMcp = hasPromptKeyword(text, ['mcp', '工具', '插件']);
+  const hasHttp = hasPromptKeyword(text, ['http', '告警', '通知', '回调', '第三方']);
+  const hasApproval = hasPromptKeyword(text, ['审批', '审核', '人工']);
+  const hasMemory = hasPromptKeyword(text, ['记忆', '上下文', '会话', '多轮']);
+  const trigger: AiComposeStep = hasDevice
+    ? {
+      type: 'DEVICE_PROPERTY_TRIGGER',
+      label: '设备事件触发',
+      config: { productCode: '${productCode}', pointCode: '${pointCode}', operator: '>', threshold: 0 },
+    }
+    : hasCron
+      ? {
+        type: 'CRON_TRIGGER',
+        label: '定时触发',
+        config: { cronExpression: '0 0/5 * * * ?', timeZone: 'Asia/Shanghai' },
+      }
+      : hasWebhook
+        ? {
+          type: 'WEBHOOK_TRIGGER',
+          label: 'Webhook触发',
+          config: { path: '/webhook/ai-flow' },
+        }
+        : hasData
+          ? {
+            type: 'DATA_TRIGGER',
+            label: '数据触发',
+            config: { worksheetId: '${worksheetId}', eventType: 'INSERT' },
+          }
+          : {
+            type: 'MANUAL_TRIGGER',
+            label: '手工触发',
+            config: { description: '手动启动AI流程' },
+          };
+  steps.push(trigger);
+
+  if (hasCondition) {
+    steps.push({
+      type: 'CONDITION',
+      label: hasDevice ? '阈值判断' : '条件判断',
+      config: { expression: hasDevice ? '${value} > ${threshold}' : '${riskLevel} == "HIGH"', alias: '', description: '满足条件后继续执行' },
+    });
+  }
+  if (hasKnowledge) {
+    steps.push({
+      type: 'AI_KNOWLEDGE_RETRIEVE',
+      label: '检索知识库',
+      config: { knowledgeIds: [], queryExpression: '${input}', topK: 4, similarity: 0.76, outputVar: 'knowledgeContext' },
+    });
+  }
+  steps.push({
+    type: 'AI_PROMPT_TEMPLATE',
+    label: '组织提示词',
+    config: {
+      systemPrompt: '你是企业流程自动化助手，请基于业务上下文输出结构化结果。',
+      userPrompt: hasKnowledge
+        ? '业务输入：${input}\n知识库上下文：${knowledgeContext}\n请给出处理结论。'
+        : '业务输入：${input}\n请给出处理结论。',
+      variables: [{ field: 'input', description: '流程输入', required: true }],
+      outputVar: 'prompt',
+    },
+  });
+  steps.push({
+    type: 'AI_LLM_CHAT',
+    label: '大模型生成',
+    config: { modelId: '', modelName: '', promptVar: 'prompt', temperature: 0.7, maxTokens: 2048, stream: false, outputVar: 'aiResponse' },
+  });
+  if (hasMcp) {
+    steps.push({
+      type: 'AI_MCP_TOOL',
+      label: '调用MCP工具',
+      config: { mcpId: '', toolName: '', arguments: { input: '${aiResponse.content}' }, outputVar: 'toolResult' },
+    });
+  }
+  if (hasApproval) {
+    steps.push({
+      type: 'APPROVAL_START',
+      label: '发起人工审批',
+      config: { flowCode: '', businessKey: '${businessKey}', variables: { aiResult: '${aiResponse.content}' } },
+    });
+    steps.push({
+      type: 'APPROVAL_WAIT',
+      label: '等待审批结果',
+      config: { approvalInstanceId: '${approvalInstanceId}', timeout: 604800 },
+    });
+  }
+  if (hasHttp) {
+    steps.push({
+      type: 'HTTP_CALL',
+      label: hasDevice ? '发送异常告警' : '发送结果通知',
+      config: {
+        method: 'POST',
+        url: '',
+        contentType: 'application/json',
+        headers: {},
+        queryParams: {},
+        bodyType: 'json',
+        body: '{\n  "content": "${aiResponse.content}"\n}',
+        timeoutMs: 30000,
+        successCodes: '200,201,204',
+        responseType: 'json',
+        outputVar: 'notifyResult',
+      },
+    });
+  }
+  if (hasMemory) {
+    steps.push({
+      type: 'AI_MEMORY',
+      label: '写入上下文',
+      config: { memoryKey: '${sessionId}', writeMode: 'APPEND', contentExpression: '${aiResponse.content}', outputVar: 'memory' },
+    });
+  }
+  steps.push({
+    type: 'AI_RESPONSE',
+    label: '返回AI结果',
+    config: { responseTemplate: '${aiResponse.content}', includeSources: hasKnowledge, outputVar: 'response' },
+  });
+  steps.push({ type: 'END', label: '流程结束', config: {} });
+  return steps;
+}
+
+async function handleAiCompose() {
+  if (!graph) return;
+  const prompt = aiComposePrompt.value.trim();
+  if (!prompt) {
+    ElMessage.warning('请输入编排需求');
+    return;
+  }
+  if (graph.getCells().length > 0) {
+    try {
+      await ElMessageBox.confirm('生成草稿会替换当前画布内容，是否继续？', 'AI流程编排', {
+        confirmButtonText: '继续',
+        cancelButtonText: '取消',
+        type: 'warning',
+      });
+    } catch {
+      return;
+    }
+  }
+
+  aiComposing.value = true;
+  try {
+    const steps = buildAiComposeSteps(prompt);
+    graph.clearCells();
+    const startX = 120;
+    const startY = 220;
+    const gap = 100;
+    const nodes = steps.map((step, index) => {
+      const x = startX + index * (CARD_WIDTH + gap);
+      const y = startY;
+      const node = addNodeToGraph(graph!, step.type, x, y);
+      const data = node.getData() || {};
+      node.setData({
+        ...data,
+        label: step.label || data.label,
+        config: { ...(data.config || {}), ...(step.config || {}) },
+      });
+      return node;
+    });
+    nodes.forEach((node, index) => {
+      if (index === 0) return;
+      alignNodeRight(nodes[index - 1], node, gap);
+      const prevType = nodes[index - 1].getData()?.nodeType || '';
+      const edge = graph!.addEdge({
+        shape: 'automation-edge',
+        source: { cell: nodes[index - 1].id, port: getDefaultSourcePort(prevType) },
+        target: { cell: node.id, port: 'left' },
+      });
+      applyFlowEdgeStyle(edge);
+    });
+    graph.zoomToFit({ maxScale: 1, padding: 40 });
+    updateZoomLabel();
+    showEmptyHint.value = false;
+    aiComposeDialogVisible.value = false;
+    addLog('success', `AI流程草稿已生成：${steps.length} 个节点`);
+    ElMessage.success('AI流程草稿已生成');
+  } finally {
+    aiComposing.value = false;
+  }
+}
+
 async function confirmRun() {
   const id = resolveDefinitionId();
   if (!id || !graph) return;
@@ -764,6 +1035,11 @@ function handleUndo() { graph?.undo(); }
 function handleRedo() { graph?.redo(); }
 function handleZoomOut() { graph?.zoom(-0.1); updateZoomLabel(); }
 function handleZoomIn() { graph?.zoom(0.1); updateZoomLabel(); }
+function handleZoomReset() {
+  if (!graph) return;
+  graph.zoomTo(1);
+  updateZoomLabel();
+}
 function handleZoomToFit() { graph?.zoomToFit({ maxScale: 1, padding: 40 }); updateZoomLabel(); }
 
 function handleExport() {
@@ -804,12 +1080,22 @@ function handleUpdateConfig(config: Record<string, any>) {
   node.setData(data);
   addLog('info', `更新节点配置: ${data.label || node.id}`);
 }
+
+defineExpose({
+  save: handleSave,
+  validate: handleValidate,
+  publish: handlePublish,
+  run: handleRun,
+  exportJson: handleExport,
+  zoomToFit: handleZoomToFit,
+  zoomReset: handleZoomReset,
+});
 </script>
 
 <style scoped>
 .designer-root {
   height: 100%;
-  background: #fff;
+  background: #f5f6f7;
 }
 .designer-root.is-readonly .canvas-panel {
   border-left: none;
@@ -870,28 +1156,36 @@ function handleUpdateConfig(config: Record<string, any>) {
   overflow: hidden;
   position: relative;
   min-width: 0;
-  background: #f7f8fa;
+  background: #f5f6f7;
 }
 .toolbar {
+  position: absolute;
+  top: 10px;
+  right: 62px;
+  z-index: 20;
   display: flex;
   align-items: center;
-  gap: 4px;
-  height: 44px;
-  padding: 0 12px;
-  border-bottom: 1px solid #f0f0f0;
-  background: #fafafa;
+  gap: 8px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
   flex-shrink: 0;
 }
 .toolbar-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+}
+.toolbar :deep(.el-button) {
+  height: 32px;
+  border-radius: 4px;
+  padding: 0 14px;
+  font-size: 13px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 .toolbar-divider {
-  width: 1px;
-  height: 20px;
-  background: #e8eaed;
-  margin: 0 6px;
+  display: none;
 }
 .toolbar-spacer {
   flex: 1;
@@ -900,11 +1194,11 @@ function handleUpdateConfig(config: Record<string, any>) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: #fff;
   color: #4e5969;
   cursor: pointer;
   transition: all 0.15s;
@@ -978,53 +1272,53 @@ function handleUpdateConfig(config: Record<string, any>) {
   margin: 0;
 }
 
-/* ---- Floating zoom ---- */
-.floating-zoom-bar {
+/* ---- Canvas controls (Jeecg style) ---- */
+.canvas-controls-bar {
   position: absolute;
-  top: 16px;
-  left: 16px;
+  bottom: 16px;
+  left: 20px;
   z-index: 12;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 2px;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.92);
+  padding: 4px 6px;
+  background: #fff;
   border: 1px solid #e8eaed;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
 }
-.float-btn {
+.canvas-ctrl-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #4e5969;
+  color: #595959;
   cursor: pointer;
-  transition: all 0.15s;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
 }
-.float-btn:hover {
-  background: #f0f5ff;
-  color: #5f95ff;
+.canvas-ctrl-btn:hover:not(:disabled) {
+  background: #f5f5f5;
+  color: #262626;
 }
-.float-divider {
-  width: 20px;
-  height: 1px;
+.canvas-ctrl-btn:disabled {
+  color: #d9d9d9;
+  cursor: not-allowed;
+}
+.canvas-ctrl-btn .ctrl-icon {
+  display: block;
+}
+.canvas-ctrl-divider {
+  width: 1px;
+  height: 20px;
   background: #e8eaed;
-  margin: 2px 0;
-}
-.float-zoom-label {
-  font-size: 11px;
-  color: #8c8c8c;
-  min-width: 36px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  padding: 2px 0;
+  margin: 0 4px;
+  flex: 0 0 auto;
 }
 
 /* ---- Bottom logs ---- */
@@ -1044,5 +1338,32 @@ function handleUpdateConfig(config: Record<string, any>) {
 .slide-up-leave-to {
   height: 0;
   opacity: 0;
+}
+
+.ai-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ai-template-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ai-template-btn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  background: #fff;
+  color: #4e5969;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ai-template-btn:hover {
+  border-color: #2f6fed;
+  color: #2f6fed;
+  background: #f4f8ff;
 }
 </style>

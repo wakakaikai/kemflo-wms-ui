@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="dialogVisible" :title="title" width="700px" append-to-body>
+  <el-dialog v-model="dialogVisible" :title="title" width="700px" :append-to-body="appendToBody">
     <el-form label-width="auto">
       <el-form-item label="批量输入" :label-width="labelWidth">
         <el-input v-model="inputText" :placeholder="placeholder" :autosize="{ minRows: 2, maxRows: 4 }" type="textarea" clearable @paste="handlePaste" @keyup.enter="handleAddItems" />
@@ -34,6 +34,7 @@ interface Props {
   title?: string;
   placeholder?: string;
   labelWidth?: string;
+  appendToBody?: boolean;
   confirmCallback?: (value: string[]) => void;
 }
 
@@ -46,7 +47,8 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
   title: '批量输入',
   placeholder: '请输入条码，支持多行粘贴',
-  labelWidth: '80px'
+  labelWidth: '80px',
+  appendToBody: true
 });
 
 const emit = defineEmits<Emits>();

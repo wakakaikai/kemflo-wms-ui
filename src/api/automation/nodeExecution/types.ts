@@ -1,5 +1,3 @@
-import { PageQuery } from '@/api/types';
-
 export interface AutoNodeExecutionQuery extends PageQuery {
   instanceId?: number | string;
   nodeType?: string;

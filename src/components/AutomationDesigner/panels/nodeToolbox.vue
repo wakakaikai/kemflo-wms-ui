@@ -80,7 +80,7 @@ function handleDragStart(event: DragEvent, type: string) {
 }
 
 function handleClick(type: string) {
-  emit('addNode', type, 280 + Math.random() * 120, 120 + Math.random() * 160);
+  emit('addNode', type, 180 + Math.random() * 120, 220 + Math.random() * 80);
 }
 </script>
 

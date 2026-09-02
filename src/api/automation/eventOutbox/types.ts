@@ -1,5 +1,3 @@
-import { PageQuery } from '@/api/types';
-
 export interface AutoEventOutboxQuery extends PageQuery {
   eventType?: string;
   businessType?: string;

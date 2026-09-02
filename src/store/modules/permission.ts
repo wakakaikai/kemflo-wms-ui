@@ -9,9 +9,10 @@ import ParentView from '@/components/ParentView/index.vue';
 import InnerLink from '@/layout/components/InnerLink/index.vue';
 import { ref } from 'vue';
 import { createCustomNameComponent } from '@/utils/createCustomNameComponent';
+import { ElNotification } from 'element-plus';
 
 // 匹配views里面所有的.vue文件
-const modules = import.meta.glob('./../../views/**/*.vue');
+const modules = import.meta.glob(['./../../views/**/*.vue', '!./../../views/automation/_jeecg_super_source/**/*.vue']);
 export const usePermissionStore = defineStore('permission', () => {
   const routes = ref<RouteRecordRaw[]>([]);
   const addRoutes = ref<RouteRecordRaw[]>([]);
@@ -86,7 +87,13 @@ export const usePermissionStore = defineStore('permission', () => {
       } else if (route.component?.toString() === 'InnerLink') {
         route.component = InnerLink;
       } else {
-        route.component = loadView(route.component, route.name as string);
+        const hasChildren = Boolean(route.children?.length);
+        const inferredView = !hasChildren ? [lastRouter?.path, route.path].filter(Boolean).join('/').replace(/\/+/g, '/') : undefined;
+        const view = route.component || inferredView;
+        // 目录路由可以只有 children；叶子路由缺少 component 时则根据完整路由路径推导页面。
+        if (view) {
+          route.component = loadView(view, route.name as string);
+        }
       }
       if (route.children != null && route.children && route.children.length) {
         route.children = filterAsyncRouter(route.children, route, type);
@@ -144,17 +151,33 @@ export const filterDynamicRoutes = (routes: RouteRecordRaw[]) => {
 };
 
 export const loadView = (view: any, name: string) => {
-  let res;
+  if (typeof view !== 'string' || !view.trim()) {
+    console.error(`[router] 路由 ${name || '(未命名)'} 缺少组件路径`);
+    return undefined;
+  }
+
+  // 后台菜单允许将目录页简写为 lowcode/form；Vite 实际收集到的路径则是
+  // lowcode/form/index.vue。这里统一路径格式并同时尝试目录页，避免给
+  // vue-router 传入 component: undefined。
+  const normalizedView = view
+    .trim()
+    .replace(/^\/+/, '')
+    .replace(/^views\//, '')
+    .replace(/\.vue$/, '')
+    .replace(/\/+$/, '');
+  const candidates = new Set([normalizedView, `${normalizedView}/index`]);
+
   for (const path in modules) {
     const viewsIndex = path.indexOf('/views/');
     let dir = path.substring(viewsIndex + 7);
     dir = dir.substring(0, dir.lastIndexOf('.vue'));
-    if (dir === view) {
-      res = createCustomNameComponent(modules[path], { name });
-      return res;
+    if (candidates.has(dir)) {
+      return createCustomNameComponent(modules[path], { name });
     }
   }
-  return res;
+
+  console.error(`[router] 路由 ${name || '(未命名)'} 的组件不存在: ${view}`);
+  return undefined;
 };
 
 // 非setup

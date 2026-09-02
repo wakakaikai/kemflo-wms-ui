@@ -74,8 +74,7 @@
 </template>
 
 <script setup name="AutomationVersion" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
-import { ElFormInstance } from 'element-plus';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed, onMounted } from 'vue';
 import { listVersion, getVersion, getRuntimeJson, publishVersion } from '@/api/automation/version';
 import { AutoVersionQuery, AutoVersionVo } from '@/api/automation/version/types';
 import { useRoute, useRouter } from 'vue-router';

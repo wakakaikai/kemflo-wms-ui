@@ -1,5 +1,3 @@
-import { PageQuery } from '@/api/types';
-
 export interface AutoInstanceQuery extends PageQuery {
   instanceNo?: string;
   status?: string;

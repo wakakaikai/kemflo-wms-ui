@@ -1,5 +1,3 @@
-import { PageQuery } from '@/api/types';
-
 export interface AutoTaskQuery extends PageQuery {
   instanceId?: number | string;
   taskType?: string;

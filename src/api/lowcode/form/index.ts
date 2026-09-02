@@ -54,6 +54,17 @@ export function updateForm(data: FormForm) {
 }
 
 /**
+ * 保存表单设计
+ */
+export function saveFormDesign(data: { id: string | number; formConfigJson: string }) {
+  return request({
+    url: '/lowcode/form/design',
+    method: 'put',
+    data
+  });
+}
+
+/**
  * 删除表单
  * @param id 表单id
  * @returns

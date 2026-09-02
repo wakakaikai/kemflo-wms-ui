@@ -48,7 +48,6 @@
             <span class="toolbar-stat">共 {{ total }} 台设备</span>
             <span class="toolbar-stat online">在线 {{ pageOnlineCount }}</span>
             <span class="toolbar-stat offline">离线 {{ pageOfflineCount }}</span>
-            <el-button type="warning" plain icon="Monitor" @click="goInjectionDisplay()">射出显示</el-button>
           </div>
           <div class="toolbar-right">
             <el-radio-group v-model="viewMode" size="small">
@@ -120,7 +119,7 @@
                 <el-tooltip content="测试连接" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:device:query']" link type="primary" icon="Connection" :loading="actionId === row.id && actionType === 'test'" @click="handleTest(row)" />
                 </el-tooltip>
-                <el-tooltip content="射出显示" placement="top" effect="dark" :show-after="200">
+                <el-tooltip content="数据展示" placement="top" effect="dark" :show-after="200">
                   <el-button link type="warning" icon="Monitor" @click="goInjectionDisplay(row)" />
                 </el-tooltip>
                 <el-tooltip :content="isTcpClientRow(row) ? '数据解析' : '点位配置'" placement="top" effect="dark" :show-after="200">
@@ -178,7 +177,7 @@
                 <el-tooltip content="测试连接" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:device:query']" link type="primary" icon="Connection" :loading="actionId === scope.row.id && actionType === 'test'" @click="handleTest(scope.row)" />
                 </el-tooltip>
-                <el-tooltip content="射出显示" placement="top" effect="dark" :show-after="200">
+                <el-tooltip content="数据展示" placement="top" effect="dark" :show-after="200">
                   <el-button link type="warning" icon="Monitor" @click="goInjectionDisplay(scope.row)" />
                 </el-tooltip>
                 <el-tooltip :content="isTcpClientRow(scope.row) ? '数据解析' : '点位配置'" placement="top" effect="dark" :show-after="200">
@@ -367,6 +366,19 @@
               <el-input v-model="form.deviceLocation" />
             </el-form-item>
           </el-col>
+          <el-col :span="24">
+            <el-form-item label="展示视图" prop="displayView">
+              <el-select v-model="form.displayView" clearable placeholder="默认属性看板" style="width: 100%">
+                <el-option v-for="item in INJECTION_VIEW_OPTIONS" :key="item.value" :label="item.label" :value="item.value">
+                  <div class="display-view-option">
+                    <span>{{ item.label }}</span>
+                    <small v-if="item.description">{{ item.description }}</small>
+                  </div>
+                </el-option>
+              </el-select>
+              <div class="form-tip">进入「数据展示」时按设备加载对应视图，便于适配不同机型看板。</div>
+            </el-form-item>
+          </el-col>
         </el-row>
       </el-form>
       <template #footer>
@@ -405,6 +417,7 @@ import { Monitor } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 import { listDevice, getDevice, addDevice, updateDevice, copyDevice, delDevice, testDeviceConnection } from '@/api/iot/device';
 import { DeviceCopyForm, DeviceForm, DeviceQuery, DeviceVO } from '@/api/iot/device/types';
+import { DEFAULT_INJECTION_VIEW, INJECTION_VIEW_OPTIONS } from '@/views/iot/injection/views/registry';
 
 // ===== iot-options (inlined) =====
 /** IoT 前端写死选项（PLC4X 协议编码） */
@@ -1356,6 +1369,7 @@ const initForm: DeviceForm = {
   connectTimeout: 3000,
   reconnectInterval: 5000,
   deviceLocation: undefined,
+  displayView: DEFAULT_INJECTION_VIEW,
   status: '0'
 };
 
@@ -1678,6 +1692,7 @@ const handleUpdate = async (row: DeviceVO) => {
   form.value = res.data;
   if (form.value.protocol) form.value.protocol = normalizeProtocolValue(form.value.protocol);
   if (form.value.transportCode) form.value.transportCode = normalizeTransportValue(form.value.transportCode);
+  form.value.displayView = form.value.displayView || DEFAULT_INJECTION_VIEW;
   formOnlineStatus.value = String(res.data?.onlineStatus ?? '0');
   formLastOnlineTime.value = res.data?.lastOnlineTime || '';
   syncTcpHeartbeatFromForm();

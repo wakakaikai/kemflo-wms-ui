@@ -16,6 +16,7 @@ export interface DeviceVO {
   onlineStatus?: string;
   lastOnlineTime?: string;
   deviceLocation?: string;
+  displayView?: string;
   status?: string;
   createTime?: string;
 }
@@ -36,6 +37,7 @@ export interface DeviceForm extends BaseEntity {
   connectTimeout?: number;
   reconnectInterval?: number;
   deviceLocation?: string;
+  displayView?: string;
   status?: string;
 }
 

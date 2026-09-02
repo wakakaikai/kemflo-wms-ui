@@ -1,5 +1,3 @@
-import { PageQuery } from '@/api/types';
-
 export interface AutoDefinitionQuery extends PageQuery {
   automationCode?: string;
   automationName?: string;

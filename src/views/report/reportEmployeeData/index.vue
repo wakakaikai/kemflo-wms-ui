@@ -1,6 +1,7 @@
 <template>
-  <div class="p-2">
-    <el-card ref="reportCardRef" shadow="never">
+  <div ref="reportFullscreenRef" class="report-fullscreen-root" :class="{ 'is-fullscreen': isFullscreen }">
+    <div class="p-2 report-fullscreen-content">
+    <el-card ref="reportCardRef" class="report-employee-card" :class="{ 'is-fullscreen': isFullscreen }" shadow="never">
       <template #header>
         <div class="flex items-center justify-between">
           <span>报工成功员工报表统计</span>
@@ -25,7 +26,7 @@
           </el-input>
         </el-form-item>
         <el-form-item label="报工时间" prop="reportTimeRange">
-          <el-date-picker v-model="queryParams.reportTimeRange" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间" :default-time="defaultReportTime" :shortcuts="shortcuts" clearable />
+          <el-date-picker v-model="queryParams.reportTimeRange" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间" :default-time="defaultReportTime" :shortcuts="shortcuts" :teleported="!isFullscreen" clearable />
         </el-form-item>
         <el-form-item label="单位">
           <el-radio-group v-model="displayUnit">
@@ -34,7 +35,7 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item>
-          <el-dropdown class="mr-2" @command="handleExport">
+          <el-dropdown class="mr-2" :teleported="!isFullscreen" @command="handleExport">
             <el-button icon="Download">
               导出
               <el-icon class="el-icon--right"><ArrowDown /></el-icon>
@@ -54,10 +55,11 @@
 
       <el-tabs v-model="activeTab">
         <el-tab-pane label="图表分析" name="charts">
-          <employee-duration-charts ref="employeeDurationChartsRef" :summary-list="summaryList" :duplicate-list="duplicateList" :employee-id="chartEmployeeId" :display-unit="displayUnit" />
+          <employee-duration-charts ref="employeeDurationChartsRef" :summary-list="summaryList" :duplicate-list="duplicateList" :employee-id="chartEmployeeId" :display-unit="displayUnit" :fill-height="isFullscreen" />
         </el-tab-pane>
         <el-tab-pane label="员工每日汇总" name="summary">
-          <el-table v-loading="summaryLoading" :data="summaryDisplayList" border fit height="calc(100vh - 330px)">
+          <div class="table-pane">
+            <el-table v-loading="summaryLoading" :data="summaryDisplayList" border fit :height="tableHeight">
             <el-table-column label="日期" align="center" prop="reportDate" />
             <el-table-column label="工号" align="center" prop="employeeId" />
             <el-table-column label="姓名" align="center" prop="employeeName" />
@@ -66,9 +68,11 @@
             <el-table-column :label="`总有效时长(${unitLabel})`" align="right" prop="effectiveDuration" />
             <el-table-column label="上线记录数" align="right" prop="onlineRecordCount" />
           </el-table>
+          </div>
         </el-tab-pane>
         <el-tab-pane label="员工每日明细" name="detail">
-          <el-table v-loading="detailLoading" :data="detailDisplayList" border fit height="calc(100vh - 380px)">
+          <div class="table-pane is-detail">
+            <el-table v-loading="detailLoading" :data="detailDisplayList" border fit :height="detailTableHeight">
             <el-table-column label="日期" align="center" prop="reportDate" />
             <el-table-column label="工作中心" align="center" prop="workCenter" />
             <el-table-column label="工单号" align="center" prop="shopOrder" />
@@ -84,21 +88,25 @@
             <el-table-column :label="`操作时长(${unitLabel})`" align="right" prop="operationDuration" />
             <el-table-column :label="`有效时长(${unitLabel})`" align="right" prop="effectiveDuration" />
           </el-table>
-          <pagination v-show="detailTotal > 0" :total="detailTotal" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getDetail" />
+            <pagination v-show="detailTotal > 0" :total="detailTotal" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getDetail" />
+          </div>
         </el-tab-pane>
         <el-tab-pane label="重复上线统计" name="duplicate">
-          <el-table v-loading="duplicateLoading" :data="duplicateDisplayList" border fit height="calc(100vh - 330px)">
+          <div class="table-pane">
+            <el-table v-loading="duplicateLoading" :data="duplicateDisplayList" border fit :height="tableHeight">
             <el-table-column label="日期" align="center" prop="reportDate" />
             <el-table-column label="工号" align="center" prop="employeeId" />
             <el-table-column label="姓名" align="center" prop="employeeName" />
             <el-table-column :label="`重复上线总时长(${unitLabel})`" align="right" prop="duplicateDuration" />
             <el-table-column label="上线记录数" align="right" prop="onlineRecordCount" />
           </el-table>
+          </div>
         </el-tab-pane>
       </el-tabs>
     </el-card>
 
-    <BatchInputDialog ref="batchInputDialogRef" v-model="batchInputDialogVisible" title="批量录入工号" placeholder="请输入工号，支持多行粘贴" @confirm="handleBatchInputConfirm" />
+    <BatchInputDialog ref="batchInputDialogRef" v-model="batchInputDialogVisible" title="批量录入工号" placeholder="请输入工号，支持多行粘贴" :append-to-body="!isFullscreen" @confirm="handleBatchInputConfirm" />
+    </div>
   </div>
 </template>
 
@@ -110,6 +118,7 @@ import BatchInputDialog from '@/components/BatchInputDialog/index.vue';
 import EmployeeDurationCharts from './components/EmployeeDurationCharts.vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const reportFullscreenRef = ref<HTMLElement>();
 const reportCardRef = ref();
 const queryFormRef = ref<ElFormInstance>();
 const employeeDurationChartsRef = ref<{ resizeCharts: () => void }>();
@@ -126,6 +135,8 @@ const detailTotal = ref(0);
 const displayUnit = ref<'hour' | 'minute'>('hour');
 const defaultReportTime = [new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59, 999)];
 const isFullscreen = ref(false);
+const tableHeight = ref<string | number>('calc(100vh - 330px)');
+const detailTableHeight = ref<string | number>('calc(100vh - 380px)');
 
 const unitLabel = computed(() => (displayUnit.value === 'hour' ? '小时' : '分钟'));
 
@@ -407,7 +418,7 @@ const handleExport = (type: 'summary' | 'detail' | 'duplicate') => {
 };
 
 const toggleFullscreen = async () => {
-  const el = reportCardRef.value?.$el as HTMLElement | undefined;
+  const el = reportFullscreenRef.value;
   if (!el) {
     return;
   }
@@ -418,26 +429,160 @@ const toggleFullscreen = async () => {
   await document.exitFullscreen?.();
 };
 
-const handleFullscreenChange = () => {
-  isFullscreen.value = !!document.fullscreenElement;
+const getBoxExtra = (el: HTMLElement | null, props: Array<'paddingTop' | 'paddingBottom' | 'marginTop' | 'marginBottom'>) => {
+  if (!el) {
+    return 0;
+  }
+  const style = getComputedStyle(el);
+  return props.reduce((sum, prop) => sum + (parseFloat(style[prop]) || 0), 0);
+};
+
+/** 全屏时用卡片可视高度减去固定头、表单、Tabs，避免底部被 overflow:hidden 裁切 */
+const calcTableHeight = () => {
+  if (!isFullscreen.value) {
+    tableHeight.value = 'calc(100vh - 330px)';
+    detailTableHeight.value = 'calc(100vh - 380px)';
+    return;
+  }
+  const card = reportCardRef.value?.$el as HTMLElement | undefined;
+  if (!card?.clientHeight) {
+    return;
+  }
+  const header = card.querySelector('.el-card__header') as HTMLElement | null;
+  const body = card.querySelector('.el-card__body') as HTMLElement | null;
+  const form = card.querySelector('.el-form') as HTMLElement | null;
+  const tabsHeader = card.querySelector('.el-tabs__header') as HTMLElement | null;
+  const pagination = card.querySelector('.pagination-container') as HTMLElement | null;
+  const available =
+    card.clientHeight -
+    (header?.offsetHeight || 0) -
+    getBoxExtra(body, ['paddingTop', 'paddingBottom']) -
+    (form?.offsetHeight || 0) -
+    (tabsHeader?.offsetHeight || 0) -
+    getBoxExtra(tabsHeader, ['marginBottom']);
+  tableHeight.value = Math.max(Math.floor(available), 240);
+  const paginationH =
+    pagination && pagination.offsetHeight > 0 ? pagination.offsetHeight + getBoxExtra(pagination, ['marginTop', 'marginBottom']) : 52;
+  detailTableHeight.value = Math.max(Math.floor(available - paginationH), 200);
+};
+
+const relayoutFullscreenContent = () => {
   nextTick(() => {
-    employeeDurationChartsRef.value?.resizeCharts();
+    calcTableHeight();
+    requestAnimationFrame(() => {
+      employeeDurationChartsRef.value?.resizeCharts();
+    });
   });
 };
 
-watch(activeTab, (tab) => {
-  if (tab === 'charts') {
-    nextTick(() => {
-      employeeDurationChartsRef.value?.resizeCharts();
-    });
+const handleFullscreenChange = () => {
+  isFullscreen.value = !!document.fullscreenElement;
+  relayoutFullscreenContent();
+};
+
+watch([activeTab, detailTotal], () => {
+  if (activeTab.value === 'charts' || isFullscreen.value) {
+    relayoutFullscreenContent();
   }
 });
 
 onMounted(() => {
   document.addEventListener('fullscreenchange', handleFullscreenChange);
+  window.addEventListener('resize', calcTableHeight);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  window.removeEventListener('resize', calcTableHeight);
 });
 </script>
+
+<style scoped>
+.report-fullscreen-root.is-fullscreen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--el-bg-color);
+}
+
+.report-fullscreen-root.is-fullscreen .report-fullscreen-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.report-employee-card.is-fullscreen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 0;
+}
+
+.report-employee-card.is-fullscreen :deep(.el-card__header) {
+  flex-shrink: 0;
+}
+
+.report-employee-card.is-fullscreen :deep(.el-card__body) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.report-employee-card.is-fullscreen :deep(.el-form) {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.report-employee-card.is-fullscreen :deep(.el-tabs) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.report-employee-card.is-fullscreen :deep(.el-tabs__header) {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+
+.report-employee-card.is-fullscreen :deep(.el-tabs__content),
+.report-employee-card.is-fullscreen :deep(.el-tab-pane) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.report-employee-card.is-fullscreen :deep(.employee-duration-charts) {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+}
+
+.report-employee-card.is-fullscreen .table-pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.report-employee-card.is-fullscreen .table-pane :deep(.el-table) {
+  flex: 1;
+}
+
+.report-employee-card.is-fullscreen .table-pane.is-detail :deep(.pagination-container) {
+  flex-shrink: 0;
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+</style>

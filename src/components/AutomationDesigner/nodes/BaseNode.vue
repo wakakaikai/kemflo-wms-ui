@@ -1,96 +1,71 @@
 <template>
-  <!-- 结束节点 -->
   <div
     v-if="isEnd"
-    class="md-end"
+    class="flow-node end-node"
     :class="[statusClass, { 'is-selected': selected }]"
     @mouseenter="hover = true"
     @mouseleave="hover = false"
     @click="handleCardClick"
   >
-    <div class="md-end-icon">
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <rect x="1" y="1" width="7" height="7" fill="#262626" />
-        <rect x="10" y="1" width="7" height="7" fill="#fff" stroke="#262626" stroke-width="1" />
-        <rect x="1" y="10" width="7" height="7" fill="#fff" stroke="#262626" stroke-width="1" />
-        <rect x="10" y="10" width="7" height="7" fill="#262626" />
-      </svg>
+    <span class="node-icon end"><span /></span>
+    <div class="node-main">
+      <div class="node-title-row">
+        <span class="node-title">{{ displayTitle }}</span>
+        <NodeMenu v-if="!readonly" :show-copy="false" :show-delete="true" @command="handleMenuCommand" />
+      </div>
+      <div class="node-line"><span class="line-label">输出格式</span><span class="line-value">文本</span></div>
+      <div class="node-line"><span class="line-label">文本内容</span><span class="line-value">{{ endText }}</span></div>
     </div>
-    <span class="md-end-label">流程结束</span>
-    <NodeMenu v-if="!readonly" :show-copy="false" :show-delete="true" @command="handleMenuCommand" />
   </div>
 
-  <!-- 分支节点：明道云白卡片 -->
-  <div
-    v-else-if="isBranch"
-    class="md-branch"
-    :class="[statusClass, { 'is-selected': selected }]"
-    @mouseenter="hover = true"
-    @mouseleave="hover = false"
-    @click="handleCardClick"
-  >
-    <div class="md-branch-split" title="分支">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="#5b8ff9">
-        <path d="M12 2L2 12l10 10 10-10L12 2zm0 3.5L18.5 12 12 18.5 5.5 12 12 5.5z" />
-      </svg>
-    </div>
-    <div class="md-branch-head">
-      <span class="md-branch-title">{{ branchTitle }}</span>
-      <NodeMenu v-if="!readonly" light :show-copy="!isStart" :show-delete="!isStart" @command="handleMenuCommand" />
-    </div>
-    <div class="md-branch-body">
-      <div v-if="branchConditionText" class="md-branch-condition">{{ branchConditionText }}</div>
-      <div v-else class="md-branch-condition is-empty">未配置筛选条件</div>
-    </div>
-    <button
-      v-if="!readonly"
-      type="button"
-      class="md-branch-link"
-      @click.stop="handleFilterSettings"
-    >配置筛选条件</button>
-    <div
-      v-show="!readonly && showTailPlus"
-      class="md-tail-plus"
-      title="添加下一节点"
-      @click.stop="handlePlusClick"
-    >+</div>
-  </div>
-
-  <!-- 业务节点：明道云卡片 -->
   <div
     v-else
-    class="md-card"
-    :class="[statusClass, { 'is-selected': selected, 'is-trigger': isStart }]"
+    class="flow-node"
+    :class="[statusClass, { 'is-selected': selected, 'is-branch': isBranch }]"
     @mouseenter="hover = true"
     @mouseleave="hover = false"
     @click="handleCardClick"
   >
-    <div class="md-header" :style="{ background: headerColor }">
-      <div class="md-icon-float" :style="{ background: headerColor }">
-        <span class="md-icon-inner" v-html="iconSvg" />
-      </div>
-      <div class="md-header-bar">
-        <span class="md-title" :title="displayTitle">{{ displayTitle }}</span>
-        <NodeMenu v-if="!readonly" :show-copy="!isStart" :show-delete="!isStart" @command="handleMenuCommand" />
+    <div class="node-title-row">
+      <span class="node-icon" :style="{ background: accentColor }" v-html="iconSvg" />
+      <span class="node-title" :title="displayTitle">{{ displayTitle }}</span>
+      <NodeMenu v-if="!readonly" :show-copy="!isStart" :show-delete="!isStart" @command="handleMenuCommand" />
+    </div>
+
+    <div v-if="isSwitch" class="branch-body switch-body">
+      <div v-for="(item, index) in switchCases" :key="index" class="branch-case">
+        <strong>{{ item.label }}</strong>
+        <span>{{ item.value }}</span>
       </div>
     </div>
 
-    <div class="md-body">
-      <p v-for="(line, i) in bodyLines" :key="i" class="md-body-line">{{ line }}</p>
-      <p v-if="runtimeHint" class="md-body-hint" :class="runtimeHintClass">{{ runtimeHint }}</p>
+    <div v-else-if="isCondition" class="branch-body">
+      <div class="branch-case">
+        <strong>IF</strong>
+        <span>{{ branchConditionText }}</span>
+      </div>
+      <div class="branch-case">
+        <strong>ELSE</strong>
+        <span>否则执行</span>
+      </div>
     </div>
 
-    <div
-      v-show="!readonly && showTailPlus"
-      class="md-tail-plus"
-      title="添加下一节点"
-      @click.stop="handlePlusClick"
-    >+</div>
+    <div v-else class="node-body">
+      <div v-for="(line, index) in bodyLines" :key="index" class="node-line">
+        <span class="line-label">{{ line.label }}</span>
+        <span class="line-value" :class="{ 'is-empty': line.empty }" :title="line.value">{{ line.value }}</span>
+      </div>
+      <div v-if="runtimeHint" class="runtime-line" :class="runtimeHintClass">{{ runtimeHint }}</div>
+    </div>
+
+    <button v-show="!readonly && showTailPlus" type="button" class="tail-plus" title="添加下一节点" @click.stop="handlePlusClick">
+      +
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, inject, onMounted, onUnmounted } from 'vue';
+import { computed, inject, onMounted, onUnmounted, ref } from 'vue';
 import { getNodeConfig } from '../types';
 import { emit } from '../events';
 import NodeMenu from './NodeMenu.vue';
@@ -101,7 +76,6 @@ const hover = ref(false);
 const selected = ref(false);
 const readonly = ref(false);
 const hasOutgoing = ref(false);
-
 const liveData = ref<Record<string, any>>(node?.getData() || {});
 
 function syncData() {
@@ -110,8 +84,8 @@ function syncData() {
 
 function syncSelected() {
   try {
-    const g = node?.model?.graph;
-    selected.value = !!(g && node && g.isSelected(node));
+    const graph = node?.model?.graph;
+    selected.value = !!(graph && node && graph.isSelected(node));
   } catch {
     selected.value = false;
   }
@@ -119,13 +93,13 @@ function syncSelected() {
 
 function syncOutgoing() {
   try {
-    const g = node?.model?.graph;
-    if (!g || !node) {
+    const graph = node?.model?.graph;
+    if (!graph || !node) {
       hasOutgoing.value = false;
       return;
     }
-    const outs = g.getOutgoingEdges?.(node) || g.getConnectedEdges?.(node)?.filter((e: any) => e.getSourceCellId?.() === node.id) || [];
-    hasOutgoing.value = outs.length > 0;
+    const edges = graph.getOutgoingEdges?.(node) || [];
+    hasOutgoing.value = edges.length > 0;
   } catch {
     hasOutgoing.value = false;
   }
@@ -133,178 +107,252 @@ function syncOutgoing() {
 
 onMounted(() => {
   node?.on('change:data', syncData);
-  const g = node?.model?.graph;
-  readonly.value = !!(g as any)?.__automationReadonly;
-  if (g) {
-    g.on('node:selected', ({ node: n }: any) => { if (n === node) selected.value = true; });
-    g.on('node:unselected', ({ node: n }: any) => { if (n === node) selected.value = false; });
-    g.on('blank:click', () => { selected.value = false; });
-    g.on('edge:added', syncOutgoing);
-    g.on('edge:removed', syncOutgoing);
-    g.on('cell:removed', syncOutgoing);
+  const graph = node?.model?.graph;
+  readonly.value = !!(graph as any)?.__automationReadonly;
+  if (graph) {
+    graph.on('node:selected', ({ node: n }: any) => {
+      if (n === node) selected.value = true;
+    });
+    graph.on('node:unselected', ({ node: n }: any) => {
+      if (n === node) selected.value = false;
+    });
+    graph.on('blank:click', () => {
+      selected.value = false;
+    });
+    graph.on('edge:added', syncOutgoing);
+    graph.on('edge:removed', syncOutgoing);
+    graph.on('cell:removed', syncOutgoing);
   }
   syncSelected();
   syncOutgoing();
 });
+
 onUnmounted(() => {
   node?.off('change:data', syncData);
 });
 
 const nodeType = computed(() => liveData.value.nodeType || '');
-const nodeLabel = computed(() => liveData.value.label || liveData.value.nodeLabel || '');
-const config = computed(() => getNodeConfig(nodeType.value));
+const nodeConfig = computed(() => getNodeConfig(nodeType.value));
+const cfg = computed(() => liveData.value.config || {});
 const isStart = computed(() => nodeType.value.includes('TRIGGER'));
 const isEnd = computed(() => nodeType.value === 'END');
-const isBranch = computed(() => nodeType.value === 'CONDITION' || nodeType.value === 'SWITCH');
-
-const displayTitle = computed(() => nodeLabel.value || config.value?.label || nodeType.value);
-const branchTitle = computed(() => nodeLabel.value || '分支');
-
-const branchConditionText = computed(() => {
-  const cfg = liveData.value.config || {};
-  if (cfg.expression) return cfg.expression;
-  if (nodeType.value === 'SWITCH' && Array.isArray(cfg.cases) && cfg.cases[0]?.label) {
-    return cfg.cases[0].label;
-  }
-  return '';
-});
-
-const headerColor = computed(() => {
-  const cat = config.value?.category;
-  if (isStart.value) return '#ff9a2e';
-  if (cat === 'integration') return '#5b8ff9';
-  if (cat === 'data') return '#ff9a2e';
-  if (cat === 'control') return '#fa8c16';
-  if (cat === 'device') return '#36cfc9';
-  if (cat === 'approval') return '#eb2f96';
-  return config.value?.color || '#5b8ff9';
-});
+const isCondition = computed(() => nodeType.value === 'CONDITION');
+const isSwitch = computed(() => nodeType.value === 'SWITCH');
+const isBranch = computed(() => isCondition.value || isSwitch.value);
+const displayTitle = computed(() => liveData.value.label || nodeConfig.value?.label || nodeType.value || '节点');
+const accentColor = computed(() => nodeConfig.value?.color || (isStart.value ? '#1677ff' : '#36cfc9'));
+const showTailPlus = computed(() => (hover.value || selected.value) && !hasOutgoing.value && !isEnd.value && !isSwitch.value);
 
 const statusClass = computed(() => {
-  const st = liveData.value.runtimeStatus;
-  return st ? `status-${String(st).toLowerCase()}` : '';
+  const status = liveData.value.runtimeStatus;
+  return status ? `status-${String(status).toLowerCase()}` : '';
 });
-
 const runtimeHint = computed(() => {
-  const st = liveData.value.runtimeStatus;
-  if (st === 'RUNNING') return '● 运行中';
-  if (st === 'SUCCESS') return '● 执行成功';
-  if (st === 'FAILED') return '● 执行失败';
-  if (st === 'SKIPPED') return '○ 已跳过';
-  if (st === 'WAITING') return '○ 等待中';
+  const status = liveData.value.runtimeStatus;
+  if (status === 'RUNNING') return '运行中';
+  if (status === 'SUCCESS') return '运行成功';
+  if (status === 'FAILED') return '运行失败';
+  if (status === 'WAITING') return '等待中';
+  if (status === 'SKIPPED') return '已跳过';
   return '';
 });
 const runtimeHintClass = computed(() => liveData.value.runtimeStatus?.toLowerCase() || '');
+const endText = computed(() => cfg.value.text || cfg.value.responseTemplate || '尚未输入');
 
-const showTailPlus = computed(() => (hover.value || selected.value) && !hasOutgoing.value);
-
-const bodyLines = computed(() => {
-  const cfg = liveData.value.config || {};
-  const type = nodeType.value;
-  const lines: string[] = [];
-
-  if (isStart.value) {
-    if (type === 'MANUAL_TRIGGER') {
-      lines.push('当手动触发时执行');
-    } else if (type === 'CRON_TRIGGER') {
-      lines.push(`Cron: ${cfg.cronExpression || '未配置'}`);
-      lines.push(`时区: ${cfg.timeZone || 'Asia/Shanghai'}`);
-    } else if (type === 'WEBHOOK_TRIGGER') {
-      lines.push(`路径: ${cfg.path || '未配置'}`);
-    } else if (type === 'DATA_TRIGGER') {
-      lines.push(`工作表「${cfg.worksheetId || '未配置'}」`);
-      const evt = cfg.eventType === 'INSERT' ? '新增' : cfg.eventType === 'UPDATE' ? '修改' : cfg.eventType === 'DELETE' ? '删除' : cfg.eventType;
-      lines.push(`当${evt || '数据变更'}时触发`);
-    } else if (type === 'DEVICE_PROPERTY_TRIGGER') {
-      lines.push(`设备点位 ${cfg.pointCode || '-'}`);
-      lines.push(`条件 ${cfg.operator || '>'} ${cfg.threshold ?? 0}`);
-    } else {
-      lines.push(cfg.description || '流程开始');
-    }
-    return lines.slice(0, 3);
-  }
-
-  if (type === 'HTTP_CALL') {
-    if (cfg.url) {
-      lines.push(`${cfg.method || 'GET'} ${cfg.url}`);
-      const bt = cfg.bodyType || 'none';
-      if (bt === 'json' && cfg.body) lines.push('Body: JSON');
-      else if (bt === 'form') lines.push('Body: Form 表单');
-      else if (bt === 'form-data') lines.push('Body: FormData');
-      else if (bt === 'raw' && cfg.body) lines.push('Body: Raw');
-      else {
-        const headerCount = cfg.headers && typeof cfg.headers === 'object' ? Object.keys(cfg.headers).filter(k => k).length : 0;
-        if (headerCount > 0) lines.push(`已配置 ${headerCount} 个 Header`);
-      }
-    } else {
-      lines.push('未配置请求 URL');
-      lines.push('点击卡片进行设置');
-    }
-    return lines;
-  }
-  if (type.startsWith('DATA_')) {
-    if (cfg.worksheetId) lines.push(`工作表「${cfg.worksheetId}」`);
-    if (type === 'DATA_UPDATE') lines.push('更新记录');
-    else if (type === 'DATA_CREATE') lines.push('新增记录');
-    else if (type === 'DATA_QUERY') lines.push('查询记录');
-    else if (type === 'DATA_DELETE') lines.push('删除记录');
-    else lines.push(config.value?.label || type);
-    return lines.slice(0, 3);
-  }
-  if (type.startsWith('DEVICE_')) {
-    if (cfg.deviceCode) lines.push(`设备 ${cfg.deviceCode}`);
-    if (cfg.pointCode) lines.push(`点位 ${cfg.pointCode}`);
-    if (!lines.length) lines.push(config.value?.label || type);
-    return lines.slice(0, 3);
-  }
-  if (cfg.description) {
-    lines.push(cfg.description);
-  } else if (cfg.alias) {
-    lines.push(cfg.alias);
-  } else {
-    lines.push(config.value?.label || '点击 ··· 进行配置');
-  }
-  return lines.slice(0, 3);
+const branchConditionText = computed(() => {
+  if (cfg.value.expression) return cfg.value.expression;
+  return '未配置条件';
 });
 
+const switchCases = computed(() => {
+  const branches = Array.isArray(cfg.value.branches) ? cfg.value.branches : [];
+  if (branches.length > 0) {
+    return branches
+      .filter((item: any) => item.type !== 'ELSE')
+      .map((item: any, index: number) => {
+        const rule = item.rules?.[0];
+        const cond = rule?.variable
+          ? `${rule.variable} ${rule.operator || 'eq'} ${rule.value || ''}`.trim()
+          : '未配置条件';
+        return {
+          label: index === 0 ? 'IF' : `ELIF ${index}`,
+          value: cond,
+        };
+      })
+      .concat([{ label: 'ELSE', value: '否则执行' }]);
+  }
+  const cases = Array.isArray(cfg.value.cases) ? cfg.value.cases : [];
+  if (cases.length === 0) {
+    return [
+      { label: 'IF', value: '未配置条件' },
+      { label: 'ELSE', value: '否则执行' },
+    ];
+  }
+  return cases.map((item: any, index: number) => ({
+    label: item.type === 'DEFAULT' ? 'ELSE' : index === 0 ? 'IF' : `ELIF ${index}`,
+    value: item.remarks || item.expression || item.value || '未配置',
+  }));
+});
+
+type NodeLine = { label: string; value: string; empty?: boolean };
+
+const bodyLines = computed<NodeLine[]>(() => {
+  const type = nodeType.value;
+  const c = cfg.value;
+  if (isStart.value) {
+    const fields = c.inputFields || c.fields;
+    let fieldText = '';
+    if (Array.isArray(fields)) {
+      fieldText = fields.map((item: any) => item.displayName || item.description || item.name || item.field).filter(Boolean).join(', ');
+    }
+    if (!fieldText) fieldText = '用户问题, 对话历史, 图片';
+    return [
+      { label: '输入字段', value: fieldText },
+      { label: '触发方式', value: startText(type) },
+    ];
+  }
+  if (type === 'HTTP_CALL') {
+    const inputKeys = inputMappingText(c.inputMapping);
+    return [
+      { label: '输入变量', value: inputKeys || '-', empty: !inputKeys },
+      { label: 'API', value: `[${c.method || 'GET'}] ${c.url || '尚未填写'}`, empty: !c.url },
+      { label: '请求参数', value: keyList(c.queryParams || c.params) || '无' },
+      { label: '请求头', value: keyList(c.headers) || '无' },
+      { label: '请求体类型', value: bodyTypeText(c) || 'none' },
+      { label: '输出变量', value: outputText(c) },
+    ];
+  }
+  if (type === 'JDBC_CALL') {
+    return [
+      { label: '输入变量', value: inputMappingText(c.inputMapping) || '-', empty: !inputMappingText(c.inputMapping) },
+      { label: '数据源', value: c.dataSourceName || c.connectionId || '尚未填写', empty: !c.dataSourceName && !c.connectionId },
+      { label: '自定义SQL', value: truncate(c.sql, 48) || '尚未填写', empty: !c.sql },
+      { label: '输出变量', value: c.outputVar || 'sqlResult' },
+    ];
+  }
+  if (type === 'LOOP') {
+    const loopType = c.loopType || c.type || 'counted';
+    const loopMode = loopType === 'counted'
+      ? `循环 ${c.maxLoopTimes || c.maxIterations || 0} 次`
+      : loopType === 'array'
+        ? '迭代循环'
+        : '无限循环';
+    const varCount = Array.isArray(c.loopParams) ? c.loopParams.length : 0;
+    return [
+      { label: '输入变量', value: inputMappingText(c.inputMapping) || '-', empty: !inputMappingText(c.inputMapping) },
+      { label: '循环模式', value: loopMode },
+      { label: '循环变量', value: `${varCount} 个`, empty: varCount === 0 },
+      { label: '输出变量', value: c.outputVar || '-' },
+    ];
+  }
+  if (type === 'CHAT_VAR_GET') {
+    const names = chatVarNames(c.variables);
+    return [{ label: '读取变量', value: names || '尚未配置', empty: !names }];
+  }
+  if (type === 'CHAT_VAR_SET') {
+    const names = chatVarNames(c.variables);
+    return [{ label: '赋值变量', value: names || '尚未配置', empty: !names }];
+  }
+  if (type.startsWith('DEVICE_')) {
+    return [
+      { label: '设备', value: c.deviceCode || c.productCode || '-' },
+      { label: '点位', value: c.pointCode || keyList(c.pointCodes) || '-' },
+      { label: '输出变量', value: c.outputVar || 'deviceResult' },
+    ];
+  }
+  if (type.startsWith('AI_')) {
+    return [
+      { label: '输入变量', value: c.promptVar || inputMappingText(c.inputMapping) || 'question,doc' },
+      { label: '模型', value: c.modelName || c.modelId || 'OpenAI' },
+      { label: '输出变量', value: c.outputVar || '回复内容' },
+    ];
+  }
+  return [
+    { label: '配置', value: c.description || c.alias || nodeConfig.value?.label || type },
+    { label: '输出变量', value: c.outputVar || '-' },
+  ];
+});
+
+function stringifyShort(value: any) {
+  if (Array.isArray(value)) return value.map((item) => item.name || item.field || item).join(',');
+  if (value && typeof value === 'object') return Object.keys(value).join(',');
+  return String(value || '');
+}
+
+function chatVarNames(value: any) {
+  if (!Array.isArray(value)) return '';
+  return value.map((item) => item.name || item.field).filter(Boolean).join(', ');
+}
+
+function truncate(value: any, max = 40) {
+  const text = String(value || '');
+  return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+
+function bodyTypeText(c: Record<string, any>) {
+  const bodyType = c.bodyType;
+  if (!bodyType || bodyType === 'none') return '';
+  return bodyType;
+}
+
+function startText(type: string) {
+  if (type === 'DEVICE_PROPERTY_TRIGGER') return '设备采集数据';
+  if (type === 'CRON_TRIGGER') return cfg.value.cronExpression || '定时触发';
+  if (type === 'WEBHOOK_TRIGGER') return cfg.value.path || 'Webhook';
+  return '手动执行';
+}
+
+function keyList(value: any) {
+  if (Array.isArray(value)) return value.join(',');
+  if (value && typeof value === 'object') return Object.keys(value).filter(Boolean).join(', ');
+  return '';
+}
+
+function inputMappingText(value: any) {
+  if (!value || typeof value !== 'object') return '';
+  return Object.keys(value).join(',');
+}
+
+function outputText(value: Record<string, any>) {
+  const mapping = keyList(value.outputMapping || value.responseMapping);
+  return mapping || value.outputVar || 'httpResponse';
+}
+
 const iconSvg = computed(() => {
-  const cat = config.value?.category;
-  const icons: Record<string, string> = {
-    trigger: '<svg viewBox="0 0 24 24" width="18" height="18" fill="white"><path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/></svg>',
-    integration: '<svg viewBox="0 0 24 24" width="18" height="18" fill="white"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="white" fill="none" stroke-width="2"/></svg>',
-    data: '<svg viewBox="0 0 24 24" width="18" height="18" fill="white"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18" stroke="white" fill="none" stroke-width="1.5"/></svg>',
-    control: '<svg viewBox="0 0 24 24" width="18" height="18" fill="white"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg>',
-    device: '<svg viewBox="0 0 24 24" width="18" height="18" fill="white"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="17" r="1.5"/></svg>',
-    approval: '<svg viewBox="0 0 24 24" width="18" height="18" fill="white"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4" stroke="white" fill="none" stroke-width="1.5"/></svg>',
-  };
-  if (isStart.value) return icons.trigger;
-  return icons[cat || 'integration'] || icons.integration;
+  const type = nodeType.value;
+  if (isStart.value) {
+    return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+  }
+  if (type === 'HTTP_CALL') {
+    return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 010 20"/><path d="M12 2a15 15 0 000 20"/></svg>';
+  }
+  if (type === 'JDBC_CALL') {
+    return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>';
+  }
+  if (isSwitch.value || isCondition.value) {
+    return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2"><path d="M6 3v6a3 3 0 003 3h9"/><path d="M6 21v-6a3 3 0 013-3"/><path d="M15 9l3 3-3 3"/></svg>';
+  }
+  if (type === 'LOOP') {
+    return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>';
+  }
+  if (type === 'CHAT_VAR_GET' || type === 'CHAT_VAR_SET') {
+    return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2"><path d="M4 7h16"/><path d="M4 12h10"/><path d="M4 17h14"/></svg>';
+  }
+  return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/></svg>';
 });
 
 function handleCardClick(e: MouseEvent) {
   if (readonly.value) return;
   const el = e.target as HTMLElement;
-  if (el.closest('.md-tail-plus, .md-node-menu-btn, .md-branch-link, .el-dropdown-menu')) return;
+  if (el.closest('.tail-plus, .node-menu-btn, .el-dropdown-menu')) return;
   if (node) emit('node:edit-meta', { node });
 }
 
 function handleMenuCommand(cmd: string) {
-  if (cmd === 'rename') handleRename();
-  else if (cmd === 'edit-meta') handleEditMeta();
-  else if (cmd === 'copy') handleCopy();
-  else if (cmd === 'delete') handleDelete();
-}
-
-function handleRename() {
-  if (node) emit('node:rename', { node });
-}
-
-function handleEditMeta() {
-  if (node) emit('node:edit-meta', { node });
-}
-
-function handleFilterSettings() {
-  if (node) emit('node:edit-meta', { node, focus: 'filter' });
+  if (cmd === 'rename') emit('node:rename', { node });
+  if (cmd === 'edit-meta') emit('node:edit-meta', { node });
+  if (cmd === 'copy') emit('node:copy', { node });
+  if (cmd === 'delete') emit('node:delete', { node });
 }
 
 function handlePlusClick() {
@@ -312,252 +360,181 @@ function handlePlusClick() {
   const pos = node.getBBox();
   emit('node:plus-click', {
     sourceNode: node,
-    x: pos.x + pos.width / 2,
-    y: pos.y + pos.height + 28,
+    x: pos.x + pos.width + 28,
+    y: pos.y + pos.height / 2,
     sourceEdge: undefined,
   });
-}
-
-function handleCopy() {
-  if (node) emit('node:copy', { node });
-}
-
-function handleDelete() {
-  if (node) emit('node:delete', { node });
 }
 </script>
 
 <style scoped>
-/* ---- 明道云业务卡片 ---- */
-.md-card {
+.flow-node {
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  border-radius: 8px;
-  background: #fff;
+  position: relative;
+  padding: 12px 14px 10px;
   border: 1px solid #e8eaed;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  overflow: visible;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   cursor: move;
-  position: relative;
-  display: flex;
-  flex-direction: column;
   user-select: none;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition: border-color 0.16s, box-shadow 0.16s;
 }
-.md-card:hover,
-.md-card.is-selected {
-  border-color: #b8c4d9;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+.flow-node:hover {
+  border-color: #d0d7de;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
-
-.md-header {
-  position: relative;
-  border-radius: 8px 8px 0 0;
-  padding: 22px 12px 10px;
-  min-height: 52px;
-  box-sizing: border-box;
+.flow-node.is-selected {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15);
 }
-
-.md-icon-float {
-  position: absolute;
-  top: -14px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 3px solid #f7f8fa;
+.node-title-row {
   display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.node-icon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex: 0 0 auto;
+  background: #1677ff;
 }
-.md-icon-inner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 0;
+.node-icon.end {
+  background: #ff4d4f;
 }
-
-.md-header-bar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.node-icon.end span {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: #fff;
 }
-.md-title {
+.node-title {
   flex: 1;
+  min-width: 0;
+  color: #141414;
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
-  text-align: center;
+  line-height: 22px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 4px;
 }
-
-.md-body {
-  flex: 1;
-  padding: 10px 14px 12px;
-  background: #fff;
-  border-radius: 0 0 8px 8px;
+.node-body {
+  margin-top: 10px;
 }
-.md-body-line {
-  margin: 0 0 4px;
+.node-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 5px;
   font-size: 12px;
-  color: #595959;
-  line-height: 1.5;
-  word-break: break-all;
+  line-height: 18px;
 }
-.md-body-line:last-of-type {
-  margin-bottom: 0;
-}
-.md-body-hint {
-  margin: 6px 0 0;
-  font-size: 11px;
+.line-label {
   color: #8c8c8c;
+  flex: 0 0 72px;
 }
-
-/* ---- 分支卡片 ---- */
-.md-branch {
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  border-radius: 8px;
-  background: #fff;
-  border: 1px solid #e8eaed;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  cursor: move;
-  overflow: visible;
-  user-select: none;
-  padding: 8px 10px 10px;
-}
-.md-branch:hover,
-.md-branch.is-selected {
-  border-color: #b8c4d9;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-}
-.md-branch-split {
-  position: absolute;
-  top: -22px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #fff;
-  border: 1px solid #d0d4dc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 3;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-}
-.md-branch-head {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 6px;
-}
-.md-branch-title {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 600;
+.line-value {
+  min-width: 0;
   color: #262626;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.md-branch-body {
-  flex: 1;
-  min-height: 0;
-}
-.md-branch-condition {
-  font-size: 12px;
-  color: #595959;
-  background: #f5f5f5;
-  border-radius: 4px;
-  padding: 6px 8px;
-  line-height: 1.45;
-  word-break: break-all;
-}
-.md-branch-condition.is-empty {
+.line-value.is-empty {
   color: #bfbfbf;
 }
-.md-branch-link {
-  margin-top: 8px;
-  border: none;
-  background: none;
-  padding: 0;
+.branch-body {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.switch-body {
+  gap: 8px;
+}
+.branch-case {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #262626;
   font-size: 12px;
-  color: #5b8ff9;
-  cursor: pointer;
-  text-align: left;
+  line-height: 18px;
 }
-.md-branch-link:hover {
-  color: #3d7ef5;
-  text-decoration: underline;
+.branch-case strong {
+  font-weight: 600;
 }
-
-.md-tail-plus {
-  position: absolute;
-  bottom: -11px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #e8eaed;
-  border: 1px solid #d0d4dc;
+.branch-case span {
   color: #8c8c8c;
-  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.end-node {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.end-node .node-main {
+  flex: 1;
+  min-width: 0;
+}
+.runtime-line {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6b7280;
+}
+.runtime-line.success {
+  color: #16a34a;
+}
+.runtime-line.failed {
+  color: #ef4444;
+}
+.runtime-line.running {
+  color: #2563eb;
+}
+.tail-plus {
+  position: absolute;
+  top: 50%;
+  right: -12px;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #1677ff;
+  border-radius: 50%;
+  background: #fff;
+  color: #1677ff;
+  font-size: 16px;
+  line-height: 1;
   cursor: pointer;
   z-index: 5;
-  line-height: 1;
 }
-.md-tail-plus:hover {
-  background: #5b8ff9;
-  border-color: #5b8ff9;
+.tail-plus:hover {
+  background: #1677ff;
   color: #fff;
 }
-
-/* ---- 结束节点 ---- */
-.md-end {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: #fff;
-  border: 1px dashed #d9d9d9;
-  border-radius: 6px;
-  cursor: move;
-  position: relative;
-  box-sizing: border-box;
-  padding: 0 28px 0 8px;
+.status-running {
+  border-color: #1677ff;
 }
-.md-end.is-selected {
-  border-color: #5b8ff9;
-  box-shadow: 0 0 0 2px rgba(91, 143, 249, 0.2);
+.status-success {
+  border-color: #52c41a;
 }
-.md-end-icon {
-  flex-shrink: 0;
-  line-height: 0;
+.status-failed {
+  border-color: #ff4d4f;
 }
-.md-end-label {
-  font-size: 13px;
-  color: #595959;
+.status-skipped {
+  opacity: 0.72;
 }
-
-/* 运行态 */
-.status-running { outline: 2px solid #1677ff; outline-offset: 1px; }
-.status-success { outline: 2px solid #52c41a; outline-offset: 1px; }
-.status-failed { outline: 2px solid #ff4d4f; outline-offset: 1px; }
-.status-skipped { opacity: 0.72; }
 </style>

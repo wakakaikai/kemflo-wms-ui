@@ -81,8 +81,8 @@
 </template>
 
 <script setup name="AutomationWaitEvent" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
-import { ElFormInstance } from 'element-plus';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed, onMounted } from 'vue';
+import { FormInstance } from 'element-plus';
 import { listWaitEvent, completeWaitEvent, cancelWaitEvent } from '@/api/automation/waitEvent';
 import { AutoWaitEventQuery, AutoWaitEventVo } from '@/api/automation/waitEvent/types';
 import { AUTO_WAIT_STATUS_OPTIONS, resolveDictOptions } from '@/views/automation/options';
@@ -96,7 +96,7 @@ const total = ref(0);
 const loading = ref(true);
 const showSearch = ref(true);
 
-const queryFormRef = ref<ElFormInstance>();
+const queryFormRef = ref<FormInstance>();
 
 const data = reactive<PageData<{}, AutoWaitEventQuery>>({
   form: {},

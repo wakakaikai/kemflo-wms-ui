@@ -73,17 +73,11 @@ export const constantRoutes: RouteRecordRaw[] = [
     ]
   },
   {
-    path: '/automation/designer',
-    component: Layout,
+    path: '/automation/designer/index/:definitionId?',
+    component: () => import('@/views/automation/designer/index.vue'),
+    name: 'AutomationDesigner',
     hidden: true,
-    children: [
-      {
-        path: 'index/:definitionId?',
-        component: () => import('@/views/automation/designer/index.vue'),
-        name: 'AutomationDesigner',
-        meta: { title: '流程设计', activeMenu: '/automation/definition', noCache: true }
-      }
-    ]
+    meta: { title: '流程设计', activeMenu: '/automation/definition', noCache: true }
   },
   {
     path: '/iot/injection-display',
@@ -97,6 +91,33 @@ export const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '射出设备显示', activeMenu: '/iot/device', noCache: true }
       }
     ]
+  },
+  {
+    path: '/lowcode/form/designer/index/:formId',
+    component: () => import('@/views/lowcode/form/designer/index.vue'),
+    name: 'LowcodeFormDesigner',
+    hidden: true,
+    meta: { title: '表单设计', activeMenu: '/lowcode/form', noCache: true }
+  },
+  {
+    path: '/lowcode/form/data/index/:formId',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/lowcode/form/data/index.vue'),
+        name: 'LowcodeFormData',
+        meta: { title: '表单数据', activeMenu: '/lowcode/form', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/lowcode/form/fill/index/:formCode',
+    component: () => import('@/views/lowcode/form/fill/index.vue'),
+    name: 'LowcodeFormFill',
+    hidden: true,
+    meta: { title: '表单填报', activeMenu: '/lowcode/form', noCache: true }
   },
   {
     path: '/:pathMatch(.*)*',

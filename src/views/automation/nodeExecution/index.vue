@@ -124,8 +124,8 @@
 </template>
 
 <script setup name="AutomationNodeExecution" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
-import { ElFormInstance } from 'element-plus';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed, onMounted } from 'vue';
+import { FormInstance } from 'element-plus';
 import { listNodeExecution, retryNodeExecution, getNodeExecutionInput, getNodeExecutionOutput } from '@/api/automation/nodeExecution';
 import { AutoNodeExecutionQuery, AutoNodeExecutionVo } from '@/api/automation/nodeExecution/types';
 import { useRoute, useRouter } from 'vue-router';
@@ -144,7 +144,7 @@ const showSearch = ref(true);
 
 const ioDialog = reactive<DialogOption>({ visible: false, title: '' });
 const ioContent = reactive({ input: '', output: '' });
-const queryFormRef = ref<ElFormInstance>();
+const queryFormRef = ref<FormInstance>();
 
 const data = reactive<PageData<{}, AutoNodeExecutionQuery>>({
   form: {},

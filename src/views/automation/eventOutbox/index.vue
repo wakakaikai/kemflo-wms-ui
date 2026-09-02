@@ -87,8 +87,8 @@
 </template>
 
 <script setup name="AutomationEventOutbox" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
-import { ElFormInstance } from 'element-plus';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed, onMounted } from 'vue';
+import { FormInstance } from 'element-plus';
 import { listEventOutbox, redeliverEventOutbox } from '@/api/automation/eventOutbox';
 import { AutoEventOutboxQuery, AutoEventOutboxVo } from '@/api/automation/eventOutbox/types';
 import { AUTO_OUTBOX_STATUS_OPTIONS, resolveDictOptions } from '@/views/automation/options';
@@ -103,7 +103,7 @@ const loading = ref(true);
 const showSearch = ref(true);
 const selectedIds = ref<(number | string)[]>([]);
 
-const queryFormRef = ref<ElFormInstance>();
+const queryFormRef = ref<FormInstance>();
 
 const data = reactive<PageData<{}, AutoEventOutboxQuery>>({
   form: {},

@@ -1,30 +1,20 @@
 <template>
-  <el-dropdown
-    trigger="click"
-    placement="bottom-end"
-    popper-class="md-node-menu-popper"
-    @command="onCommand"
-    @click.stop
-  >
-    <button
-      class="md-node-menu-btn"
-      :class="{ light }"
-      title="更多"
-      @click.stop
-      @mousedown.stop
-    >···</button>
+  <el-dropdown trigger="click" placement="bottom-end" popper-class="flow-node-menu-popper" @command="onCommand" @click.stop>
+    <button class="node-menu-btn" title="更多" @click.stop @mousedown.stop>
+      <el-icon><MoreFilled /></el-icon>
+    </button>
     <template #dropdown>
       <el-dropdown-menu>
-        <el-dropdown-item command="rename">
-          <span class="menu-item-inner">
-            <el-icon><EditPen /></el-icon>
-            <span>修改名称</span>
-          </span>
-        </el-dropdown-item>
         <el-dropdown-item command="edit-meta">
           <span class="menu-item-inner">
-            <el-icon><InfoFilled /></el-icon>
-            <span>编辑节点别名和说明</span>
+            <el-icon><EditPen /></el-icon>
+            <span>设计</span>
+          </span>
+        </el-dropdown-item>
+        <el-dropdown-item command="rename">
+          <span class="menu-item-inner">
+            <el-icon><Edit /></el-icon>
+            <span>修改名称</span>
           </span>
         </el-dropdown-item>
         <el-dropdown-item v-if="showCopy" command="copy" divided>
@@ -45,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { EditPen, InfoFilled, CopyDocument, Delete } from '@element-plus/icons-vue';
+import { CopyDocument, Delete, Edit, EditPen, MoreFilled } from '@element-plus/icons-vue';
 
 withDefaults(defineProps<{
   light?: boolean;
@@ -67,31 +57,22 @@ function onCommand(cmd: string) {
 </script>
 
 <style scoped>
-.md-node-menu-btn {
-  flex-shrink: 0;
+.node-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 24px;
   height: 24px;
   border: none;
-  background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
-  color: rgba(255, 255, 255, 0.9);
+  background: transparent;
+  color: #6b7280;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  line-height: 1;
   padding: 0;
 }
-.md-node-menu-btn.light {
-  background: transparent;
-  color: #8c8c8c;
-}
-.md-node-menu-btn:hover {
-  background: rgba(255, 255, 255, 0.28);
-}
-.md-node-menu-btn.light:hover {
-  background: #f5f5f5;
-  color: #595959;
+.node-menu-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
 }
 .menu-item-inner {
   display: inline-flex;
@@ -99,13 +80,13 @@ function onCommand(cmd: string) {
   gap: 8px;
 }
 .danger-text {
-  color: #ff4d4f;
+  color: #ef4444;
 }
 </style>
 
 <style>
-.md-node-menu-popper .el-dropdown-menu__item {
-  min-width: 180px;
-  padding: 8px 16px;
+.flow-node-menu-popper .el-dropdown-menu__item {
+  min-width: 132px;
+  padding: 8px 14px;
 }
 </style>

@@ -84,8 +84,8 @@
 </template>
 
 <script setup name="AutomationTask" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed } from 'vue';
-import { ElFormInstance } from 'element-plus';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed, onMounted } from 'vue';
+import { FormInstance } from 'element-plus';
 import { listTask, retryTask } from '@/api/automation/task';
 import { AutoTaskQuery, AutoTaskVo } from '@/api/automation/task/types';
 import { AUTO_TASK_STATUS_OPTIONS, resolveDictOptions } from '@/views/automation/options';
@@ -100,7 +100,7 @@ const loading = ref(true);
 const showSearch = ref(true);
 const selectedIds = ref<(number | string)[]>([]);
 
-const queryFormRef = ref<ElFormInstance>();
+const queryFormRef = ref<FormInstance>();
 
 const data = reactive<PageData<{}, AutoTaskQuery>>({
   form: {},
