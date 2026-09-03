@@ -16,6 +16,14 @@ export const listOperation = (query?: OperationQuery): AxiosPromise<OperationVO[
   });
 };
 
+export const listAllOperation = (query?: OperationQuery): AxiosPromise<OperationVO[]> => {
+  return request({
+    url: '/mes/operation/listAll',
+    method: 'get',
+    params: query
+  });
+};
+
 /**
  * 查询工序详细
  * @param id

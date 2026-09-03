@@ -65,7 +65,17 @@
     }
 
     .svg-icon {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      font-size: 18px;
       margin-right: 16px;
+    }
+
+    .el-menu-item,
+    .el-sub-menu__title {
+      font-size: var(--el-menu-item-font-size, 14px);
     }
 
     .el-menu {
@@ -228,6 +238,11 @@
 .el-menu--vertical {
   & > .el-menu {
     .svg-icon {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      font-size: 18px;
       margin-right: 16px;
     }
   }

@@ -13,6 +13,46 @@ import { ElNotification } from 'element-plus';
 
 // 匹配views里面所有的.vue文件
 const modules = import.meta.glob(['./../../views/**/*.vue', '!./../../views/automation/_jeecg_super_source/**/*.vue']);
+
+const VIEW_PATH_ALIASES: Record<string, string> = {
+  'mes/SfcFixedSfc/index': 'mes/sfcFixedSfc/index',
+  'mes/SfcFixedSfc': 'mes/sfcFixedSfc/index'
+};
+
+let viewModuleMap: Map<string, () => Promise<unknown>> | null = null;
+
+const normalizeViewKey = (view: string) =>
+  view
+    .trim()
+    .replace(/^\/+/, '')
+    .replace(/^views\//, '')
+    .replace(/\.vue$/, '')
+    .replace(/\/+$/, '');
+
+const getViewModuleMap = () => {
+  if (viewModuleMap) {
+    return viewModuleMap;
+  }
+  viewModuleMap = new Map();
+  for (const path in modules) {
+    const normalizedPath = path.replace(/\\/g, '/');
+    const viewsIndex = normalizedPath.indexOf('/views/');
+    if (viewsIndex === -1) {
+      continue;
+    }
+    const key = normalizedPath.substring(viewsIndex + 7).replace(/\.vue$/, '');
+    viewModuleMap.set(key, modules[path]);
+    viewModuleMap.set(key.toLowerCase(), modules[path]);
+  }
+  return viewModuleMap;
+};
+
+const buildViewCandidates = (view: string) => {
+  const normalizedView = normalizeViewKey(view);
+  const aliasedView = VIEW_PATH_ALIASES[normalizedView] ?? normalizedView;
+  const keys = [aliasedView, normalizedView, `${aliasedView}/index`, `${normalizedView}/index`];
+  return [...new Set(keys.flatMap((key) => [key, key.toLowerCase()]))];
+};
 export const usePermissionStore = defineStore('permission', () => {
   const routes = ref<RouteRecordRaw[]>([]);
   const addRoutes = ref<RouteRecordRaw[]>([]);
@@ -156,23 +196,11 @@ export const loadView = (view: any, name: string) => {
     return undefined;
   }
 
-  // 后台菜单允许将目录页简写为 lowcode/form；Vite 实际收集到的路径则是
-  // lowcode/form/index.vue。这里统一路径格式并同时尝试目录页，避免给
-  // vue-router 传入 component: undefined。
-  const normalizedView = view
-    .trim()
-    .replace(/^\/+/, '')
-    .replace(/^views\//, '')
-    .replace(/\.vue$/, '')
-    .replace(/\/+$/, '');
-  const candidates = new Set([normalizedView, `${normalizedView}/index`]);
-
-  for (const path in modules) {
-    const viewsIndex = path.indexOf('/views/');
-    let dir = path.substring(viewsIndex + 7);
-    dir = dir.substring(0, dir.lastIndexOf('.vue'));
-    if (candidates.has(dir)) {
-      return createCustomNameComponent(modules[path], { name });
+  const moduleMap = getViewModuleMap();
+  for (const candidate of buildViewCandidates(view)) {
+    const loader = moduleMap.get(candidate);
+    if (loader) {
+      return createCustomNameComponent(loader, { name });
     }
   }
 
