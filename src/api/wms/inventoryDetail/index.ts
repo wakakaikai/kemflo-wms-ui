@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { InventoryDetailVO, InventoryDetailForm, InventoryDetailQuery, InventoryTransferForm, InventoryCancelForm, InventoryCancelLineBO, InventoryCancelBatchOptions } from '@/api/wms/inventoryDetail/types';
+import { InventoryDetailVO, InventoryDetailForm, InventoryDetailQuery, InventoryTransferForm, InventoryCancelForm, InventoryCancelBatchOptions } from '@/api/wms/inventoryDetail/types';
 
 /**
  * 查询库存明细记录列表
@@ -127,7 +127,7 @@ export { returnPurchaseInventory } from '@/api/wms/purchaseOrder';
 /** 库存移动冲销（SAP 物料凭证冲销） */
 export const cancelInventoryMovement = (data: InventoryCancelForm) => {
   return request({
-    url: '/wms/inventoryDetail/cancel',
+    url: '/wms/inventoryDetail/reverse',
     method: 'post',
     data: data
   });
@@ -145,19 +145,21 @@ function resolveCancelBktxt(bktxt?: string | null): string | undefined {
   return value || undefined;
 }
 
-/** 库存冲销行：仅提交 SAP 凭证字段 */
-export function buildInventoryCancelLineBo(item: Record<string, unknown>): InventoryCancelLineBO {
-  return {
-    sapMaterialDocYear: item.sapMaterialDocYear as number | string | undefined,
-    sapMaterialOrderNo: String(item.sapMaterialOrderNo ?? '').trim() || undefined,
-    sapMaterialItem: String(item.sapMaterialItem ?? '').trim() || undefined
-  };
+function resolveCancelLfsnr(lfsnr?: string | null): string | undefined {
+  const value = lfsnr?.trim();
+  return value || undefined;
 }
 
-export function buildInventoryCancelPayload(lines: InventoryCancelLineBO[], options: InventoryCancelBatchOptions): InventoryCancelForm {
+/** 按物料凭证号冲销全部项次 */
+export function buildInventoryCancelPayloadByVoucher(
+  sapMaterialOrderNo: string,
+  options: InventoryCancelBatchOptions = {}
+): InventoryCancelForm {
   return {
-    cancelList: lines,
+    sapMaterialOrderNo: sapMaterialOrderNo.trim(),
+    sapMaterialDocYear: options.sapMaterialDocYear,
     mtsnr: resolveCancelBktxt(options.mtsnr),
+    lfsnr: resolveCancelLfsnr(options.lfsnr),
     bktxt: resolveCancelBktxt(options.bktxt),
     postingDate: formatCancelPostingDate(options.postingDate)
   };

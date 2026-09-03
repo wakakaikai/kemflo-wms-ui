@@ -11,11 +11,7 @@ export interface InventorySortField extends InventorySortRule {
 }
 
 export function createDefaultInventorySortRules(): InventorySortRule[] {
-  return [
-    { key: 'warehouseCode', order: 'asc' },
-    { key: 'itemCode', order: 'asc' },
-    { key: 'batchCode', order: 'asc' }
-  ];
+  return [];
 }
 
 export function applyInventorySortToQuery(query: Record<string, any>, rules: InventorySortRule[]) {

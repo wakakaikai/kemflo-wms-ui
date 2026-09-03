@@ -267,6 +267,40 @@ export interface ShopOrderReportEmployeeDurationDuplicateVO {
   onlineRecordCount: number;
 }
 
+export interface ShopOrderReportEmployeeDurationChartVO {
+  totalStats: {
+    totalDuration: number;
+    operationDuration: number;
+    effectiveDuration: number;
+    duplicateDuration: number;
+    employeeCount: number;
+  };
+  trendEmployeeId?: string;
+  trendEmployeeName?: string;
+  employeeDailyTrend: Array<{
+    reportDate: string;
+    totalDuration: number;
+    operationDuration: number;
+    effectiveDuration: number;
+  }>;
+  employeeTop10: Array<{
+    employeeId: string;
+    employeeName: string;
+    operationDuration: number;
+  }>;
+  duplicateTop10: Array<{
+    reportDate: string;
+    employeeId: string;
+    employeeName: string;
+    duplicateDuration: number;
+  }>;
+  dailyCompare: Array<{
+    reportDate: string;
+    operationDuration: number;
+    duplicateDuration: number;
+  }>;
+}
+
 export interface ShopOrderReportEmployeeDurationDetailVO {
   reportDate: string;
   reportId: string | number;

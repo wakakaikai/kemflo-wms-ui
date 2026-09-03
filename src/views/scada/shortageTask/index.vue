@@ -2,7 +2,8 @@
   <div ref="boardRef" class="shortage-board shortage-board-theme" :class="{ 'is-fullscreen': isFullscreen }">
     <div class="dashboard-header">
       <div class="header-left">
-        <img src="@/assets/logo/kemflo-logo.jpg" alt="Logo" class="logo" :title="'点击切换全屏'" @click.stop="toggleFullscreen" />
+        <img v-if="tenantId == '000001'" src="@/assets/logo/yakima-logo.png" alt="Logo" class="logo" @click="toggleFullscreen" />
+        <img v-else src="@/assets/logo/kemflo-logo.jpg" alt="Logo" class="logo" :title="'点击切换全屏'" @click.stop="toggleFullscreen" />
       </div>
       <div class="header-center" :title="'点击打开看板配置'" @click="showSettings = true">
         <h2 class="page-title">生产缺料监控看板</h2>
@@ -183,7 +184,7 @@ const isFullscreen = ref(false);
 const allLines = ref<BoardRow[]>([]);
 const fulfillmentResult = ref<ShortageFulfillmentSimulationResult | null>(null);
 const fulfillmentSummary = computed(() => fulfillmentResult.value?.summary ?? null);
-
+const tenantId = ref('000000');
 const stockRecordList = ref<
   {
     rowKey: string;
@@ -553,6 +554,7 @@ function setupRefreshTimer() {
 }
 
 onMounted(async () => {
+  tenantId.value = localStorage.getItem('tenantId');
   syncChromeVisibility();
   updateBoardRem();
   updateDateTime();

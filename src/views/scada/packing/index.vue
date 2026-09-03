@@ -3,7 +3,8 @@
     <!-- 顶部标题 -->
     <div class="dashboard-header">
       <div class="header-left">
-        <img src="@/assets/logo/kemflo-logo.jpg" alt="Logo" class="logo" @click="toggleFullscreen" />
+        <img v-if="tenantId == '000001'" src="@/assets/logo/yakima-logo.png" alt="Logo" class="logo" @click="toggleFullscreen" />
+        <img v-else src="@/assets/logo/kemflo-logo.jpg" alt="Logo" class="logo" @click="toggleFullscreen" />
       </div>
       <div class="header-center" @click="showSettings = true">
         <h2>打包看板</h2>
@@ -336,7 +337,7 @@ interface UserSettingsForm {
   autoPlayInterval: number;
   freshScadaData: number;
 }
-
+const tenantId = ref('000000');
 const tabPosition = ref('week');
 const currentDateTime = ref('');
 const userSettingsForm = ref<UserSettingsForm>({
@@ -816,6 +817,7 @@ const resizeCharts = () => {
 let timer = null;
 let resizeObserver = null;
 onMounted(async () => {
+  tenantId.value = localStorage.getItem('tenantId');
   // 初始化时间并设置定时器
   updateDateTime();
   timer = setInterval(updateDateTime, 1000);

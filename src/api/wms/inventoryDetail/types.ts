@@ -356,8 +356,13 @@ export interface InventoryCancelLineBO {
 
 /** 库存移动冲销提交 */
 export interface InventoryCancelForm {
-  inventoryCancelBoList: InventoryCancelLineBO[];
+  /** SAP 物料凭证号（自动冲销全部项次） */
+  sapMaterialOrderNo: string;
+  sapMaterialDocYear?: number | string;
+  /** 物料单 */
   mtsnr?: string;
+  /** 交货单 */
+  lfsnr?: string;
   bktxt?: string;
   postingDate?: string;
 }
@@ -365,6 +370,8 @@ export interface InventoryCancelForm {
 /** 构建库存冲销批次选项 */
 export interface InventoryCancelBatchOptions {
   mtsnr?: string;
+  lfsnr?: string;
   bktxt?: string;
   postingDate?: string | null;
+  sapMaterialDocYear?: number | string;
 }

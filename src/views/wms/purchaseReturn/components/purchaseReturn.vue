@@ -242,12 +242,6 @@
               <el-icon class="ml-1"><QuestionFilled /></el-icon>
             </el-tooltip>
           </el-button>
-          <el-button :loading="buttonLoading3" type="primary" @click="submitTransfer('161')" :disabled="transferList.length === 0">
-            采购退货161
-            <el-tooltip content="主要用于跨月向供应商退货的业务" placement="top">
-              <el-icon class="ml-1"><QuestionFilled /></el-icon>
-            </el-tooltip>
-          </el-button>
         </div>
       </div>
     </el-card>
@@ -282,7 +276,6 @@ const loading = ref(false);
 const tableLoading = ref(false);
 const buttonLoading1 = ref(false);
 const buttonLoading2 = ref(false);
-const buttonLoading3 = ref(false);
 const inventoryDetailList = ref<InventoryMovementVO[]>([]);
 const selectedSearchItems = ref<InventoryMovementVO[]>([]);
 const transferList = ref<any[]>([]);
@@ -598,7 +591,7 @@ const addSelectedToTransferList = () => {
     targetAreaCode: item.areaCode,
     targetLocationCode: item.locationCode,
     specialInventoryFlag: item.specialInventoryFlag,
-    inventoryType: item.sapCheckFlag ? 'N' : 'X',
+    inventoryType: item.inventoryType,
     returnQuantity: item.poQuantity,
     inventoryQuantity: (item.poQuantity * (item.conversionRatio || 1)).toFixed(3),
     inventoryUnit: item.unit
@@ -750,16 +743,10 @@ const submitTransfer = async (moveType: any) => {
     resultStatus.value = false;
     return;
   }
-  switch (moveType) {
-    case '102':
-      buttonLoading1.value = true;
-      break;
-    case '122':
-      buttonLoading2.value = true;
-      break;
-    case '161':
-      buttonLoading3.value = true;
-      break;
+  if (moveType === '102') {
+    buttonLoading1.value = true;
+  } else if (moveType === '122') {
+    buttonLoading2.value = true;
   }
 
   try {
@@ -817,7 +804,6 @@ const submitTransfer = async (moveType: any) => {
   } finally {
     buttonLoading1.value = false;
     buttonLoading2.value = false;
-    buttonLoading3.value = false;
   }
 };
 

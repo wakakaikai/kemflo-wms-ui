@@ -26,7 +26,18 @@
           </el-input>
         </el-form-item>
         <el-form-item label="报工时间" prop="reportTimeRange">
-          <el-date-picker v-model="queryParams.reportTimeRange" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间" :default-time="defaultReportTime" :shortcuts="shortcuts" :teleported="!isFullscreen" clearable />
+          <el-date-picker
+            v-model="queryParams.reportTimeRange"
+            type="datetimerange"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            :default-time="defaultReportTime"
+            :shortcuts="shortcuts"
+            :append-to="popperAppendTo"
+            clearable
+          />
         </el-form-item>
         <el-form-item label="单位">
           <el-radio-group v-model="displayUnit">
@@ -137,6 +148,14 @@ const defaultReportTime = [new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 2
 const isFullscreen = ref(false);
 const tableHeight = ref<string | number>('calc(100vh - 330px)');
 const detailTableHeight = ref<string | number>('calc(100vh - 380px)');
+
+/** 全屏时弹层挂到全屏根节点，避免挂 body 不可见，也避免被 overflow 裁切导致面板重叠 */
+const popperAppendTo = computed(() => {
+  if (isFullscreen.value && reportFullscreenRef.value) {
+    return reportFullscreenRef.value;
+  }
+  return 'body';
+});
 
 const unitLabel = computed(() => (displayUnit.value === 'hour' ? '小时' : '分钟'));
 
@@ -499,10 +518,12 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .report-fullscreen-root.is-fullscreen {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
+  /* 根节点不裁切，供日期/下拉弹层挂载；内容区单独 overflow */
+  overflow: visible;
   background: var(--el-bg-color);
 }
 
@@ -531,12 +552,14 @@ onBeforeUnmount(() => {
   flex: 1;
   flex-direction: column;
   min-height: 0;
+  overflow: visible;
 }
 
 .report-employee-card.is-fullscreen :deep(.el-form) {
   position: relative;
-  z-index: 2;
+  z-index: 10;
   flex-shrink: 0;
+  overflow: visible;
 }
 
 .report-employee-card.is-fullscreen :deep(.el-tabs) {
@@ -548,16 +571,34 @@ onBeforeUnmount(() => {
 }
 
 .report-employee-card.is-fullscreen :deep(.el-tabs__header) {
+  flex: none;
   flex-shrink: 0;
-  margin-bottom: 8px;
+  order: 0;
+  /* 与非全屏默认间距一致，避免 tab 被挤偏 */
+  margin-bottom: 15px;
 }
 
-.report-employee-card.is-fullscreen :deep(.el-tabs__content),
+.report-employee-card.is-fullscreen :deep(.el-tabs__nav-wrap),
+.report-employee-card.is-fullscreen :deep(.el-tabs__nav-scroll) {
+  flex: none;
+}
+
+.report-employee-card.is-fullscreen :deep(.el-tabs__content) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  /* 勿用 height:100%，否则会与 header 抢高度导致 tab 位移/被裁切 */
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  order: 1;
+}
+
 .report-employee-card.is-fullscreen :deep(.el-tab-pane) {
   display: flex;
   flex: 1;
   flex-direction: column;
-  height: 100%;
+  height: auto;
   min-height: 0;
   overflow: hidden;
 }

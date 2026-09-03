@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { ShopOrderReportVO, ShopOrderReportForm, ShopOrderReportQuery, ShopOrderReportEmployeeDurationQuery, ShopOrderReportEmployeeDurationSummaryVO, ShopOrderReportEmployeeDurationDetailVO, ShopOrderReportEmployeeDurationDuplicateVO } from '@/api/mes/shopOrderReport/types';
+import { ShopOrderReportVO, ShopOrderReportForm, ShopOrderReportQuery, ShopOrderReportEmployeeDurationQuery, ShopOrderReportEmployeeDurationSummaryVO, ShopOrderReportEmployeeDurationDetailVO, ShopOrderReportEmployeeDurationDuplicateVO, ShopOrderReportEmployeeDurationChartVO } from '@/api/mes/shopOrderReport/types';
 
 /**
  * 查询工单开工完工-APP列表
@@ -69,6 +69,21 @@ export const listEmployeeDurationSummary = (data: ShopOrderReportEmployeeDuratio
   return request({
     url: '/mes/shopOrderReport/employeeDuration/summary',
     method: 'post',
+    params: {
+      pageNum: data.pageNum,
+      pageSize: data.pageSize
+    },
+    data
+  });
+};
+
+/**
+ * 查询报工成功员工在线时长图表数据
+ */
+export const getEmployeeDurationChart = (data: ShopOrderReportEmployeeDurationQuery): AxiosPromise<ShopOrderReportEmployeeDurationChartVO> => {
+  return request({
+    url: '/mes/shopOrderReport/employeeDuration/chart',
+    method: 'post',
     data
   });
 };
@@ -95,6 +110,10 @@ export const listEmployeeDurationDuplicate = (data: ShopOrderReportEmployeeDurat
   return request({
     url: '/mes/shopOrderReport/employeeDuration/duplicate',
     method: 'post',
+    params: {
+      pageNum: data.pageNum,
+      pageSize: data.pageSize
+    },
     data
   });
 };

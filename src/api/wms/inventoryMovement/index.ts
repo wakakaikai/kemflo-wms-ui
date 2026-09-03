@@ -62,5 +62,5 @@ export const delInventoryMovement = (id: string | number | Array<string | number
   });
 };
 
-/** 库存移动冲销（已迁移至 /wms/inventoryDetail/cancel，保留兼容导出） */
+/** 库存移动冲销（已迁移至 /wms/inventoryDetail/reverse，保留兼容导出） */
 export { cancelInventoryMovement } from '@/api/wms/inventoryDetail';
