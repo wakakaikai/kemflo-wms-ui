@@ -20,14 +20,29 @@ export interface PackingDetailVO {
   workOrderNo: string;
 
   /**
+   * 条码
+   */
+  sn?: string;
+
+  /**
    * 料号
    */
   item: string;
 
   /**
+   * 产品描述
+   */
+  itemDesc?: string;
+
+  /**
    * 数量
    */
   packingQty: number;
+
+  /**
+   * 凭证年度
+   */
+  materialDocYear?: string | number;
 
   /**
    * 物料凭证号
@@ -65,6 +80,11 @@ export interface PackingDetailForm extends BaseEntity {
    * 工单号
    */
   workOrderNo?: string;
+
+  /**
+   * 条码
+   */
+  sn?: string;
 
   /**
    * 料号
@@ -107,6 +127,11 @@ export interface PackingDetailQuery extends PageQuery {
    * 工单号
    */
   workOrderNo?: string;
+
+  /**
+   * 条码
+   */
+  sn?: string;
 
   /**
    * 料号

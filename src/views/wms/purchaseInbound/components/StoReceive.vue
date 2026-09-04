@@ -85,7 +85,7 @@
         <div v-show="transferExpanded" class="transfer-card-body">
           <el-form :model="stoFixedInboundForm" ref="stoFixedInboundFormRef" label-width="auto" :inline="true">
             <el-row :gutter="20">
-              <el-col :sm="24" :md="6" :lg="6" v-if="stoInboundMode === 'fixed'">
+              <el-col :sm="24" :md="8" :lg="8" v-if="stoInboundMode === 'fixed'">
                 <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
                   <HistoryInput v-model.trim="stoFixedInboundForm.locationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(stoFixedInboundForm.locationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(stoFixedInboundForm.locationCode)">
                     <template #append>
@@ -94,17 +94,12 @@
                   </HistoryInput>
                 </el-form-item>
               </el-col>
-<!--              <el-col :sm="24" :md="6" :lg="6">
-                <el-form-item label="交货单">
-                  <HistoryInput v-model="stoFixedInboundForm.lfsnr" :config="lfsnrConfig" placeholder="请输入交货单" />
-                </el-form-item>
-              </el-col>-->
-              <el-col :sm="24" :md="6" :lg="6">
+              <el-col :sm="24" :md="8" :lg="8">
                 <el-form-item label="抬头文本" prop="bktxt">
                   <HistoryInput v-model="stoFixedInboundForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="6" :lg="6">
+              <el-col :sm="24" :md="8" :lg="8">
                 <el-form-item label="过账日期" prop="postingDate">
                   <el-date-picker clearable v-model="stoFixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
                 </el-form-item>

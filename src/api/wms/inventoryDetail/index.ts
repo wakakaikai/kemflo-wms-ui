@@ -150,14 +150,18 @@ function resolveCancelLfsnr(lfsnr?: string | null): string | undefined {
   return value || undefined;
 }
 
-/** 按物料凭证号冲销全部项次 */
+/** 按物料凭证号冲销；可传 sapMaterialItems 指定项次，不传则冲销全部未冲销项次 */
 export function buildInventoryCancelPayloadByVoucher(
   sapMaterialOrderNo: string,
   options: InventoryCancelBatchOptions = {}
 ): InventoryCancelForm {
+  const sapMaterialItems = (options.sapMaterialItems || [])
+    .map((item) => String(item ?? '').trim())
+    .filter(Boolean);
   return {
     sapMaterialOrderNo: sapMaterialOrderNo.trim(),
     sapMaterialDocYear: options.sapMaterialDocYear,
+    sapMaterialItems: sapMaterialItems.length > 0 ? sapMaterialItems : undefined,
     mtsnr: resolveCancelBktxt(options.mtsnr),
     lfsnr: resolveCancelLfsnr(options.lfsnr),
     bktxt: resolveCancelBktxt(options.bktxt),

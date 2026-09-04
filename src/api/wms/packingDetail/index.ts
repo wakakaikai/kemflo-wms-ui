@@ -72,3 +72,15 @@ export const getWorkOrderPackedQty = (workOrderNo: string | number | Array<strin
     method: 'get'
   });
 };
+
+/**
+ * 打包明细退货（复制负数明细并清空物料凭证）
+ * @param ids
+ */
+export const returnPackingDetail = (ids: string | number | Array<string | number>) => {
+  return request({
+    url: '/wms/packingDetail/return',
+    method: 'post',
+    data: ids
+  });
+};

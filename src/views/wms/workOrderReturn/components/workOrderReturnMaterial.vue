@@ -851,7 +851,7 @@ onMounted(() => {
 }
 
 .history-collapse-icon {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
   transition: transform 0.2s;
 }
@@ -861,7 +861,7 @@ onMounted(() => {
 }
 
 .history-header-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 

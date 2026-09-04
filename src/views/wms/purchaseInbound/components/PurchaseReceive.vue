@@ -93,11 +93,11 @@
               <span class="header-title">入库列表</span>
             </div>
             <div class="header-actions" @click.stop>
-              <el-radio-group v-model="inboundMode">
+              <el-radio-group v-model="inboundMode" size="small">
                 <el-radio-button label="fixed">固定库位</el-radio-button>
                 <el-radio-button label="multiple">多库位</el-radio-button>
               </el-radio-group>
-              <el-button type="danger" @click="clearInboundList" :disabled="inboundList.length === 0">清空列表</el-button>
+              <el-button type="danger" size="small" @click="clearInboundList" :disabled="inboundList.length === 0">清空列表</el-button>
             </div>
           </div>
         </template>
@@ -105,7 +105,7 @@
         <div v-show="transferExpanded" class="transfer-card-body">
           <el-form :model="fixedInboundForm" ref="fixedInboundFormRef" label-width="auto" :inline="true">
             <el-row :gutter="20">
-              <el-col :sm="24" :md="6" :lg="6" v-if="inboundMode === 'fixed'">
+              <el-col :sm="24" :md="8" :lg="8" v-if="inboundMode === 'fixed'">
                 <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
                   <HistoryInput v-model="fixedInboundForm.locationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)">
                     <template #append>
@@ -114,17 +114,17 @@
                   </HistoryInput>
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="6" :lg="6">
+              <el-col :sm="24" :md="8" :lg="8">
                 <el-form-item label="交货单">
                   <HistoryInput v-model="fixedInboundForm.lfsnr" :config="lfsnrConfig" placeholder="请输入交货单" />
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="6" :lg="6">
+              <el-col :sm="24" :md="8" :lg="8">
                 <el-form-item label="抬头文本" prop="bktxt">
                   <HistoryInput v-model="fixedInboundForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="6" :lg="6">
+              <el-col :sm="24" :md="8" :lg="8">
                 <el-form-item label="过账日期" prop="postingDate">
                   <el-date-picker clearable v-model="fixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
                 </el-form-item>

@@ -82,7 +82,7 @@
             <el-icon class="history-collapse-icon" :class="{ 'is-expanded': transferExpanded }">
               <ArrowRight />
             </el-icon>
-            <span class="header-title">工单入库取消列表</span>
+            <span class="header-title">工单退货列表</span>
           </div>
           <div class="header-actions" @click.stop>
             <el-button type="danger" @click="clearTransferList" :disabled="transferList.length === 0">清空列表</el-button>
@@ -727,7 +727,7 @@ const submitTransfer = async () => {
 }
 
 .history-collapse-icon {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
   transition: transform 0.2s;
 }
@@ -737,12 +737,12 @@ const submitTransfer = async () => {
 }
 
 .header-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .history-header-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 
