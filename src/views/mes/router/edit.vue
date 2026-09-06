@@ -1,14 +1,15 @@
 <template>
   <div v-loading="loading" class="router-edit p-2">
-    <el-card shadow="never" class="mb-2">
-      <template #header>
-        <el-space>
-          <el-button icon="Back" @click="goBack">返回</el-button>
-          <el-button type="primary" icon="Check" :loading="buttonLoading" @click="handleSave">保存</el-button>
+    <section class="router-section mb-2">
+      <div class="router-section__header">
+        <span>基础信息</span>
+        <el-space class="router-actions">
+          <el-button plain icon="Back" @click="goBack">返回</el-button>
+          <el-button type="primary" plain icon="Check" :loading="buttonLoading" @click="handleSave">保存</el-button>
         </el-space>
-      </template>
-      <el-form ref="routerFormRef" :model="form" :rules="rules" label-width="110px">
-        <el-row :gutter="16">
+      </div>
+      <el-form ref="routerFormRef" :model="form" :rules="rules" label-width="110px" class="router-base-form">
+        <el-row :gutter="24">
           <el-col :span="6">
             <el-form-item label="工艺路线" prop="router">
               <el-input v-model="form.router" placeholder="请输入工艺路线" :disabled="isEdit" />
@@ -19,19 +20,20 @@
               <el-input v-model="form.revision" placeholder="请输入版本" :disabled="isEdit" />
             </el-form-item>
           </el-col>
+          <el-col :span="12" />
           <el-col :span="6">
             <el-form-item label="描述" prop="description">
               <el-input v-model="form.description" placeholder="请输入描述" />
             </el-form-item>
           </el-col>
-          <el-col :span="6">
+          <el-col :span="5">
             <el-form-item label="当前版本" prop="currentRevision">
               <el-switch v-model="form.currentRevision" active-value="true" inactive-value="false" />
             </el-form-item>
           </el-col>
-          <el-col :span="6">
-            <el-form-item label="类型" prop="routerType">
-              <el-select v-model="form.routerType" placeholder="请选择类型" clearable>
+          <el-col :span="7">
+            <el-form-item label="工艺路线类型" prop="routerType">
+              <el-select v-model="form.routerType" placeholder="请选择工艺路线类型" clearable>
                 <el-option v-for="item in routerTypeOptions" :key="item.dictValue" :label="item.dictLabel" :value="item.dictValue" />
               </el-select>
             </el-form-item>
@@ -43,19 +45,14 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="备注" prop="remark">
-              <el-input v-model="form.remark" placeholder="请输入备注" />
-            </el-form-item>
-          </el-col>
         </el-row>
       </el-form>
-    </el-card>
+    </section>
 
     <el-card shadow="never" class="designer-card mb-2">
       <template #header>
         <div class="card-header-row">
-          <span>工艺路线设计</span>
+          <span>工艺路线</span>
           <span class="card-header-tip">从左侧工序库拖拽到画布进行编排</span>
         </div>
       </template>
@@ -69,7 +66,8 @@
         <el-table :data="extFields" border size="small">
           <el-table-column label="自定义字段" prop="attributeDesc" min-width="160">
             <template #default="scope">
-              <span class="required-mark">{{ scope.row.required === 'true' ? '*' : '' }}</span>{{ scope.row.attributeDesc || scope.row.description }}
+              <span class="required-mark">{{ scope.row.required === 'true' ? '*' : '' }}</span
+              >{{ scope.row.attributeDesc || scope.row.description }}
             </template>
           </el-table-column>
           <el-table-column label="类型" prop="fieldTypeDesc" width="180" />
@@ -184,7 +182,6 @@ const handleSave = () => {
         const sequence = String(routingNode.sequence || routingNode.number * 10);
         return {
           cellId: cell.id,
-          id: routingNode.persistedId,
           sequence,
           startStep: normalizeBooleanText(routingNode.startStep),
           endStep: normalizeBooleanText(routingNode.endStep),
@@ -256,22 +253,60 @@ onMounted(async () => {
   min-height: calc(100vh - 96px);
 }
 
+.router-section {
+  border: 1px solid #ebeef5;
+  background: #fff;
+}
+
+.router-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  padding: 0 12px;
+  border-bottom: 1px solid #ebeef5;
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.router-base-form {
+  padding: 12px 18px 18px 0;
+}
+
+.router-base-form :deep(.el-form-item) {
+  margin-bottom: 20px;
+}
+
+.router-base-form :deep(.el-select) {
+  width: 100%;
+}
+
+.router-actions :deep(.el-button) {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
 .designer-card {
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .designer-card :deep(.el-card__body) {
+  display: flex;
   flex: 1;
   min-height: 0;
   padding: 12px;
 }
 
 .designer-wrap {
-  height: 100%;
-  min-height: 560px;
+  flex: 1;
+  height: clamp(480px, calc(100vh - 260px), 680px);
+  min-height: 0;
 }
 
 .card-header-row {
