@@ -28,16 +28,7 @@
         </el-form>
 
         <div class="search-result">
-          <el-table
-            ref="historyTableRef"
-            :data="groupedRows"
-            row-key="groupKey"
-            height="300"
-            border
-            v-loading="loading"
-            @selection-change="handleSelectionChange"
-            @row-click="handleHistoryRowClick"
-          >
+          <el-table ref="historyTableRef" :data="groupedRows" row-key="groupKey" height="300" border v-loading="loading" @selection-change="handleSelectionChange" @row-click="handleHistoryRowClick">
             <el-table-column type="selection" width="55" align="center" :selectable="isRowSelectable" />
             <el-table-column type="expand" width="48">
               <template #default="{ row }">
@@ -82,6 +73,7 @@
               </template>
             </el-table-column>
           </el-table>
+          <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
         </div>
       </div>
     </el-card>
@@ -119,15 +111,7 @@
               </el-col>
               <el-col :sm="24" :md="8" :lg="8">
                 <el-form-item label="过账日期">
-                  <el-date-picker
-                    v-model="cancelForm.postingDate"
-                    clearable
-                    type="date"
-                    value-format="YYYY-MM-DD"
-                    :disabled-date="disabledFutureDate"
-                    placeholder="请选择过账日期"
-                    style="width: 100%"
-                  />
+                  <el-date-picker v-model="cancelForm.postingDate" clearable type="date" value-format="YYYY-MM-DD" :disabled-date="disabledFutureDate" placeholder="请选择过账日期" style="width: 100%" />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -142,37 +126,21 @@
           </el-alert>
         </div>
 
-        <el-table ref="reverseTableRef" :data="reverseList" border style="width: 100%" max-height="520" row-key="groupKey" @row-click="handleReverseRowClick">
+        <el-table :data="reverseList" border style="width: 100%" max-height="520" row-key="groupKey">
           <el-table-column type="index" width="50" align="center" />
-          <el-table-column type="expand" width="48">
-            <template #default="{ row }">
-              <div class="movement-detail-panel">
-                <div v-if="row.outMovement" class="detail-section detail-from">
-                  <div class="detail-section-title">从（出库）</div>
-                  <MovementDetailBlock :movement="row.outMovement" />
-                </div>
-                <div v-if="row.inMovement" class="detail-section detail-to">
-                  <div class="detail-section-title">目的地（入库）</div>
-                  <MovementDetailBlock :movement="row.inMovement" />
-                </div>
-                <div v-if="!row.outMovement && !row.inMovement" class="detail-empty">暂无进出明细</div>
-              </div>
-            </template>
-          </el-table-column>
           <el-table-column v-if="reverseColumns[0].visible" label="物料凭证号" prop="sapMaterialOrderNo" min-width="120" />
           <el-table-column v-if="reverseColumns[1].visible" label="凭证项次" prop="sapMaterialItem" width="90" />
-          <el-table-column v-if="reverseColumns[2].visible" label="移动类型" prop="moveType" width="90" />
-          <el-table-column v-if="reverseColumns[3].visible" label="采购单号" prop="sourceDocCode" min-width="120" />
-          <el-table-column v-if="reverseColumns[4].visible" label="采购项次" prop="poItemNo" width="90" />
-          <el-table-column v-if="reverseColumns[5].visible" label="物料编码" prop="itemCode" min-width="120" />
-          <el-table-column v-if="reverseColumns[6].visible" label="物料名称" prop="itemName" min-width="140" show-overflow-tooltip />
-          <el-table-column v-if="reverseColumns[7].visible" label="批次号" prop="batchCode" min-width="100" />
-          <el-table-column v-if="reverseColumns[8].visible" label="数量" align="center" width="120">
+          <el-table-column v-if="reverseColumns[2].visible" label="采购单号" prop="sourceDocCode" min-width="120" />
+          <el-table-column v-if="reverseColumns[3].visible" label="采购项次" prop="poItemNo" width="90" />
+          <el-table-column v-if="reverseColumns[4].visible" label="物料编码" prop="itemCode" min-width="120" />
+          <el-table-column v-if="reverseColumns[5].visible" label="物料名称" prop="itemName" min-width="140" show-overflow-tooltip />
+          <el-table-column v-if="reverseColumns[6].visible" label="批次号" prop="batchCode" min-width="100" />
+          <el-table-column v-if="reverseColumns[7].visible" label="数量" align="center" width="120">
             <template #default="scope">
               {{ formatQtyWithUnit(scope.row.quantity, scope.row.unit) }}
             </template>
           </el-table-column>
-          <el-table-column v-if="reverseColumns[9].visible" label="进出" align="center" width="110">
+          <el-table-column v-if="reverseColumns[8].visible" label="进出" align="center" width="110">
             <template #default="scope">
               <el-tag v-if="scope.row.hasPair" size="small" type="warning">出+入</el-tag>
               <el-tag v-else-if="scope.row.outMovement" size="small" type="danger">出库</el-tag>
@@ -227,26 +195,24 @@ interface VoucherItemGroup {
   movements: InventoryMovementVO[];
 }
 
-const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-
 const showSearch = ref(true);
 const historyExpanded = ref(true);
 const transferExpanded = ref(true);
 const loading = ref(false);
 const buttonLoading = ref(false);
+const total = ref(0);
 const inventoryDetailList = ref<InventoryMovementVO[]>([]);
 const selectedSearchItems = ref<VoucherItemGroup[]>([]);
 const reverseList = ref<VoucherItemGroup[]>([]);
 const resultMessage = ref('');
 const resultStatus = ref(false);
 const historyTableRef = ref();
-const reverseTableRef = ref();
 const searchSapMaterialOrderNo = ref('');
 const searchSourceDocCode = ref('');
 
 const queryParams = ref<InventoryMovementQuery>({
   pageNum: 1,
-  pageSize: 10000,
+  pageSize: 20,
   sourceDocType: '',
   sapMaterialOrderNo: undefined,
   sourceDocCode: undefined,
@@ -254,7 +220,6 @@ const queryParams = ref<InventoryMovementQuery>({
 });
 
 const cancelForm = ref({
-  sapMaterialOrderNo: '',
   sapMaterialDocYear: undefined as number | string | undefined,
   lfsnr: '',
   mtsnr: '',
@@ -279,14 +244,13 @@ const columns = ref<FieldOption[]>([
 const reverseColumns = ref<FieldOption[]>([
   { key: 0, label: '物料凭证号', visible: true, children: [] },
   { key: 1, label: '凭证项次', visible: true, children: [] },
-  { key: 2, label: '移动类型', visible: true, children: [] },
-  { key: 3, label: '采购单号', visible: true, children: [] },
-  { key: 4, label: '采购项次', visible: true, children: [] },
-  { key: 5, label: '物料编码', visible: true, children: [] },
-  { key: 6, label: '物料名称', visible: true, children: [] },
-  { key: 7, label: '批次号', visible: true, children: [] },
-  { key: 8, label: '数量', visible: true, children: [] },
-  { key: 9, label: '进出', visible: true, children: [] }
+  { key: 2, label: '采购单号', visible: true, children: [] },
+  { key: 3, label: '采购项次', visible: true, children: [] },
+  { key: 4, label: '物料编码', visible: true, children: [] },
+  { key: 5, label: '物料名称', visible: true, children: [] },
+  { key: 6, label: '批次号', visible: true, children: [] },
+  { key: 7, label: '数量', visible: true, children: [] },
+  { key: 8, label: '进出', visible: true, children: [] }
 ]);
 
 const historyPage = 'purchaseReverse';
@@ -420,11 +384,19 @@ const isRowSelectable = (row: VoucherItemGroup) => !isInventoryMovementReversed(
 
 function syncCancelVoucherFromReverseList() {
   const voucherSet = new Set(reverseList.value.map((row) => String(row.sapMaterialOrderNo ?? '').trim()).filter(Boolean));
-  cancelForm.value.sapMaterialOrderNo = voucherSet.size === 1 ? [...voucherSet][0] : '';
-  const matched = reverseList.value.find(
-    (row) => String(row.sapMaterialOrderNo ?? '').trim() === cancelForm.value.sapMaterialOrderNo
-  );
+  const sapMaterialOrderNo = voucherSet.size === 1 ? [...voucherSet][0] : '';
+  const matched = reverseList.value.find((row) => String(row.sapMaterialOrderNo ?? '').trim() === sapMaterialOrderNo);
   cancelForm.value.sapMaterialDocYear = matched?.sapMaterialDocYear;
+}
+
+function getSingleReverseVoucherNo(): string {
+  const voucherSet = new Set(reverseList.value.map((item) => String(item.sapMaterialOrderNo ?? '').trim()).filter(Boolean));
+  return voucherSet.size === 1 ? [...voucherSet][0] : '';
+}
+
+function showResultMessage(message: string, status = false) {
+  resultStatus.value = status;
+  resultMessage.value = message;
 }
 
 function handleHistoryRowClick(row: VoucherItemGroup, _column: any, event: MouseEvent) {
@@ -435,14 +407,6 @@ function handleHistoryRowClick(row: VoucherItemGroup, _column: any, event: Mouse
   historyTableRef.value?.toggleRowExpansion(row);
 }
 
-function handleReverseRowClick(row: VoucherItemGroup, _column: any, event: MouseEvent) {
-  const target = event.target as HTMLElement | null;
-  if (target?.closest('.el-button, .el-table__expand-icon')) {
-    return;
-  }
-  reverseTableRef.value?.toggleRowExpansion?.(row);
-}
-
 const getList = async () => {
   if (!queryParams.value.sapMaterialOrderNo && !queryParams.value.sourceDocCode) {
     return;
@@ -451,6 +415,7 @@ const getList = async () => {
   try {
     const res = await listInventoryMovement(queryParams.value);
     inventoryDetailList.value = res.rows || [];
+    total.value = res.total || 0;
   } finally {
     loading.value = false;
   }
@@ -460,7 +425,7 @@ const handleQuery = async () => {
   const voucherNo = String(searchSapMaterialOrderNo.value ?? '').trim();
   const sourceDocCode = String(searchSourceDocCode.value ?? '').trim();
   if (!voucherNo && !sourceDocCode) {
-    proxy?.$modal.msgWarning('请输入物料凭证号或采购单号');
+    showResultMessage('请输入物料凭证号或采购单号');
     return;
   }
   queryParams.value.sapMaterialOrderNo = voucherNo || undefined;
@@ -477,6 +442,7 @@ const resetQuery = () => {
   queryParams.value.sourceDocCode = undefined;
   queryParams.value.sourceDocType = '';
   inventoryDetailList.value = [];
+  total.value = 0;
   selectedSearchItems.value = [];
   historyTableRef.value?.clearSelection?.();
   resultMessage.value = '';
@@ -488,21 +454,23 @@ const handleSelectionChange = (selection: VoucherItemGroup[]) => {
 
 const addSelectedToReverseList = () => {
   if (selectedSearchItems.value.length === 0) {
-    proxy?.$modal.msgWarning('请先选择要冲销的记录');
+    showResultMessage('请先选择要冲销的记录');
     return;
   }
 
   const reversedItems = selectedSearchItems.value.filter((item) => isInventoryMovementReversed(item));
   if (reversedItems.length > 0) {
-    proxy?.$modal.msgWarning('已冲销记录不能加入冲销列表');
+    showResultMessage('已冲销记录不能加入冲销列表');
     return;
   }
 
-  const selectedVouchers = new Set(
-    selectedSearchItems.value.map((item) => String(item.sapMaterialOrderNo ?? '').trim()).filter(Boolean)
-  );
+  const selectedVouchers = new Set(selectedSearchItems.value.map((item) => String(item.sapMaterialOrderNo ?? '').trim()).filter(Boolean));
+  if (selectedVouchers.size === 0) {
+    showResultMessage('所选记录缺少物料凭证号');
+    return;
+  }
   if (selectedVouchers.size > 1) {
-    proxy?.$modal.msgWarning('冲销列表只能包含一个物料凭证号');
+    showResultMessage('冲销列表只能包含一个物料凭证号');
     return;
   }
 
@@ -510,7 +478,7 @@ const addSelectedToReverseList = () => {
   if (reverseList.value.length > 0) {
     const existingVoucher = String(reverseList.value[0].sapMaterialOrderNo ?? '').trim();
     if (existingVoucher && selectedVoucher && existingVoucher !== selectedVoucher) {
-      proxy?.$modal.msgWarning(`冲销列表已锁定凭证 ${existingVoucher}，请先清空后再加入其他凭证`);
+      showResultMessage(`冲销列表已锁定凭证 ${existingVoucher}，请先清空后再加入其他凭证`);
       return;
     }
   }
@@ -527,7 +495,7 @@ const addSelectedToReverseList = () => {
   syncCancelVoucherFromReverseList();
   historyTableRef.value?.clearSelection?.();
   selectedSearchItems.value = [];
-  proxy?.$modal.msgSuccess(`成功加入${addedCount}条记录`);
+  showResultMessage(`成功加入${addedCount}条记录`, true);
 };
 
 const removeFromReverseList = (index: number) => {
@@ -537,7 +505,6 @@ const removeFromReverseList = (index: number) => {
 
 const clearReverseList = () => {
   reverseList.value = [];
-  cancelForm.value.sapMaterialOrderNo = '';
   cancelForm.value.sapMaterialDocYear = undefined;
   cancelForm.value.bktxt = '';
   cancelForm.value.postingDate = null;
@@ -546,22 +513,19 @@ const clearReverseList = () => {
 
 const submitCancel = async () => {
   if (reverseList.value.length === 0) {
-    proxy?.$modal.msgWarning('请先加入冲销记录');
+    showResultMessage('请先加入冲销记录');
     return;
   }
 
-  const voucherSet = new Set(reverseList.value.map((item) => String(item.sapMaterialOrderNo ?? '').trim()).filter(Boolean));
-  if (voucherSet.size !== 1) {
-    proxy?.$modal.msgWarning('冲销列表只能包含一个物料凭证号');
+  const sapMaterialOrderNo = getSingleReverseVoucherNo();
+  if (!sapMaterialOrderNo) {
+    showResultMessage('冲销列表只能包含一个物料凭证号');
     return;
   }
 
-  const sapMaterialOrderNo = [...voucherSet][0];
-  const sapMaterialItems = reverseList.value
-    .map((item) => String(item.sapMaterialItem ?? '').trim())
-    .filter(Boolean);
+  const sapMaterialItems = reverseList.value.map((item) => String(item.sapMaterialItem ?? '').trim()).filter(Boolean);
   if (sapMaterialItems.length === 0) {
-    proxy?.$modal.msgWarning('冲销列表缺少物料凭证项次');
+    showResultMessage('冲销列表缺少物料凭证项次');
     return;
   }
 
@@ -583,9 +547,8 @@ const submitCancel = async () => {
       return;
     }
     resultStatus.value = true;
-    resultMessage.value = res.msg || res.data || `凭证 ${payload.sapMaterialOrderNo} 项次 ${sapMaterialItems.join(',')} 冲销成功`;
+    resultMessage.value = res.msg || res.data || `凭证 ${sapMaterialOrderNo} 项次 ${sapMaterialItems.join(',')} 冲销成功`;
     reverseList.value = [];
-    cancelForm.value.sapMaterialOrderNo = '';
     cancelForm.value.sapMaterialDocYear = undefined;
     cancelForm.value.lfsnr = '';
     cancelForm.value.mtsnr = '';
