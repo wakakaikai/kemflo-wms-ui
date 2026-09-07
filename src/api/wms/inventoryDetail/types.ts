@@ -40,6 +40,11 @@ export interface InventoryDetailVO {
   blockedQuantity: number;
 
   /**
+   * 状态: 0-正常, 1-锁定, 2-冻结, 3-报废
+   */
+  status: number;
+
+  /**
    * 单位
    */
   unit: string;

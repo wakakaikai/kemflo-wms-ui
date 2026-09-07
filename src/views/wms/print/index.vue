@@ -45,8 +45,39 @@
                 </template>
               </el-input>
             </el-form-item>
+            <!-- 特殊工单类型：按规则配置选择料号 -->
+            <template v-if="showMaterialSelect">
+              <el-form-item v-if="materialSourceOptions.length > 1" label="物料来源">
+                <el-radio-group v-model="materialSource" @change="onMaterialSourceChange">
+                  <el-radio v-for="option in materialSourceOptions" :key="option.value" :value="option.value">{{ option.label }}</el-radio>
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item v-if="materialSource === 'workOrder'" label="产品品号" prop="material" :rules="materialRequiredRule">
+                <el-input :model-value="workOrderItemDisplay" readonly placeholder="当前工单无产品料号" />
+              </el-form-item>
+              <el-form-item v-else-if="materialSource === 'bom'" label="产品品号" prop="material" :rules="materialRequiredRule">
+                <el-input v-model="selectedBomDisplay" readonly placeholder="请选择工单BOM料号">
+                  <template #append>
+                    <el-button icon="Search" @click="openBomDialog" />
+                  </template>
+                </el-input>
+              </el-form-item>
+              <el-form-item v-else label="产品品号" prop="material" :rules="materialRequiredRule">
+                <el-input v-model="workOrderInfo.material" placeholder="请选择或输入物料号" clearable @keydown.enter.prevent="resolveManualMaterial">
+                  <template #append>
+                    <el-button icon="Search" @click="showItemDialog" />
+                  </template>
+                </el-input>
+              </el-form-item>
+            </template>
             <el-form-item label="入库数量" prop="qty">
-              <el-input-number ref="qtyInputRef" v-model="workOrderInfo.qty" :precision="3" style="width: 100%" />
+              <el-input-number
+                ref="qtyInputRef"
+                v-model="workOrderInfo.qty"
+                :precision="3"
+                :max="isUnlimitedPrintQty ? undefined : workOrderInfo.plannedQty || undefined"
+                style="width: 100%"
+              />
             </el-form-item>
             <el-form-item label="条码内容" prop="sfcContent">
               <el-input v-model="workOrderInfo.sfcContent" placeholder="请输入条码内容" />
@@ -123,7 +154,7 @@
                 <el-option v-for="size in printTemplates" :key="size.value" :label="size.label" :value="size.value" />
               </el-select>
               <div>打印张数</div>
-              <el-input-number v-model="copies" :min="1" :max="9999" label="打印份数" class="copies-input" />
+              <el-input-number v-model="copies" :min="1" :max="copiesMax" label="打印份数" class="copies-input" />
             </div>
           </div>
 
@@ -503,26 +534,116 @@
     </el-container>
     <!-- 工单选择对话框 -->
     <work-order-dialog ref="workOrderDialogRef" @workOrderCallBack="workOrderCallBack" />
+    <!-- 所有料号选择 -->
+    <ItemDialog ref="itemDialogRef" @item-select-call-back="itemSelectCallBack" />
+    <!-- BOM料号选择 -->
+    <el-dialog v-model="bomDialogVisible" :title="`选择BOM物料 - ${workOrderInfo.workOrderNo || ''}`" width="860px" destroy-on-close append-to-body>
+      <el-input v-model="bomKeyword" placeholder="按物料编码/描述过滤" clearable class="bom-filter" style="margin-bottom: 12px" />
+      <el-table v-loading="bomLoading" :data="filteredBomList" border stripe max-height="420" highlight-current-row @current-change="onBomRowChange" @row-dblclick="confirmBomSelect">
+        <el-table-column width="55" align="center">
+          <template #default="scope">
+            <el-radio v-model="bomDialogSelectedCode" :label="scope.row.componentMaterial" class="radio-no-label">
+              <span class="el-radio__label"></span>
+            </el-radio>
+          </template>
+        </el-table-column>
+        <el-table-column prop="componentMaterial" label="物料编码" min-width="130" />
+        <el-table-column prop="componentDesc" label="物料描述" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="componentQty" label="BOM数量" width="100" align="right" />
+        <el-table-column prop="issuedQty" label="已发料" width="90" align="right" />
+        <el-table-column prop="unit" label="单位" width="70" align="center" />
+      </el-table>
+      <template #footer>
+        <el-button @click="bomDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!bomDialogSelectedCode" @click="confirmBomSelect">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts" name="print">
-import { nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { Picture, Printer } from '@element-plus/icons-vue';
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { ElMessage } from 'element-plus';
 import { generateWorkOrderSn } from '@/api/wms/workOrderSn';
 import { listWorkOrder } from '@/api/wms/workOrder';
+import { listWorkOrderBom } from '@/api/wms/workOrderBom';
+import type { WorkOrderBomVO } from '@/api/wms/workOrderBom/types';
+import { listItem } from '@/api/wms/item';
+import type { ItemVO, ItemQuery } from '@/api/wms/item/types';
 import { WorkOrderSnForm, WorkOrderSnQuery } from '@/api/wms/workOrderSn/types';
 import { getUserProfile } from '@/api/system/user';
 import { parseTime } from '@/utils/ruoyi';
 import WorkOrderDialog from '@/views/wms/print/components/workOrderDialog.vue';
+import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
 
 const workOrderDialogRef = ref<InstanceType<typeof WorkOrderDialog>>();
+const itemDialogRef = ref<InstanceType<typeof ItemDialog>>();
 const queryFormRef = ref<ElFormInstance>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_company_name } = toRefs<any>(proxy?.useDict('wms_company_name'));
+
+/** 打印页物料来源，对齐特殊入库可配置工单类型规则 */
+type MaterialSource = 'workOrder' | 'bom' | 'all';
+
+interface PrintRule {
+  /**
+   * 是否允许在「工单无成品料号」时不限制打印数量。
+   * 有成品料号时仍按计划数量限制。
+   */
+  unlimitedPrintQtyWhenNoItem: boolean;
+  /** 是否展示料号选择（特殊工单） */
+  showMaterialSelect: boolean;
+  defaultSource: MaterialSource;
+  sources: MaterialSource[];
+  /** 选中工单后是否默认带出工单成品料号 */
+  useWorkOrderItemAsDefault: boolean;
+}
+
+const MATERIAL_SOURCE_LABELS: Record<MaterialSource, string> = {
+  workOrder: '工单料号',
+  bom: 'BOM料号',
+  all: '所有料号'
+};
+
+const DEFAULT_PRINT_RULE: PrintRule = {
+  unlimitedPrintQtyWhenNoItem: false,
+  showMaterialSelect: false,
+  defaultSource: 'workOrder',
+  sources: ['workOrder'],
+  useWorkOrderItemAsDefault: true
+};
+
+/**
+ * 按工单类型配置打印规则（参考 workOrderSpecialReceive）
+ * ZP92：所有料号；ZP93/ZP94：工单成品料号 / BOM / 所有料号
+ * 数量：有成品料号仍限制，工单无料号才不限制
+ */
+const WORK_ORDER_PRINT_RULES: Record<string, PrintRule> = {
+  ZP92: {
+    unlimitedPrintQtyWhenNoItem: true,
+    showMaterialSelect: true,
+    defaultSource: 'all',
+    sources: ['all'],
+    useWorkOrderItemAsDefault: false
+  },
+  ZP93: {
+    unlimitedPrintQtyWhenNoItem: true,
+    showMaterialSelect: true,
+    defaultSource: 'workOrder',
+    sources: ['workOrder', 'bom', 'all'],
+    useWorkOrderItemAsDefault: true
+  },
+  ZP94: {
+    unlimitedPrintQtyWhenNoItem: true,
+    showMaterialSelect: true,
+    defaultSource: 'workOrder',
+    sources: ['workOrder', 'bom', 'all'],
+    useWorkOrderItemAsDefault: true
+  }
+};
 
 const initFormData: WorkOrderSnForm = {
   id: undefined,
@@ -549,6 +670,7 @@ const data = reactive<PageData<WorkOrderSnForm, WorkOrderSnQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+const materialRequiredRule = [{ required: true, message: '请选择产品品号', trigger: 'change' }];
 const activeTab = ref('content');
 const currentTemplate = ref('receiptOrderTemplate3'); // 默认选中生产入库单模板
 const selectedExcelTemplate = ref('qrExcel');
@@ -572,6 +694,9 @@ const printTemplates = ref([
 const workOrderInfo = ref({
   companyName: '溢泰（南京）环保科技有限公司',
   workOrderNo: '',
+  workOrderType: '',
+  item: '',
+  itemDesc: '',
   salesOrderNo: '',
   soDeliveryDate: '',
   curProcess: '',
@@ -591,8 +716,8 @@ const workOrderInfo = ref({
   sfcContent: '',
   material: '',
   materialDesc: '',
-  qty: null,
-  plannedQty: null,
+  qty: null as number | null,
+  plannedQty: null as number | null,
   unit: 'PCS',
   productDate: '',
   makeDate: '',
@@ -602,8 +727,225 @@ const workOrderInfo = ref({
   version: 1,
   remark: '',
   intensiveProductionFlag: false,
-  mantissaOrderFlag: false
+  mantissaOrderFlag: false,
+  sequence: undefined as number | undefined,
+  printTotal: undefined as number | undefined
 });
+
+const materialSource = ref<MaterialSource>('workOrder');
+const bomList = ref<WorkOrderBomVO[]>([]);
+const bomLoading = ref(false);
+const bomDialogVisible = ref(false);
+const bomKeyword = ref('');
+const bomDialogSelectedCode = ref('');
+const selectedBomDisplay = ref('');
+
+const currentPrintRule = computed(() => {
+  const type = String(workOrderInfo.value.workOrderType || '')
+    .trim()
+    .toUpperCase();
+  return WORK_ORDER_PRINT_RULES[type] || DEFAULT_PRINT_RULE;
+});
+
+const isUnlimitedPrintQty = computed(() => {
+  if (!currentPrintRule.value.unlimitedPrintQtyWhenNoItem) {
+    return false;
+  }
+  // 有成品料号仍限制；工单表无料号才不限制
+  return !String(workOrderInfo.value.item || '').trim();
+});
+const showMaterialSelect = computed(() => currentPrintRule.value.showMaterialSelect);
+
+const materialSourceOptions = computed(() =>
+  currentPrintRule.value.sources.map((value) => ({
+    value,
+    label: MATERIAL_SOURCE_LABELS[value]
+  }))
+);
+
+const workOrderItemDisplay = computed(() => {
+  const code = workOrderInfo.value.item || '';
+  if (!code) return '';
+  const desc = workOrderInfo.value.itemDesc || '';
+  return desc ? `${code} - ${desc}` : code;
+});
+
+const filteredBomList = computed(() => {
+  const keyword = bomKeyword.value.trim().toUpperCase();
+  if (!keyword) return bomList.value;
+  return bomList.value.filter((row) => {
+    const code = String(row.componentMaterial || '').toUpperCase();
+    const desc = String(row.componentDesc || '').toUpperCase();
+    return code.includes(keyword) || desc.includes(keyword);
+  });
+});
+
+/** 普通工单按计划数量限制张数；特殊类型不限制 */
+const copiesMax = computed(() => {
+  if (isUnlimitedPrintQty.value) return 9999;
+  const planned = Number(workOrderInfo.value.plannedQty) || 0;
+  const qty = Number(workOrderInfo.value.qty) || 0;
+  if (planned > 0 && qty > 0) {
+    return Math.max(1, Math.ceil(planned / qty));
+  }
+  return planned > 0 ? planned : 9999;
+});
+
+const applyWorkOrderItemMaterial = () => {
+  workOrderInfo.value.material = workOrderInfo.value.item || '';
+  workOrderInfo.value.materialDesc = workOrderInfo.value.itemDesc || '';
+};
+
+const applyWorkOrderBase = (workOrderNoInfo: any) => {
+  workOrderInfo.value = { ...workOrderInfo.value, ...workOrderNoInfo };
+  workOrderInfo.value.workOrderNo = workOrderNoInfo.workOrderNo;
+  workOrderInfo.value.workOrderType = workOrderNoInfo.workOrderType || '';
+  workOrderInfo.value.item = workOrderNoInfo.item || '';
+  workOrderInfo.value.itemDesc = workOrderNoInfo.itemDesc || '';
+  workOrderInfo.value.productLine = workOrderNoInfo.productLine;
+  workOrderInfo.value.plannedQty = Number(workOrderNoInfo.plannedQty);
+  workOrderInfo.value.unit = workOrderNoInfo.unit;
+  workOrderInfo.value.previousOrderNo = workOrderNoInfo.previousOrderNo;
+  workOrderInfo.value.previousWorkCenter = workOrderNoInfo.previousWorkCenter;
+  workOrderInfo.value.nextOrderNo = workOrderNoInfo.nextOrderNo;
+  workOrderInfo.value.nextWorkCenter = workOrderNoInfo.nextWorkCenter;
+  workOrderInfo.value.nextPlannedStartDate = workOrderNoInfo.nextPlannedStartDate;
+  workOrderInfo.value.remark = '';
+};
+
+const resetMaterialSelection = () => {
+  selectedBomDisplay.value = '';
+  bomDialogSelectedCode.value = '';
+  bomList.value = [];
+  materialSource.value = currentPrintRule.value.defaultSource;
+  if (currentPrintRule.value.useWorkOrderItemAsDefault && materialSource.value === 'workOrder') {
+    applyWorkOrderItemMaterial();
+  } else if (showMaterialSelect.value) {
+    workOrderInfo.value.material = '';
+    workOrderInfo.value.materialDesc = '';
+  } else {
+    applyWorkOrderItemMaterial();
+  }
+};
+
+const fillDefaultMaterialFromWorkOrder = () => {
+  if (!showMaterialSelect.value) {
+    applyWorkOrderItemMaterial();
+    return;
+  }
+  resetMaterialSelection();
+};
+
+const loadBomList = async (workOrderNo: string) => {
+  if (!workOrderNo) {
+    bomList.value = [];
+    return;
+  }
+  bomLoading.value = true;
+  try {
+    const res = await listWorkOrderBom({ workOrderNo, pageNum: 1, pageSize: 2000 } as any);
+    bomList.value = res.rows || [];
+  } catch {
+    bomList.value = [];
+  } finally {
+    bomLoading.value = false;
+  }
+};
+
+const onMaterialSourceChange = () => {
+  if (!currentPrintRule.value.sources.includes(materialSource.value)) {
+    materialSource.value = currentPrintRule.value.defaultSource;
+  }
+  selectedBomDisplay.value = '';
+  bomDialogSelectedCode.value = '';
+  if (materialSource.value === 'workOrder') {
+    applyWorkOrderItemMaterial();
+  } else {
+    workOrderInfo.value.material = '';
+    workOrderInfo.value.materialDesc = '';
+  }
+};
+
+const openBomDialog = async () => {
+  if (!workOrderInfo.value.workOrderNo) {
+    ElMessage.warning('请先选择工单');
+    return;
+  }
+  bomKeyword.value = '';
+  bomDialogSelectedCode.value = workOrderInfo.value.material || '';
+  if (!bomList.value.length) {
+    await loadBomList(workOrderInfo.value.workOrderNo);
+  }
+  bomDialogVisible.value = true;
+};
+
+const onBomRowChange = (row: WorkOrderBomVO | null) => {
+  bomDialogSelectedCode.value = row?.componentMaterial || '';
+};
+
+const confirmBomSelect = () => {
+  const code = bomDialogSelectedCode.value;
+  if (!code) {
+    ElMessage.warning('请选择BOM物料');
+    return;
+  }
+  const bom = bomList.value.find((b) => b.componentMaterial === code);
+  if (!bom) {
+    ElMessage.warning('未找到所选BOM物料');
+    return;
+  }
+  workOrderInfo.value.material = bom.componentMaterial;
+  workOrderInfo.value.materialDesc = bom.componentDesc || '';
+  if (bom.unit) {
+    workOrderInfo.value.unit = bom.unit;
+  }
+  selectedBomDisplay.value = `${bom.componentMaterial}${bom.componentDesc ? ` - ${bom.componentDesc}` : ''}`;
+  bomDialogVisible.value = false;
+};
+
+const showItemDialog = () => {
+  itemDialogRef.value?.openDialog();
+  itemDialogRef.value?.handleQuery();
+};
+
+const itemSelectCallBack = (record: any) => {
+  workOrderInfo.value.material = record.item || '';
+  workOrderInfo.value.materialDesc = record.itemDesc || '';
+  if (record.unit) {
+    workOrderInfo.value.unit = record.unit;
+  }
+};
+
+async function resolveMaterial(code: string): Promise<ItemVO | null> {
+  const res = await listItem({ item: code, pageNum: 1, pageSize: 50 } as ItemQuery);
+  if (res.code !== 200) return null;
+  const rows = (res.rows || []) as ItemVO[];
+  const normalized = code.trim().toUpperCase();
+  return (
+    rows.find(
+      (r) =>
+        String(r.item || '')
+          .trim()
+          .toUpperCase() === normalized
+    ) || null
+  );
+}
+
+const resolveManualMaterial = async () => {
+  const code = (workOrderInfo.value.material || '').trim();
+  if (!code) return;
+  const item = await resolveMaterial(code);
+  if (!item) {
+    ElMessage.error(`物料 ${code} 不存在`);
+    workOrderInfo.value.materialDesc = '';
+    return;
+  }
+  workOrderInfo.value.material = item.item;
+  workOrderInfo.value.materialDesc = item.itemDesc || '';
+  if (item.unit) {
+    workOrderInfo.value.unit = item.unit;
+  }
+};
 
 /** 查询工单信息列表 */
 const workOrderInputRef = ref<HTMLInputElement | null>(null);
@@ -623,18 +965,12 @@ const keyDownTab = async () => {
   });
 
   if ((res.rows || []).length == 1) {
-    const workOrderNoInfo = res.rows[0] || { workOrderNo: '', item: '', itemDesc: '', productLine: '' };
-    workOrderInfo.value = { ...workOrderInfo.value, ...workOrderNoInfo };
-    workOrderInfo.value.material = workOrderNoInfo.item;
-    workOrderInfo.value.materialDesc = workOrderNoInfo.itemDesc;
-    workOrderInfo.value.productLine = workOrderNoInfo.productLine;
-    workOrderInfo.value.plannedQty = Number(workOrderNoInfo.plannedQty);
-    workOrderInfo.value.unit = workOrderNoInfo.unit;
-    workOrderInfo.value.previousOrderNo = workOrderNoInfo.previousOrderNo;
-    workOrderInfo.value.previousWorkCenter = workOrderNoInfo.previousWorkCenter;
-    workOrderInfo.value.nextOrderNo = workOrderNoInfo.nextOrderNo;
-    workOrderInfo.value.nextWorkCenter = workOrderNoInfo.nextWorkCenter;
-    workOrderInfo.value.nextPlannedStartDate = workOrderNoInfo.nextPlannedStartDate;
+    const workOrderNoInfo = res.rows[0] || { workOrderNo: '', item: '', itemDesc: '', productLine: '', workOrderType: '' };
+    applyWorkOrderBase(workOrderNoInfo);
+    fillDefaultMaterialFromWorkOrder();
+    if (showMaterialSelect.value && currentPrintRule.value.sources.includes('bom')) {
+      await loadBomList(workOrderInfo.value.workOrderNo);
+    }
     nextTick(() => {
       qtyInputRef.value?.focus();
     });
@@ -650,20 +986,12 @@ const showWorkOrderDialog = () => {
   workOrderDialogRef.value.openDialog();
 };
 
-const workOrderCallBack = (workOrderNoInfo: any) => {
-  workOrderInfo.value = { ...workOrderInfo.value, ...workOrderNoInfo };
-  workOrderInfo.value.workOrderNo = workOrderNoInfo.workOrderNo;
-  workOrderInfo.value.material = workOrderNoInfo.item;
-  workOrderInfo.value.materialDesc = workOrderNoInfo.itemDesc;
-  workOrderInfo.value.productLine = workOrderNoInfo.productLine;
-  workOrderInfo.value.unit = workOrderNoInfo.unit;
-  workOrderInfo.value.plannedQty = Number(workOrderNoInfo.plannedQty);
-  workOrderInfo.value.previousOrderNo = workOrderNoInfo.previousOrderNo;
-  workOrderInfo.value.previousWorkCenter = workOrderNoInfo.previousWorkCenter;
-  workOrderInfo.value.nextOrderNo = workOrderNoInfo.nextOrderNo;
-  workOrderInfo.value.nextWorkCenter = workOrderNoInfo.nextWorkCenter;
-  workOrderInfo.value.nextPlannedStartDate = workOrderNoInfo.nextPlannedStartDate;
-  workOrderInfo.value.remark = '';
+const workOrderCallBack = async (workOrderNoInfo: any) => {
+  applyWorkOrderBase(workOrderNoInfo);
+  fillDefaultMaterialFromWorkOrder();
+  if (showMaterialSelect.value && currentPrintRule.value.sources.includes('bom')) {
+    await loadBomList(workOrderInfo.value.workOrderNo);
+  }
 };
 
 // 格式化前一工序单号，如果前三位是"000"则去掉
@@ -1043,6 +1371,10 @@ const handlePrint = async () => {
   if (!printContent.value) return;
   queryFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
+      if (showMaterialSelect.value && !String(workOrderInfo.value.material || '').trim()) {
+        ElMessage.warning('请选择产品品号');
+        return;
+      }
       try {
         // 生成序列号列表
         const snList = await generateSerialNumbers();
@@ -1217,6 +1549,13 @@ watch(paperSize, () => {
   nextTick(() => {
     generateQRCode();
   });
+});
+
+// 普通工单张数上限变化时回落
+watch(copiesMax, (max) => {
+  if (copies.value > max) {
+    copies.value = max;
+  }
 });
 
 // 监听工单信息变化
@@ -1988,5 +2327,18 @@ onMounted(() => {
   .preview-content {
     padding: 10px;
   }
+}
+
+.radio-no-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: -12px;
+}
+.radio-no-label :deep(.el-radio__label) {
+  display: none;
+}
+.bom-filter {
+  width: 100%;
 }
 </style>

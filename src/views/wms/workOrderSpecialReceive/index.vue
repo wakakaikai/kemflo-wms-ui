@@ -208,14 +208,14 @@ const WORK_ORDER_RECEIVE_RULES: Record<string, ReceiveRule> = {
     moveType: '531',
     moveTypeName: '次料入库',
     defaultSource: 'bom',
-    sources: ['bom', 'all'],
+    sources: ['workOrder', 'bom'],
     autoAddWorkOrderItem: false
   },
   ZP94: {
     moveType: '262',
     moveTypeName: '入库',
     defaultSource: 'workOrder',
-    sources: ['workOrder'],
+    sources: ['workOrder', 'bom'],
     autoAddWorkOrderItem: true
   }
 };

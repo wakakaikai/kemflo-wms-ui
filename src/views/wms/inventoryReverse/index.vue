@@ -16,7 +16,7 @@
       <div v-show="historyExpanded" class="history-card-body">
         <el-form v-show="showSearch" ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
           <el-form-item label="物料凭证号" prop="sapMaterialOrderNo">
-            <HistoryInput v-model="searchSapMaterialOrderNo" :config="sapMaterialOrderNoConfig" placeholder="请输入物料凭证号" @keyup.enter="handleQuery" />
+            <HistoryInput v-model="searchSapMaterialOrderNo" :config="sapMaterialOrderNoConfig" placeholder="请输入物料凭证号" @keydown.enter.prevent="handleQuery" @keydown.tab.prevent="handleQuery" />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" icon="Search" :loading="loading" @click="handleQuery">搜索</el-button>
