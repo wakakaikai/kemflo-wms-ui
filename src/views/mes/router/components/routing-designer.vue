@@ -107,8 +107,19 @@ const exportPng = () => {
 const handleCanvasReady = async () => {
   await nextTick();
   canvasRef.value?.resize();
-  requestAnimationFrame(fitView);
+  if (!props.definition?.routerContent) {
+    requestAnimationFrame(fitView);
+  }
 };
+
+const refreshCanvasLayout = async () => {
+  await nextTick();
+  canvasRef.value?.resizeImmediate?.();
+};
+
+watch(selectedNode, () => {
+  refreshCanvasLayout();
+});
 
 defineExpose({ graph, fitView });
 </script>
@@ -118,26 +129,28 @@ defineExpose({ graph, fitView });
     <div class="routing-designer__body">
       <RoutingSidebar :processes="processes" @drag-start="onDragStart" />
       <section class="routing-designer__main">
-        <div class="routing-designer__toolbar">
-          <el-space wrap>
-            <el-tooltip content="适应画布" placement="top">
-              <el-button :icon="Aim" circle size="small" @click="fitView" />
-            </el-tooltip>
-            <el-tooltip content="放大" placement="top">
-              <el-button :icon="ZoomIn" circle size="small" @click="zoomIn" />
-            </el-tooltip>
-            <el-tooltip content="缩小" placement="top">
-              <el-button :icon="ZoomOut" circle size="small" @click="zoomOut" />
-            </el-tooltip>
-            <el-tooltip content="截图" placement="top">
-              <el-button :icon="Download" circle size="small" @click="exportPng" />
-            </el-tooltip>
-          </el-space>
-          <span class="routing-designer__hint">拖拽左侧工序到画布，空白处拖动平移，Ctrl + 滚轮缩放</span>
-        </div>
-        <RoutingCanvas ref="canvasRef" @drop="onDrop" @ready="handleCanvasReady" />
+        <RoutingCanvas ref="canvasRef" @drop="onDrop" @ready="handleCanvasReady">
+          <template #toolbar>
+            <div class="routing-designer__toolbar">
+              <el-tooltip content="适应画布" placement="top">
+                <el-button :icon="Aim" circle size="small" @click="fitView" />
+              </el-tooltip>
+              <el-tooltip content="放大" placement="top">
+                <el-button :icon="ZoomIn" circle size="small" @click="zoomIn" />
+              </el-tooltip>
+              <el-tooltip content="缩小" placement="top">
+                <el-button :icon="ZoomOut" circle size="small" @click="zoomOut" />
+              </el-tooltip>
+              <el-tooltip content="截图" placement="top">
+                <el-button :icon="Download" circle size="small" @click="exportPng" />
+              </el-tooltip>
+            </div>
+          </template>
+        </RoutingCanvas>
       </section>
-      <RoutingNodeProperty v-if="selectedNode" class="routing-designer__property" :routing-node="selectedNode" />
+      <aside class="routing-designer__property">
+        <RoutingNodeProperty :routing-node="selectedNode" />
+      </aside>
     </div>
     <RoutingNodeMenu :visible="nodeVariables.menuVisible" :cell="nodeVariables.menuCell as Cell" :edge="nodeVariables.menuEdge as Edge" :label-value="nodeVariables.labelValue" :left="nodeVariables.pageX" :top="nodeVariables.pageY" @hide="menuHide" @node-edit="handleNodeEdit" />
   </div>
@@ -151,35 +164,51 @@ defineExpose({ graph, fitView });
 }
 
 .routing-designer__body {
-  display: flex;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 240px;
+  gap: 0;
+  width: 100%;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  background: #fff;
 }
 
 .routing-designer__main {
   display: flex;
-  flex: 1;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  border-left: 1px solid #e8e8e8;
+  border-right: 1px solid #e8e8e8;
 }
 
 .routing-designer__toolbar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
-.routing-designer__hint {
-  color: #909399;
-  font-size: 12px;
+.routing-designer__toolbar :deep(.el-button) {
+  margin: 0;
 }
 
 .routing-designer__property {
-  flex: 0 0 280px;
-  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #fff;
 }
 </style>

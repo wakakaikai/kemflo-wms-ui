@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Cell } from '@antv/x6';
-import { getDicts } from '@/api/system/dict/data';
 
 interface NodeForm {
   sequence?: number;
@@ -17,12 +16,12 @@ interface NodeForm {
 const props = defineProps({
   routingNode: {
     type: Cell,
-    default: () => {}
+    default: undefined
   }
 });
 
 const form = ref<NodeForm>({});
-const stepTypeOptions = ref<any[]>([]);
+const stepTypeOptions = inject<Ref<any[]>>('stepTypeOptions', ref([]));
 
 const normalizeBoolean = (value: unknown) => value === true || value === 'true';
 
@@ -41,15 +40,12 @@ const loadNode = () => {
   };
 };
 
-watch(() => props.routingNode, loadNode);
-
-onMounted(async () => {
-  loadNode();
-  const res = await getDicts('ROUTER_OPERATION_TYPE');
-  stepTypeOptions.value = res.data || [];
-});
+watch(() => props.routingNode, loadNode, { immediate: true });
 
 const handleSave = () => {
+  if (!props.routingNode) {
+    return;
+  }
   const data = {
     ...props.routingNode.getData(),
     routingNode: form.value
@@ -60,10 +56,15 @@ const handleSave = () => {
 
 <template>
   <div class="routing-node-property">
-    <div class="routing-node-title">{{ form.description }}</div>
-    <el-form :model="form" label-width="96px" size="small">
+    <div class="routing-node-property__header">
+      <span class="routing-node-title">{{ form.description || '工序属性' }}</span>
+    </div>
+    <div v-if="!routingNode" class="routing-node-property__empty">
+      <el-empty description="请选择画布中的工序节点" :image-size="72" />
+    </div>
+    <el-form v-else :model="form" label-width="72px" size="default" class="routing-node-property__form">
       <el-form-item label="顺序" prop="sequence">
-        <el-input-number v-model="form.sequence" :min="1" controls-position="right" @change="handleSave" />
+        <el-input-number v-model="form.sequence" :min="1" controls-position="right" class="w-full" @change="handleSave" />
       </el-form-item>
       <el-form-item label="开始工序" prop="startStep">
         <el-switch v-model="form.startStep" @change="handleSave" />
@@ -75,7 +76,7 @@ const handleSave = () => {
         <el-switch v-model="form.isReportingStep" @change="handleSave" />
       </el-form-item>
       <el-form-item label="类型" prop="stepType">
-        <el-select v-model="form.stepType" clearable @change="handleSave">
+        <el-select v-model="form.stepType" clearable class="w-full" @change="handleSave">
           <el-option v-for="item in stepTypeOptions" :key="item.dictValue" :label="item.dictLabel" :value="item.dictValue" />
         </el-select>
       </el-form-item>
@@ -91,21 +92,54 @@ const handleSave = () => {
 
 <style scoped>
 .routing-node-property {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
-  padding: 12px;
-  border: 1px solid #dcdfe6;
-  border-radius: 6px;
-  background: #fff;
-  overflow-y: auto;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
+.routing-node-property__header {
+  flex: 0 0 auto;
+  padding: 10px 8px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
 .routing-node-title {
-  margin-bottom: 10px;
   font-size: 14px;
   font-weight: 600;
   color: #303133;
   overflow-wrap: anywhere;
+}
+
+.routing-node-property__empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+}
+
+.routing-node-property__form {
+  flex: 1;
+  min-height: 0;
+  padding: 10px 8px 8px;
+  overflow-y: auto;
+}
+
+.routing-node-property__form :deep(.el-form-item) {
+  margin-bottom: 14px;
+}
+
+.routing-node-property__form :deep(.el-form-item__content) {
+  flex: 1;
+  min-width: 0;
+}
+
+.routing-node-property__form :deep(.el-input-number),
+.routing-node-property__form :deep(.el-select),
+.routing-node-property__form :deep(.el-input) {
+  width: 100%;
 }
 </style>

@@ -1,4 +1,4 @@
-import { ROUTING_EDGE_NAME, ROUTING_NODE_NAME } from './routing-config';
+import { ROUTING_EDGE_NAME, ROUTING_NODE_NAME, ROUTING_NODE_ICON } from './routing-config';
 import type { Coordinate } from './types';
 
 export function useRoutingCellBuilder() {
@@ -66,6 +66,15 @@ export function useRoutingCellBuilder() {
         const next = { ...cell };
         if (next.tools) {
           delete next.tools;
+        }
+        if (next.shape === ROUTING_NODE_NAME) {
+          next.attrs = {
+            ...(next.attrs || {}),
+            image: {
+              ...(next.attrs?.image || {}),
+              href: ROUTING_NODE_ICON
+            }
+          };
         }
         return next;
       });

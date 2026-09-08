@@ -2,14 +2,17 @@ export const ROUTING_NODE_NAME = 'routing-task';
 export const ROUTING_EDGE_NAME = 'routing-edge';
 export const ROUTING_PORT_OUT_NAME = 'routing-port-out';
 
-const EDGE_COLOR = '#999999';
-const BG_BLUE = '#DFE9F7';
+const EDGE_COLOR = '#909399';
+const BG_BLUE = '#ecf5ff';
 const BG_WHITE = '#FFFFFF';
-const NODE_BORDER = '#CCCCCC';
-const TITLE = '#333333';
-const STROKE_BLUE = '#288FFF';
-const NODE_SHADOW = 'drop-shadow(3px 3px 4px rgba(0, 0, 0, 0.2)';
-const EDGE_SHADOW = 'drop-shadow(3px 3px 2px rgba(0, 0, 0, 0.3)';
+const NODE_BORDER = '#dcdfe6';
+const TITLE = '#303133';
+const STROKE_BLUE = '#409eff';
+const NODE_SHADOW = 'drop-shadow(2px 2px 6px rgba(64, 158, 255, 0.18))';
+const EDGE_SHADOW = 'drop-shadow(2px 2px 4px rgba(64, 158, 255, 0.2))';
+
+/** 画布工序节点图标（人形工序图标，与参考实现一致） */
+export const ROUTING_NODE_ICON = 'https://gw.alipayobjects.com/mdn/rms_43231b/afts/img/A*kUy8SrEDp6YAAAAAAAAAAAAAARQnAQ';
 
 export const PORT = {
   groups: {
@@ -155,7 +158,7 @@ export const NODE = {
       height: 30,
       refX: 12,
       refY: 9,
-      href: 'https://gw.alipayobjects.com/mdn/rms_43231b/afts/img/A*kUy8SrEDp6YAAAAAAAAAAAAAARQnAQ'
+      href: ROUTING_NODE_ICON
     },
     title: {
       refX: 0.5,

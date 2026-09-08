@@ -49,23 +49,24 @@
             <el-table-column type="selection" width="55" align="center" />
             <el-table-column v-if="columns[0].visible" label="物料凭证号" align="left" prop="sapMaterialOrderNo" />
             <el-table-column v-if="columns[1].visible" label="凭证项次" align="left" prop="sapMaterialItem" />
-            <el-table-column v-if="columns[2].visible" label="工单号" align="left" prop="sourceDocCode" />
-            <el-table-column v-if="columns[3].visible" label="物料编码" align="left" prop="itemCode" />
-            <el-table-column v-if="columns[4].visible" label="物料名称" align="left" prop="itemName" show-overflow-tooltip />
-            <el-table-column v-if="columns[5].visible" label="批次号" align="center" prop="batchCode" />
-            <el-table-column v-if="columns[6].visible" label="数量" align="center">
+            <el-table-column v-if="columns[2].visible" label="移动类型" align="center" prop="moveType" width="90" />
+            <el-table-column v-if="columns[3].visible" label="工单号" align="left" prop="sourceDocCode" />
+            <el-table-column v-if="columns[4].visible" label="物料编码" align="left" prop="itemCode" />
+            <el-table-column v-if="columns[5].visible" label="物料名称" align="left" prop="itemName" show-overflow-tooltip />
+            <el-table-column v-if="columns[6].visible" label="批次号" align="center" prop="batchCode" />
+            <el-table-column v-if="columns[7].visible" label="数量" align="center">
               <template #default="scope">{{ formatQtyWithUnit(scope.row.quantity, scope.row.unit) }}</template>
             </el-table-column>
-            <el-table-column v-if="columns[7].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
+            <el-table-column v-if="columns[8].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
               <template #default="scope">
                 <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
               </template>
             </el-table-column>
-            <el-table-column v-if="columns[8].visible" label="业务伙伴" align="center" prop="businessCode" />
-            <el-table-column v-if="columns[9].visible" label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
-            <el-table-column v-if="columns[10].visible" label="仓库编码" align="center" prop="warehouseCode" />
-            <el-table-column v-if="columns[11].visible" label="库区编码" align="center" prop="areaCode" />
-            <el-table-column v-if="columns[12].visible" label="库位编码" align="center" prop="locationCode" fixed="right" />
+            <el-table-column v-if="columns[9].visible" label="业务伙伴" align="center" prop="businessCode" />
+            <el-table-column v-if="columns[10].visible" label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
+            <el-table-column v-if="columns[11].visible" label="仓库编码" align="center" prop="warehouseCode" />
+            <el-table-column v-if="columns[12].visible" label="库区编码" align="center" prop="areaCode" />
+            <el-table-column v-if="columns[13].visible" label="库位编码" align="center" prop="locationCode" fixed="right" />
           </el-table>
 
           <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
@@ -433,17 +434,18 @@ const bktxtConfig: HistoryConfig = {
 const columns = ref<FieldOption[]>([
   { key: 0, label: `物料凭证号`, visible: true, children: [] },
   { key: 1, label: `凭证项次`, visible: true, children: [] },
-  { key: 2, label: `工单号`, visible: true, children: [] },
-  { key: 3, label: `物料编码`, visible: true, children: [] },
-  { key: 4, label: `物料名称`, visible: true, children: [] },
-  { key: 5, label: `批次号`, visible: true, children: [] },
-  { key: 6, label: `数量`, visible: true, children: [] },
-  { key: 7, label: `特殊库存`, visible: true, children: [] },
-  { key: 8, label: `业务伙伴`, visible: true, children: [] },
-  { key: 9, label: `伙伴名称`, visible: false, children: [] },
-  { key: 10, label: `仓库编码`, visible: false, children: [] },
-  { key: 11, label: `库区编码`, visible: false, children: [] },
-  { key: 12, label: `库位编码`, visible: true, children: [] }
+  { key: 2, label: `移动类型`, visible: true, children: [] },
+  { key: 3, label: `工单号`, visible: true, children: [] },
+  { key: 4, label: `物料编码`, visible: true, children: [] },
+  { key: 5, label: `物料名称`, visible: true, children: [] },
+  { key: 6, label: `批次号`, visible: true, children: [] },
+  { key: 7, label: `数量`, visible: true, children: [] },
+  { key: 8, label: `特殊库存`, visible: true, children: [] },
+  { key: 9, label: `业务伙伴`, visible: true, children: [] },
+  { key: 10, label: `伙伴名称`, visible: false, children: [] },
+  { key: 11, label: `仓库编码`, visible: false, children: [] },
+  { key: 12, label: `库区编码`, visible: false, children: [] },
+  { key: 13, label: `库位编码`, visible: true, children: [] }
 ]);
 
 const transferColumns = ref<FieldOption[]>([

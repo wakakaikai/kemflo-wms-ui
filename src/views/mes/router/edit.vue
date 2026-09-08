@@ -49,17 +49,14 @@
       </el-form>
     </section>
 
-    <el-card shadow="never" class="designer-card mb-2">
-      <template #header>
-        <div class="card-header-row">
-          <span>工艺路线</span>
-          <span class="card-header-tip">从左侧工序库拖拽到画布进行编排</span>
-        </div>
-      </template>
-      <div class="designer-wrap">
-        <RoutingDesigner ref="routingRef" :definition="routingData" :processes="operations" />
+    <section class="router-section designer-section mb-2">
+      <div class="router-section__header">
+        <span>工艺路线</span>
       </div>
-    </el-card>
+      <div v-loading="pageReady && !designerReady" class="designer-wrap">
+        <RoutingDesigner v-if="pageReady" ref="routingRef" :definition="routingData" :processes="operations" />
+      </div>
+    </section>
 
     <el-collapse v-if="extFields.length" v-model="extFieldsExpanded" class="ext-fields-collapse">
       <el-collapse-item title="扩展字段数据" name="extFields">
@@ -88,8 +85,14 @@ import { listExtFieldDef } from '@/api/mes/extFieldDef';
 import { listAllOperation } from '@/api/mes/operation';
 import { addRouter, getRouter, updateRouter } from '@/api/mes/router';
 import { ExtFieldRow, RouterForm } from '@/api/mes/router/types';
-import RoutingDesigner from './components/routing-designer.vue';
 import { ROUTING_EDGE_NAME, ROUTING_NODE_NAME } from './components/routing-config';
+
+const RoutingDesigner = defineAsyncComponent(() =>
+  import('./components/routing-designer.vue').then((mod) => {
+    designerReady.value = true;
+    return mod;
+  })
+);
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const route = useRoute();
@@ -98,6 +101,8 @@ const vueRouter = useRouter();
 const id = computed(() => route.params.id as string | undefined);
 const isEdit = computed(() => Boolean(id.value));
 const loading = ref(false);
+const pageReady = ref(false);
+const designerReady = ref(false);
 const buttonLoading = ref(false);
 const routingRef = ref<any>();
 const operations = ref<any[]>([]);
@@ -106,7 +111,10 @@ const extFields = ref<ExtFieldRow[]>([]);
 const extFieldsExpanded = ref(['extFields']);
 const routerTypeOptions = ref<any[]>([]);
 const statusOptions = ref<any[]>([]);
+const stepTypeOptions = ref<any[]>([]);
 const routerFormRef = ref<ElFormInstance>();
+
+provide('stepTypeOptions', stepTypeOptions);
 
 const form = reactive<RouterForm>({
   id: undefined,
@@ -129,12 +137,15 @@ const rules = {
 };
 
 const goBack = () => {
-  vueRouter.back();
+  if (proxy?.$tab?.closeOpenPage) {
+    proxy.$tab.closeOpenPage({ path: '/mes/router' });
+    return;
+  }
+  vueRouter.push('/mes/router');
 };
 
-const loadExtFieldDefs = async () => {
-  const res = await listExtFieldDef({ tableName: 'ROUTER', pageNum: 1, pageSize: 999 } as any);
-  extFields.value = (res.rows || []).map((item: any) => ({
+const mapExtFieldDefs = (rows: any[] = []) =>
+  rows.map((item: any) => ({
     attribute: item.fieldName,
     attributeDesc: item.description,
     fieldType: item.fieldType,
@@ -142,22 +153,19 @@ const loadExtFieldDefs = async () => {
     required: item.required,
     value: undefined
   }));
+
+const fetchExtFieldDefs = async () => {
+  const res = await listExtFieldDef({ tableName: 'ROUTER', pageNum: 1, pageSize: 999 } as any);
+  return mapExtFieldDefs(res.rows || []);
 };
 
-const loadDetail = async () => {
-  if (!id.value) {
-    await loadExtFieldDefs();
-    return;
+const fetchOperations = async () => {
+  const res = await listAllOperation({ status: 'RELEASABLE' } as any);
+  if (res.data?.length) {
+    return res.data;
   }
-  loading.value = true;
-  try {
-    const res = await getRouter(id.value);
-    Object.assign(form, res.data);
-    routingData.value = res.data || {};
-    extFields.value = res.data?.extFieldsVOList || [];
-  } finally {
-    loading.value = false;
-  }
+  const fallbackRes = await listAllOperation();
+  return fallbackRes.data || [];
 };
 
 const normalizeBooleanText = (value: unknown) => (value === true || value === 'true' ? 'true' : 'false');
@@ -227,22 +235,31 @@ const handleSave = () => {
   });
 };
 
-const loadOperations = async () => {
-  const res = await listAllOperation({ status: 'RELEASABLE' } as any);
-  let list = res.data || [];
-  if (!list.length) {
-    const fallbackRes = await listAllOperation();
-    list = fallbackRes.data || [];
-  }
-  operations.value = list;
-};
-
 onMounted(async () => {
-  const [routerTypeRes, statusRes] = await Promise.all([getDicts('ROUTER_TYPE'), getDicts('ROUTER_STATUS')]);
-  await loadOperations();
-  routerTypeOptions.value = routerTypeRes.data || [];
-  statusOptions.value = statusRes.data || [];
-  await loadDetail();
+  loading.value = true;
+  try {
+    const [routerTypeRes, statusRes, stepTypeRes, operationList, detailResult] = await Promise.all([
+      getDicts('ROUTER_TYPE'),
+      getDicts('ROUTER_STATUS'),
+      getDicts('ROUTER_OPERATION_TYPE'),
+      fetchOperations(),
+      id.value ? getRouter(id.value) : fetchExtFieldDefs()
+    ]);
+    routerTypeOptions.value = routerTypeRes.data || [];
+    statusOptions.value = statusRes.data || [];
+    stepTypeOptions.value = stepTypeRes.data || [];
+    operations.value = operationList;
+    if (id.value) {
+      Object.assign(form, detailResult.data);
+      routingData.value = detailResult.data || {};
+      extFields.value = detailResult.data?.extFieldsVOList || [];
+    } else {
+      extFields.value = detailResult;
+    }
+  } finally {
+    loading.value = false;
+    pageReady.value = true;
+  }
 });
 </script>
 
@@ -251,10 +268,12 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 96px);
+  background: #fff;
 }
 
 .router-section {
-  border: 1px solid #ebeef5;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
   background: #fff;
 }
 
@@ -262,20 +281,20 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 40px;
-  padding: 0 12px;
-  border-bottom: 1px solid #ebeef5;
+  min-height: 42px;
+  padding: 0 16px;
+  border-bottom: 1px solid #e8e8e8;
   font-size: 14px;
   font-weight: 600;
   color: #303133;
 }
 
 .router-base-form {
-  padding: 12px 18px 18px 0;
+  padding: 16px 16px 4px 0;
 }
 
 .router-base-form :deep(.el-form-item) {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .router-base-form :deep(.el-select) {
@@ -289,36 +308,18 @@ onMounted(async () => {
   font-size: 12px;
 }
 
-.designer-card {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.designer-card :deep(.el-card__body) {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  padding: 12px;
+.designer-section .router-section__header {
+  background: #fff;
 }
 
 .designer-wrap {
-  flex: 1;
-  height: clamp(480px, calc(100vh - 260px), 680px);
-  min-height: 0;
+  height: clamp(520px, calc(100vh - 280px), 720px);
+  min-height: 520px;
+  padding: 0;
 }
 
-.card-header-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.card-header-tip {
-  color: #909399;
-  font-size: 12px;
-  font-weight: 400;
+.designer-wrap :deep(.routing-designer) {
+  height: 100%;
 }
 
 .ext-fields-collapse {

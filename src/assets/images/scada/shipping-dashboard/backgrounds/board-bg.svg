@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#08295a"/>
+      <stop offset="0.48" stop-color="#041733"/>
+      <stop offset="1" stop-color="#010814"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#119dff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#30c4ff" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#119dff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="9%" r="52%">
+      <stop offset="0" stop-color="#1f9fff" stop-opacity="0.55"/>
+      <stop offset="0.44" stop-color="#0c58b2" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="racks" width="118" height="68" patternUnits="userSpaceOnUse">
+      <rect x="8" y="5" width="42" height="58" fill="#0c315d" opacity="0.52"/>
+      <rect x="58" y="5" width="42" height="58" fill="#09284f" opacity="0.58"/>
+      <path d="M8 23h92M8 43h92M50 5v58M100 5v58" stroke="#2ea7ff" stroke-opacity="0.16" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <rect width="1920" height="232" fill="url(#racks)" opacity="0.86"/>
+  <rect width="1920" height="1080" fill="url(#glow)"/>
+  <path d="M0 88H560L690 0M1920 88H1360L1230 0" fill="none" stroke="#1aa7ff" stroke-opacity="0.74" stroke-width="2"/>
+  <path d="M0 105H620L732 0M1920 105H1300L1188 0" fill="none" stroke="#1267c9" stroke-opacity="0.6" stroke-width="2"/>
+  <path d="M254 0v210M1666 0v210" stroke="#2ec7ff" stroke-opacity="0.18" stroke-width="2"/>
+  <path d="M0 243H1920" stroke="url(#line)" stroke-width="3"/>
+  <path d="M0 980H1920" stroke="url(#line)" stroke-width="2" opacity="0.62"/>
+  <g opacity="0.16" stroke="#36bfff" stroke-width="1">
+    <path d="M140 280L420 1040M1780 280L1500 1040"/>
+    <path d="M520 250L620 1080M1400 250L1300 1080"/>
+    <path d="M0 760H1920M0 840H1920M0 920H1920"/>
+  </g>
+</svg>

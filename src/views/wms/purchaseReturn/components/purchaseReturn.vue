@@ -30,6 +30,9 @@
             <el-form-item label="物料凭证项次" prop="sapMaterialItem">
               <HistoryInput v-model="queryParams.sapMaterialItem" :config="sapMaterialItemConfig" placeholder="请输入物料凭证项次" @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="凭证年度" prop="sapMaterialDocYear">
+              <HistoryInput v-model="queryParams.sapMaterialDocYear" :config="sapMaterialDocYearConfig" placeholder="请输入凭证年度" @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="采购单项次" prop="poItemNo">
               <HistoryInput v-model="queryParams.poItemNo" :config="itemNoConfig" placeholder="请输入采购单项次" @keyup.enter="handleQuery" />
             </el-form-item>
@@ -54,6 +57,7 @@
             <el-table-column type="selection" width="55" align="center" />
             <el-table-column v-if="columns[0].visible" label="物料凭证号" align="left" prop="sapMaterialOrderNo" />
             <el-table-column v-if="columns[1].visible" label="凭证项次" align="left" prop="sapMaterialItem" />
+            <el-table-column v-if="columns[15].visible" label="凭证年度" align="left" prop="sapMaterialDocYear" />
             <el-table-column v-if="columns[2].visible" label="采购单号" align="left" prop="sourceDocCode" />
             <el-table-column v-if="columns[3].visible" label="采购项次" align="left" prop="poItemNo" />
             <el-table-column v-if="columns[4].visible" label="物料编码" align="left" prop="itemCode" />
@@ -109,7 +113,7 @@
         <div style="padding: 10px; background-color: #f5f7fa; border-radius: 4px">
           <el-form :model="fixedTransferForm" ref="fixedTransferFormRef" label-width="auto" :inline="true">
             <el-row :gutter="20">
-              <el-col :sm="24" :md="6" :lg="6" v-if="transferMode === 'fixed'">
+              <el-col :sm="24" :md="8" :lg="8" v-if="transferMode === 'fixed'">
                 <el-form-item label="当前库位" prop="targetLocationCode">
                   <HistoryInput v-model.trim="fixedTransferForm.targetLocationCode" :config="locationCodeConfig" placeholder="请输入当前库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(fixedTransferForm.targetLocationCode)">
                     <template #append>
@@ -118,17 +122,17 @@
                   </HistoryInput>
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="6" :lg="6">
+<!--              <el-col :sm="24" :md="6" :lg="6">
                 <el-form-item label="交货单">
                   <HistoryInput v-model="fixedTransferForm.lfsnr" :config="lfsnrConfig" placeholder="请输入交货单" />
                 </el-form-item>
-              </el-col>
-              <el-col :sm="24" :md="6" :lg="6">
+              </el-col>-->
+              <el-col :sm="24" :md="8" :lg="8">
                 <el-form-item label="抬头文本" prop="bktxt">
                   <HistoryInput v-model="fixedTransferForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="6" :lg="6">
+              <el-col :sm="24" :md="8" :lg="8">
                 <el-form-item label="过账日期" prop="postingDate">
                   <el-date-picker clearable v-model="fixedTransferForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
                 </el-form-item>
@@ -259,6 +263,7 @@ import { ArrowDown, ArrowRight, ArrowUp, Bell, QuestionFilled, Switch } from '@e
 
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import { returnPurchaseInventory } from '@/api/wms/inventoryDetail';
+import { PurchaseOrderReturnBo, PurchaseOrderReturnBatchForm } from '@/api/wms/purchaseOrder/types';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
@@ -397,6 +402,20 @@ const sapMaterialItemConfig: HistoryConfig = {
   }
 };
 
+const sapMaterialDocYearConfig: HistoryConfig = {
+  key: 'sapMaterialDocYear',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryReturn',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
 const sourceDocCodeConfig: HistoryConfig = {
   key: 'sourceDocCode',
   storage: 'indexedDB',
@@ -483,7 +502,8 @@ const columns = ref<FieldOption[]>([
   { key: 11, label: `伙伴名称`, visible: false, children: [] },
   { key: 12, label: `仓库编码`, visible: false, children: [] },
   { key: 13, label: `库区编码`, visible: false, children: [] },
-  { key: 14, label: `库位编码`, visible: true, children: [] }
+  { key: 14, label: `库位编码`, visible: true, children: [] },
+  { key: 15, label: `凭证年度`, visible: false, children: [] }
 ]);
 
 const transferColumns = ref<FieldOption[]>([
@@ -751,7 +771,7 @@ const submitTransfer = async (moveType: any) => {
 
   try {
     // 构造移转请求参数
-    const transferRequests = validTransfers.map((item) => ({
+    const transferRequests: PurchaseOrderReturnBo[] = validTransfers.map((item) => ({
       id: item.id,
       moveType: moveType,
       batchCode: item.batchCode,
@@ -769,8 +789,8 @@ const submitTransfer = async (moveType: any) => {
       poUnit: item.poUnit,
       conversionRatio: item.conversionRatio,
       sapMaterialDocYear: item.sapMaterialDocYear,
-      sapMaterialItem: item.sapMaterialItem,
       sapMaterialOrderNo: item.sapMaterialOrderNo,
+      sapMaterialItem: item.sapMaterialItem,
       specialInventoryFlag: item.specialInventoryFlag,
       targetLocationCode: item.targetLocationCode,
       lfsnr: item.lfsnr,
@@ -778,10 +798,12 @@ const submitTransfer = async (moveType: any) => {
       postingDate: item.postingDate
     }));
 
-    const res: any = await returnPurchaseInventory({
+    const payload: PurchaseOrderReturnBatchForm = {
       purchaseOrderReturnBoList: transferRequests,
       returnType: 1
-    });
+    };
+
+    const res: any = await returnPurchaseInventory(payload);
 
     if (res.code !== HttpStatus.SUCCESS) {
       resultMessage.value = res.msg;

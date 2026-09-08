@@ -119,6 +119,31 @@ export interface NumberVO {
    */
   dataModifyUser: string;
 
+  /**
+   * 创建时间
+   */
+  createTime?: string;
+}
+
+export interface NumberRuleLineVO {
+  id?: string | number;
+  nextNumberBo?: string;
+  sequence?: number;
+  partType?: string;
+  variableType?: string;
+  fixedValue?: string;
+  minSequence?: number;
+  maxSequence?: number;
+  sequenceLength?: number;
+  currentSequence?: number;
+  warningThreshold?: number;
+  resetRule?: string;
+  remark?: string;
+  example1?: string;
+}
+
+export interface NumberDetailVO extends NumberVO {
+  nextNumberRuleVOList?: NumberRuleLineVO[];
 }
 
 export interface NumberForm extends BaseEntity {
@@ -241,11 +266,23 @@ export interface NumberForm extends BaseEntity {
    * 主数据修改用户
    */
   dataModifyUser?: string;
+}
 
+export interface NumberDetailForm extends NumberForm {
+  contextObject?: string;
+  contextRevision?: string;
+  nextNumberRuleSaveVOList?: NumberRuleLineVO[];
+  nextNumberRuleVOList?: NumberRuleLineVO[];
+}
+
+export interface NumberObjectOption {
+  label: string;
+  value: string;
+  revision: string;
+  contextBo: string;
 }
 
 export interface NumberQuery extends PageQuery {
-
   /**
    * 数据行索引
    */
@@ -356,11 +393,8 @@ export interface NumberQuery extends PageQuery {
    */
   dataModifyUser?: string;
 
-    /**
-     * 日期范围参数
-     */
-    params?: any;
+  /**
+   * 日期范围参数
+   */
+  params?: any;
 }
-
-
-

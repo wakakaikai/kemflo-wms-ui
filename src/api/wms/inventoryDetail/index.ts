@@ -123,6 +123,7 @@ export { returnPalletInventory } from '@/api/wms/palletInventory';
  * 采购件退货（已迁移至 /wms/purchaseOrder/return，保留兼容导出）
  */
 export { returnPurchaseInventory } from '@/api/wms/purchaseOrder';
+export type { PurchaseOrderReturnBo, PurchaseOrderReturnBatchForm } from '@/api/wms/purchaseOrder/types';
 
 /** 库存移动冲销（SAP 物料凭证冲销） */
 export const cancelInventoryMovement = (data: InventoryCancelForm) => {

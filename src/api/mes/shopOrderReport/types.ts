@@ -207,6 +207,99 @@ export interface ShopOrderReportVO {
   employeeOperationDuration: number;
 }
 
+export interface ImmediateShopOrderQuery extends PageQuery {
+  shopOrder?: string;
+  plannedItem?: string;
+  plannedWorkCenter?: string;
+  status?: string;
+  shopOrderType?: string;
+  plannedStartDateFrom?: string;
+  plannedStartDateTo?: string;
+  plannedCompDateFrom?: string;
+  plannedCompDateTo?: string;
+  actualStartDateFrom?: string;
+  actualStartDateTo?: string;
+  actualCompDateFrom?: string;
+  actualCompDateTo?: string;
+}
+
+export interface ImmediateShopOrderVO {
+  id: string | number;
+  handle: string;
+  shopOrder: string;
+  status: string;
+  shopOrderType: string;
+  priority: number;
+  plannedWorkCenterBo: string;
+  plannedWorkCenter: string;
+  plannedItemBo: string;
+  plannedItem: string;
+  plannedItemRevision: string;
+  plannedItemDesc: string;
+  plannedBomBo: string;
+  plannedBom: string;
+  plannedRouterBo: string;
+  plannedRouter: string;
+  qtyToBuild: number;
+  qtyReleased: number;
+  qtyScrapped: number;
+  qtyDone: number;
+  plannedStartDate: string;
+  plannedCompDate: string;
+  actualStartDate: string;
+  actualCompDate: string;
+  creator: string;
+  createTime: string;
+  updater: string;
+  modifyTime: string;
+}
+
+export interface ImmediateOperationQuery extends PageQuery {
+  shopOrderRef?: string;
+}
+
+export interface ImmediateOperationVO {
+  id: string | number;
+  operation: string;
+  operationBo: string;
+  operationDescription: string;
+  stepId: string;
+  routerBo: string;
+  router: string;
+  routerRevision: string;
+  qtyInQueue: number;
+  qtyInWork: number;
+  qtyCompleted: number;
+  stepSequence: number;
+}
+
+export interface ImmediateSfcQuery extends PageQuery {
+  shopOrderRef?: string;
+  operationRef?: string;
+  routerRef?: string;
+}
+
+export interface ImmediateSfcVO {
+  id: string | number;
+  sfcBo: string;
+  sfc: string;
+  status: string;
+  itemBo: string;
+  item: string;
+  itemRevision: string;
+  itemDescription: string;
+  shopOrder: string;
+  routerBo: string;
+  router: string;
+  routerRevision: string;
+  qty: number;
+  operationBo: string;
+  qtyInQueue: number;
+  qtyInWork: number;
+  qtyCompleted: number;
+  sfcInWorkDateTime?: string;
+}
+
 export interface ShopOrderReportEmployeeDurationQuery {
   pageNum?: number;
   pageSize?: number;

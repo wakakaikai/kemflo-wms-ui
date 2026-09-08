@@ -80,13 +80,13 @@
           <el-form :model="fixedIssueForm" ref="fixedIssueFormRef" label-width="auto" :inline="true">
             <el-row :gutter="20">
               <el-col :sm="24" :md="8" :lg="8">
-                <el-form-item label="抬头文本" prop="bktxt">
-                  <HistoryInput v-model="fixedIssueForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
+                <el-form-item label="物料单" prop="mtsnr">
+                  <HistoryInput v-model="fixedIssueForm.mtsnr" :config="mtsnrConfig" placeholder="请输入物料单" />
                 </el-form-item>
               </el-col>
               <el-col :sm="24" :md="8" :lg="8">
-                <el-form-item label="物料单" prop="mtsnr">
-                  <HistoryInput v-model="fixedIssueForm.mtsnr" :config="mtsnrConfig" placeholder="请输入物料单" />
+                <el-form-item label="抬头文本" prop="bktxt">
+                  <HistoryInput v-model="fixedIssueForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
                 </el-form-item>
               </el-col>
               <el-col :sm="24" :md="8" :lg="8">
@@ -112,14 +112,17 @@
             <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip min-width="140" />
             <el-table-column label="供应商" prop="supplierCode" min-width="110" />
             <el-table-column label="供应商" prop="supplierName" show-overflow-tooltip min-width="110" />
-            <el-table-column label="库存来源" min-width="180">
+            <el-table-column label="库存来源" min-width="200">
               <template #default="scope">
-                <div v-if="scope.row.locationCode">
-                  <div>仓库: {{ scope.row.warehouseCode || '-' }}</div>
-                  <div>库位: {{ scope.row.locationCode || '-' }}</div>
-                  <div>批次: {{ scope.row.batchCode || '-' }}</div>
+                <div class="inventory-source-cell">
+                  <div v-if="scope.row.locationCode">
+                    <div>仓库: {{ scope.row.warehouseCode || '-' }}</div>
+                    <div>库位: {{ scope.row.locationCode || '-' }}</div>
+                    <div>批次: {{ scope.row.batchCode || '-' }}</div>
+                  </div>
+                  <el-tag v-else type="warning" size="small">未选择库存</el-tag>
+                  <el-button type="primary" link icon="Search" @click="openInventoryDialog(scope.$index, scope.row)"></el-button>
                 </div>
-                <el-tag v-else type="warning" size="small">未选择库存</el-tag>
               </template>
             </el-table-column>
             <el-table-column label="待发数量" prop="openQuantity" min-width="100" />
@@ -134,9 +137,8 @@
               </template>
             </el-table-column>
             <el-table-column label="单位" prop="unit" width="70" />
-            <el-table-column label="操作" width="130" align="center">
+            <el-table-column label="操作" width="80" align="center">
               <template #default="scope">
-                <el-button type="primary" link icon="Search" @click="openInventoryDialog(scope.$index, scope.row)">选库存</el-button>
                 <el-button type="danger" link icon="Delete" @click="removeFromIssueList(scope.$index)"></el-button>
               </template>
             </el-table-column>
@@ -483,5 +485,11 @@ onMounted(() => {
 }
 .m-y-2 {
   margin: 8px 0;
+}
+.inventory-source-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 </style>

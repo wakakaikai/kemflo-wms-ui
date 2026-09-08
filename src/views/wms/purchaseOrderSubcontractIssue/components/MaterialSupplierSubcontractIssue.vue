@@ -2,49 +2,23 @@
   <el-row :gutter="20">
     <el-col :span="24">
       <el-card shadow="never" class="issue-card">
-        <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="auto" class="add-form">
-          <div class="add-form-row">
-            <el-form-item label="物料" prop="materialCode">
-              <HistoryInput v-model="addForm.materialCode" :config="materialConfig" placeholder="物料号/物料描述" @keydown.enter.prevent="handleMaterialEnter">
-                <template #append>
-                  <el-button icon="Search" @click="showItemDialog"></el-button>
-                </template>
-              </HistoryInput>
-            </el-form-item>
-            <el-form-item label="供应商" prop="supplierCode">
-              <HistoryInput v-model="addForm.supplierCode" :config="supplierConfig" placeholder="供应商/供应商名称" @keydown.enter.prevent="handleSupplierEnter">
-                <template #append>
-                  <el-button icon="Search" @click="showSupplierDialog"></el-button>
-                </template>
-              </HistoryInput>
-            </el-form-item>
-            <el-form-item label="发料数量" prop="issueQuantity">
-              <el-input-number v-model="addForm.issueQuantity" :min="0" :precision="3" controls-position="right" />
-            </el-form-item>
-            <div class="add-toolbar">
-              <el-form-item class="add-actions">
-                <el-button type="primary" icon="Plus" @click="addToIssueList">添加明细</el-button>
-                <el-button icon="Refresh" @click="resetAddForm">重置</el-button>
-              </el-form-item>
-              <el-form-item class="clear-actions">
-                <el-button type="danger" @click="clearIssueList" :disabled="issueList.length === 0">清空列表</el-button>
-              </el-form-item>
-            </div>
+        <template #header>
+          <div class="issue-card-header">
+            <span class="header-title">物料+供应商发料</span>
+            <el-button type="danger" @click="clearIssueList" :disabled="issueList.length === 0">清空列表</el-button>
           </div>
-        </el-form>
-
-        <el-divider class="section-divider" />
+        </template>
 
         <el-form :model="fixedIssueForm" label-width="auto" :inline="true">
           <el-row :gutter="20">
             <el-col :sm="24" :md="8" :lg="8">
-              <el-form-item label="抬头文本" prop="bktxt">
-                <HistoryInput v-model="fixedIssueForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
+              <el-form-item label="物料单" prop="mtsnr">
+                <HistoryInput v-model="fixedIssueForm.mtsnr" :config="mtsnrConfig" placeholder="请输入物料单" />
               </el-form-item>
             </el-col>
             <el-col :sm="24" :md="8" :lg="8">
-              <el-form-item label="物料单" prop="mtsnr">
-                <HistoryInput v-model="fixedIssueForm.mtsnr" :config="mtsnrConfig" placeholder="请输入物料单" />
+              <el-form-item label="抬头文本" prop="bktxt">
+                <HistoryInput v-model="fixedIssueForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
               </el-form-item>
             </el-col>
             <el-col :sm="24" :md="8" :lg="8">
@@ -65,18 +39,33 @@
 
         <el-table :data="issueList" border style="width: 100%" max-height="420">
           <el-table-column type="index" width="50" align="center" />
-          <el-table-column label="物料编码" prop="materialCode" min-width="135" />
-          <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip min-width="160" />
-          <el-table-column label="供应商代码" prop="supplierCode" min-width="120" />
-          <el-table-column label="供应商名称" prop="supplierName" show-overflow-tooltip min-width="140" />
-          <el-table-column label="库存来源" min-width="180">
+          <el-table-column label="物料编码" min-width="135">
             <template #default="scope">
-              <div v-if="scope.row.locationCode">
-                <div>仓库: {{ scope.row.warehouseCode || '-' }}</div>
-                <div>库位: {{ scope.row.locationCode || '-' }}</div>
-                <div>批次: {{ scope.row.batchCode || '-' }}</div>
+              <el-link type="primary" :underline="false" @click="openItemDialog(scope.row)">
+                {{ scope.row.materialCode || '选择物料' }}
+              </el-link>
+            </template>
+          </el-table-column>
+          <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip min-width="160" />
+          <el-table-column label="供应商代码" min-width="120">
+            <template #default="scope">
+              <el-link type="primary" :underline="false" @click="openSupplierDialog(scope.row)">
+                {{ scope.row.supplierCode || '选择供应商' }}
+              </el-link>
+            </template>
+          </el-table-column>
+          <el-table-column label="供应商名称" prop="supplierName" show-overflow-tooltip min-width="140" />
+          <el-table-column label="库存来源" min-width="200">
+            <template #default="scope">
+              <div class="inventory-source-cell">
+                <div v-if="scope.row.locationCode">
+                  <div>仓库: {{ scope.row.warehouseCode || '-' }}</div>
+                  <div>库位: {{ scope.row.locationCode || '-' }}</div>
+                  <div>批次: {{ scope.row.batchCode || '-' }}</div>
+                </div>
+                <el-tag v-else type="warning" size="small">未选择库存</el-tag>
+                <el-button type="primary" link icon="Search" @click="openInventoryDialog(scope.$index, scope.row)"></el-button>
               </div>
-              <el-tag v-else type="warning" size="small">未选择库存</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="待发数量" prop="openQuantity" min-width="100" />
@@ -87,17 +76,20 @@
           </el-table-column>
           <el-table-column label="发料数量" align="center" width="160">
             <template #default="scope">
-              <el-input-number v-model="scope.row.issueQuantity" :min="0" :max="resolveIssueQuantityMax(scope.row)" :precision="3" size="small" controls-position="right" />
+              <el-input-number v-model="scope.row.issueQuantity" :min="0" :max="resolveIssueQuantityMax(scope.row)" :precision="3" size="small" controls-position="right" @change="handleIssueQuantityChange(scope.row)" />
             </template>
           </el-table-column>
           <el-table-column label="单位" prop="unit" width="70" />
-          <el-table-column label="操作" width="130" align="center">
+          <el-table-column label="操作" width="80" align="center">
             <template #default="scope">
-              <el-button type="primary" link icon="Search" @click="openInventoryDialog(scope.$index, scope.row)">选库存</el-button>
               <el-button type="danger" link icon="Delete" @click="removeFromIssueList(scope.$index)"></el-button>
             </template>
           </el-table-column>
         </el-table>
+
+        <div class="list-footer-actions">
+          <el-button type="primary" circle icon="Plus" @click="addManualIssueRow" />
+        </div>
 
         <div style="margin-top: 20px; text-align: center">
           <el-button :loading="buttonLoading" type="primary" @click="submitForm" :disabled="issueList.length === 0" v-hasPermi="['wms:purchaseOrder:subcontractIssue']">541发料</el-button>
@@ -127,14 +119,13 @@ import InventorySelectionDialog from '@/views/wms/inventoryDetail/components/Inv
 import { Bell } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import { HistoryConfig } from '@/types/history';
-import { listItem } from '@/api/wms/item';
-import { listSupplier } from '@/api/wms/supplier';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const itemDialogRef = ref<InstanceType<typeof ItemDialog>>();
 const supplierDialogRef = ref<InstanceType<typeof SupplierDialog>>();
-const addFormRef = ref<ElFormInstance>();
+const currentItemRow = ref<any>(null);
+const currentSupplierRow = ref<any>(null);
 const resultMessage = ref('');
 const resultStatus = ref(false);
 const buttonLoading = ref(false);
@@ -153,37 +144,6 @@ const fixedIssueForm = ref({
   mtsnr: ''
 });
 
-const addForm = ref({
-  materialCode: '',
-  materialDesc: '',
-  supplierCode: '',
-  supplierName: '',
-  issueQuantity: 0,
-  unit: ''
-});
-
-const addRules = {
-  materialCode: [{ required: true, message: '请选择物料', trigger: 'blur' }],
-  supplierCode: [{ required: true, message: '请选择供应商', trigger: 'blur' }],
-  issueQuantity: [{ required: true, message: '请输入发料数量', trigger: 'change' }]
-};
-
-const materialConfig: HistoryConfig = {
-  key: 'materialCode',
-  storage: 'indexedDB',
-  maxSize: 10,
-  page: 'purchaseOrderSubcontractIssueMaterial',
-  autoSave: true,
-  component: { showDropdown: true, showTime: false, showDelete: true, dropdownMaxHeight: '300px' }
-};
-const supplierConfig: HistoryConfig = {
-  key: 'supplierCode',
-  storage: 'indexedDB',
-  maxSize: 10,
-  page: 'purchaseOrderSubcontractIssueMaterial',
-  autoSave: true,
-  component: { showDropdown: true, showTime: false, showDelete: true, dropdownMaxHeight: '300px' }
-};
 const bktxtConfig: HistoryConfig = {
   key: 'bktxt',
   storage: 'indexedDB',
@@ -214,138 +174,62 @@ function formatPostingDate(postingDate?: string | null): string | undefined {
   return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
 }
 
-const showItemDialog = () => {
+const createEmptyIssueRow = () => ({
+  id: `manual_${Date.now()}_${issueList.value.length}`,
+  issueMode: 'MATERIAL',
+  manualAdd: true,
+  materialCode: '',
+  materialDesc: '',
+  supplierCode: '',
+  supplierName: '',
+  issueQuantity: undefined,
+  openQuantity: undefined,
+  unit: ''
+});
+
+const addManualIssueRow = () => {
+  issueList.value.push(createEmptyIssueRow());
+};
+
+const openItemDialog = (row: any) => {
+  currentItemRow.value = row;
   itemDialogRef.value?.openDialog();
   itemDialogRef.value?.handleQuery();
 };
 
 const itemSelectCallBack = (record: any) => {
-  addForm.value.materialCode = record.item;
-  addForm.value.materialDesc = record.itemDesc;
-  addForm.value.unit = record.unit || '';
+  const row = currentItemRow.value;
+  if (!row || !record) {
+    return;
+  }
+  row.materialCode = record.item || '';
+  row.materialDesc = record.itemDesc || '';
+  row.unit = record.unit || '';
+  currentItemRow.value = null;
 };
 
-const showSupplierDialog = () => {
+const openSupplierDialog = (row: any) => {
+  currentSupplierRow.value = row;
   supplierDialogRef.value?.openDialog();
   supplierDialogRef.value?.handleQuery();
 };
 
 const supplierSelectCallBack = (record: any) => {
-  addForm.value.supplierCode = record.supplierCode;
-  addForm.value.supplierName = record.supplierName;
-};
-
-const resetAddForm = () => {
-  addFormRef.value?.resetFields();
-  addForm.value = {
-    materialCode: '',
-    materialDesc: '',
-    supplierCode: '',
-    supplierName: '',
-    issueQuantity: 0,
-    unit: ''
-  };
-};
-
-const addToIssueList = () => {
-  addFormRef.value?.validate(async (valid: boolean) => {
-    if (!valid) {
-      return;
-    }
-    if (!addForm.value.issueQuantity || Number(addForm.value.issueQuantity) <= 0) {
-      proxy?.$modal.msgWarning('发料数量必须大于 0');
-      return;
-    }
-    const materialValid = await ensureMaterial();
-    if (!materialValid) {
-      return;
-    }
-    const supplierValid = await ensureSupplier();
-    if (!supplierValid) {
-      return;
-    }
-    issueList.value.push({
-      issueMode: 'MATERIAL',
-      materialCode: addForm.value.materialCode,
-      materialDesc: addForm.value.materialDesc,
-      supplierCode: addForm.value.supplierCode,
-      supplierName: addForm.value.supplierName,
-      issueQuantity: addForm.value.issueQuantity,
-      openQuantity: addForm.value.issueQuantity,
-      unit: addForm.value.unit
-    });
-    proxy?.$modal.msgSuccess('发料明细已添加');
-    resetAddForm();
-  });
+  const row = currentSupplierRow.value;
+  if (!row || !record) {
+    return;
+  }
+  row.supplierCode = record.supplierCode || '';
+  row.supplierName = record.supplierName || '';
+  currentSupplierRow.value = null;
 };
 
 const removeFromIssueList = (index: number) => {
   issueList.value.splice(index, 1);
 };
 
-const resolveRows = (res: any) => res?.rows ?? res?.data ?? res ?? [];
-
-const ensureMaterial = async () => {
-  if (addForm.value.materialDesc) {
-    return true;
-  }
-  const materialCode = addForm.value.materialCode?.trim();
-  if (!materialCode) {
-    return false;
-  }
-  const res = await listItem({
-    pageNum: 1,
-    pageSize: 10,
-    item: materialCode,
-    params: {}
-  } as any);
-  const rows = resolveRows(res);
-  const material = rows.find((item: any) => item.item === materialCode) ?? rows[0];
-  if (!material) {
-    proxy?.$modal.msgWarning(`物料 ${materialCode} 不存在`);
-    return false;
-  }
-  addForm.value.materialCode = material.item || materialCode;
-  addForm.value.materialDesc = material.itemDesc || '';
-  addForm.value.unit = material.unit || '';
-  return true;
-};
-
-const ensureSupplier = async () => {
-  if (addForm.value.supplierName) {
-    return true;
-  }
-  const supplierCode = addForm.value.supplierCode?.trim();
-  if (!supplierCode) {
-    return false;
-  }
-  const res = await listSupplier({
-    pageNum: 1,
-    pageSize: 10,
-    supplierCode,
-    params: {}
-  });
-  const rows = resolveRows(res);
-  const supplier = rows.find((item: any) => item.supplierCode === supplierCode) ?? rows[0];
-  if (!supplier) {
-    proxy?.$modal.msgWarning(`供应商 ${supplierCode} 不存在`);
-    return false;
-  }
-  addForm.value.supplierCode = supplier.supplierCode || supplierCode;
-  addForm.value.supplierName = supplier.supplierName || '';
-  return true;
-};
-
-const handleMaterialEnter = async () => {
-  if (!addForm.value.materialDesc) {
-    await ensureMaterial();
-  }
-};
-
-const handleSupplierEnter = async () => {
-  if (!addForm.value.supplierName) {
-    await ensureSupplier();
-  }
+const handleIssueQuantityChange = (row: any) => {
+  row.openQuantity = row.issueQuantity;
 };
 
 const resolveIssueQuantityMax = (row: any) => {
@@ -354,6 +238,10 @@ const resolveIssueQuantityMax = (row: any) => {
 };
 
 const openInventoryDialog = (index: number, row: any) => {
+  if (!String(row.materialCode || '').trim()) {
+    proxy?.$modal.msgWarning('请先选择物料');
+    return;
+  }
   inventoryDialogIndex.value = index;
   inventoryDialogMaterial.value = {
     materialCode: row.materialCode || '',
@@ -374,6 +262,7 @@ const handleInventoryConfirm = ({ locations }: { locations: any[] }) => {
   const splitRows = locations.map((location, locationIndex) => ({
     ...source,
     issueQuantity: Number(location.pickQty ?? 0),
+    openQuantity: Number(location.pickQty ?? 0),
     unit: location.unit || source.unit,
     warehouseCode: location.warehouseCode,
     areaCode: location.areaCode,
@@ -402,6 +291,18 @@ const submitForm = async () => {
   resultMessage.value = '';
   if (validList.length === 0) {
     resultMessage.value = '发料数量必须大于 0';
+    resultStatus.value = false;
+    return;
+  }
+  const missingMaterial = validList.filter((item) => !String(item.materialCode || '').trim());
+  if (missingMaterial.length > 0) {
+    resultMessage.value = '请先为所有发料明细选择物料';
+    resultStatus.value = false;
+    return;
+  }
+  const missingSupplier = validList.filter((item) => !String(item.supplierCode || '').trim());
+  if (missingSupplier.length > 0) {
+    resultMessage.value = '请先为所有发料明细选择供应商';
     resultStatus.value = false;
     return;
   }
@@ -451,45 +352,27 @@ const submitForm = async () => {
 .issue-card {
   width: 100%;
 }
-.add-form {
-  margin-bottom: 8px;
-}
-.add-form-row {
+.issue-card-header {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.add-form-row :deep(.el-form-item) {
-  margin-right: 0;
-  margin-bottom: 12px;
-}
-.add-form-row :deep(.el-form-item__content) {
-  min-width: 220px;
-}
-.add-toolbar {
-  display: flex;
-  flex: 1;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  min-width: 260px;
+  align-items: center;
 }
-.add-actions :deep(.el-form-item__content) {
-  min-width: auto;
-}
-.clear-actions :deep(.el-form-item__content) {
-  min-width: auto;
-}
-.section-divider {
-  margin: 16px 0;
+.header-title {
+  font-size: 16px;
+  font-weight: 600;
 }
 .m-y-2 {
   margin: 8px 0;
 }
-@media (max-width: 768px) {
-  .add-toolbar {
-    width: 100%;
-  }
+.inventory-source-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.list-footer-actions {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
 }
 </style>

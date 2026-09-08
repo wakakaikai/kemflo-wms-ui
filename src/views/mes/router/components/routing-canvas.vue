@@ -7,11 +7,11 @@ const emit = defineEmits(['drop', 'ready']);
 const readonly = inject('readonly', ref(false));
 const graph = inject('graph', ref());
 
-const { paper, minimap, container, fitView, resize } = useRoutingCanvasInit({ readonly, graph });
+const { paper, minimap, container, fitView, resize, resizeImmediate } = useRoutingCanvasInit({ readonly, graph });
 
 useRoutingHighlight({ graph });
 
-defineExpose({ fitView, resize });
+defineExpose({ fitView, resize, resizeImmediate });
 
 const preventDefault = (e: DragEvent) => {
   e.preventDefault();
@@ -30,6 +30,7 @@ watch(
 
 <template>
   <div ref="container" class="routing-canvas" @drop="(e) => emit('drop', e)" @dragenter="preventDefault" @dragover="preventDefault" @dragleave="preventDefault">
+    <slot name="toolbar" />
     <div ref="paper" class="routing-paper" />
     <div class="routing-minimap-panel">
       <div ref="minimap" class="routing-minimap" />
@@ -41,12 +42,12 @@ watch(
 .routing-canvas {
   position: relative;
   flex: 1;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid #dcdfe6;
-  border-radius: 6px;
-  background: #f5f7fa;
+  background: #fff;
 }
 
 .routing-paper {
@@ -56,16 +57,15 @@ watch(
   overflow: hidden;
 }
 
-/* Scroller 视口：铺满纸面，滚动条按需出现 */
 .routing-paper :deep(.x6-graph-scroller.routing-scroller) {
   box-sizing: border-box;
   overflow: auto;
-  background: #f5f7fa;
+  background: #fff;
   outline: none;
 }
 
 .routing-paper :deep(.x6-graph-scroller-content) {
-  background: #f5f7fa;
+  background: #fff;
 }
 
 .routing-paper :deep(.x6-graph-scroller-pannable[data-panning='false']) {
@@ -100,7 +100,7 @@ watch(
 }
 
 .routing-minimap :deep(.x6-widget-minimap-viewport) {
-  border: 2px solid #36cfc9;
-  box-shadow: 0 0 0 1px rgba(54, 207, 201, 0.16);
+  border: 2px solid #409eff;
+  box-shadow: 0 0 0 1px rgba(64, 158, 255, 0.16);
 }
 </style>

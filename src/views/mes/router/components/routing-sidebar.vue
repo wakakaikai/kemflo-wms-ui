@@ -30,10 +30,6 @@ const filteredProcesses = computed(() => {
 
 <template>
   <aside class="routing-sidebar">
-    <div class="routing-sidebar__header">
-      <span class="routing-sidebar__title">工序库</span>
-      <span class="routing-sidebar__count">{{ filteredProcesses.length }}</span>
-    </div>
     <div class="routing-sidebar__search">
       <el-input v-model="keyword" clearable placeholder="搜索工序" :prefix-icon="Search" size="small" />
     </div>
@@ -54,79 +50,46 @@ const filteredProcesses = computed(() => {
 .routing-sidebar {
   display: flex;
   flex-direction: column;
-  flex: 0 0 210px;
-  width: 210px;
   height: 100%;
   min-height: 0;
-  max-height: 100%;
   overflow: hidden;
-  border: 1px solid #dcdfe6;
-  border-radius: 6px;
   background: #fff;
 }
 
-.routing-sidebar__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 10px 8px;
-}
-
-.routing-sidebar__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.routing-sidebar__count {
-  min-width: 24px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: #ecf5ff;
-  color: #409eff;
-  font-size: 12px;
-  line-height: 22px;
-  text-align: center;
-}
-
 .routing-sidebar__search {
-  padding: 0 10px 10px;
+  flex: 0 0 auto;
+  padding: 6px 4px 4px;
 }
 
 .routing-sidebar__list {
   flex: 1;
   min-height: 0;
-  padding: 0 10px 10px;
+  padding: 0 4px 6px;
   overflow-y: auto;
 }
 
 .routing-process {
   display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-bottom: 10px;
-  padding: 8px 10px;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 6px 4px;
   cursor: move;
   border: 1px solid #ebeef5;
   border-radius: 4px;
   background: #fff;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .routing-process:hover {
-  border-color: #8cc5ff;
-  background: #f5faff;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
-  transform: translateY(-1px);
+  background: #f5f7fa;
 }
 
 .routing-process-icon {
   width: 20px;
   height: 20px;
   flex: 0 0 20px;
+  margin-top: 2px;
   color: #409eff;
 }
 
@@ -140,12 +103,13 @@ const filteredProcesses = computed(() => {
   font-weight: 500;
   color: #35bd86;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .routing-process-desc {
   margin-top: 2px;
   font-size: 12px;
-  color: #35bd86;
+  color: #303133;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }

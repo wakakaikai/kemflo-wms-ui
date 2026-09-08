@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { ShopOrderVO, ShopOrderForm, ShopOrderQuery, SfcPreviewVO } from '@/api/mes/shopOrder/types';
+import { ShopOrderVO, ShopOrderForm, ShopOrderQuery, SfcPreviewVO, ImmediateShopOrderQuery, ImmediateShopOrderVO, ImmediateOperationQuery, ImmediateOperationVO, ImmediateSfcQuery, ImmediateSfcVO } from '@/api/mes/shopOrder/types';
 
 /**
  * 查询工单档案列表
@@ -13,6 +13,51 @@ export const listShopOrder = (query?: any) => {
     url: '/mes/shopOrder/list',
     method: 'get',
     params: query
+  });
+};
+
+/**
+ * 查询生产实时报表工单列表
+ */
+export const listImmediateShopOrder = (data?: ImmediateShopOrderQuery): AxiosPromise<ImmediateShopOrderVO[]> => {
+  return request({
+    url: '/mes/shopOrder/immediate/shopOrder',
+    method: 'post',
+    params: {
+      pageNum: data?.pageNum,
+      pageSize: data?.pageSize
+    },
+    data
+  });
+};
+
+/**
+ * 查询生产实时报表工序列表
+ */
+export const listImmediateOperation = (data: ImmediateOperationQuery): AxiosPromise<ImmediateOperationVO[]> => {
+  return request({
+    url: '/mes/shopOrder/immediate/operation',
+    method: 'post',
+    params: {
+      pageNum: data.pageNum,
+      pageSize: data.pageSize
+    },
+    data
+  });
+};
+
+/**
+ * 查询生产实时报表条码列表
+ */
+export const listImmediateSfc = (data: ImmediateSfcQuery): AxiosPromise<ImmediateSfcVO[]> => {
+  return request({
+    url: '/mes/shopOrder/immediate/sfc',
+    method: 'post',
+    params: {
+      pageNum: data.pageNum,
+      pageSize: data.pageSize
+    },
+    data
   });
 };
 

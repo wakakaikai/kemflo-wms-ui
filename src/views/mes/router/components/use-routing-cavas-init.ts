@@ -54,7 +54,7 @@ export function useRoutingCanvasInit(options: Options) {
       width: width || 800,
       height: height || 600,
       autoResize: false,
-      background: { color: '#f5f7fa' },
+      background: { color: '#ffffff' },
       // 使用 Scroller 时关闭内置 panning，避免冲突（插件也会自动禁用）
       panning: false,
       scaling: {
@@ -72,7 +72,7 @@ export function useRoutingCanvasInit(options: Options) {
         size: 10,
         visible: true,
         type: 'dot',
-        args: { color: '#dcdfe6', thickness: 1 }
+        args: { color: '#e8e8e8', thickness: 1 }
       },
       interacting: {
         edgeLabelMovable: false,
@@ -150,18 +150,31 @@ export function useRoutingCanvasInit(options: Options) {
     instance.use(new Snapline({ enabled: true, sharp: true }));
     instance.use(new Export());
     instance.use(new Keyboard({ enabled: true }));
-    if (minimap.value) {
-      instance.use(
-        new MiniMap({
-          container: minimap.value,
-          scalable: true,
-          width: 200,
-          height: 120,
-          padding: 10,
-          minScale: 0.2,
-          maxScale: 2
-        })
-      );
+  }
+
+  function initMinimap(instance: Graph) {
+    if (!minimap.value) {
+      return;
+    }
+    instance.use(
+      new MiniMap({
+        container: minimap.value,
+        scalable: true,
+        width: 200,
+        height: 120,
+        padding: 10,
+        minScale: 0.2,
+        maxScale: 2
+      })
+    );
+  }
+
+  function scheduleMinimapInit(instance: Graph) {
+    const run = () => initMinimap(instance);
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(run, { timeout: 1500 });
+    } else {
+      window.setTimeout(run, 200);
     }
   }
 
@@ -220,12 +233,14 @@ export function useRoutingCanvasInit(options: Options) {
     });
   }
 
-  const resize = useDebounceFn(() => {
+  const doResize = () => {
     if (!container.value || !graph.value) {
       return;
     }
     resizeRoutingGraph(graph.value, container.value.clientWidth, container.value.clientHeight);
-  }, 80);
+  };
+
+  const resize = useDebounceFn(doResize, 80);
 
   const fitView = () => fitRoutingGraphView(graph.value);
 
@@ -240,10 +255,7 @@ export function useRoutingCanvasInit(options: Options) {
 
     await nextTick();
     resize();
-    requestAnimationFrame(() => {
-      resize();
-      fitView();
-    });
+    scheduleMinimapInit(instance);
   });
 
   onBeforeUnmount(() => {
@@ -257,6 +269,7 @@ export function useRoutingCanvasInit(options: Options) {
     minimap,
     container,
     fitView,
-    resize
+    resize,
+    resizeImmediate: doResize
   };
 }
