@@ -45,9 +45,9 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column v-if="columns[0].visible" label="物料凭证号" prop="sapMaterialOrderNo" min-width="120" />
-            <el-table-column v-if="columns[1].visible" label="凭证项次" prop="sapMaterialItem" width="90" />
-            <el-table-column v-if="columns[2].visible" label="移动类型" prop="moveType" width="90" />
+            <el-table-column v-if="columns[0].visible" label="移动类型" prop="moveType" width="90" />
+            <el-table-column v-if="columns[1].visible" label="物料凭证号" prop="sapMaterialOrderNo" min-width="120" />
+            <el-table-column v-if="columns[2].visible" label="凭证项次" prop="sapMaterialItem" width="90" />
             <el-table-column v-if="columns[3].visible" label="工单号" prop="sourceDocCode" min-width="120" />
             <el-table-column v-if="columns[4].visible" label="物料编码" prop="itemCode" min-width="120" />
             <el-table-column v-if="columns[5].visible" label="物料名称" prop="itemName" min-width="140" show-overflow-tooltip />
@@ -164,6 +164,7 @@
 import { computed, ref } from 'vue';
 import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
 import { listInventoryMovement } from '@/api/wms/inventoryMovement';
+import { syncSapMaterialOrderNoEmptyFilter } from '@/api/wms/inventoryMovement/query';
 import { InventoryMovementQuery, InventoryMovementVO } from '@/api/wms/inventoryMovement/types';
 import { buildInventoryCancelPayloadByVoucher, cancelInventoryMovement } from '@/api/wms/inventoryDetail';
 import { formatInventoryMovementReversalFlag, getInventoryMovementReversalTagType, isInventoryMovementReversed } from '@/api/wms/workOrderReturn';
@@ -216,6 +217,7 @@ const queryParams = ref<InventoryMovementQuery>({
   sourceDocType: 'WO',
   sapMaterialOrderNo: undefined,
   sourceDocCode: undefined,
+  sapMaterialOrderNoEmpty: true,
   params: {}
 });
 
@@ -230,9 +232,9 @@ const cancelForm = ref({
 const cancelRules = {};
 
 const columns = ref<FieldOption[]>([
-  { key: 0, label: '物料凭证号', visible: true, children: [] },
-  { key: 1, label: '凭证项次', visible: true, children: [] },
-  { key: 2, label: '移动类型', visible: true, children: [] },
+  { key: 0, label: '移动类型', visible: true, children: [] },
+  { key: 1, label: '物料凭证号', visible: true, children: [] },
+  { key: 2, label: '凭证项次', visible: true, children: [] },
   { key: 3, label: '工单号', visible: true, children: [] },
   { key: 4, label: '物料编码', visible: true, children: [] },
   { key: 5, label: '物料名称', visible: true, children: [] },
@@ -408,6 +410,7 @@ function handleHistoryRowClick(row: VoucherItemGroup, _column: any, event: Mouse
 }
 
 const getList = async () => {
+  syncSapMaterialOrderNoEmptyFilter(queryParams.value);
   if (!queryParams.value.sapMaterialOrderNo && !queryParams.value.sourceDocCode) {
     return;
   }

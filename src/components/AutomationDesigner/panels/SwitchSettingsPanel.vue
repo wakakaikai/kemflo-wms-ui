@@ -101,9 +101,9 @@ const branches = ref<SwitchBranch[]>([]);
 const upstreamOptions = computed(() => collectUpstreamVariables(props.node));
 
 function branchLabel(index: number) {
-  if (index === 0) return 'IF';
+  if (index === 0) return 'CASE 1 (IF)';
   if (index === branches.value.length - 1) return 'ELSE';
-  return `ELIF ${index}`;
+  return `CASE ${index + 1} (ELIF)`;
 }
 
 function newRule(): SwitchRule {
@@ -194,14 +194,14 @@ function buildExpression(branch: SwitchBranch) {
 function buildConfig() {
   const conditionalBranches = branches.value.filter((b) => b.type !== 'ELSE');
   const cases = conditionalBranches.map((branch, index) => ({
-    label: index === 0 ? 'IF' : `ELIF ${index}`,
-    type: index === 0 ? 'IF' : 'ELIF',
+    label: index === 0 ? 'CASE 1' : `CASE ${index + 1}`,
+    type: index === 0 ? 'CASE' : 'ELIF',
     value: buildExpression(branch) || `case_${index + 1}`,
-    remarks: buildExpression(branch) || `分支 ${index + 1}`,
+    remarks: `CASE ${index + 1}`,
     logic: branch.logic,
     rules: branch.rules,
   }));
-  cases.push({ label: 'ELSE', type: 'DEFAULT', value: 'default', remarks: '默认分支', logic: 'AND', rules: [] });
+  cases.push({ label: 'ELSE', type: 'DEFAULT', value: 'default', remarks: 'ELSE', logic: 'AND', rules: [] });
 
   return {
     branches: branches.value,

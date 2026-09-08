@@ -42,11 +42,11 @@ const triggerNodes: NodeConfigItem[] = [
 // 控制节点
 const controlNodes: NodeConfigItem[] = [
   { type: 'CONDITION', category: NodeCategory.CONTROL, label: '分支', icon: 'QuestionFilled', color: '#5b8ff9', shape: 'rect', defaultConfig: { expression: '', alias: '', description: '' } },
-  { type: 'SWITCH', category: NodeCategory.CONTROL, label: '条件分支', icon: 'Share', color: '#5b8ff9', shape: 'rect', defaultConfig: { expression: '', branches: [], cases: [{ value: '', label: 'IF', type: 'IF', remarks: 'IF' }, { value: 'default', label: 'ELSE', type: 'DEFAULT', remarks: '默认分支' }], alias: '', description: '' } },
+  { type: 'SWITCH', category: NodeCategory.CONTROL, label: '条件分支', icon: 'Share', color: '#5b8ff9', shape: 'rect', defaultConfig: { expression: '', branches: [{ type: 'IF', logic: 'AND', rules: [{ variable: '', operator: 'eq', value: '' }] }, { type: 'ELSE', logic: 'AND', rules: [] }], cases: [{ value: '', label: 'CASE 1', type: 'CASE', remarks: 'CASE 1' }, { value: 'default', label: 'ELSE', type: 'DEFAULT', remarks: 'ELSE' }], alias: '', description: '' } },
   { type: 'LOOP', category: NodeCategory.CONTROL, label: '循环', icon: 'Refresh', color: '#fa8c16', shape: 'rect', defaultConfig: { loopType: 'counted', maxLoopTimes: 3, collectionExpression: '', variableName: 'item', loopParams: [], inputMapping: {}, outputVar: 'loopResult' } },
   { type: 'DELAY', category: NodeCategory.CONTROL, label: '延时等待', icon: 'Timer', color: '#fa8c16', shape: 'rect', defaultConfig: { delaySeconds: 60 } },
   { type: 'WAIT', category: NodeCategory.CONTROL, label: '等待事件', icon: 'Stopwatch', color: '#fa8c16', shape: 'rect', defaultConfig: { waitType: 'APPROVAL', waitKey: '', timeout: 86400 } },
-  { type: 'END', category: NodeCategory.CONTROL, label: '结束', icon: 'CircleCloseFilled', color: '#fa8c16', shape: 'ellipse', defaultConfig: {} },
+  { type: 'END', category: NodeCategory.CONTROL, label: '结束', icon: 'CircleCloseFilled', color: '#fa8c16', shape: 'ellipse', defaultConfig: { outputType: 'text', outputContent: '', text: '' } },
 ];
 
 // AI 节点

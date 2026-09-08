@@ -43,9 +43,9 @@
         <div class="search-result">
           <el-table ref="inventoryTableRef" :data="inventoryDetailList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="55" align="center" />
-            <el-table-column v-if="columns[0].visible" label="物料凭证号" align="left" prop="sapMaterialOrderNo" />
-            <el-table-column v-if="columns[1].visible" label="凭证项次" align="left" prop="sapMaterialItem" />
-            <el-table-column v-if="columns[2].visible" label="移动类型" align="center" prop="moveType" width="90" />
+            <el-table-column v-if="columns[0].visible" label="移动类型" align="center" prop="moveType" width="90" />
+            <el-table-column v-if="columns[1].visible" label="物料凭证号" align="left" prop="sapMaterialOrderNo" />
+            <el-table-column v-if="columns[2].visible" label="凭证项次" align="left" prop="sapMaterialItem" />
             <el-table-column v-if="columns[3].visible" label="工单号" align="left" prop="sourceDocCode" />
             <el-table-column v-if="columns[4].visible" label="物料编码" align="left" prop="itemCode" />
             <el-table-column v-if="columns[5].visible" label="物料名称" align="left" prop="itemName" show-overflow-tooltip />
@@ -208,6 +208,7 @@
 import { ref, reactive, nextTick, getCurrentInstance, toRefs } from 'vue';
 import { ArrowDown, ArrowRight, ArrowUp, Bell, Switch } from '@element-plus/icons-vue';
 import { listInventoryMovement } from '@/api/wms/inventoryMovement';
+import { syncSapMaterialOrderNoEmptyFilter } from '@/api/wms/inventoryMovement/query';
 import type { InventoryMovementQuery, InventoryMovementVO } from '@/api/wms/inventoryMovement/types';
 import { buildWorkOrderReturnBo, enrichWorkOrderReturnRow, workOrderOutbound } from '@/api/wms/workOrderReturn';
 import { HttpStatus } from '@/enums/RespEnum';
@@ -252,6 +253,7 @@ const queryParams = ref<InventoryMovementQuery>({
   sourceDocCode: undefined,
   sapMaterialOrderNo: undefined,
   sapMaterialItem: undefined,
+  sapMaterialOrderNoEmpty: true,
   params: {}
 });
 
@@ -342,9 +344,9 @@ const bktxtConfig: HistoryConfig = {
 };
 
 const columns = ref<FieldOption[]>([
-  { key: 0, label: `物料凭证号`, visible: true, children: [] },
-  { key: 1, label: `凭证项次`, visible: true, children: [] },
-  { key: 2, label: `移动类型`, visible: true, children: [] },
+  { key: 0, label: `移动类型`, visible: true, children: [] },
+  { key: 1, label: `物料凭证号`, visible: true, children: [] },
+  { key: 2, label: `凭证项次`, visible: true, children: [] },
   { key: 3, label: `工单号`, visible: true, children: [] },
   { key: 4, label: `物料编码`, visible: true, children: [] },
   { key: 5, label: `物料名称`, visible: true, children: [] },
@@ -409,6 +411,7 @@ const buildTransferRow = (item: InventoryMovementVO) =>
   });
 
 const getList = async () => {
+  syncSapMaterialOrderNoEmptyFilter(queryParams.value);
   loading.value = true;
   resultMessage.value = '';
   try {

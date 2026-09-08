@@ -17,13 +17,14 @@
     </section>
 
     <section class="settings-section">
+      <div class="section-title">API</div>
       <div class="request-line">
         <el-select v-model="form.method" class="method-select" @change="onMethodChange">
           <el-option v-for="method in HTTP_METHODS" :key="method" :label="method" :value="method" />
         </el-select>
         <VariableAwareInput
           v-model="form.url"
-          placeholder="{{domainURL}}/test/jeecgDemo/list"
+          placeholder="请输入API地址。按下 “/” 可以选择变量"
           :options="upstreamOptions"
           @change="emitChange"
         />
@@ -155,6 +156,7 @@ import {
   type HttpOutputVariable,
 } from './httpOutputUtils';
 import { getDefaultConfig } from '../config/nodeConfig';
+import { toDisplayTemplate, toPersistTemplate, toDisplayTemplateMap, toPersistTemplateMap } from './templateUtils';
 import './settingsShared.css';
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as const;
@@ -201,14 +203,14 @@ watch(
     const cfg = { ...getDefaultConfig('HTTP_CALL'), ...(data.config || {}) };
     form.description = cfg.description || '';
     form.method = normalizeMethod(cfg.method);
-    form.url = cfg.url || '';
+    form.url = toDisplayTemplate(cfg.url || '');
     form.contentType = cfg.contentType || 'application/json';
-    form.headersList = mapToKeyValueRows(cfg.headers);
-    form.queryList = mapToKeyValueRows(cfg.queryParams || cfg.params);
+    form.headersList = mapToKeyValueRows(toDisplayTemplateMap(cfg.headers));
+    form.queryList = mapToKeyValueRows(toDisplayTemplateMap(cfg.queryParams || cfg.params));
     form.bodyType = normalizeBodyType(cfg.bodyType || defaultBodyTypeForMethod(form.method));
-    form.body = typeof cfg.body === 'string' ? cfg.body : cfg.body ? JSON.stringify(cfg.body, null, 2) : '';
+    form.body = toDisplayTemplate(typeof cfg.body === 'string' ? cfg.body : cfg.body ? JSON.stringify(cfg.body, null, 2) : '');
     if (!form.body && form.bodyType === 'json') form.body = DEFAULT_JSON_BODY;
-    form.formBodyList = loadFormBody(cfg);
+    form.formBodyList = loadFormBody(cfg).map((row) => ({ ...row, value: toDisplayTemplate(row.value) }));
     form.timeoutMs = cfg.timeoutMs ?? 120000;
     form.successCodes = cfg.successCodes || '200,201,204';
     form.responseType = cfg.responseType || 'json';
@@ -299,15 +301,11 @@ function removeOutputVariable(index: number) {
 }
 
 function normalizeTemplateText(value: string) {
-  return value.replace(/\{\{\s*([^}]+?)\s*\}\}/g, '${$1}');
+  return toPersistTemplate(value);
 }
 
 function normalizeTemplateMap(map: Record<string, string>) {
-  const result: Record<string, string> = {};
-  Object.entries(map).forEach(([key, val]) => {
-    result[key] = normalizeTemplateText(String(val ?? ''));
-  });
-  return result;
+  return toPersistTemplateMap(map);
 }
 
 function buildConfig() {

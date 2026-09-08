@@ -2,12 +2,7 @@ import { ShippingDetailVO } from '@/api/wms/shippingDetail/types';
 
 export interface ShippingDetailScadaQuery {
   customerCode?: string;
-  item?: string;
-  shopOrder?: string;
-  status?: number;
   topLimit?: number;
-  pageNum?: number;
-  pageSize?: number;
   dateTimeRange?: string[];
 }
 
@@ -48,9 +43,9 @@ export interface ShippingDetailTopCustomerVO {
 
 export interface ShippingDetailFooterVO {
   customerTotal?: number;
-  todayVehicleCount?: number;
-  todayBoxQty?: number;
-  todayShopOrderCount?: number;
+  todayItemCount?: number;
+  todayScanQty?: number;
+  todayOrderCount?: number;
 }
 
 export type ShippingDetailRowVO = ShippingDetailVO;

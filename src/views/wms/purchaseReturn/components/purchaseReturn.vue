@@ -16,6 +16,9 @@
       <div v-show="historyExpanded" class="history-card-body">
         <el-form v-show="showSearch" ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
           <!-- 默认显示的搜索项 -->
+          <el-form-item label="移动类型" prop="moveType">
+            <HistoryInput v-model="queryParams.moveType" :config="moveTypeConfig" placeholder="请输入移动类型" @keyup.enter="handleQuery" />
+          </el-form-item>
           <el-form-item label="物料凭证号" prop="sapMaterialOrderNo">
             <!--                <el-input v-model="queryParams.sapMaterialOrderNo" placeholder="请输入物料凭证号" clearable @keyup.enter="handleQuery" />-->
             <HistoryInput v-model="queryParams.sapMaterialOrderNo" :config="sapMaterialOrderNoConfig" placeholder="请输入物料凭证号" @keyup.enter="handleQuery" />
@@ -25,29 +28,9 @@
             <!--              <el-input v-model="queryParams.sourceDocCode" placeholder="请输入采购单号" clearable @keyup.enter="handleQuery" />-->
             <HistoryInput v-model="queryParams.sourceDocCode" :config="sourceDocCodeConfig" placeholder="请输入采购单号" @keyup.enter="handleQuery" />
           </el-form-item>
-          <!-- 高级搜索项，默认隐藏 -->
-          <div v-show="showAdvancedSearch">
-            <el-form-item label="物料凭证项次" prop="sapMaterialItem">
-              <HistoryInput v-model="queryParams.sapMaterialItem" :config="sapMaterialItemConfig" placeholder="请输入物料凭证项次" @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="凭证年度" prop="sapMaterialDocYear">
-              <HistoryInput v-model="queryParams.sapMaterialDocYear" :config="sapMaterialDocYearConfig" placeholder="请输入凭证年度" @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="采购单项次" prop="poItemNo">
-              <HistoryInput v-model="queryParams.poItemNo" :config="itemNoConfig" placeholder="请输入采购单项次" @keyup.enter="handleQuery" />
-            </el-form-item>
-          </div>
-
           <el-form-item>
             <el-button type="primary" icon="Search" @click="handleQuery" :loading="loading">搜索</el-button>
             <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-            <el-button link type="primary" @click="toggleAdvancedSearch">
-              {{ showAdvancedSearch ? '收起' : '高级搜索' }}
-              <el-icon class="el-icon--right">
-                <ArrowDown v-if="!showAdvancedSearch" />
-                <ArrowUp v-else />
-              </el-icon>
-            </el-button>
           </el-form-item>
         </el-form>
 
@@ -55,26 +38,27 @@
         <div class="search-result">
           <el-table ref="inventoryTableRef" :data="inventoryDetailList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="55" align="center" />
-            <el-table-column v-if="columns[0].visible" label="物料凭证号" align="left" prop="sapMaterialOrderNo" />
-            <el-table-column v-if="columns[1].visible" label="凭证项次" align="left" prop="sapMaterialItem" />
-            <el-table-column v-if="columns[15].visible" label="凭证年度" align="left" prop="sapMaterialDocYear" />
-            <el-table-column v-if="columns[2].visible" label="采购单号" align="left" prop="sourceDocCode" />
-            <el-table-column v-if="columns[3].visible" label="采购项次" align="left" prop="poItemNo" />
-            <el-table-column v-if="columns[4].visible" label="物料编码" align="left" prop="itemCode" />
-            <el-table-column v-if="columns[5].visible" label="物料名称" align="left" prop="itemName" show-overflow-tooltip />
-            <el-table-column v-if="columns[6].visible" label="批次号" align="center" prop="batchCode" />
-            <el-table-column v-if="columns[7].visible" label="数量" align="center" prop="poQuantity" />
-            <el-table-column v-if="columns[8].visible" label="单位" align="center" prop="poUnit" />
-            <el-table-column v-if="columns[9].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
+            <el-table-column v-if="columns[0].visible" label="移动类型" align="center" prop="moveType" width="90" />
+            <el-table-column v-if="columns[1].visible" label="物料凭证号" align="left" prop="sapMaterialOrderNo" />
+            <el-table-column v-if="columns[2].visible" label="凭证项次" align="left" prop="sapMaterialItem" />
+            <el-table-column v-if="columns[16].visible" label="凭证年度" align="left" prop="sapMaterialDocYear" />
+            <el-table-column v-if="columns[3].visible" label="采购单号" align="left" prop="sourceDocCode" />
+            <el-table-column v-if="columns[4].visible" label="采购项次" align="left" prop="poItemNo" />
+            <el-table-column v-if="columns[5].visible" label="物料编码" align="left" prop="itemCode" />
+            <el-table-column v-if="columns[6].visible" label="物料名称" align="left" prop="itemName" show-overflow-tooltip />
+            <el-table-column v-if="columns[7].visible" label="批次号" align="center" prop="batchCode" />
+            <el-table-column v-if="columns[8].visible" label="数量" align="center" prop="poQuantity" />
+            <el-table-column v-if="columns[9].visible" label="单位" align="center" prop="poUnit" />
+            <el-table-column v-if="columns[10].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
               <template #default="scope">
                 <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
               </template>
             </el-table-column>
-            <el-table-column v-if="columns[10].visible" label="业务伙伴" align="center" prop="businessCode" />
-            <el-table-column v-if="columns[11].visible" label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
-            <el-table-column v-if="columns[12].visible" label="仓库编码" align="center" prop="warehouseCode" />
-            <el-table-column v-if="columns[13].visible" label="库区编码" align="center" prop="areaCode" />
-            <el-table-column v-if="columns[14].visible" label="库位编码" align="center" prop="locationCode" fixed="right" />
+            <el-table-column v-if="columns[11].visible" label="业务伙伴" align="center" prop="businessCode" />
+            <el-table-column v-if="columns[12].visible" label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
+            <el-table-column v-if="columns[13].visible" label="仓库编码" align="center" prop="warehouseCode" />
+            <el-table-column v-if="columns[14].visible" label="库区编码" align="center" prop="areaCode" />
+            <el-table-column v-if="columns[15].visible" label="库位编码" align="center" prop="locationCode" fixed="right" />
           </el-table>
 
           <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
@@ -257,6 +241,7 @@
 <script setup name="PurchaseReturn" lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { listInventoryMovement } from '@/api/wms/inventoryMovement';
+import { syncSapMaterialOrderNoEmptyFilter } from '@/api/wms/inventoryMovement/query';
 import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } from '@/api/wms/inventoryMovement/types';
 // 导入图标组件
 import { ArrowDown, ArrowRight, ArrowUp, Bell, QuestionFilled, Switch } from '@element-plus/icons-vue';
@@ -350,7 +335,7 @@ const data = reactive<PageData<InventoryMovementForm, InventoryMovementQuery>>({
     relatedMoveId: undefined,
     quantity: undefined,
     unit: undefined,
-    sourceDocType: 'PO',
+    sourceDocTypeList: ['PO', 'STO'],
     sourceDocCode: undefined,
     warehouseCode: undefined,
     warehouseName: undefined,
@@ -367,12 +352,27 @@ const data = reactive<PageData<InventoryMovementForm, InventoryMovementQuery>>({
     sapMaterialDocYear: undefined,
     sapMaterialOrderNo: undefined,
     sapMaterialItem: undefined,
+    sapMaterialOrderNoEmpty: true,
     params: {}
   },
   rules: {}
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const moveTypeConfig: HistoryConfig = {
+  key: 'moveType',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'inventoryReturn',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
 
 const sapMaterialOrderNoConfig: HistoryConfig = {
   key: 'sapMaterialOrderNo',
@@ -488,22 +488,23 @@ const bktxtConfig: HistoryConfig = {
 
 // 列显隐信息
 const columns = ref<FieldOption[]>([
-  { key: 0, label: `物料凭证号`, visible: true, children: [] },
-  { key: 1, label: `凭证项次`, visible: true, children: [] },
-  { key: 2, label: `采购单号`, visible: true, children: [] },
-  { key: 3, label: `项次`, visible: true, children: [] },
-  { key: 4, label: `物料编码`, visible: true, children: [] },
-  { key: 5, label: `物料名称`, visible: true, children: [] },
-  { key: 6, label: `批次号`, visible: true, children: [] },
-  { key: 7, label: `数量`, visible: true, children: [] },
-  { key: 8, label: `单位`, visible: true, children: [] },
-  { key: 9, label: `特殊库存`, visible: false, children: [] },
-  { key: 10, label: `业务伙伴`, visible: false, children: [] },
-  { key: 11, label: `伙伴名称`, visible: false, children: [] },
-  { key: 12, label: `仓库编码`, visible: false, children: [] },
-  { key: 13, label: `库区编码`, visible: false, children: [] },
-  { key: 14, label: `库位编码`, visible: true, children: [] },
-  { key: 15, label: `凭证年度`, visible: false, children: [] }
+  { key: 0, label: `移动类型`, visible: true, children: [] },
+  { key: 1, label: `物料凭证号`, visible: true, children: [] },
+  { key: 2, label: `凭证项次`, visible: true, children: [] },
+  { key: 3, label: `采购单号`, visible: true, children: [] },
+  { key: 4, label: `项次`, visible: true, children: [] },
+  { key: 5, label: `物料编码`, visible: true, children: [] },
+  { key: 6, label: `物料名称`, visible: true, children: [] },
+  { key: 7, label: `批次号`, visible: true, children: [] },
+  { key: 8, label: `数量`, visible: true, children: [] },
+  { key: 9, label: `单位`, visible: true, children: [] },
+  { key: 10, label: `特殊库存`, visible: false, children: [] },
+  { key: 11, label: `业务伙伴`, visible: false, children: [] },
+  { key: 12, label: `伙伴名称`, visible: false, children: [] },
+  { key: 13, label: `仓库编码`, visible: false, children: [] },
+  { key: 14, label: `库区编码`, visible: false, children: [] },
+  { key: 15, label: `库位编码`, visible: true, children: [] },
+  { key: 16, label: `凭证年度`, visible: false, children: [] }
 ]);
 
 const transferColumns = ref<FieldOption[]>([
@@ -564,6 +565,7 @@ const toggleAdvancedSearch = () => {
 
 /** 查询库存明细记录列表 */
 const getList = async () => {
+  syncSapMaterialOrderNoEmptyFilter(queryParams.value);
   loading.value = true;
   const res = await listInventoryMovement(queryParams.value);
   inventoryDetailList.value = res.rows;
@@ -580,6 +582,7 @@ const handleQuery = () => {
 /** 重置搜索 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
+  queryParams.value.sapMaterialOrderNoEmpty = true;
   // 清除表格选中状态
   inventoryTableRef.value?.clearSelection();
   handleQuery();

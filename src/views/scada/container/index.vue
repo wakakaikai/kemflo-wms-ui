@@ -2,29 +2,23 @@
   <main ref="boardRef" class="dashboard-shell" :class="{ 'is-fullscreen': isFullscreen }">
     <div class="dashboard-canvas" :style="canvasStyle">
       <header class="dashboard-header">
-        <section class="brand-block">
-          <img v-if="tenantId === '000001'" src="@/assets/logo/yakima-logo.png" alt="Logo" class="brand-logo" title="点击切换全屏" @click="toggleFullscreen" />
-          <img v-else src="@/assets/logo/kemflo-logo.jpg" alt="Logo" class="brand-logo" title="点击切换全屏" @click="toggleFullscreen" />
-          <i class="brand-divider"></i>
-          <div class="title-wrap" @click="showSettings = true">
-            <h1>容器管理大屏</h1>
-            <span>CONTAINER MANAGEMENT DASHBOARD</span>
-          </div>
-        </section>
-
-        <div class="header-decoration" aria-hidden="true">
-          <i></i><i></i><i></i>
-          <span>SMART CONTAINER · DIGITAL LOGISTICS · CUSTOMER {{ dashboardCustomerCode }}</span>
+        <div class="header-left">
+          <img v-if="tenantId === '000001'" src="@/assets/logo/yakima-logo.png" alt="Logo" class="logo" title="点击切换全屏" @click="toggleFullscreen" />
+          <img v-else src="@/assets/logo/kemflo-logo.jpg" alt="Logo" class="logo" title="点击切换全屏" @click="toggleFullscreen" />
         </div>
 
-        <section class="time-panel">
-          <span class="clock-icon"></span>
-          <div>
-            <strong>{{ currentDateTime }}</strong>
-            <span>{{ currentWeekday }}</span>
+        <button class="header-title" type="button" @click="showSettings = true">
+          <strong>容器看板</strong>
+          <span>CONTAINER MANAGEMENT DASHBOARD</span>
+        </button>
+
+        <div class="header-right">
+          <el-icon class="time-icon"><Clock /></el-icon>
+          <div class="time-block">
+            <span class="current-time">{{ currentDateTime }}</span>
+            <span class="weekday">{{ currentWeekday }}</span>
           </div>
-          <button class="fullscreen-btn" type="button" title="全屏" @click="toggleFullscreen"><span></span><span></span><span></span><span></span></button>
-        </section>
+        </div>
       </header>
 
       <section class="metric-row">
@@ -33,7 +27,7 @@
           <div class="metric-content">
             <span>{{ card.title }}</span>
             <strong>{{ card.value }}</strong>
-            <em :class="{ down: card.down }">较昨日　{{ card.down ? '▼' : '▲' }} {{ card.rate }}</em>
+            <em :class="{ down: card.down }">{{ card.compareLabel }}　{{ card.down ? '▼' : '▲' }} {{ card.rate }}</em>
           </div>
           <div class="metric-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
         </article>
@@ -43,7 +37,7 @@
         <DashboardPanel title="出入库趋势" class="trend-panel">
           <template #extra>
             <div class="range-tabs">
-              <button v-for="option in rangeOptions" :key="option.days" :class="{ active: activeRangeDays === option.days }" type="button" @click="setRangeDays(option.days)">
+              <button v-for="option in rangeOptions" :key="option.days" :class="{ active: activeRangeDays === option.days }" type="button" :aria-pressed="activeRangeDays === option.days" @click="setRangeDays(option.days)">
                 {{ option.label }}
               </button>
             </div>
@@ -52,20 +46,11 @@
         </DashboardPanel>
 
         <DashboardPanel title="容器类型库存" class="type-panel">
-          <template #extra>
-            <span class="panel-total"
-              >总计：<b>{{ formatNumber(overview.inventoryTotal) }}</b></span
-            >
-          </template>
           <div class="container-list compact">
             <article v-for="item in inventoryCards" :key="item.key" class="container-card">
               <div class="product-wrap"><img :class="item.productClass" :src="item.product" :alt="item.name" /></div>
               <strong :title="item.name">{{ item.name }}</strong>
               <b>{{ formatNumber(item.value) }}</b>
-              <div class="progress-row">
-                <div><i :style="{ width: item.percent, background: item.color, boxShadow: `0 0 12px ${item.color}` }"></i></div>
-                <em>{{ item.percent }}</em>
-              </div>
             </article>
             <div v-if="inventoryCards.length === 0" class="empty-state">暂无库存数据</div>
           </div>
@@ -73,52 +58,33 @@
       </section>
 
       <section class="partner-section">
-        <DashboardPanel title="业务伙伴容器流转明细" class="partner-panel">
-          <template #extra>
-            <div class="range-tabs">
-              <button v-for="option in rangeOptions" :key="option.days" :class="{ active: activeRangeDays === option.days }" type="button" @click="setRangeDays(option.days)">
-                {{ option.label }}
-              </button>
-            </div>
-          </template>
+        <DashboardPanel title="容器流转明细" class="partner-panel">
           <div class="partner-table-wrap">
             <div class="partner-head partner-row">
               <span>序号</span>
+              <span>业务伙伴编码</span>
               <span>业务伙伴名称</span>
               <span v-for="column in containerColumns" :key="column.key">{{ column.name }}</span>
-              <span>期初数量</span>
-              <span>入库数量</span>
-              <span>出库数量</span>
-              <span>差异数量</span>
-              <span>期末数量</span>
               <span>状态</span>
             </div>
-            <div class="partner-body">
-              <SeamlessScroll v-if="showScroll && settingsForm.enableScroll && partnerTableRows.length > settingsForm.displayLimit" :key="partnerScrollKey" :list="partnerTableScrollRows" :visible-count="settingsForm.displayLimit" :hover="true" :step="stepVal" :wheel="true">
+            <div class="partner-body" :class="{ 'is-seamless': shouldUsePartnerScroll }">
+              <Vue3SeamlessScroll v-if="shouldUsePartnerScroll" :key="partnerScrollKey" :list="partnerTableScrollRows" :visible-count="partnerVisibleCount" :hover="true" :step="stepVal" :wheel="true">
                 <template #default="{ data: row }">
                   <div class="partner-row">
                     <span>{{ row.displayIndex }}</span>
+                    <span class="ellipsis" :title="row.businessCode">{{ row.businessCode || '-' }}</span>
                     <span class="ellipsis" :title="row.businessName">{{ row.businessName || '-' }}</span>
-                    <span v-for="column in containerColumns" :key="column.key">{{ formatNumber(row.quantities[column.key] || 0) }}</span>
-                    <span>{{ formatNumber(row.beginQuantity) }}</span>
-                    <span>{{ formatNumber(row.inboundQuantity) }}</span>
-                    <span>{{ formatNumber(row.outboundQuantity) }}</span>
-                    <span :class="getDiffClass(row.diffQuantity)">{{ formatDiff(row.diffQuantity) }}</span>
-                    <span>{{ formatNumber(row.endQuantity) }}</span>
+                    <span v-for="column in containerColumns" :key="column.key" :class="getDiffClass(row.quantities[column.key])">{{ formatDiff(row.quantities[column.key]) }}</span>
                     <span><i :class="['status-dot', statusMeta(row.status).class]"></i>{{ statusMeta(row.status).label }}</span>
                   </div>
                 </template>
-              </SeamlessScroll>
+              </Vue3SeamlessScroll>
               <template v-else>
                 <div v-for="(row, index) in partnerTableRows" :key="row.businessCode || row.businessName || index" class="partner-row">
                   <span>{{ index + 1 }}</span>
+                  <span class="ellipsis" :title="row.businessCode">{{ row.businessCode || '-' }}</span>
                   <span class="ellipsis" :title="row.businessName">{{ row.businessName || '-' }}</span>
-                  <span v-for="column in containerColumns" :key="column.key">{{ formatNumber(row.quantities[column.key] || 0) }}</span>
-                  <span>{{ formatNumber(row.beginQuantity) }}</span>
-                  <span>{{ formatNumber(row.inboundQuantity) }}</span>
-                  <span>{{ formatNumber(row.outboundQuantity) }}</span>
-                  <span :class="getDiffClass(row.diffQuantity)">{{ formatDiff(row.diffQuantity) }}</span>
-                  <span>{{ formatNumber(row.endQuantity) }}</span>
+                  <span v-for="column in containerColumns" :key="column.key" :class="getDiffClass(row.quantities[column.key])">{{ formatDiff(row.quantities[column.key]) }}</span>
                   <span><i :class="['status-dot', statusMeta(row.status).class]"></i>{{ statusMeta(row.status).label }}</span>
                 </div>
                 <div v-if="partnerTableRows.length === 0" class="empty-state compact">暂无流转数据</div>
@@ -138,17 +104,19 @@
       </footer>
     </div>
 
-    <el-dialog v-model="showSettings" title="看板设置" width="620px" append-to-body>
+    <el-dialog v-model="showSettings" title="看板设置" width="620px" append-to-body :append-to="settingsDialogAppendTo">
       <el-form ref="queryFormRef" :model="queryParams" label-width="110px">
         <el-form-item label="显示数量"><el-slider v-model="settingsForm.displayLimit" :min="5" :max="30" show-input /></el-form-item>
         <el-form-item label="滚动速度"><el-slider v-model="settingsForm.scrollSpeed" :min="0.1" :max="2" :step="0.1" show-input /></el-form-item>
         <el-form-item label="刷新间隔"><el-input-number v-model="settingsForm.refreshInterval" :min="10" :max="300" :step="5" /> 秒</el-form-item>
         <el-form-item label="自动滚动"><el-switch v-model="settingsForm.enableScroll" /></el-form-item>
-        <el-form-item label="容器编码" prop="itemCode"><el-input v-model.trim="queryParams.itemCode" clearable /></el-form-item>
-        <el-form-item label="仓库编码" prop="warehouseCode"><el-input v-model.trim="queryParams.warehouseCode" clearable /></el-form-item>
-        <el-form-item label="客户编码" prop="businessCode"><el-input v-model="queryParams.businessCode" disabled /></el-form-item>
+        <el-form-item label="报废客户">
+          <el-select v-model="settingsForm.scrapBusinessCodes" multiple filterable allow-create default-first-option clearable collapse-tags collapse-tags-tooltip placeholder="输入业务伙伴编码后回车，可配置多个" style="width: 100%">
+            <el-option v-for="code in settingsForm.scrapBusinessCodes" :key="code" :label="code" :value="code" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="移动时间" prop="dateTimeRange">
-          <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 100%" />
+          <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :teleported="!isFullscreen" style="width: 100%" />
         </el-form-item>
       </el-form>
       <template #footer><el-button @click="showSettings = false">取消</el-button><el-button @click="resetQuery">重置</el-button><el-button type="primary" @click="saveSettings">保存</el-button></template>
@@ -157,37 +125,34 @@
 </template>
 
 <script setup name="ScadaContainerBoard" lang="ts">
+import { Clock } from '@element-plus/icons-vue';
 import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, reactive, ref, toRefs, watch } from 'vue';
 import * as echarts from 'echarts';
 import { Vue3SeamlessScroll } from 'vue3-seamless-scroll';
-import { getContainerInventorySummary, getContainerOverview, getContainerTrend, listContainerInventory, listContainerPartnerTurnover } from '@/api/scada/container';
-import type { ContainerInventorySummaryVO, ContainerOverviewVO, ContainerPartnerTurnoverVO, ContainerScadaQuery, ContainerTrendVO } from '@/api/scada/container/types';
-import type { InventoryDetailVO } from '@/api/wms/inventoryDetail/types';
+import { getContainerFooter, getContainerInventorySummary, getContainerOverview, getContainerTrend, listContainerPartnerTurnover } from '@/api/scada/container';
+import type { ContainerFooterVO, ContainerInventorySummaryVO, ContainerOverviewVO, ContainerPartnerTurnoverVO, ContainerScadaQuery, ContainerTrendVO } from '@/api/scada/container/types';
 import { useAppStore } from '@/store/modules/app';
 
 import customerIcon from '@/assets/images/scada/container-dashboard/icons/customer.svg';
 import inboundIcon from '@/assets/images/scada/container-dashboard/icons/inbound.svg';
 import insideFactoryIcon from '@/assets/images/scada/container-dashboard/icons/insideFactory.svg';
 import inventoryIcon from '@/assets/images/scada/container-dashboard/icons/inventory.svg';
-import locationIcon from '@/assets/images/scada/container-dashboard/icons/location.svg';
 import outboundIcon from '@/assets/images/scada/container-dashboard/icons/outbound.svg';
 import outsideFactoryIcon from '@/assets/images/scada/container-dashboard/icons/outsideFactory.svg';
-import turnoverIcon from '@/assets/images/scada/container-dashboard/icons/turnover.svg';
+import scrapIcon from '@/assets/images/scada/container-dashboard/icons/scrap.svg';
 import warningIcon from '@/assets/images/scada/container-dashboard/icons/warning.svg';
-import metalCageProduct from '@/assets/images/scada/container-dashboard/products/metalCage.png';
+import metalTeflonCageProduct from '@/assets/images/scada/container-dashboard/products/metalTeflonCage.png';
 import metalPalletProduct from '@/assets/images/scada/container-dashboard/products/metalPallet.png';
 import plasticCrateBlueProduct from '@/assets/images/scada/container-dashboard/products/plasticCrateBlue.png';
 import plasticCrateGreenProduct from '@/assets/images/scada/container-dashboard/products/plasticCrateGreen.png';
 
-type IconName = 'customer' | 'inbound' | 'insideFactory' | 'inventory' | 'location' | 'outbound' | 'outsideFactory' | 'turnover' | 'warning';
+type IconName = 'customer' | 'inbound' | 'insideFactory' | 'inventory' | 'outbound' | 'outsideFactory' | 'scrap' | 'warning';
 
 interface TypeItem {
   key: string;
   name: string;
   code: string;
   value: number;
-  percent: string;
-  color: string;
   product: string;
   productClass: string;
 }
@@ -196,19 +161,11 @@ interface PartnerTableRow {
   businessCode: string;
   businessName: string;
   quantities: Record<string, number>;
-  beginQuantity: number;
-  inboundQuantity: number;
-  outboundQuantity: number;
-  diffQuantity: number;
-  endQuantity: number;
   status: ContainerPartnerTurnoverVO['status'];
 }
 
-const dashboardCustomerCode = '802N11569';
 const designWidth = 1680;
 const designHeight = 945;
-const palette = ['#36e1bb', '#248fff', '#ffad43', '#55d9f7', '#ffc34f'];
-const SeamlessScroll = Vue3SeamlessScroll as any;
 const rangeOptions = [
   { label: '近7天', days: 7 },
   { label: '近30天', days: 30 },
@@ -216,12 +173,14 @@ const rangeOptions = [
 ];
 const appStore = useAppStore();
 const defaultInventoryTypes = [
-  { itemCode: 'L-CRATE', itemName: '大号胶框', inventoryQty: 0, percent: 0 },
-  { itemCode: 'M-CRATE', itemName: '中号胶框', inventoryQty: 0, percent: 0 },
-  { itemCode: 'S-CRATE', itemName: '小号胶框', inventoryQty: 0, percent: 0 },
-  { itemCode: 'METAL-CAGE', itemName: '大号铁笼', inventoryQty: 0, percent: 0 },
-  { itemCode: 'METAL-PALLET', itemName: '大号铁栈板', inventoryQty: 0, percent: 0 }
+  { itemCode: 'L-CRATE', itemName: '大号胶框', inventoryQty: 0 },
+  { itemCode: 'M-CRATE', itemName: '中号胶框', inventoryQty: 0 },
+  { itemCode: 'S-CRATE', itemName: '小号胶框', inventoryQty: 0 },
+  { itemCode: 'METAL-CAGE', itemName: '大号铁氟笼', inventoryQty: 0 },
+  { itemCode: 'METAL-PALLET', itemName: '大号铁栈板', inventoryQty: 0 }
 ];
+const inventorySortOrder = new Map(defaultInventoryTypes.map((item, index) => [item.itemCode, index]));
+const inventoryNameSortOrder = new Map(defaultInventoryTypes.map((item, index) => [item.itemName, index]));
 
 const DashboardPanel = defineComponent({
   name: 'DashboardPanel',
@@ -236,10 +195,9 @@ const iconMap: Record<IconName, string> = {
   inbound: inboundIcon,
   insideFactory: insideFactoryIcon,
   inventory: inventoryIcon,
-  location: locationIcon,
   outbound: outboundIcon,
   outsideFactory: outsideFactoryIcon,
-  turnover: turnoverIcon,
+  scrap: scrapIcon,
   warning: warningIcon
 };
 
@@ -256,9 +214,16 @@ const emptyOverview = (): ContainerOverviewVO => ({
   diffTotal: 0,
   diffYesterdayTotal: 0,
   diffChangeRate: 0,
-  turnoverRate: 0,
-  turnoverYesterdayRate: 0,
-  turnoverChangeRate: 0
+  scrapTotal: 0,
+  scrapYesterdayTotal: 0,
+  scrapChangeRate: 0
+});
+
+const emptyFooter = (): ContainerFooterVO => ({
+  customerTotal: 0,
+  insideQuantity: 0,
+  outsideQuantity: 0,
+  transitQuantity: 0
 });
 
 const boardRef = ref<HTMLElement>();
@@ -268,8 +233,9 @@ const overview = ref<ContainerOverviewVO>(emptyOverview());
 const trendList = ref<ContainerTrendVO[]>([]);
 const inventorySummary = ref<ContainerInventorySummaryVO[]>([]);
 const partnerRows = ref<ContainerPartnerTurnoverVO[]>([]);
-const inventoryList = ref<InventoryDetailVO[]>([]);
+const footer = ref<ContainerFooterVO>(emptyFooter());
 const currentDateTime = ref('');
+const currentWeekday = ref('');
 const showSettings = ref(false);
 const showScroll = ref(true);
 const isFullscreen = ref(false);
@@ -280,17 +246,17 @@ const activeRangeDays = ref(7);
 const viewport = reactive({ scale: 1, left: 0, top: 0 });
 let clockTimer: number | undefined;
 let refreshTimer: number | undefined;
+let flowRenderFrame: number | undefined;
 let flowChart: echarts.ECharts | undefined;
+let sidebarHiddenByThisBoard = false;
 
-const settingsForm = reactive({ displayLimit: 12, scrollSpeed: 0.35, refreshInterval: 30, enableScroll: true });
+const settingsForm = reactive({ displayLimit: 12, scrollSpeed: 0.35, refreshInterval: 30, enableScroll: true, scrapBusinessCodes: [] as string[] });
 const data = reactive<PageData<Record<string, never>, ContainerScadaQuery>>({
   form: {},
   queryParams: {
-    pageNum: 1,
-    pageSize: 200,
     itemCode: undefined,
     warehouseCode: undefined,
-    businessCode: dashboardCustomerCode,
+    businessCode: undefined,
     dateTimeRange: undefined,
     params: {}
   },
@@ -299,7 +265,7 @@ const data = reactive<PageData<Record<string, never>, ContainerScadaQuery>>({
 const { queryParams } = toRefs(data);
 
 const canvasStyle = computed(() => ({ transform: `scale(${viewport.scale})`, left: `${viewport.left}px`, top: `${viewport.top}px` }));
-const currentWeekday = computed(() => ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][new Date().getDay()]);
+const settingsDialogAppendTo = computed<HTMLElement | string>(() => (isFullscreen.value && boardRef.value ? boardRef.value : 'body'));
 
 const formatNumber = (value: number | string | undefined) => Number(value || 0).toLocaleString('zh-CN');
 const formatDiff = (value: number | string | undefined) => {
@@ -314,7 +280,7 @@ const formatRate = (value: number | string | undefined) => {
 function resolveProductImage(name?: string, code?: string) {
   const text = `${name || ''}${code || ''}`;
   if (/栈板|托盘|pallet/i.test(text)) return metalPalletProduct;
-  if (/铁笼|铁筐|笼|筐/i.test(text)) return metalCageProduct;
+  if (/铁氟笼|铁笼|铁筐|笼|筐/i.test(text)) return metalTeflonCageProduct;
   if (/小号|small|s\b/i.test(text)) return plasticCrateBlueProduct;
   return plasticCrateGreenProduct;
 }
@@ -326,6 +292,10 @@ function resolveProductClass(name?: string, code?: string) {
   if (/小号|small|s\b/i.test(text)) return 'product-crate product-crate-small';
   if (/中号|medium|m\b/i.test(text)) return 'product-crate product-crate-medium';
   return 'product-crate product-crate-large';
+}
+
+function formatContainerName(name?: string) {
+  return String(name || '').replace(/^容器[-－]/, '');
 }
 
 function statusMeta(status?: string) {
@@ -344,25 +314,30 @@ function getDiffClass(value: number | string | undefined) {
 const metrics = computed(() => {
   const o = overview.value;
   return [
-    { title: '当前库存', value: formatNumber(o.inventoryTotal), icon: 'inventory' as IconName, tone: 'blue', rate: formatRate(o.inventoryChangeRate), down: Number(o.inventoryChangeRate) < 0 },
-    { title: '今日入库', value: formatNumber(o.inboundTotal), icon: 'inbound' as IconName, tone: 'green', rate: formatRate(o.inboundChangeRate), down: Number(o.inboundChangeRate) < 0 },
-    { title: '今日出库', value: formatNumber(o.outboundTotal), icon: 'outbound' as IconName, tone: 'amber', rate: formatRate(o.outboundChangeRate), down: Number(o.outboundChangeRate) < 0 },
-    { title: '当前差异', value: formatDiff(o.diffTotal), icon: 'warning' as IconName, tone: 'red', rate: formatRate(o.diffChangeRate), down: Number(o.diffChangeRate) < 0 },
-    { title: '容器周转率', value: `${Number(o.turnoverRate || 0).toFixed(2)} 次/月`, icon: 'turnover' as IconName, tone: 'violet', rate: formatRate(o.turnoverChangeRate), down: Number(o.turnoverChangeRate) < 0 }
+    { title: '当前库存', value: formatNumber(o.inventoryTotal), icon: 'inventory' as IconName, tone: 'blue', compareLabel: '较昨日', rate: formatRate(o.inventoryChangeRate), down: Number(o.inventoryChangeRate) < 0 },
+    { title: '今日入库', value: formatNumber(o.inboundTotal), icon: 'inbound' as IconName, tone: 'green', compareLabel: '较昨日', rate: formatRate(o.inboundChangeRate), down: Number(o.inboundChangeRate) < 0 },
+    { title: '今日出库', value: formatNumber(o.outboundTotal), icon: 'outbound' as IconName, tone: 'amber', compareLabel: '较昨日', rate: formatRate(o.outboundChangeRate), down: Number(o.outboundChangeRate) < 0 },
+    { title: '当前差异', value: formatDiff(o.diffTotal), icon: 'warning' as IconName, tone: 'red', compareLabel: '较昨日', rate: formatRate(o.diffChangeRate), down: Number(o.diffChangeRate) < 0 },
+    { title: '报废数量', value: formatNumber(o.scrapTotal), icon: 'scrap' as IconName, tone: 'violet', compareLabel: '较昨日', rate: formatRate(o.scrapChangeRate), down: Number(o.scrapChangeRate) < 0 }
   ];
 });
 
 const inventoryCards = computed<TypeItem[]>(() =>
-  (inventorySummary.value.length ? inventorySummary.value : defaultInventoryTypes).slice(0, 5).map((item, index) => ({
-    key: item.itemCode,
-    name: item.itemName,
-    code: item.itemCode,
-    value: Number(item.inventoryQty || 0),
-    percent: `${Number(item.percent || 0).toFixed(1)}%`,
-    color: palette[index % palette.length],
-    product: resolveProductImage(item.itemName, item.itemCode),
-    productClass: resolveProductClass(item.itemName, item.itemCode)
-  }))
+  [...(inventorySummary.value.length ? inventorySummary.value : defaultInventoryTypes)]
+    .sort((a, b) => {
+      const aIndex = inventorySortOrder.get(a.itemCode) ?? inventoryNameSortOrder.get(a.itemName) ?? Number.MAX_SAFE_INTEGER;
+      const bIndex = inventorySortOrder.get(b.itemCode) ?? inventoryNameSortOrder.get(b.itemName) ?? Number.MAX_SAFE_INTEGER;
+      return aIndex - bIndex || formatContainerName(a.itemName).localeCompare(formatContainerName(b.itemName), 'zh-CN');
+    })
+    .slice(0, 5)
+    .map((item) => ({
+      key: item.itemCode,
+      name: formatContainerName(item.itemName),
+      code: item.itemCode,
+      value: Number(item.inventoryQty || 0),
+      product: resolveProductImage(item.itemName, item.itemCode),
+      productClass: resolveProductClass(item.itemName, item.itemCode)
+    }))
 );
 
 const containerColumns = computed(() => inventoryCards.value.map((item) => ({ key: item.code || item.key, name: item.name })));
@@ -374,8 +349,7 @@ const partnerTableRows = computed<PartnerTableRow[]>(() => {
     const itemKey = row.itemCode || row.itemName || 'unknown';
     const inbound = Number(row.inboundQuantity || 0);
     const outbound = Number(row.outboundQuantity || 0);
-    const diff = Number(row.diffQuantity || 0);
-    const current = Math.max(diff, 0);
+    const diff = Number(row.diffQuantity ?? inbound - outbound);
     const existed = groups.get(groupKey);
     const group =
       existed ||
@@ -383,91 +357,84 @@ const partnerTableRows = computed<PartnerTableRow[]>(() => {
         businessCode: row.businessCode,
         businessName: row.businessName,
         quantities: {},
-        beginQuantity: 0,
-        inboundQuantity: 0,
-        outboundQuantity: 0,
-        diffQuantity: 0,
-        endQuantity: 0,
         status: 'normal'
       } satisfies PartnerTableRow);
 
-    group.quantities[itemKey] = (group.quantities[itemKey] || 0) + current;
-    group.inboundQuantity += inbound;
-    group.outboundQuantity += outbound;
-    group.diffQuantity += diff;
-    group.endQuantity += current;
-    group.beginQuantity += Math.max(current - inbound + outbound, 0);
-    if (row.status === 'high' || diff > 50) group.status = 'high';
-    else if (group.status !== 'high' && (row.status === 'recovery' || diff < -10)) group.status = 'recovery';
+    group.quantities[itemKey] = (group.quantities[itemKey] || 0) + diff;
+    if (group.quantities[itemKey] < 0) group.status = 'high';
     groups.set(groupKey, group);
   });
   return Array.from(groups.values());
 });
 
 const partnerTableScrollRows = computed(() => partnerTableRows.value.map((row, index) => ({ ...row, displayIndex: index + 1 })));
-
-const getTransitQuantity = (row: InventoryDetailVO) => Number((row as InventoryDetailVO & { transitQuantity?: number }).transitQuantity || 0);
-const getInventoryQuantity = (row: InventoryDetailVO) => Number(row.availableQuantity || 0) + Number(row.inspectionQuantity || 0) + Number(row.blockedQuantity || 0) + getTransitQuantity(row);
+const partnerVisibleCount = computed(() => Math.min(settingsForm.displayLimit, 8));
+const shouldUsePartnerScroll = computed(() => showScroll.value && settingsForm.enableScroll && partnerTableRows.value.length > partnerVisibleCount.value);
 
 const footerStats = computed(() => {
-  const customerTotal = new Set(inventoryList.value.map((item) => item.businessCode).filter(Boolean)).size;
-  const outside = inventoryList.value.filter((item) => Boolean(item.businessCode) && item.warehouseCode === item.businessCode).reduce((total, item) => total + getInventoryQuantity(item), 0);
-  const inTransit = inventoryList.value.reduce((total, item) => total + getTransitQuantity(item), 0);
-  const inventoryTotal = inventoryList.value.reduce((total, item) => total + getInventoryQuantity(item), 0);
   return [
-    { label: '客户总数', value: `${formatNumber(customerTotal)} 家`, icon: 'customer' as IconName },
-    { label: '厂内容器', value: formatNumber(Math.max(inventoryTotal - outside, 0)), icon: 'insideFactory' as IconName },
-    { label: '厂外容器', value: formatNumber(outside), icon: 'outsideFactory' as IconName },
-    { label: '在途容器', value: formatNumber(inTransit), icon: 'location' as IconName }
+    { label: '客户总数', value: `${formatNumber(footer.value.customerTotal)} 家`, icon: 'customer' as IconName },
+    { label: '厂内容器', value: formatNumber(footer.value.insideQuantity), icon: 'insideFactory' as IconName },
+    { label: '厂外容器', value: formatNumber(footer.value.outsideQuantity), icon: 'outsideFactory' as IconName },
+    { label: '差异数', value: formatDiff(overview.value.diffTotal), icon: 'warning' as IconName }
   ];
 });
 
-const buildScadaQuery = (): ContainerScadaQuery => ({
-  pageNum: 1,
-  pageSize: 500,
-  businessCode: dashboardCustomerCode,
-  warehouseCode: queryParams.value.warehouseCode,
-  itemCode: queryParams.value.itemCode,
-  dateTimeRange: queryParams.value.dateTimeRange
-});
+function normalizeScrapBusinessCodes(codes: unknown): string[] {
+  if (!Array.isArray(codes)) return [];
+  return [...new Set(codes.map((code) => String(code).trim()).filter(Boolean))];
+}
 
-function getResponseRows<T>(response: unknown): T[] {
-  return ((response as { rows?: T[] })?.rows || []) as T[];
+const buildScadaQuery = (): ContainerScadaQuery => {
+  const dateTimeRange = queryParams.value.dateTimeRange;
+  const params = Array.isArray(dateTimeRange) && dateTimeRange.length >= 2 ? { beginTime: dateTimeRange[0], endTime: dateTimeRange[1] } : {};
+
+  return {
+    businessCode: queryParams.value.businessCode || undefined,
+    scrapBusinessCodes: normalizeScrapBusinessCodes(settingsForm.scrapBusinessCodes),
+    warehouseCode: queryParams.value.warehouseCode || undefined,
+    itemCode: queryParams.value.itemCode || undefined,
+    dateTimeRange,
+    params
+  };
+};
+
+function getResponseList<T>(response: unknown): T[] {
+  if (!response) return [];
+  if (Array.isArray(response)) return response as T[];
+
+  const payload = response as { data?: unknown; rows?: T[]; records?: T[] };
+  if (Array.isArray(payload.data)) return payload.data as T[];
+  if (Array.isArray(payload.rows)) return payload.rows;
+  if (Array.isArray(payload.records)) return payload.records;
+
+  const data = payload.data as { rows?: T[]; records?: T[] } | undefined;
+  if (Array.isArray(data?.rows)) return data.rows;
+  if (Array.isArray(data?.records)) return data.records;
+  return [];
 }
 
 async function refreshAll() {
   const query = buildScadaQuery();
-  const [overviewRes, trendRes, summaryRes, partnerRes, inventoryRes] = await Promise.allSettled([
-    getContainerOverview(query),
-    getContainerTrend(query),
-    getContainerInventorySummary(query),
-    listContainerPartnerTurnover({ ...query, pageNum: 1, pageSize: 500 }),
-    listContainerInventory({
-      pageNum: 1,
-      pageSize: 50000,
-      businessCode: dashboardCustomerCode,
-      warehouseCode: query.warehouseCode,
-      itemCode: query.itemCode,
-      params: {}
-    })
-  ]);
+  const [overviewRes, trendRes, summaryRes, partnerRes, footerRes] = await Promise.allSettled([getContainerOverview(query), getContainerTrend(query), getContainerInventorySummary(query), listContainerPartnerTurnover(query), getContainerFooter(query)]);
 
   overview.value = overviewRes.status === 'fulfilled' ? overviewRes.value.data || emptyOverview() : emptyOverview();
-  trendList.value = trendRes.status === 'fulfilled' ? trendRes.value.data || [] : [];
-  inventorySummary.value = summaryRes.status === 'fulfilled' ? summaryRes.value.data || [] : [];
-  partnerRows.value = partnerRes.status === 'fulfilled' ? getResponseRows<ContainerPartnerTurnoverVO>(partnerRes.value) : [];
-  inventoryList.value = inventoryRes.status === 'fulfilled' ? getResponseRows<InventoryDetailVO>(inventoryRes.value) : [];
+  trendList.value = trendRes.status === 'fulfilled' ? getResponseList<ContainerTrendVO>(trendRes.value) : [];
+  inventorySummary.value = summaryRes.status === 'fulfilled' ? getResponseList<ContainerInventorySummaryVO>(summaryRes.value) : [];
+  partnerRows.value = partnerRes.status === 'fulfilled' ? getResponseList<ContainerPartnerTurnoverVO>(partnerRes.value) : [];
+  footer.value = footerRes.status === 'fulfilled' ? footerRes.value.data || emptyFooter() : emptyFooter();
 
   partnerScrollKey.value += 1;
   await nextTick();
-  renderFlowChart();
+  scheduleFlowChartRender();
 }
 
 function resetQuery() {
   queryFormRef.value?.resetFields();
   queryParams.value.itemCode = undefined;
   queryParams.value.warehouseCode = undefined;
-  queryParams.value.businessCode = dashboardCustomerCode;
+  queryParams.value.businessCode = undefined;
+  settingsForm.scrapBusinessCodes = [];
   activeRangeDays.value = 7;
   queryParams.value.dateTimeRange = getDateRange(7);
   showSettings.value = false;
@@ -475,7 +442,7 @@ function resetQuery() {
 }
 
 function saveSettings() {
-  queryParams.value.businessCode = dashboardCustomerCode;
+  settingsForm.scrapBusinessCodes = normalizeScrapBusinessCodes(settingsForm.scrapBusinessCodes);
   stepVal.value = settingsForm.scrollSpeed;
   localStorage.setItem('scadaContainerBoardSettings', JSON.stringify(settingsForm));
   showSettings.value = false;
@@ -496,7 +463,7 @@ function setRangeDays(days: number) {
 }
 
 function renderFlowChart() {
-  if (!flowChartRef.value) return;
+  if (!flowChartRef.value || !flowChartRef.value.clientWidth || !flowChartRef.value.clientHeight) return;
   flowChart ||= echarts.init(flowChartRef.value);
   const rows = trendList.value.map((item) => ({
     date: String(item.date || '')
@@ -506,26 +473,45 @@ function renderFlowChart() {
     inbound: Number(item.inbound || 0),
     outbound: Number(item.outbound || 0)
   }));
+  const maxValue = Math.max(0, ...rows.flatMap((item) => [item.inbound, item.outbound]));
+  const roughInterval = maxValue > 0 ? maxValue / 5 : 20;
+  const magnitude = 10 ** Math.floor(Math.log10(roughInterval));
+  const normalizedInterval = roughInterval / magnitude;
+  const intervalFactor = normalizedInterval <= 1 ? 1 : normalizedInterval <= 2 ? 2 : normalizedInterval <= 5 ? 5 : 10;
+  const yAxisInterval = Math.max(1, intervalFactor * magnitude);
+  const yAxisMax = maxValue > 0 ? Math.max(yAxisInterval * 3, Math.ceil((maxValue * 1.08) / yAxisInterval) * yAxisInterval) : 100;
 
   flowChart.setOption(
     {
       animationDuration: 900,
       color: ['#23ffc9', '#3bb4ff'],
-      tooltip: { trigger: 'axis', backgroundColor: 'rgba(3,25,51,.96)', borderColor: '#19b8f1', textStyle: { color: '#eaf8ff' } },
-      legend: { top: 18, left: 100, itemWidth: 16, itemHeight: 8, textStyle: { color: '#d9efff', fontSize: 14 }, data: ['入库数量', '出库数量'] },
-      grid: { left: 78, right: 34, top: 76, bottom: 36 },
+      tooltip: {
+        trigger: 'axis',
+        confine: true,
+        axisPointer: { type: 'line', lineStyle: { color: 'rgba(87, 203, 255, 0.72)', type: 'dashed' } },
+        backgroundColor: 'rgba(3,25,51,.96)',
+        borderColor: '#19b8f1',
+        textStyle: { color: '#eaf8ff' }
+      },
+      legend: { top: 10, left: 'center', itemGap: 30, itemWidth: 18, itemHeight: 8, textStyle: { color: '#d9efff', fontSize: 14 }, data: ['入库数量', '出库数量'] },
+      grid: { left: 28, right: 24, top: 52, bottom: 24, containLabel: true },
       xAxis: {
         type: 'category',
+        boundaryGap: false,
         data: rows.map((item) => item.label),
         axisTick: { show: false },
         axisLine: { lineStyle: { color: 'rgba(91, 181, 238, 0.42)' } },
-        axisLabel: { color: '#d8e9ff', fontSize: 14, margin: 13 }
+        axisLabel: { color: '#d8e9ff', fontSize: 14, margin: 10, hideOverlap: true }
       },
       yAxis: {
         type: 'value',
         name: '数量',
-        nameTextStyle: { color: '#d8e9ff', fontSize: 14, padding: [0, 46, 0, 0] },
-        axisLabel: { color: '#d8e9ff', fontSize: 14, margin: 14 },
+        min: 0,
+        max: yAxisMax,
+        interval: yAxisInterval,
+        nameGap: 12,
+        nameTextStyle: { color: '#d8e9ff', fontSize: 14, align: 'right', padding: [0, 4, 0, 0] },
+        axisLabel: { color: '#d8e9ff', fontSize: 14, margin: 10 },
         splitLine: { lineStyle: { color: 'rgba(119,190,239,.22)', type: 'dashed' } }
       },
       series: [
@@ -567,13 +553,21 @@ function renderFlowChart() {
   );
 }
 
+function scheduleFlowChartRender() {
+  if (flowRenderFrame) window.cancelAnimationFrame(flowRenderFrame);
+  flowRenderFrame = window.requestAnimationFrame(() => {
+    flowRenderFrame = undefined;
+    renderFlowChart();
+  });
+}
+
 function fitCanvas() {
   const width = boardRef.value?.clientWidth || window.innerWidth;
   const height = boardRef.value?.clientHeight || window.innerHeight;
   viewport.scale = isFullscreen.value ? Math.min(width / designWidth, height / designHeight) : width / designWidth;
   viewport.left = 0;
   viewport.top = 0;
-  nextTick(() => flowChart?.resize());
+  nextTick(scheduleFlowChartRender);
 }
 
 function toggleFullscreen() {
@@ -583,8 +577,15 @@ function toggleFullscreen() {
 }
 
 function handleFullscreenChange() {
-  isFullscreen.value = document.fullscreenElement === boardRef.value;
-  appStore.toggleSideBarHide(isFullscreen.value);
+  const currentBoardFullscreen = document.fullscreenElement === boardRef.value;
+  isFullscreen.value = currentBoardFullscreen;
+  if (currentBoardFullscreen) {
+    appStore.toggleSideBarHide(true);
+    sidebarHiddenByThisBoard = true;
+  } else if (sidebarHiddenByThisBoard && !document.fullscreenElement) {
+    appStore.toggleSideBarHide(false);
+    sidebarHiddenByThisBoard = false;
+  }
   fitCanvas();
   window.setTimeout(fitCanvas, 120);
 }
@@ -604,17 +605,25 @@ const getDateRange = (days: number) => {
 };
 
 function updateTime() {
-  currentDateTime.value = formatDateTime(new Date());
+  const now = new Date();
+  currentDateTime.value = formatDateTime(now);
+  currentWeekday.value = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()];
 }
 
-watch(inventoryCards, () => nextTick(renderFlowChart));
+watch(inventoryCards, () => nextTick(scheduleFlowChartRender));
 
 onMounted(() => {
   tenantId.value = localStorage.getItem('tenantId') || '000000';
   const saved = localStorage.getItem('scadaContainerBoardSettings');
-  if (saved) Object.assign(settingsForm, JSON.parse(saved));
+  if (saved) {
+    try {
+      Object.assign(settingsForm, JSON.parse(saved));
+    } catch {
+      localStorage.removeItem('scadaContainerBoardSettings');
+    }
+  }
+  settingsForm.scrapBusinessCodes = normalizeScrapBusinessCodes(settingsForm.scrapBusinessCodes);
   stepVal.value = settingsForm.scrollSpeed;
-  queryParams.value.businessCode = dashboardCustomerCode;
   queryParams.value.dateTimeRange = getDateRange(activeRangeDays.value);
   updateTime();
   fitCanvas();
@@ -628,12 +637,17 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (clockTimer) window.clearInterval(clockTimer);
   if (refreshTimer) window.clearInterval(refreshTimer);
+  if (flowRenderFrame) window.cancelAnimationFrame(flowRenderFrame);
   window.removeEventListener('resize', fitCanvas);
   document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  const currentBoardFullscreen = document.fullscreenElement === boardRef.value;
   if (document.fullscreenElement === boardRef.value) {
     document.exitFullscreen().catch(() => undefined);
   }
-  appStore.toggleSideBarHide(false);
+  if (sidebarHiddenByThisBoard && (!document.fullscreenElement || currentBoardFullscreen)) {
+    appStore.toggleSideBarHide(false);
+    sidebarHiddenByThisBoard = false;
+  }
   flowChart?.dispose();
 });
 </script>
@@ -670,12 +684,13 @@ onBeforeUnmount(() => {
   background:
     radial-gradient(circle at 50% 0, rgba(0, 128, 255, 0.2), transparent 34%),
     linear-gradient(180deg, rgba(0, 20, 54, 0.12), rgba(1, 10, 27, 0.78) 42%, rgba(1, 8, 22, 0.96)),
-    url('@/assets/images/scada/container-dashboard/backgrounds/warehouse-board-bg.png') center top / cover no-repeat,
+    url('@/assets/images/scada/container-dashboard/backgrounds/container-command-center-bg.png') center top / cover no-repeat,
     linear-gradient(rgba(29, 148, 230, 0.08) 1px, transparent 1px),
     linear-gradient(90deg, rgba(29, 148, 230, 0.07) 1px, transparent 1px),
     linear-gradient(180deg, #041a37 0%, #031329 58%, #021124 100%);
   background-size:
     auto,
+    cover,
     cover,
     36px 36px,
     36px 36px,
@@ -684,238 +699,131 @@ onBeforeUnmount(() => {
 
 .dashboard-header {
   position: relative;
-  height: 70px;
   display: grid;
-  grid-template-columns: 300px 1fr 300px;
+  grid-template-columns: minmax(300px, 1fr) minmax(520px, 1.25fr) minmax(300px, 1fr);
   align-items: center;
+  height: 70px;
   border: 1px solid rgba(25, 190, 255, 0.48);
-  border-radius: 4px;
-  background: linear-gradient(90deg, rgba(4, 50, 102, 0.78), rgba(3, 21, 48, 0.28) 32%, rgba(3, 21, 48, 0.28) 68%, rgba(4, 50, 102, 0.78)), linear-gradient(180deg, rgba(32, 168, 255, 0.08), transparent);
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(4, 50, 102, 0.78), rgba(3, 21, 48, 0.28), rgba(4, 50, 102, 0.78));
   box-shadow:
     0 0 24px rgba(0, 154, 255, 0.22),
     inset 0 0 28px rgba(0, 155, 255, 0.1);
 }
 
+.dashboard-header::before,
 .dashboard-header::after {
   position: absolute;
-  left: 555px;
-  right: 555px;
-  bottom: -2px;
+  bottom: -1px;
+  width: 23%;
   height: 2px;
   content: '';
-  background: linear-gradient(90deg, transparent, #18cfff 20%, #18cfff 80%, transparent);
-  box-shadow: 0 0 16px rgba(24, 207, 255, 0.8);
+  background: linear-gradient(90deg, transparent, #20afff);
+  box-shadow: 0 0 9px rgba(31, 175, 255, 0.86);
 }
 
-.brand-block {
+.dashboard-header::before {
+  left: 0;
+}
+
+.dashboard-header::after {
+  right: 0;
+  transform: scaleX(-1);
+}
+
+.header-left,
+.header-right {
   display: flex;
   align-items: center;
+  min-width: 0;
   height: 100%;
 }
 
-.brand-logo {
-  width: 215px;
-  height: 52px;
-  object-fit: contain;
-  padding: 5px 12px;
-  border: 1px solid rgba(45, 210, 255, 0.9);
-  border-radius: 4px;
-  background: linear-gradient(135deg, rgba(5, 96, 176, 0.86), rgba(7, 33, 80, 0.86) 78%);
-  box-shadow:
-    0 0 18px rgba(15, 190, 255, 0.48),
-    inset 0 0 20px rgba(32, 159, 255, 0.3);
-  box-sizing: border-box;
+.header-left {
+  padding-left: 24px;
+}
+
+.header-right {
+  justify-content: flex-end;
+  gap: 14px;
+  padding-right: 28px;
+}
+
+.logo {
+  height: 45px;
+  filter: drop-shadow(0 0 5px rgba(100, 150, 255, 0.8));
   cursor: pointer;
-  filter: drop-shadow(0 0 9px rgba(58, 177, 255, 0.95));
 }
 
-.brand-divider {
-  display: none;
+.dashboard-shell:fullscreen .logo {
+  height: 50px;
 }
 
-.title-wrap {
-  position: absolute;
-  left: 50%;
-  top: 0;
+.header-title {
+  justify-self: center;
   width: 520px;
   height: 70px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  border: 0;
+  color: #ffffff;
   background: linear-gradient(180deg, rgba(29, 171, 255, 0.3), rgba(5, 48, 102, 0.58) 55%, rgba(2, 20, 50, 0.12)), linear-gradient(90deg, transparent, rgba(23, 177, 255, 0.46) 18%, rgba(23, 177, 255, 0.46) 82%, transparent);
-  clip-path: polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0 50%);
-  transform: translateX(-50%);
+  clip-path: polygon(9% 0, 91% 0, 100% 50%, 91% 100%, 9% 100%, 0 50%);
   cursor: pointer;
+  text-align: center;
+  text-shadow:
+    0 0 8px rgba(255, 255, 255, 0.9),
+    0 0 20px rgba(22, 153, 255, 0.9);
 }
 
-.title-wrap h1 {
-  margin: 0 0 4px;
-  color: #f3fbff;
+.header-title strong {
+  display: block;
+  margin-top: 5px;
   font-size: 36px;
-  line-height: 1;
   font-weight: 800;
   letter-spacing: 10px;
-  text-shadow:
-    0 0 8px rgba(255, 255, 255, 0.86),
-    0 0 18px rgba(47, 172, 255, 0.8);
+  line-height: 1.05;
 }
 
-.title-wrap span {
-  color: #23d5ff;
-  font-size: 14px;
-  letter-spacing: 1.5px;
-  text-shadow: 0 0 9px rgba(35, 213, 255, 0.48);
-}
-
-.header-decoration {
-  position: relative;
-  align-self: stretch;
-  overflow: hidden;
-  color: rgba(79, 199, 255, 0.44);
-  text-align: center;
-  pointer-events: none;
-}
-
-.header-decoration::before,
-.header-decoration::after {
-  position: absolute;
-  top: 12px;
-  width: 42%;
-  height: 36px;
-  content: '';
-  border-top: 1px solid rgba(24, 178, 243, 0.42);
-  border-bottom: 1px solid rgba(24, 178, 243, 0.18);
-  transform: skewX(-36deg);
-}
-
-.header-decoration::before {
-  left: 5%;
-  border-left: 1px solid rgba(24, 178, 243, 0.42);
-}
-
-.header-decoration::after {
-  right: 5%;
-  border-right: 1px solid rgba(24, 178, 243, 0.42);
-}
-
-.header-decoration i {
-  position: relative;
-  z-index: 1;
-  display: inline-block;
-  width: 4px;
-  height: 4px;
-  margin: 15px 5px 0;
-  border-radius: 50%;
-  background: #21cfff;
-  box-shadow: 0 0 8px #21cfff;
-}
-
-.header-decoration span {
-  display: none;
-}
-
-.time-panel {
-  height: 56px;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 14px;
-  padding: 0 16px;
-  border: 1px solid rgba(27, 164, 255, 0.45);
-  border-radius: 6px;
-  background: rgba(3, 22, 51, 0.72);
-}
-
-.clock-icon {
-  position: relative;
-  width: 28px;
-  height: 28px;
-  border: 3px solid #72cfff;
-  border-radius: 50%;
-  box-shadow: 0 0 10px rgba(67, 190, 255, 0.32);
-}
-
-.clock-icon::before {
-  position: absolute;
-  left: 12px;
-  top: 4px;
-  width: 2px;
-  height: 9px;
-  content: '';
-  background: #72cfff;
-  transform-origin: bottom;
-  transform: rotate(-8deg);
-}
-
-.clock-icon::after {
-  position: absolute;
-  left: 13px;
-  top: 12px;
-  width: 7px;
-  height: 2px;
-  content: '';
-  background: #72cfff;
-  transform: rotate(28deg);
-  transform-origin: left;
-}
-
-.time-panel strong {
+.header-title span {
   display: block;
-  font-size: 15px;
-}
-
-.time-panel div span {
-  display: block;
-  margin-top: 3px;
-  color: #82bfdf;
+  margin-top: 5px;
+  color: #8bd4ff;
   font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 4px;
 }
 
-.fullscreen-btn {
-  position: relative;
-  width: 44px;
-  height: 38px;
-  margin-left: 12px;
-  border: 0;
-  border-left: 1px solid rgba(39, 117, 168, 0.25);
-  background: transparent;
-  cursor: pointer;
+.time-icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  color: #2ca8ff;
+  border: 3px solid rgba(44, 168, 255, 0.75);
+  border-radius: 50%;
+  font-size: 27px;
+  box-shadow: 0 0 14px rgba(42, 166, 255, 0.4);
 }
 
-.fullscreen-btn span {
-  position: absolute;
-  width: 9px;
-  height: 9px;
-  border-color: #6fd0ff;
+.time-block {
+  width: 218px;
+  flex: 0 0 218px;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
 }
 
-.fullscreen-btn span:nth-child(1) {
-  left: 12px;
-  top: 7px;
-  border-left: 2px solid;
-  border-top: 2px solid;
+.current-time {
+  display: block;
+  color: #f2f8ff;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  white-space: nowrap;
 }
 
-.fullscreen-btn span:nth-child(2) {
-  right: 3px;
-  top: 7px;
-  border-right: 2px solid;
-  border-top: 2px solid;
-}
-
-.fullscreen-btn span:nth-child(3) {
-  left: 12px;
-  bottom: 6px;
-  border-left: 2px solid;
-  border-bottom: 2px solid;
-}
-
-.fullscreen-btn span:nth-child(4) {
-  right: 3px;
-  bottom: 6px;
-  border-right: 2px solid;
-  border-bottom: 2px solid;
+.weekday {
+  color: #a9c8e9;
+  font-size: 13px;
 }
 
 .metric-row {
@@ -1119,11 +1027,14 @@ onBeforeUnmount(() => {
 .dashboard-panel {
   position: relative;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid rgba(24, 191, 255, 0.92);
   border-radius: 6px;
-  background: linear-gradient(90deg, rgba(5, 65, 118, 0.32), transparent 26%, transparent 74%, rgba(5, 65, 118, 0.32)), linear-gradient(135deg, rgba(3, 39, 76, 0.66), rgba(2, 17, 39, 0.88)), linear-gradient(rgba(64, 162, 226, 0.09) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(64, 162, 226, 0.08) 1px, transparent 1px);
+  background: linear-gradient(90deg, rgba(5, 65, 118, 0.32), transparent 26%, transparent 74%, rgba(5, 65, 118, 0.32)), linear-gradient(135deg, rgba(3, 39, 76, 0.66), rgba(2, 17, 39, 0.88)), linear-gradient(rgba(64, 162, 226, 0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(64, 162, 226, 0.08) 1px, transparent 1px);
   background-size:
     auto,
     auto,
@@ -1160,10 +1071,11 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid #1ccaff;
 }
 
-.panel-title {
+.dashboard-panel :deep(.panel-title) {
   position: relative;
   z-index: 1;
   height: 54px;
+  flex: 0 0 54px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1173,7 +1085,7 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
 }
 
-.panel-title::before {
+.dashboard-panel :deep(.panel-title)::before {
   position: absolute;
   left: 12px;
   top: 15px;
@@ -1185,7 +1097,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 12px #20d7ff;
 }
 
-.panel-title::after {
+.dashboard-panel :deep(.panel-title)::after {
   position: absolute;
   left: 14px;
   right: 18px;
@@ -1195,7 +1107,7 @@ onBeforeUnmount(() => {
   background: linear-gradient(90deg, rgba(30, 211, 255, 0.84), rgba(30, 211, 255, 0.22), transparent);
 }
 
-.panel-title h2 {
+.dashboard-panel :deep(.panel-title h2) {
   display: inline;
   margin: 0;
   color: #f4fbff;
@@ -1208,8 +1120,9 @@ onBeforeUnmount(() => {
     0 0 14px rgba(31, 188, 255, 0.86);
 }
 
-.panel-body {
-  height: calc(100% - 54px);
+.dashboard-panel :deep(.panel-body) {
+  min-height: 0;
+  flex: 1;
 }
 
 .panel-total {
@@ -1271,12 +1184,14 @@ onBeforeUnmount(() => {
 .container-card {
   position: relative;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   overflow: hidden;
   padding: 8px 11px 11px;
   border: 1px solid rgba(35, 159, 235, 0.82);
   border-radius: 5px;
-  background: linear-gradient(180deg, rgba(12, 76, 129, 0.72), rgba(3, 35, 72, 0.94)),
-    radial-gradient(circle at 52% 18%, rgba(59, 178, 255, 0.18), transparent 52%);
+  background: linear-gradient(180deg, rgba(12, 76, 129, 0.72), rgba(3, 35, 72, 0.94)), radial-gradient(circle at 52% 18%, rgba(59, 178, 255, 0.18), transparent 52%);
   box-shadow:
     inset 0 0 28px rgba(31, 179, 255, 0.16),
     0 0 10px rgba(0, 143, 255, 0.18);
@@ -1304,7 +1219,9 @@ onBeforeUnmount(() => {
 
 .product-wrap {
   position: relative;
-  height: 106px;
+  height: 132px;
+  width: calc(100% + 10px);
+  flex: 0 0 132px;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -1330,6 +1247,7 @@ onBeforeUnmount(() => {
   width: 148px;
   height: 96px;
   object-fit: contain;
+  transform: translateX(-8px);
   filter: drop-shadow(0 12px 12px rgba(0, 0, 0, 0.38)) drop-shadow(0 0 9px rgba(42, 184, 255, 0.38));
 }
 
@@ -1350,7 +1268,7 @@ onBeforeUnmount(() => {
 .product-wrap img.product-cage {
   width: 152px;
   height: 100px;
-  filter: grayscale(1) saturate(0) brightness(1.72) contrast(1.14) drop-shadow(0 11px 10px rgba(0, 0, 0, 0.42)) drop-shadow(0 0 7px rgba(226, 246, 255, 0.48));
+  filter: saturate(0.48) brightness(1.16) contrast(1.08) drop-shadow(0 11px 10px rgba(0, 0, 0, 0.42)) drop-shadow(0 0 8px rgba(102, 220, 255, 0.56));
 }
 
 .product-wrap img.product-pallet {
@@ -1362,62 +1280,44 @@ onBeforeUnmount(() => {
 .container-card strong,
 .container-card b {
   display: block;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .container-card strong {
+  min-height: 20px;
+  padding: 0 2px;
   overflow: hidden;
-  font-size: 17px;
-  line-height: 22px;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  font-size: 16px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .container-card b {
-  margin-top: 5px;
+  margin-top: 3px;
+  padding-bottom: 2px;
   color: #fff;
   font-size: 29px;
-  line-height: 1;
-  text-align: left;
+  line-height: 32px;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.28);
-}
-
-.progress-row {
-  display: grid;
-  grid-template-columns: 1fr 42px;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.progress-row > div {
-  height: 14px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: rgba(28, 96, 153, 0.72);
-}
-
-.progress-row i {
-  display: block;
-  height: 100%;
-  border-radius: 3px;
-}
-
-.progress-row em {
-  color: #d4eafb;
-  font-size: 12px;
-  font-style: normal;
 }
 
 .partner-table-wrap {
   height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 8px 12px 0;
   box-sizing: border-box;
 }
 
 .partner-row {
   display: grid;
-  grid-template-columns: 70px minmax(210px, 1.52fr) repeat(5, minmax(92px, 0.72fr)) 132px 112px 112px 112px 128px 110px;
+  grid-template-columns: 70px minmax(160px, 0.85fr) minmax(250px, 1.35fr) repeat(5, minmax(120px, 1fr)) 110px;
   align-items: center;
   gap: 0;
   height: 27px;
@@ -1438,7 +1338,7 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
 }
 
-.partner-row span:not(:nth-child(2)):not(:last-child) {
+.partner-row span:not(:nth-child(2)):not(:nth-child(3)):not(:last-child) {
   justify-content: center;
 }
 
@@ -1447,7 +1347,8 @@ onBeforeUnmount(() => {
   border-right: 0;
 }
 
-.partner-row span:nth-child(2) {
+.partner-row span:nth-child(2),
+.partner-row span:nth-child(3) {
   justify-content: flex-start;
 }
 
@@ -1461,9 +1362,34 @@ onBeforeUnmount(() => {
 }
 
 .partner-body {
-  height: calc(100% - 34px);
-  overflow: hidden;
+  min-height: 0;
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-inline: 1px solid rgba(27, 107, 176, 0.34);
+}
+
+.partner-body.is-seamless {
+  overflow-y: hidden;
+}
+
+.partner-body.is-seamless :deep(.vue3-seamless-wrapper),
+.partner-body.is-seamless :deep(.vue3-seamless-vertical-wrapper) {
+  height: 100%;
+}
+
+.partner-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.partner-body::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: rgba(57, 177, 246, 0.5);
+}
+
+.partner-body::-webkit-scrollbar-track {
+  background: rgba(6, 37, 77, 0.55);
 }
 
 .partner-body .partner-row:nth-child(odd) {

@@ -1,31 +1,34 @@
 <template>
-  <div
-    v-if="isEnd"
-    class="flow-node end-node"
-    :class="[statusClass, { 'is-selected': selected }]"
-    @mouseenter="hover = true"
-    @mouseleave="hover = false"
-    @click="handleCardClick"
-  >
-    <span class="node-icon end"><span /></span>
-    <div class="node-main">
-      <div class="node-title-row">
-        <span class="node-title">{{ displayTitle }}</span>
-        <NodeMenu v-if="!readonly" :show-copy="false" :show-delete="true" @command="handleMenuCommand" />
+  <div ref="measureRef" class="flow-node-host">
+    <div
+      v-if="isEnd"
+      class="flow-node end-node"
+      :class="[statusClass, { 'is-selected': selected }]"
+      @mouseenter="hover = true"
+      @mouseleave="hover = false"
+      @click="handleCardClick"
+    >
+      <span class="node-icon end"><span /></span>
+      <div class="node-main">
+        <div class="node-title-row">
+          <span class="node-title">{{ displayTitle }}</span>
+          <NodeMenu v-if="!readonly" :show-copy="false" :show-delete="true" @command="handleMenuCommand" />
+        </div>
+        <div v-for="(line, index) in bodyLines" :key="index" class="node-line">
+          <span class="line-label">{{ line.label }}</span>
+          <span class="line-value" :class="{ 'is-empty': line.empty }" :title="line.value">{{ line.value }}</span>
+        </div>
       </div>
-      <div class="node-line"><span class="line-label">输出格式</span><span class="line-value">文本</span></div>
-      <div class="node-line"><span class="line-label">文本内容</span><span class="line-value">{{ endText }}</span></div>
     </div>
-  </div>
 
-  <div
-    v-else
-    class="flow-node"
-    :class="[statusClass, { 'is-selected': selected, 'is-branch': isBranch }]"
-    @mouseenter="hover = true"
-    @mouseleave="hover = false"
-    @click="handleCardClick"
-  >
+    <div
+      v-else
+      class="flow-node"
+      :class="[statusClass, { 'is-selected': selected, 'is-branch': isBranch }]"
+      @mouseenter="hover = true"
+      @mouseleave="hover = false"
+      @click="handleCardClick"
+    >
     <div class="node-title-row">
       <span class="node-icon" :style="{ background: accentColor }" v-html="iconSvg" />
       <span class="node-title" :title="displayTitle">{{ displayTitle }}</span>
@@ -41,12 +44,12 @@
 
     <div v-else-if="isCondition" class="branch-body">
       <div class="branch-case">
-        <strong>IF</strong>
-        <span>{{ branchConditionText }}</span>
+        <strong>CASE 1</strong>
+        <span>IF</span>
       </div>
       <div class="branch-case">
         <strong>ELSE</strong>
-        <span>否则执行</span>
+        <span>ELSE</span>
       </div>
     </div>
 
@@ -61,22 +64,26 @@
     <button v-show="!readonly && showTailPlus" type="button" class="tail-plus" title="添加下一节点" @click.stop="handlePlusClick">
       +
     </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, inject, onMounted, onUnmounted, ref } from 'vue';
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { getNodeConfig } from '../types';
 import { emit } from '../events';
+import { toDisplayTemplate } from '../panels/templateUtils';
 import NodeMenu from './NodeMenu.vue';
 
 const getNode = inject('getNode') as (() => any) | undefined;
 const node = getNode?.();
+const measureRef = ref<HTMLElement>();
 const hover = ref(false);
 const selected = ref(false);
 const readonly = ref(false);
 const hasOutgoing = ref(false);
 const liveData = ref<Record<string, any>>(node?.getData() || {});
+let resizeObserver: ResizeObserver | null = null;
 
 function syncData() {
   liveData.value = { ...(node?.getData() || {}) };
@@ -105,6 +112,16 @@ function syncOutgoing() {
   }
 }
 
+function syncNodeSize() {
+  const el = measureRef.value;
+  if (!el || !node?.resize) return;
+  const nextH = Math.max(72, Math.ceil(el.scrollHeight || el.offsetHeight));
+  const size = node.getSize?.() || { width: el.offsetWidth, height: 0 };
+  if (Math.abs((size.height || 0) - nextH) > 1) {
+    node.resize(size.width || el.offsetWidth, nextH);
+  }
+}
+
 onMounted(() => {
   node?.on('change:data', syncData);
   const graph = node?.model?.graph;
@@ -125,11 +142,22 @@ onMounted(() => {
   }
   syncSelected();
   syncOutgoing();
+  nextTick(() => {
+    syncNodeSize();
+    if (measureRef.value && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => syncNodeSize());
+      resizeObserver.observe(measureRef.value);
+    }
+  });
 });
 
 onUnmounted(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
   node?.off('change:data', syncData);
 });
+
+watch(liveData, () => nextTick(syncNodeSize), { deep: true });
 
 const nodeType = computed(() => liveData.value.nodeType || '');
 const nodeConfig = computed(() => getNodeConfig(nodeType.value));
@@ -157,48 +185,61 @@ const runtimeHint = computed(() => {
   return '';
 });
 const runtimeHintClass = computed(() => liveData.value.runtimeStatus?.toLowerCase() || '');
-const endText = computed(() => cfg.value.text || cfg.value.responseTemplate || '尚未输入');
-
-const branchConditionText = computed(() => {
-  if (cfg.value.expression) return cfg.value.expression;
-  return '未配置条件';
+const endText = computed(() => {
+  const text = cfg.value.outputContent || cfg.value.text || cfg.value.responseTemplate || '';
+  return toDisplayTemplate(text) || '尚未输入';
+});
+const endOutputFormat = computed(() => {
+  const type = cfg.value.outputType || (endText.value && endText.value !== '尚未输入' ? 'text' : 'default');
+  if (type === 'text') return '文本';
+  if (type === 'card') return '卡片';
+  return 'JSON';
 });
 
-const switchCases = computed(() => {
+ = computed(() => {
   const branches = Array.isArray(cfg.value.branches) ? cfg.value.branches : [];
   if (branches.length > 0) {
-    return branches
-      .filter((item: any) => item.type !== 'ELSE')
-      .map((item: any, index: number) => {
-        const rule = item.rules?.[0];
-        const cond = rule?.variable
-          ? `${rule.variable} ${rule.operator || 'eq'} ${rule.value || ''}`.trim()
-          : '未配置条件';
-        return {
-          label: index === 0 ? 'IF' : `ELIF ${index}`,
-          value: cond,
-        };
-      })
-      .concat([{ label: 'ELSE', value: '否则执行' }]);
+    return branches.map((item: any, index: number) => {
+      const isElse = item.type === 'ELSE' || item.type === 'DEFAULT';
+      return {
+        label: isElse ? 'ELSE' : (item.remarks || item.label || `CASE ${index + 1}`),
+        value: isElse ? 'ELSE' : index === 0 ? 'IF' : 'ELIF',
+      };
+    });
   }
   const cases = Array.isArray(cfg.value.cases) ? cfg.value.cases : [];
   if (cases.length === 0) {
     return [
-      { label: 'IF', value: '未配置条件' },
-      { label: 'ELSE', value: '否则执行' },
+      { label: 'CASE 1', value: 'IF' },
+      { label: 'ELSE', value: 'ELSE' },
     ];
   }
-  return cases.map((item: any, index: number) => ({
-    label: item.type === 'DEFAULT' ? 'ELSE' : index === 0 ? 'IF' : `ELIF ${index}`,
-    value: item.remarks || item.expression || item.value || '未配置',
-  }));
+  return cases.map((item: any, index: number) => {
+    const isElse = item.type === 'DEFAULT' || item.type === 'ELSE';
+    return {
+      label: isElse ? (item.remarks || 'ELSE') : (item.remarks || item.label || `CASE ${index + 1}`),
+      value: isElse ? 'ELSE' : item.type || (index === 0 ? 'IF' : 'ELIF'),
+    };
+  });
 });
 
 type NodeLine = { label: string; value: string; empty?: boolean };
 
+function visibleLines(lines: Array<NodeLine | null | undefined>) {
+  return lines.filter((line): line is NodeLine => !!line && (!!line.value || !!line.empty));
+}
+
 const bodyLines = computed<NodeLine[]>(() => {
   const type = nodeType.value;
   const c = cfg.value;
+  if (isEnd.value) {
+    const format = endOutputFormat.value;
+    const lines: NodeLine[] = [{ label: '输出格式', value: format }];
+    if (format === '文本') {
+      lines.push({ label: '文本内容', value: endText.value, empty: endText.value === '尚未输入' });
+    }
+    return lines;
+  }
   if (isStart.value) {
     const fields = c.inputFields || c.fields;
     let fieldText = '';
@@ -206,21 +247,28 @@ const bodyLines = computed<NodeLine[]>(() => {
       fieldText = fields.map((item: any) => item.displayName || item.description || item.name || item.field).filter(Boolean).join(', ');
     }
     if (!fieldText) fieldText = '用户问题, 对话历史, 图片';
-    return [
-      { label: '输入字段', value: fieldText },
-      { label: '触发方式', value: startText(type) },
-    ];
+    const lines: NodeLine[] = [{ label: '输入字段', value: fieldText }];
+    if (type !== 'MANUAL_TRIGGER') {
+      lines.push({ label: '触发方式', value: startText(type) });
+    }
+    return lines;
   }
   if (type === 'HTTP_CALL') {
     const inputKeys = inputMappingText(c.inputMapping);
-    return [
-      { label: '输入变量', value: inputKeys || '-', empty: !inputKeys },
-      { label: 'API', value: `[${c.method || 'GET'}] ${c.url || '尚未填写'}`, empty: !c.url },
-      { label: '请求参数', value: keyList(c.queryParams || c.params) || '无' },
-      { label: '请求头', value: keyList(c.headers) || '无' },
-      { label: '请求体类型', value: bodyTypeText(c) || 'none' },
+    const url = toDisplayTemplate(c.url);
+    const params = keyList(c.queryParams || c.params);
+    const headers = keyList(c.headers);
+    const bodyType = bodyTypeText(c);
+    const body = toDisplayTemplate(typeof c.body === 'string' ? c.body : '');
+    return visibleLines([
+      inputKeys ? { label: '输入变量', value: inputKeys } : null,
+      { label: 'API', value: url ? `[${c.method || 'GET'}] ${url}` : '尚未填写', empty: !url },
+      params ? { label: '请求参数', value: params } : null,
+      headers ? { label: '请求头', value: headers } : null,
+      bodyType ? { label: '请求体类型', value: bodyType } : null,
+      body && bodyType ? { label: '请求体内容', value: truncate(body, 48) } : null,
       { label: '输出变量', value: outputText(c) },
-    ];
+    ]);
   }
   if (type === 'JDBC_CALL') {
     return [
@@ -292,6 +340,7 @@ function truncate(value: any, max = 40) {
 function bodyTypeText(c: Record<string, any>) {
   const bodyType = c.bodyType;
   if (!bodyType || bodyType === 'none') return '';
+  if (bodyType === 'form') return 'x-www-form-urlencoded';
   return bodyType;
 }
 
@@ -314,6 +363,18 @@ function inputMappingText(value: any) {
 }
 
 function outputText(value: Record<string, any>) {
+  const vars = Array.isArray(value.outputVariables) ? value.outputVariables : [];
+  if (vars.length) {
+    return vars
+      .map((item: any) => {
+        const name = item.name || '';
+        const display = item.displayName || '';
+        if (name && display && display !== name) return `${name}.${display}`;
+        return display || name;
+      })
+      .filter(Boolean)
+      .join(', ');
+  }
   const mapping = keyList(value.outputMapping || value.responseMapping);
   return mapping || value.outputVar || 'httpResponse';
 }
@@ -368,9 +429,14 @@ function handlePlusClick() {
 </script>
 
 <style scoped>
+.flow-node-host {
+  width: 100%;
+  height: auto;
+}
 .flow-node {
   width: 100%;
-  height: 100%;
+  height: auto;
+  min-height: 72px;
   box-sizing: border-box;
   position: relative;
   padding: 12px 14px 10px;
@@ -450,7 +516,7 @@ function handlePlusClick() {
   white-space: nowrap;
 }
 .line-value.is-empty {
-  color: #bfbfbf;
+  color: #d69696;
 }
 .branch-body {
   margin-top: 10px;

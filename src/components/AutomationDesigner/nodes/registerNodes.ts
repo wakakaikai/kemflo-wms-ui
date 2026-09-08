@@ -82,7 +82,41 @@ export function normalizePortId(port?: string) {
   if (!port) return 'right';
   if (port === 'bottom' || port === 'right') return 'right';
   if (port === 'top' || port === 'left') return 'left';
+  if (port === 'right-case-1') return 'right-if';
+  if (port === 'right-default') return 'right-else';
   return port;
+}
+
+export function getBranchPorts(branchCount = 2) {
+  const count = Math.max(2, branchCount);
+  const groups: Record<string, any> = {
+    left: HORIZONTAL_PORTS.groups.left,
+    right: HORIZONTAL_PORTS.groups.right,
+  };
+  const items: Array<{ id: string; group: string }> = [{ id: 'left', group: 'left' }];
+  for (let i = 0; i < count; i++) {
+    const y = Math.round(((i + 1) / (count + 1)) * 100);
+    const id = i === count - 1 ? 'right-else' : i === 0 ? 'right-if' : `right-case-${i + 1}`;
+    groups[id] = {
+      position: { name: 'absolute', args: { x: '100%', y: `${y}%` } },
+      attrs: { circle: { ...basePortAttrs } },
+    };
+    items.push({ id, group: id });
+  }
+  return { groups, items };
+}
+
+export function syncBranchPorts(node: any) {
+  const type = node?.getData?.()?.nodeType;
+  if (type !== 'SWITCH' && type !== 'CONDITION') return;
+  const cfg = node.getData()?.config || {};
+  const branches = Array.isArray(cfg.branches) && cfg.branches.length
+    ? cfg.branches
+    : Array.isArray(cfg.cases) && cfg.cases.length
+      ? cfg.cases
+      : [{}, {}];
+  const count = type === 'CONDITION' ? 2 : Math.max(2, branches.length);
+  node.setProp('ports', getBranchPorts(count));
 }
 
 export function getNodePorts(type: string): any {
@@ -92,35 +126,15 @@ export function getNodePorts(type: string): any {
   if (isTriggerType(type)) {
     return { groups: HORIZONTAL_PORTS.groups, items: [{ id: 'right', group: 'right' }] };
   }
-  if (type === 'CONDITION') {
-    return {
-      groups: HORIZONTAL_PORTS.groups,
-      items: [
-        { id: 'left', group: 'left' },
-        { id: 'right-if', group: 'right-top' },
-        { id: 'right-else', group: 'right-bottom' },
-      ],
-    };
-  }
-  if (type === 'SWITCH') {
-    return {
-      groups: HORIZONTAL_PORTS.groups,
-      items: [
-        { id: 'left', group: 'left' },
-        { id: 'right-case-1', group: 'right-case-1' },
-        { id: 'right-case-2', group: 'right-case-2' },
-        { id: 'right-case-3', group: 'right-case-3' },
-        { id: 'right-default', group: 'right-default' },
-      ],
-    };
+  if (type === 'CONDITION' || type === 'SWITCH') {
+    return getBranchPorts(2);
   }
   return HORIZONTAL_PORTS;
 }
 
 export function getDefaultSourcePort(type: string) {
   if (isTriggerType(type)) return 'right';
-  if (type === 'CONDITION') return 'right-if';
-  if (type === 'SWITCH') return 'right-case-1';
+  if (type === 'CONDITION' || type === 'SWITCH') return 'right-if';
   return 'right';
 }
 

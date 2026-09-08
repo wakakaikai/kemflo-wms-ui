@@ -1,16 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import {
-  ContainerInventorySummaryVO,
-  ContainerOverviewVO,
-  ContainerPartnerTurnoverVO,
-  ContainerRegionVO,
-  ContainerScadaQuery,
-  ContainerTrendVO,
-  ContainerDiffQuery,
-  ContainerDiffVO,
-  ContainerMovementVO
-} from './types';
+import { ContainerFooterVO, ContainerInventorySummaryVO, ContainerOverviewVO, ContainerPartnerTurnoverVO, ContainerRegionVO, ContainerScadaQuery, ContainerTrendVO, ContainerDiffQuery, ContainerDiffVO, ContainerMovementVO } from './types';
 import { InventoryDetailQuery, InventoryDetailVO } from '@/api/wms/inventoryDetail/types';
 
 export const getContainerOverview = (query?: ContainerScadaQuery): AxiosPromise<ContainerOverviewVO> => {
@@ -45,9 +35,15 @@ export const getContainerRegionDistribution = (query?: ContainerScadaQuery): Axi
   });
 };
 
-export const listContainerPartnerTurnover = (
-  query?: ContainerScadaQuery
-): AxiosPromise<{ rows: ContainerPartnerTurnoverVO[]; total: number }> => {
+export const getContainerFooter = (query?: ContainerScadaQuery): AxiosPromise<ContainerFooterVO> => {
+  return request({
+    url: '/wms/scada/container/footer',
+    method: 'get',
+    params: query
+  });
+};
+
+export const listContainerPartnerTurnover = (query?: ContainerScadaQuery): AxiosPromise<ContainerPartnerTurnoverVO[]> => {
   return request({
     url: '/wms/scada/container/partner/turnover',
     method: 'get',
@@ -55,9 +51,7 @@ export const listContainerPartnerTurnover = (
   });
 };
 
-export const listContainerInventory = (
-  query?: InventoryDetailQuery
-): AxiosPromise<{ rows: InventoryDetailVO[]; total: number }> => {
+export const listContainerInventory = (query?: InventoryDetailQuery): AxiosPromise<{ rows: InventoryDetailVO[]; total: number }> => {
   return request({
     url: '/wms/scada/container/inventory/list',
     method: 'get',
@@ -65,7 +59,7 @@ export const listContainerInventory = (
   });
 };
 
-export const listContainerDiff = (query?: ContainerDiffQuery): AxiosPromise<ContainerDiffVO[]> => {
+export const listContainerDiff = (query?: ContainerDiffQuery): AxiosPromise<{ rows: ContainerDiffVO[]; total: number }> => {
   return request({
     url: '/wms/scada/container/diff',
     method: 'get',
@@ -73,7 +67,7 @@ export const listContainerDiff = (query?: ContainerDiffQuery): AxiosPromise<Cont
   });
 };
 
-export const listContainerMovement = (query?: ContainerDiffQuery): AxiosPromise<ContainerMovementVO[]> => {
+export const listContainerMovement = (query?: ContainerDiffQuery): AxiosPromise<{ rows: ContainerMovementVO[]; total: number }> => {
   return request({
     url: '/wms/scada/container/movement/list',
     method: 'get',

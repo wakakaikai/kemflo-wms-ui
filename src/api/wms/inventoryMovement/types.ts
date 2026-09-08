@@ -237,6 +237,11 @@ export interface InventoryMovementQuery extends PageQuery {
   sourceDocType?: string;
 
   /**
+   * 单据类型列表
+   */
+  sourceDocTypeList?: string[];
+
+  /**
    * 单据编号
    */
   sourceDocCode?: string;
@@ -350,6 +355,11 @@ export interface InventoryMovementQuery extends PageQuery {
    * SAP物料文件项次
    */
   sapMaterialItem?: string;
+
+  /**
+   * SAP物料凭证号是否为空
+   */
+  sapMaterialOrderNoEmpty?: boolean;
 
     /**
      * 日期范围参数

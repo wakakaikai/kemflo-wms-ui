@@ -97,8 +97,8 @@
                 <el-icon :size="16"><ZoomIn /></el-icon>
               </button>
             </el-tooltip>
-            <el-tooltip content="恢复 100%" placement="top">
-              <button type="button" class="canvas-ctrl-btn" @click="handleZoomReset">
+            <el-tooltip content="适应画布" placement="top">
+              <button type="button" class="canvas-ctrl-btn" @click="handleZoomToFit">
                 <svg class="ctrl-icon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2">
                   <path d="M2.5 5.5V2.5H5.5" />
                   <path d="M10.5 2.5H13.5V5.5" />
@@ -211,7 +211,7 @@ import {
   Check, Select, Upload, RefreshLeft, RefreshRight,
   ZoomOut, ZoomIn, Download, Document, Close, VideoPlay, Grid, MagicStick,
 } from '@element-plus/icons-vue';
-import { useGraph, resizeGraph, addNodeToGraph, exportDesignJson, importDesignJson, applyNodeRuntimeStatus, clearNodeRuntimeStatus, applyFlowEdgeStyle, alignNodeRight, CARD_WIDTH, CARD_HEIGHT } from './graph/useGraph';
+import { useGraph, resizeGraph, addNodeToGraph, exportDesignJson, importDesignJson, applyNodeRuntimeStatus, clearNodeRuntimeStatus, applyFlowEdgeStyle, alignNodeRight, CARD_WIDTH, CARD_HEIGHT, syncBranchPorts } from './graph/useGraph';
 import { getDefaultSourcePort, getDefaultTargetPort } from './nodes/registerNodes';
 import { getNodeConfig } from './types';
 import BottomPanel from './panels/bottomPanel.vue';
@@ -1078,6 +1078,7 @@ function handleUpdateConfig(config: Record<string, any>) {
   data.config = { ...data.config, ...config };
   if (config.name) data.label = config.name;
   node.setData(data);
+  syncBranchPorts(node);
   addLog('info', `更新节点配置: ${data.label || node.id}`);
 }
 
@@ -1095,6 +1096,8 @@ defineExpose({
 <style scoped>
 .designer-root {
   height: 100%;
+  position: relative;
+  overflow: hidden;
   background: #f5f6f7;
 }
 .designer-root.is-readonly .canvas-panel {

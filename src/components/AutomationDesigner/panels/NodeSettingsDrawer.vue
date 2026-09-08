@@ -1,103 +1,110 @@
 <template>
-  <teleport to="body">
-    <transition name="drawer-slide">
-      <aside v-if="visible" class="settings-drawer" role="dialog" aria-modal="false">
-        <header class="drawer-header">
-          <button class="drawer-close" aria-label="关闭" @click="handleCancel">
-            <el-icon><Close /></el-icon>
-          </button>
-          <div class="drawer-title-wrap">
-            <span class="drawer-title">{{ drawerTitle }}</span>
-            <span class="drawer-type-badge">
-              <span class="type-icon" :style="{ background: nodeConfig?.color || '#1677ff' }" v-html="typeIconSvg" />
-              {{ nodeConfig?.label || '节点' }}
-            </span>
-          </div>
-          <button class="drawer-edit" title="修改名称" @click="renameNode">
-            <el-icon><EditPen /></el-icon>
-          </button>
-        </header>
-
-        <div v-if="node && showDescription" class="drawer-desc">
-          <el-input
-            v-model="description"
-            type="textarea"
-            :rows="2"
-            placeholder="添加描述..."
-            @change="onDescriptionChange"
-          />
+  <transition name="drawer-slide">
+    <aside v-if="visible" class="settings-drawer" role="dialog" aria-modal="false">
+      <header class="drawer-header">
+        <button class="drawer-icon-btn" aria-label="关闭" @click="handleCancel">
+          <el-icon><Close /></el-icon>
+        </button>
+        <div class="drawer-title-wrap">
+          <span class="drawer-title">{{ drawerTitle }}</span>
+          <span class="drawer-type-badge">
+            <span class="type-icon" :style="{ background: nodeConfig?.color || '#1677ff' }" v-html="typeIconSvg" />
+            {{ nodeConfig?.label || '节点' }}
+          </span>
         </div>
+        <button class="drawer-icon-btn" title="修改名称" @click="renameNode">
+          <el-icon><EditPen /></el-icon>
+        </button>
+        <button v-if="canCopy" class="drawer-icon-btn" title="复制" @click="copyNode">
+          <el-icon><CopyDocument /></el-icon>
+        </button>
+        <button v-if="canDelete" class="drawer-icon-btn is-danger" title="删除" @click="deleteNode">
+          <el-icon><Delete /></el-icon>
+        </button>
+      </header>
 
-        <div class="drawer-body">
-          <HttpCallSettingsPanel
-            v-if="node && nodeType === 'HTTP_CALL'"
-            ref="panelRef"
-            :node="node"
-            @update-config="emit('updateConfig', $event)"
-          />
-          <StartSettingsPanel
-            v-else-if="node && isTriggerNode"
-            ref="panelRef"
-            :node="node"
-            @update-config="emit('updateConfig', $event)"
-          />
-          <JdbcSettingsPanel
-            v-else-if="node && nodeType === 'JDBC_CALL'"
-            ref="panelRef"
-            :node="node"
-            @update-config="emit('updateConfig', $event)"
-          />
-          <LoopSettingsPanel
-            v-else-if="node && nodeType === 'LOOP'"
-            ref="panelRef"
-            :node="node"
-            @update-config="emit('updateConfig', $event)"
-          />
-          <SwitchSettingsPanel
-            v-else-if="node && nodeType === 'SWITCH'"
-            ref="panelRef"
-            :node="node"
-            @update-config="emit('updateConfig', $event)"
-          />
-          <ChatVarSettingsPanel
-            v-else-if="node && nodeType === 'CHAT_VAR_GET'"
-            ref="panelRef"
-            :node="node"
-            mode="get"
-            @update-config="emit('updateConfig', $event)"
-          />
-          <ChatVarSettingsPanel
-            v-else-if="node && nodeType === 'CHAT_VAR_SET'"
-            ref="panelRef"
-            :node="node"
-            mode="set"
-            @update-config="emit('updateConfig', $event)"
-          />
-          <PropertyPanel v-else-if="node" :node="node" drawer-mode @update-config="emit('updateConfig', $event)" />
-        </div>
+      <div v-if="node && showDescription" class="drawer-desc">
+        <el-input
+          v-model="description"
+          type="textarea"
+          :rows="2"
+          placeholder="描述"
+          @change="onDescriptionChange"
+        />
+      </div>
 
-        <footer class="drawer-footer">
-          <el-button @click="handleCancel">取消</el-button>
-          <el-button type="primary" @click="handleSave">保存</el-button>
-        </footer>
-      </aside>
-    </transition>
-  </teleport>
+      <div class="drawer-body">
+        <HttpCallSettingsPanel
+          v-if="node && nodeType === 'HTTP_CALL'"
+          ref="panelRef"
+          :node="node"
+          @update-config="emit('updateConfig', $event)"
+        />
+        <StartSettingsPanel
+          v-else-if="node && isTriggerNode"
+          ref="panelRef"
+          :node="node"
+          @update-config="emit('updateConfig', $event)"
+        />
+        <EndSettingsPanel
+          v-else-if="node && nodeType === 'END'"
+          ref="panelRef"
+          :node="node"
+          @update-config="emit('updateConfig', $event)"
+        />
+        <JdbcSettingsPanel
+          v-else-if="node && nodeType === 'JDBC_CALL'"
+          ref="panelRef"
+          :node="node"
+          @update-config="emit('updateConfig', $event)"
+        />
+        <LoopSettingsPanel
+          v-else-if="node && nodeType === 'LOOP'"
+          ref="panelRef"
+          :node="node"
+          @update-config="emit('updateConfig', $event)"
+        />
+        <SwitchSettingsPanel
+          v-else-if="node && nodeType === 'SWITCH'"
+          ref="panelRef"
+          :node="node"
+          @update-config="emit('updateConfig', $event)"
+        />
+        <ChatVarSettingsPanel
+          v-else-if="node && nodeType === 'CHAT_VAR_GET'"
+          ref="panelRef"
+          :node="node"
+          mode="get"
+          @update-config="emit('updateConfig', $event)"
+        />
+        <ChatVarSettingsPanel
+          v-else-if="node && nodeType === 'CHAT_VAR_SET'"
+          ref="panelRef"
+          :node="node"
+          mode="set"
+          @update-config="emit('updateConfig', $event)"
+        />
+        <PropertyPanel v-else-if="node" :node="node" drawer-mode @update-config="emit('updateConfig', $event)" />
+      </div>
+    </aside>
+  </transition>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Node } from '@antv/x6';
-import { Close, EditPen } from '@element-plus/icons-vue';
+import { Close, CopyDocument, Delete, EditPen } from '@element-plus/icons-vue';
 import { ElMessageBox } from 'element-plus';
 import PropertyPanel from './propertyPanel.vue';
 import HttpCallSettingsPanel from './HttpCallSettingsPanel.vue';
 import StartSettingsPanel from './StartSettingsPanel.vue';
+import EndSettingsPanel from './EndSettingsPanel.vue';
 import JdbcSettingsPanel from './JdbcSettingsPanel.vue';
 import LoopSettingsPanel from './LoopSettingsPanel.vue';
 import SwitchSettingsPanel from './SwitchSettingsPanel.vue';
 import ChatVarSettingsPanel from './ChatVarSettingsPanel.vue';
 import { getNodeConfig } from '../types';
+import { emit as emitBus } from '../events';
 
 const SPECIALIZED_TYPES = new Set([
   'HTTP_CALL',
@@ -106,6 +113,7 @@ const SPECIALIZED_TYPES = new Set([
   'SWITCH',
   'CHAT_VAR_GET',
   'CHAT_VAR_SET',
+  'END',
 ]);
 
 const props = defineProps<{
@@ -127,7 +135,9 @@ const nodeType = computed(() => nodeData.value.nodeType || '');
 const nodeConfig = computed(() => getNodeConfig(nodeType.value));
 const isTriggerNode = computed(() => nodeType.value.includes('TRIGGER'));
 const drawerTitle = computed(() => nodeData.value.label || nodeConfig.value?.label || '节点设置');
-const showDescription = computed(() => isTriggerNode.value || (SPECIALIZED_TYPES.has(nodeType.value) && nodeType.value !== 'HTTP_CALL'));
+const showDescription = computed(() => isTriggerNode.value || (SPECIALIZED_TYPES.has(nodeType.value) && nodeType.value !== 'HTTP_CALL' && nodeType.value !== 'END'));
+const canCopy = computed(() => !!props.node && !isTriggerNode.value && nodeType.value !== 'END');
+const canDelete = computed(() => !!props.node && !isTriggerNode.value);
 
 const typeIconSvg = computed(() => {
   const type = nodeType.value;
@@ -146,6 +156,9 @@ const typeIconSvg = computed(() => {
   if (type === 'LOOP') {
     return '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="2"><path d="M17 1l4 4-4 4"/></svg>';
   }
+  if (type === 'END') {
+    return '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1"/></svg>';
+  }
   if (type === 'CHAT_VAR_GET' || type === 'CHAT_VAR_SET') {
     return '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="2"><path d="M4 7h16"/></svg>';
   }
@@ -160,7 +173,7 @@ watch(
       return;
     }
     const cfg = node.getData()?.config || {};
-    description.value = cfg.description || '';
+    description.value = cfg.description || cfg.remarks || '';
   },
   { immediate: true },
 );
@@ -177,10 +190,14 @@ function handleCancel() {
   emit('close');
 }
 
-function handleSave() {
-  panelRef.value?.emitChange?.();
-  onDescriptionChange();
-  emit('save');
+function copyNode() {
+  if (!props.node) return;
+  emitBus('node:copy', { node: props.node });
+}
+
+function deleteNode() {
+  if (!props.node) return;
+  emitBus('node:delete', { node: props.node });
   emit('close');
 }
 
@@ -206,13 +223,13 @@ async function renameNode() {
 
 <style scoped>
 .settings-drawer {
-  position: fixed;
+  position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 3000;
-  width: min(640px, 44vw);
-  min-width: 540px;
+  z-index: 30;
+  width: min(560px, 42vw);
+  min-width: 420px;
   background: #fff;
   border-left: 1px solid #e5e7eb;
   box-shadow: -4px 0 24px rgba(15, 23, 42, 0.1);
@@ -223,14 +240,13 @@ async function renameNode() {
   min-height: 56px;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px 10px;
+  gap: 4px;
+  padding: 14px 12px 10px 8px;
   border-bottom: 1px solid #edf0f3;
   background: #fff;
   flex: 0 0 auto;
 }
-.drawer-close,
-.drawer-edit {
+.drawer-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -245,14 +261,18 @@ async function renameNode() {
   flex: 0 0 auto;
   margin-top: 2px;
 }
-.drawer-close:hover,
-.drawer-edit:hover {
+.drawer-icon-btn:hover {
   background: #f3f4f6;
   color: #111827;
+}
+.drawer-icon-btn.is-danger:hover {
+  background: #fff1f0;
+  color: #ff4d4f;
 }
 .drawer-title-wrap {
   flex: 1;
   min-width: 0;
+  padding: 0 8px;
 }
 .drawer-title {
   display: block;
@@ -296,19 +316,6 @@ async function renameNode() {
   overflow-y: auto;
   background: #fff;
 }
-.drawer-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 12px 16px;
-  border-top: 1px solid #edf0f3;
-  background: #fff;
-  flex: 0 0 auto;
-}
-.drawer-footer :deep(.el-button--primary) {
-  background: #1677ff;
-  border-color: #1677ff;
-}
 .drawer-slide-enter-active,
 .drawer-slide-leave-active {
   transition: transform 0.22s ease;
@@ -319,7 +326,7 @@ async function renameNode() {
 }
 @media (max-width: 900px) {
   .settings-drawer {
-    width: 100vw;
+    width: 100%;
     min-width: 0;
   }
 }

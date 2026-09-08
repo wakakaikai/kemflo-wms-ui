@@ -10,9 +10,10 @@ import {
   BRANCH_CARD_HEIGHT,
   getNodePorts,
   normalizePortId,
+  syncBranchPorts,
 } from '../nodes/registerNodes';
 
-export { CARD_WIDTH, CARD_HEIGHT, END_CARD_WIDTH, END_CARD_HEIGHT, BRANCH_CARD_WIDTH, BRANCH_CARD_HEIGHT };
+export { CARD_WIDTH, CARD_HEIGHT, END_CARD_WIDTH, END_CARD_HEIGHT, BRANCH_CARD_WIDTH, BRANCH_CARD_HEIGHT, syncBranchPorts };
 
 const COLOR_PORT_BLUE = '#5F95FF';
 const COLOR_EDGE = '#b7bdc7';
@@ -195,7 +196,7 @@ export function addNodeToGraph(graph: Graph, type: string, x: number, y: number)
   const shapeName = type + '-vue';
   const { w, h } = getNodeSize(type);
 
-  return graph.addNode({
+  const added = graph.addNode({
     id,
     shape: shapeName,
     x,
@@ -211,6 +212,8 @@ export function addNodeToGraph(graph: Graph, type: string, x: number, y: number)
       config: { ...(nodeConfig.defaultConfig || {}) },
     },
   });
+  syncBranchPorts(added);
+  return added;
 }
 
 /** 横向对齐：新节点居中对齐到源节点右侧 */
@@ -260,6 +263,7 @@ export function importDesignJson(graph: Graph, data: any) {
       const nodeType = node.getData()?.nodeType;
       if (nodeType) {
         node.setProp('ports', getNodePorts(nodeType));
+        syncBranchPorts(node);
       }
     });
     graph.getEdges().forEach((edge) => {

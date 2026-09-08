@@ -1,14 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import type {
-  ShippingDetailFooterVO,
-  ShippingDetailHourlyTrendVO,
-  ShippingDetailOverviewVO,
-  ShippingDetailRowVO,
-  ShippingDetailScadaQuery,
-  ShippingDetailStatusRatioVO,
-  ShippingDetailTopCustomerVO
-} from './types';
+import type { ShippingDetailFooterVO, ShippingDetailHourlyTrendVO, ShippingDetailOverviewVO, ShippingDetailRowVO, ShippingDetailScadaQuery, ShippingDetailStatusRatioVO, ShippingDetailTopCustomerVO } from './types';
 
 export const getShippingDetailOverview = (query?: ShippingDetailScadaQuery): AxiosPromise<ShippingDetailOverviewVO> => {
   return request({
@@ -50,9 +42,7 @@ export const getShippingDetailFooter = (query?: ShippingDetailScadaQuery): Axios
   });
 };
 
-export const listShippingDetailScada = (
-  query?: ShippingDetailScadaQuery
-): AxiosPromise<{ rows: ShippingDetailRowVO[]; total: number }> => {
+export const listShippingDetailScada = (query?: ShippingDetailScadaQuery): AxiosPromise<ShippingDetailRowVO[]> => {
   return request({
     url: '/wms/scada/shippingDetail/list',
     method: 'get',

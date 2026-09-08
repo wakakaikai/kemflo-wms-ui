@@ -1,5 +1,6 @@
 export interface ContainerScadaQuery extends PageQuery {
   businessCode?: string;
+  scrapBusinessCodes?: string[];
   warehouseCode?: string;
   itemCode?: string;
   dateTimeRange?: string[];
@@ -19,9 +20,16 @@ export interface ContainerOverviewVO {
   diffTotal: number;
   diffYesterdayTotal: number;
   diffChangeRate: number;
-  turnoverRate: number;
-  turnoverYesterdayRate: number;
-  turnoverChangeRate: number;
+  scrapTotal: number;
+  scrapYesterdayTotal: number;
+  scrapChangeRate: number;
+}
+
+export interface ContainerFooterVO {
+  customerTotal: number;
+  insideQuantity: number;
+  outsideQuantity: number;
+  transitQuantity: number;
 }
 
 export interface ContainerTrendVO {
@@ -50,9 +58,12 @@ export interface ContainerPartnerTurnoverVO {
   itemName: string;
   itemCode: string;
   businessCode: string;
+  inventoryQuantity: number;
+  beginQuantity: number;
   inboundQuantity: number;
   outboundQuantity: number;
   diffQuantity: number;
+  endQuantity: number;
   status: 'high' | 'recovery' | 'normal';
   updateTime: string;
 }

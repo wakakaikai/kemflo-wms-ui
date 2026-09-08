@@ -3,7 +3,7 @@
     <div class="dashboard-canvas" :style="canvasStyle">
       <header class="dashboard-header">
         <div class="header-left">
-          <img v-if="tenantId === '000001'" src="@/assets/logo/yakima-logo.png" alt="Logo" class="logo" @click="toggleFullscreen" />
+          <img v-if="tenantId == '000001'" src="@/assets/logo/yakima-logo.png" alt="Logo" class="logo" @click="toggleFullscreen" />
           <img v-else src="@/assets/logo/kemflo-logo.jpg" alt="Logo" class="logo" @click="toggleFullscreen" />
         </div>
 
@@ -16,7 +16,11 @@
           <el-icon class="time-icon"><Clock /></el-icon>
           <div class="time-block">
             <span class="current-time">{{ currentDateTime }}</span>
-            <span class="weekday">{{ currentWeekday }}</span>
+            <span class="date-row">
+              <span class="weekday">{{ currentWeekday }}</span>
+              <span v-if="selectedDateLabel" class="selected-date">{{ selectedDateLabel }}</span>
+              <span v-if="selectedDateWeekday" class="selected-date-weekday">（{{ selectedDateWeekday }}）</span>
+            </span>
           </div>
         </div>
       </header>
@@ -29,7 +33,11 @@
           <div class="metric-main">
             <span>{{ card.title }}</span>
             <strong>{{ card.value }}</strong>
-            <em :class="{ down: card.down }">较昨日 <i>{{ card.down ? '▼' : '▲' }}</i> {{ card.rate }}</em>
+            <em :class="{ down: card.down }">
+              <span class="compare-text">{{ comparisonLabel }}</span>
+              <i class="trend-icon">{{ card.down ? '▼' : '▲' }}</i>
+              <span class="compare-rate">{{ card.rate }}</span>
+            </em>
           </div>
           <div class="metric-spark" aria-hidden="true"><i /><i /><i /><i /><i /></div>
         </article>
@@ -52,7 +60,7 @@
 
         <article class="dashboard-panel ratio-panel">
           <header class="panel-title">
-            <h2>出货状态占比</h2>
+            <h2>扫码状态占比</h2>
           </header>
           <div class="panel-body ratio-body">
             <div ref="ratioChartRef" class="chart ratio-chart"></div>
@@ -86,13 +94,6 @@
       <section class="dashboard-panel detail-panel">
         <header class="panel-title">
           <h2>实时出货扫码明细</h2>
-          <div class="detail-actions">
-            <span>实时更新 {{ currentDateTime }}</span>
-            <label>
-              <input v-model="settingsForm.enableScroll" type="checkbox" @change="saveScrollSetting" />
-              自动滚动
-            </label>
-          </div>
         </header>
         <div class="detail-table-wrap">
           <div class="detail-head detail-row">
@@ -100,37 +101,29 @@
             <span>扫码时间</span>
             <span>客户代码</span>
             <span>客户名称</span>
+            <span>客户单号</span>
             <span>条码</span>
-            <span>数量</span>
             <span>状态</span>
             <span>工单号</span>
             <span>物料</span>
             <span>物料描述</span>
-            <span>客户单号</span>
           </div>
           <div class="detail-body">
-            <Vue3SeamlessScroll
-              v-if="showScroll && settingsForm.enableScroll && detailRows.length > settingsForm.displayLimit"
-              :key="detailScrollKey"
-              :list="scrollRowsGetter"
-              :visible-count="visibleCountGetter"
-              :hover="enabledGetter"
-              :step="stepGetter"
-              :wheel="enabledGetter"
-            >
+            <Vue3SeamlessScroll v-if="showScroll && settingsForm.enableScroll && detailRows.length > settingsForm.displayLimit" :key="detailScrollKey" :list="detailScrollRows" :visible-count="settingsForm.displayLimit" :hover="true" :step="stepVal" :wheel="true">
               <template #default="{ data: row }">
                 <div class="detail-row">
                   <span>{{ row.displayIndex }}</span>
                   <span>{{ row.dateTime || '-' }}</span>
                   <span>{{ row.customerCode || '-' }}</span>
                   <span class="ellipsis" :title="row.customerName">{{ row.customerName || '-' }}</span>
+                  <span class="ellipsis" :title="row.customerNo">{{ row.customerNo || '-' }}</span>
                   <span class="ellipsis" :title="row.sfc">{{ row.sfc || '-' }}</span>
-                  <span>{{ formatNumber(row.quantity) }}</span>
-                  <span><i :class="['status-tag', Number(row.status) === 1 ? 'abnormal' : 'normal']">{{ Number(row.status) === 1 ? '异常' : '正常' }}</i></span>
+                  <span
+                    ><i :class="['status-tag', isAbnormalStatus(row.status) ? 'abnormal' : 'normal']">{{ isAbnormalStatus(row.status) ? '异常' : '正常' }}</i></span
+                  >
                   <span class="ellipsis" :title="row.shopOrder">{{ row.shopOrder || '-' }}</span>
                   <span class="ellipsis" :title="row.item">{{ row.item || '-' }}</span>
                   <span class="ellipsis" :title="row.itemDesc">{{ row.itemDesc || '-' }}</span>
-                  <span class="ellipsis" :title="row.customerNo">{{ row.customerNo || '-' }}</span>
                 </div>
               </template>
             </Vue3SeamlessScroll>
@@ -140,13 +133,14 @@
                 <span>{{ row.dateTime || '-' }}</span>
                 <span>{{ row.customerCode || '-' }}</span>
                 <span class="ellipsis" :title="row.customerName">{{ row.customerName || '-' }}</span>
+                <span class="ellipsis" :title="row.customerNo">{{ row.customerNo || '-' }}</span>
                 <span class="ellipsis" :title="row.sfc">{{ row.sfc || '-' }}</span>
-                <span>{{ formatNumber(row.quantity) }}</span>
-                <span><i :class="['status-tag', Number(row.status) === 1 ? 'abnormal' : 'normal']">{{ Number(row.status) === 1 ? '异常' : '正常' }}</i></span>
+                <span
+                  ><i :class="['status-tag', isAbnormalStatus(row.status) ? 'abnormal' : 'normal']">{{ isAbnormalStatus(row.status) ? '异常' : '正常' }}</i></span
+                >
                 <span class="ellipsis" :title="row.shopOrder">{{ row.shopOrder || '-' }}</span>
                 <span class="ellipsis" :title="row.item">{{ row.item || '-' }}</span>
                 <span class="ellipsis" :title="row.itemDesc">{{ row.itemDesc || '-' }}</span>
-                <span class="ellipsis" :title="row.customerNo">{{ row.customerNo || '-' }}</span>
               </div>
               <div v-if="detailRows.length === 0" class="empty-state">暂无扫码明细</div>
             </template>
@@ -162,14 +156,11 @@
             <strong>{{ item.value }}</strong>
           </div>
         </div>
-        <p>
-          <strong>高效 · 准确 · 可追溯</strong>
-          <span>KEMFLO | 智能制造 数字物流</span>
-        </p>
+        <p>KEMFLO&nbsp;&nbsp;|&nbsp;&nbsp;智能制造&nbsp;&nbsp;数字物流</p>
       </footer>
     </div>
 
-    <el-dialog v-model="showSettings" title="看板设置" width="520px" append-to-body class="shipping-config-dialog">
+    <el-dialog v-model="showSettings" title="看板设置" width="520px" append-to-body :append-to="settingsDialogAppendTo" class="shipping-config-dialog">
       <el-form label-width="110px">
         <el-form-item label="显示数量"><el-slider v-model="settingsForm.displayLimit" :min="5" :max="30" show-input /></el-form-item>
         <el-form-item label="滚动速度"><el-slider v-model="settingsForm.scrollSpeed" :min="0.1" :max="2" :step="0.1" show-input /></el-form-item>
@@ -177,8 +168,10 @@
           <el-input-number v-model="settingsForm.refreshInterval" :min="10" :max="300" :step="5" />
           <span class="setting-suffix">秒</span>
         </el-form-item>
+        <el-form-item label="查看日期">
+          <el-date-picker v-model="settingsForm.selectedDate" type="date" value-format="YYYY-MM-DD" :disabled-date="disableFutureDate" :teleported="!isFullscreen" clearable />
+        </el-form-item>
         <el-form-item label="自动滚动"><el-switch v-model="settingsForm.enableScroll" /></el-form-item>
-        <el-form-item label="客户编码"><el-input v-model.trim="queryParams.customerCode" clearable placeholder="可选筛选客户" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showSettings = false">取消</el-button>
@@ -193,23 +186,8 @@ import { Clock } from '@element-plus/icons-vue';
 import * as echarts from 'echarts';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { Vue3SeamlessScroll } from 'vue3-seamless-scroll';
-import {
-  getShippingDetailFooter,
-  getShippingDetailHourlyTrend,
-  getShippingDetailOverview,
-  getShippingDetailStatusRatio,
-  getShippingDetailTopCustomers,
-  listShippingDetailScada
-} from '@/api/scada/shippingDetail';
-import type {
-  ShippingDetailFooterVO,
-  ShippingDetailHourlyTrendVO,
-  ShippingDetailOverviewVO,
-  ShippingDetailRowVO,
-  ShippingDetailScadaQuery,
-  ShippingDetailStatusRatioVO,
-  ShippingDetailTopCustomerVO
-} from '@/api/scada/shippingDetail/types';
+import { getShippingDetailFooter, getShippingDetailHourlyTrend, getShippingDetailOverview, getShippingDetailStatusRatio, getShippingDetailTopCustomers, listShippingDetailScada } from '@/api/scada/shippingDetail';
+import type { ShippingDetailFooterVO, ShippingDetailHourlyTrendVO, ShippingDetailOverviewVO, ShippingDetailRowVO, ShippingDetailScadaQuery, ShippingDetailStatusRatioVO, ShippingDetailTopCustomerVO } from '@/api/scada/shippingDetail/types';
 
 import boxIcon from '@/assets/images/scada/shipping-dashboard/icons/scan-box.svg';
 import customerIcon from '@/assets/images/scada/shipping-dashboard/icons/customer.svg';
@@ -219,9 +197,24 @@ import truckIcon from '@/assets/images/scada/shipping-dashboard/icons/truck.svg'
 
 type IconName = 'box' | 'customer' | 'order' | 'item' | 'truck';
 
+interface WebMcpModelContext {
+  registerTool: (
+    tool: {
+      name: string;
+      title: string;
+      description: string;
+      inputSchema: Record<string, unknown>;
+      annotations: { readOnlyHint: boolean; untrustedContentHint: boolean };
+      execute: (input: unknown) => Promise<Record<string, unknown>>;
+    },
+    options?: { signal?: AbortSignal }
+  ) => void | Promise<void>;
+}
+
 const SETTINGS_KEY = 'scada-shipping-detail-settings';
 const designWidth = 1920;
 const designHeight = 1080;
+const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
 
 const iconMap: Record<IconName, string> = {
   box: boxIcon,
@@ -248,9 +241,9 @@ const emptyOverview = (): ShippingDetailOverviewVO => ({
 
 const emptyFooter = (): ShippingDetailFooterVO => ({
   customerTotal: 0,
-  todayVehicleCount: 0,
-  todayBoxQty: 0,
-  todayShopOrderCount: 0
+  todayItemCount: 0,
+  todayScanQty: 0,
+  todayOrderCount: 0
 });
 
 const tenantId = ref('000000');
@@ -272,20 +265,24 @@ const stepVal = ref(0.35);
 const detailScrollKey = ref(0);
 const viewport = reactive({ scale: 1, left: 0, top: 0 });
 const queryParams = reactive<ShippingDetailScadaQuery>({ customerCode: undefined });
-const settingsForm = reactive({ displayLimit: 8, scrollSpeed: 0.35, refreshInterval: 30, enableScroll: true });
+const settingsForm = reactive({ displayLimit: 8, scrollSpeed: 0.35, refreshInterval: 30, enableScroll: true, selectedDate: todayDate() });
 
 let clockTimer: number | undefined;
 let refreshTimer: number | undefined;
 let trendChart: echarts.ECharts | undefined;
 let ratioChart: echarts.ECharts | undefined;
+let webMcpController: AbortController | undefined;
 
 const canvasStyle = computed(() => ({ transform: `scale(${viewport.scale})`, left: `${viewport.left}px`, top: `${viewport.top}px` }));
+const settingsDialogAppendTo = computed<HTMLElement | string>(() => (isFullscreen.value && boardRef.value ? boardRef.value : 'body'));
 const detailScrollRows = computed(() => detailRows.value.map((row, index) => ({ ...row, displayIndex: index + 1 })));
 const topCustomerMax = computed(() => Math.max(1, ...topCustomers.value.map((item) => Number(item.qty || 0))));
-const scrollRowsGetter = () => detailScrollRows.value;
-const visibleCountGetter = () => settingsForm.displayLimit;
-const stepGetter = () => stepVal.value;
-const enabledGetter = () => true;
+const queryDate = computed(() => settingsForm.selectedDate || todayDate());
+const isSelectedToday = computed(() => queryDate.value === todayDate());
+const metricDatePrefix = computed(() => (isSelectedToday.value ? '今日' : ''));
+const selectedDateLabel = computed(() => (isSelectedToday.value ? '' : queryDate.value));
+const selectedDateWeekday = computed(() => (selectedDateLabel.value ? getWeekday(queryDate.value) : ''));
+const comparisonLabel = computed(() => (isSelectedToday.value ? '较昨日' : '较前日'));
 
 const normalizedStatusRatio = computed(() => {
   const fallback = [
@@ -303,20 +300,45 @@ const normalizedStatusRatio = computed(() => {
 
 const metrics = computed(() => {
   const o = overview.value;
+  const prefix = metricDatePrefix.value;
   return [
-    { title: '今日扫码数量', value: formatNumber(o.todayScanQty), icon: 'box' as IconName, tone: 'blue', rate: formatRate(o.scanQtyChangeRate), down: Number(o.scanQtyChangeRate) < 0 },
-    { title: '今日发货客户', value: formatNumber(o.todayCustomerCount), icon: 'truck' as IconName, tone: 'green', rate: formatRate(o.customerChangeRate), down: Number(o.customerChangeRate) < 0 },
-    { title: '今日发货单数', value: formatNumber(o.todayOrderCount), icon: 'order' as IconName, tone: 'amber', rate: formatRate(o.orderChangeRate), down: Number(o.orderChangeRate) < 0 },
-    { title: '今日发货物料', value: formatNumber(o.todayItemCount), icon: 'item' as IconName, tone: 'violet', rate: formatRate(o.itemChangeRate), down: Number(o.itemChangeRate) < 0 }
+    { title: `${prefix}扫码数量`, value: formatNumber(o.todayScanQty), icon: 'box' as IconName, tone: 'blue', rate: formatRate(o.scanQtyChangeRate), down: Number(o.scanQtyChangeRate) < 0 },
+    { title: `${prefix}发货客户`, value: formatNumber(o.todayCustomerCount), icon: 'truck' as IconName, tone: 'green', rate: formatRate(o.customerChangeRate), down: Number(o.customerChangeRate) < 0 },
+    { title: `${prefix}发货单数`, value: formatNumber(o.todayOrderCount), icon: 'order' as IconName, tone: 'amber', rate: formatRate(o.orderChangeRate), down: Number(o.orderChangeRate) < 0 },
+    { title: `${prefix}发货物料`, value: formatNumber(o.todayItemCount), icon: 'item' as IconName, tone: 'violet', rate: formatRate(o.itemChangeRate), down: Number(o.itemChangeRate) < 0 }
   ];
 });
 
 const footerStats = computed(() => [
   { label: '客户总数', value: formatNumber(footer.value.customerTotal), icon: 'customer' as IconName },
-  { label: '今日出货车辆', value: formatNumber(footer.value.todayVehicleCount), icon: 'truck' as IconName },
-  { label: '今日出货箱数', value: formatNumber(footer.value.todayBoxQty), icon: 'box' as IconName },
-  { label: '今日工单数', value: formatNumber(footer.value.todayShopOrderCount), icon: 'order' as IconName }
+  { label: `${metricDatePrefix.value}物料数`, value: formatNumber(footer.value.todayItemCount), icon: 'item' as IconName },
+  { label: `${metricDatePrefix.value}扫码个数`, value: formatNumber(footer.value.todayScanQty), icon: 'box' as IconName },
+  { label: `${metricDatePrefix.value}客户订单个数`, value: formatNumber(footer.value.todayOrderCount), icon: 'order' as IconName }
 ]);
+
+function todayDate() {
+  return formatDate(new Date());
+}
+
+function formatDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function buildDateTimeRange(date: string) {
+  return [`${date} 00:00:00`, `${date} 23:59:59`];
+}
+
+function getWeekday(date: string) {
+  const [year, month, day] = date.split('-').map(Number);
+  return weekdays[new Date(year, month - 1, day).getDay()];
+}
+
+function disableFutureDate(date: Date) {
+  return formatDate(date) > todayDate();
+}
 
 const formatNumber = (value: number | string | undefined) => Number(value || 0).toLocaleString('zh-CN');
 const formatRate = (value: number | string | undefined) => {
@@ -324,34 +346,29 @@ const formatRate = (value: number | string | undefined) => {
   return `${rate >= 0 ? '+' : ''}${rate.toFixed(1)}%`;
 };
 const formatPercent = (value: number | string | undefined) => `${Number(value || 0).toFixed(1)}%`;
-const statusName = (status?: number) => (Number(status) === 1 ? '异常' : Number(status) === 2 ? '待处理' : '正常');
-const statusColor = (status?: number) => (Number(status) === 1 ? '#ff7448' : Number(status) === 2 ? '#ffc955' : '#2aa8ff');
+const isAbnormalStatus = (status?: number | string) => Number(status || 0) !== 0;
+const statusName = (status?: number) => (isAbnormalStatus(status) ? '异常' : '正常');
+const statusColor = (status?: number) => (isAbnormalStatus(status) ? '#ff7448' : '#2aa8ff');
 const topBarPercent = (value: number | string | undefined) => Math.max(8, (Number(value || 0) / topCustomerMax.value) * 100);
 
 function buildQuery(): ShippingDetailScadaQuery {
   return {
     customerCode: queryParams.customerCode || undefined,
-    topLimit: 5
+    topLimit: 5,
+    dateTimeRange: buildDateTimeRange(queryDate.value)
   };
 }
 
 async function refreshAll() {
   const query = buildQuery();
-  const [overviewRes, trendRes, ratioRes, topRes, footerRes, listRes] = await Promise.allSettled([
-    getShippingDetailOverview(query),
-    getShippingDetailHourlyTrend(query),
-    getShippingDetailStatusRatio(query),
-    getShippingDetailTopCustomers(query),
-    getShippingDetailFooter(query),
-    listShippingDetailScada({ ...query, pageNum: 1, pageSize: 100 })
-  ]);
+  const [overviewRes, trendRes, ratioRes, topRes, footerRes, listRes] = await Promise.allSettled([getShippingDetailOverview(query), getShippingDetailHourlyTrend(query), getShippingDetailStatusRatio(query), getShippingDetailTopCustomers(query), getShippingDetailFooter(query), listShippingDetailScada(query)]);
 
   overview.value = overviewRes.status === 'fulfilled' ? overviewRes.value.data || emptyOverview() : emptyOverview();
   hourlyTrend.value = trendRes.status === 'fulfilled' ? trendRes.value.data || [] : [];
   statusRatio.value = ratioRes.status === 'fulfilled' ? ratioRes.value.data || [] : [];
   topCustomers.value = topRes.status === 'fulfilled' ? topRes.value.data || [] : [];
   footer.value = footerRes.status === 'fulfilled' ? footerRes.value.data || emptyFooter() : emptyFooter();
-  detailRows.value = listRes.status === 'fulfilled' ? listRes.value.data?.rows || [] : [];
+  detailRows.value = listRes.status === 'fulfilled' ? listRes.value.data || [] : [];
   detailScrollKey.value += 1;
   await nextTick();
   renderCharts();
@@ -464,7 +481,7 @@ function updateClock() {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
   currentDateTime.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-  currentWeekday.value = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()];
+  currentWeekday.value = weekdays[now.getDay()];
 }
 
 function resizeCanvas() {
@@ -499,6 +516,8 @@ function loadSettings() {
     if (!raw) return;
     const parsed = JSON.parse(raw);
     Object.assign(settingsForm, parsed);
+    settingsForm.selectedDate = settingsForm.selectedDate || todayDate();
+    if (settingsForm.selectedDate > todayDate()) settingsForm.selectedDate = todayDate();
     stepVal.value = Number(settingsForm.scrollSpeed || 0.35);
   } catch {
     /* ignore invalid local settings */
@@ -523,6 +542,38 @@ function restartRefreshTimer() {
   refreshTimer = window.setInterval(refreshAll, Math.max(10, settingsForm.refreshInterval) * 1000);
 }
 
+function registerWebMcpTools() {
+  const context = (document as Document & { modelContext?: WebMcpModelContext }).modelContext;
+  if (!context?.registerTool) return;
+  webMcpController = new AbortController();
+  const tool = {
+    name: 'set_shipping_detail_live_scroll',
+    title: '设置明细实时滚动',
+    description: '启用或暂停出货扫码明细的实时滚动，并同步更新看板上的可见状态。',
+    inputSchema: {
+      type: 'object',
+      properties: { enabled: { type: 'boolean', description: 'true 启用实时滚动，false 暂停实时滚动' } },
+      required: ['enabled'],
+      additionalProperties: false
+    },
+    annotations: { readOnlyHint: false, untrustedContentHint: false },
+    async execute(input: unknown) {
+      if (!input || typeof input !== 'object' || typeof (input as { enabled?: unknown }).enabled !== 'boolean') {
+        throw new TypeError('enabled 必须是布尔值');
+      }
+      settingsForm.enableScroll = (input as { enabled: boolean }).enabled;
+      saveScrollSetting();
+      await nextTick();
+      return { enabled: settingsForm.enableScroll, status: settingsForm.enableScroll ? 'running' : 'paused' };
+    }
+  };
+  try {
+    void Promise.resolve(context.registerTool(tool, { signal: webMcpController.signal })).catch(() => webMcpController?.abort());
+  } catch {
+    webMcpController.abort();
+  }
+}
+
 onMounted(async () => {
   tenantId.value = localStorage.getItem('tenantId') || '000000';
   loadSettings();
@@ -531,6 +582,7 @@ onMounted(async () => {
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
   document.addEventListener('fullscreenchange', handleFullscreenChange);
+  registerWebMcpTools();
   await refreshAll();
   restartRefreshTimer();
 });
@@ -540,6 +592,7 @@ onBeforeUnmount(() => {
   if (refreshTimer) window.clearInterval(refreshTimer);
   window.removeEventListener('resize', resizeCanvas);
   document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  webMcpController?.abort();
   trendChart?.dispose();
   ratioChart?.dispose();
 });
@@ -551,11 +604,11 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100vh;
   min-height: 720px;
-  overflow: auto hidden;
+  overflow: auto;
   color: #f3f9ff;
   background:
-    linear-gradient(180deg, rgba(0, 8, 26, 0.12), rgba(0, 8, 26, 0.38)),
-    url('@/assets/images/scada/shipping-dashboard/backgrounds/board-bg.svg') center / cover no-repeat,
+    linear-gradient(180deg, rgba(0, 8, 26, 0.08), rgba(0, 8, 26, 0.48)),
+    url('@/assets/images/scada/shipping-dashboard/backgrounds/logistics-command-bg.png') center / cover no-repeat,
     #020915;
   font-family: 'Microsoft YaHei', Arial, sans-serif;
 
@@ -564,16 +617,14 @@ onBeforeUnmount(() => {
     inset: 0;
     content: '';
     pointer-events: none;
-    background:
-      linear-gradient(90deg, rgba(31, 161, 255, 0.08) 1px, transparent 1px),
-      linear-gradient(0deg, rgba(31, 161, 255, 0.06) 1px, transparent 1px);
+    background: linear-gradient(90deg, rgba(31, 161, 255, 0.08) 1px, transparent 1px), linear-gradient(0deg, rgba(31, 161, 255, 0.06) 1px, transparent 1px);
     background-size: 82px 82px;
     mask-image: linear-gradient(180deg, transparent 0, #000 16%, #000 86%, transparent 100%);
   }
 }
 
 .dashboard-canvas {
-  position: absolute;
+  position: relative;
   width: 1920px;
   height: 1080px;
   transform-origin: left top;
@@ -582,6 +633,7 @@ onBeforeUnmount(() => {
 }
 
 .dashboard-header {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(360px, 1fr) minmax(560px, 1.25fr) minmax(360px, 1fr);
   align-items: center;
@@ -592,6 +644,26 @@ onBeforeUnmount(() => {
   box-shadow:
     inset 0 0 26px rgba(26, 159, 255, 0.2),
     0 0 28px rgba(0, 144, 255, 0.2);
+
+  &::before,
+  &::after {
+    position: absolute;
+    bottom: -1px;
+    width: 23%;
+    height: 2px;
+    content: '';
+    background: linear-gradient(90deg, transparent, #20afff);
+    box-shadow: 0 0 9px rgba(31, 175, 255, 0.86);
+  }
+
+  &::before {
+    left: 0;
+  }
+
+  &::after {
+    right: 0;
+    transform: scaleX(-1);
+  }
 }
 
 .header-left,
@@ -613,11 +685,13 @@ onBeforeUnmount(() => {
 }
 
 .logo {
-  max-width: 280px;
-  height: 48px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 10px rgba(58, 177, 255, 0.95));
+  height: 45px;
+  filter: drop-shadow(0 0 5px rgba(100, 150, 255, 0.8));
   cursor: pointer;
+}
+
+.shipping-board:fullscreen .logo {
+  height: 50px;
 }
 
 .header-title {
@@ -680,6 +754,19 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.selected-date {
+  color: #6fe7ff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .metric-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -722,9 +809,9 @@ onBeforeUnmount(() => {
 
 .metric-card {
   display: grid;
-  grid-template-columns: 122px 1fr 84px;
+  grid-template-columns: 112px minmax(0, 1fr) 64px;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   padding: 18px 20px 16px 30px;
   color: #25a8ff;
   background: linear-gradient(135deg, rgba(12, 103, 205, 0.48), rgba(2, 24, 58, 0.82));
@@ -784,15 +871,37 @@ onBeforeUnmount(() => {
   }
 
   em {
-    display: block;
-    margin-top: 12px;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 2px 6px;
+    max-width: 100%;
+    margin-top: 10px;
     color: #22ffc7;
-    font-size: 18px;
+    font-size: 17px;
     font-style: normal;
     font-weight: 800;
+    line-height: 1.15;
+    white-space: nowrap;
 
     &.down {
       color: #ff748e;
+    }
+
+    .trend-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 18px;
+      font-size: 14px;
+      font-style: normal;
+      line-height: 1;
+    }
+
+    .compare-text,
+    .compare-rate {
+      min-width: 0;
     }
   }
 }
@@ -856,7 +965,10 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   flex-shrink: 0;
   min-height: 48px;
+  margin: 0;
+  border-bottom: 0;
   padding: 12px 18px 0;
+  line-height: normal;
 
   h2 {
     display: flex;
@@ -865,6 +977,8 @@ onBeforeUnmount(() => {
     color: #f5fbff;
     font-size: 24px;
     font-weight: 800;
+    border-bottom: 0;
+    text-decoration: none;
     text-shadow: 0 0 12px rgba(26, 152, 255, 0.52);
 
     &::before {
@@ -875,7 +989,18 @@ onBeforeUnmount(() => {
       background: #2aa8ff;
       box-shadow: 0 0 12px #2aa8ff;
     }
+
+    &::after {
+      display: none;
+      content: none;
+    }
   }
+}
+
+.shipping-board .dashboard-panel > .panel-title {
+  margin: 0;
+  border-bottom: 0 !important;
+  padding: 12px 18px 0;
 }
 
 .unit-label {
@@ -1015,20 +1140,6 @@ onBeforeUnmount(() => {
   margin-top: 14px;
 }
 
-.detail-actions {
-  display: flex;
-  align-items: center;
-  gap: 26px;
-  color: #b9d8f2;
-  font-size: 14px;
-
-  label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-}
-
 .detail-table-wrap {
   display: flex;
   flex: 1;
@@ -1039,13 +1150,18 @@ onBeforeUnmount(() => {
 
 .detail-row {
   display: grid;
-  grid-template-columns: 58px 190px 126px 1.35fr 1.35fr 70px 86px 1fr 1.08fr 1.18fr 1.05fr;
+  grid-template-columns: 58px 190px 126px 1.25fr 1fr 1.35fr 86px 1fr 1.08fr 1.8fr;
   align-items: center;
   gap: 12px;
   min-height: 32px;
   padding: 0 12px;
   color: #f0f8ff;
   font-size: 15px;
+
+  > span {
+    min-width: 0;
+    text-align: center;
+  }
 }
 
 .detail-head {
@@ -1155,21 +1271,12 @@ onBeforeUnmount(() => {
 .dashboard-footer p {
   justify-self: end;
   margin: 0;
+  color: #22baff;
+  font-size: 17px;
+  font-weight: 700;
   text-align: right;
-
-  strong {
-    display: block;
-    color: #39d6ff;
-    font-size: 21px;
-    letter-spacing: 6px;
-  }
-
-  span {
-    display: block;
-    margin-top: 5px;
-    color: #9dc9e8;
-    font-size: 13px;
-  }
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(34, 186, 255, 0.58);
 }
 
 .setting-suffix {
