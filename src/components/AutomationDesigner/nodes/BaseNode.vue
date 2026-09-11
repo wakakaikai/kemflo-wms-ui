@@ -196,7 +196,7 @@ const endOutputFormat = computed(() => {
   return 'JSON';
 });
 
- = computed(() => {
+const switchCases = computed(() => {
   const branches = Array.isArray(cfg.value.branches) ? cfg.value.branches : [];
   if (branches.length > 0) {
     return branches.map((item: any, index: number) => {
