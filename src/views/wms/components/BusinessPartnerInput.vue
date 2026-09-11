@@ -14,7 +14,15 @@
       <el-button icon="Search" @click="openSupplierDialog"></el-button>
     </template>
   </el-input>
-  <el-input v-else :model-value="businessCode" placeholder="请输入业务伙伴" clearable @input="onManualInput" @clear="clearBusiness" />
+  <el-input
+    v-else
+    :model-value="businessCode"
+    placeholder="请输入业务伙伴"
+    clearable
+    :disabled="isManualInputDisabled"
+    @input="onManualInput"
+    @clear="clearBusiness"
+  />
 
   <CustomerDialog ref="customerDialogRef" @customer-select-call-back="customerSelectCallBack" />
   <SupplierDialog ref="supplierDialogRef" @supplier-select-call-back="supplierSelectCallBack" />
@@ -44,20 +52,32 @@ const customerDialogRef = ref<InstanceType<typeof CustomerDialog>>();
 const supplierDialogRef = ref<InstanceType<typeof SupplierDialog>>();
 const salesOrderDetailDialogRef = ref<InstanceType<typeof SalesOrderDetailDialog>>();
 
-const selectionType = computed(() => {
-  const flag = String(props.specialInventoryFlag || '')
+const normalizedFlag = computed(() =>
+  String(props.specialInventoryFlag || '')
     .trim()
-    .toUpperCase();
+    .toUpperCase()
+);
+
+const selectionType = computed(() => {
+  const flag = normalizedFlag.value;
   if (flag === 'E') {
     return 'salesOrder';
   }
-  if (flag === 'K') {
+  if (flag === 'K' || flag === 'O') {
     return 'supplier';
   }
   if (flag === 'B' || flag === 'W') {
     return 'customer';
   }
   return 'manual';
+});
+
+/** 特殊库存标识为 N 且业务伙伴为空时，不允许手工输入 */
+const isManualInputDisabled = computed(() => {
+  if (normalizedFlag.value !== 'N') {
+    return false;
+  }
+  return !String(props.businessCode ?? '').trim();
 });
 
 watch(
@@ -71,6 +91,9 @@ const clearBusiness = () => {
 };
 
 const onManualInput = (value: string) => {
+  if (isManualInputDisabled.value) {
+    return;
+  }
   emit('update:businessCode', value);
   emit('update:businessName', undefined);
 };

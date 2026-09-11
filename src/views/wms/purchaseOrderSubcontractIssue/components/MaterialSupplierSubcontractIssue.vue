@@ -68,18 +68,14 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="待发数量" prop="openQuantity" min-width="100" />
-          <el-table-column label="可用库存" align="right" min-width="100">
+          <el-table-column label="发料数量" align="center" min-width="200">
             <template #default="scope">
-              {{ scope.row.inventoryAvailableQuantity ?? '-' }}
+              <div class="issue-qty-cell">
+                <el-input-number v-model="scope.row.issueQuantity" :min="0" :max="resolveIssueQuantityMax(scope.row)" :precision="3" size="small" controls-position="right" @change="handleIssueQuantityChange(scope.row)" />
+                <span class="issue-qty-unit">{{ scope.row.unit || '' }}</span>
+              </div>
             </template>
           </el-table-column>
-          <el-table-column label="发料数量" align="center" width="160">
-            <template #default="scope">
-              <el-input-number v-model="scope.row.issueQuantity" :min="0" :max="resolveIssueQuantityMax(scope.row)" :precision="3" size="small" controls-position="right" @change="handleIssueQuantityChange(scope.row)" />
-            </template>
-          </el-table-column>
-          <el-table-column label="单位" prop="unit" width="70" />
           <el-table-column label="操作" width="80" align="center">
             <template #default="scope">
               <el-button type="danger" link icon="Delete" @click="removeFromIssueList(scope.$index)"></el-button>
@@ -369,6 +365,16 @@ const submitForm = async () => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+.issue-qty-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.issue-qty-unit {
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
 }
 .list-footer-actions {
   display: flex;

@@ -19,6 +19,9 @@
             <el-form-item label="交货单号" prop="deliveryOrderNo">
               <HistoryInput v-model="stoQueryParams.deliveryOrderNo" :config="deliveryOrderNoConfig" placeholder="请输入交货单号" @keydown.tab.prevent="handleStoQuery" @keydown.enter.prevent="handleStoQuery"> </HistoryInput>
             </el-form-item>
+            <el-form-item label="交货单项次" prop="deliveryItemNo">
+              <HistoryInput v-model="stoQueryParams.deliveryItemNo" :config="deliveryItemNoConfig" placeholder="请输入交货单项次" @keydown.tab.prevent="handleStoQuery" @keydown.enter.prevent="handleStoQuery" />
+            </el-form-item>
             <el-form-item label="显示已收货" prop="showOpenQuantityZero">
               <el-checkbox v-model="stoQueryParams.showOpenQuantityZero" @change="handleShowReceivedChange" />
             </el-form-item>
@@ -31,23 +34,23 @@
           <div class="search-result">
             <el-table ref="stoTableRef" :data="stoOrderDetailList" height="300" border v-loading="stoLoading" @selection-change="handleStoSelectionChange">
               <el-table-column type="selection" width="55" align="center" />
-              <el-table-column v-if="stoColumns[0].visible" label="交货单号" align="left" prop="deliveryOrderNo" fixed="left" min-width="120" />
-              <el-table-column v-if="stoColumns[1].visible" label="交货单项次" align="left" prop="deliveryItemNo" fixed="left" />
-              <el-table-column v-if="stoColumns[2].visible" label="采购单号" align="left" prop="purchaseOrderNo" fixed="left" min-width="120" />
-              <el-table-column v-if="stoColumns[3].visible" label="采购单项次" align="left" prop="purchaseItemNo" fixed="left" min-width="80" />
-              <el-table-column v-if="stoColumns[4].visible" label="交货日期" align="center" prop="deliveryDate" min-width="100" />
-              <el-table-column v-if="stoColumns[5].visible" label="料号" align="left" prop="materialCode" min-width="135" />
+              <el-table-column v-if="stoColumns[0].visible" label="交货单号" align="left" prop="deliveryOrderNo" min-width="100" />
+              <el-table-column v-if="stoColumns[1].visible" label="交货项次" align="left" prop="deliveryItemNo" />
+              <el-table-column v-if="stoColumns[2].visible" label="采购单号" align="left" prop="purchaseOrderNo" min-width="100" />
+              <el-table-column v-if="stoColumns[3].visible" label="采购项次" align="left" prop="purchaseItemNo" />
+              <el-table-column v-if="stoColumns[4].visible" label="交货日期" align="center" prop="deliveryDate" />
+              <el-table-column v-if="stoColumns[5].visible" label="料号" align="left" prop="materialCode" />
               <el-table-column v-if="stoColumns[6].visible" label="旧料号" align="left" prop="oldMaterialCode" />
               <el-table-column v-if="stoColumns[7].visible" label="物料描述" align="left" prop="materialDesc" show-overflow-tooltip />
               <el-table-column v-if="stoColumns[17].visible" label="批次号" align="center" prop="batchCode" />
-              <el-table-column v-if="stoColumns[8].visible" label="订单数量" align="left" prop="orderQuantity" min-width="100" />
-              <el-table-column v-if="stoColumns[9].visible" label="已收数量" align="left" prop="receivedQuantity" min-width="100" />
-              <el-table-column v-if="stoColumns[10].visible" label="未清数量" align="left" prop="openQuantity" min-width="100" />
+              <el-table-column v-if="stoColumns[8].visible" label="订单数量" align="left" prop="orderQuantity" />
+              <el-table-column v-if="stoColumns[9].visible" label="已收数量" align="left" prop="receivedQuantity" />
+              <el-table-column v-if="stoColumns[10].visible" label="未清数量" align="left" prop="openQuantity" />
               <el-table-column v-if="stoColumns[11].visible" label="订单单位" align="center" prop="orderUnit" />
               <el-table-column v-if="stoColumns[12].visible" label="需质检" align="center" prop="inspectionFlag" />
               <el-table-column v-if="stoColumns[13].visible" label="库存单位" align="center" prop="inventoryUnit" />
               <el-table-column v-if="stoColumns[14].visible" label="换算比例" align="center" prop="conversionRatio" />
-              <el-table-column v-if="stoColumns[15].visible" label="供应商代码" align="center" prop="supplierCode" min-width="120" />
+              <el-table-column v-if="stoColumns[15].visible" label="供应商代码" align="center" prop="supplierCode" />
               <el-table-column v-if="stoColumns[16].visible" label="供应商名称" align="center" prop="supplierName" show-overflow-tooltip min-width="120" />
             </el-table>
             <pagination v-show="stoTotal > 0" :total="stoTotal" v-model:page="stoQueryParams.pageNum" v-model:limit="stoQueryParams.pageSize" @pagination="getStoList" />
@@ -118,13 +121,16 @@
           <el-table :data="stoInboundList" border style="width: 100%" v-loading="stoTableLoading" max-height="400">
             <el-table-column type="index" width="50" align="center" />
             <el-table-column label="交货单号" prop="deliveryOrderNo" />
-            <el-table-column label="交货单项次" prop="deliveryItemNo" />
+            <el-table-column label="交货项次" prop="deliveryItemNo" />
             <el-table-column label="采购订单号" prop="poNumber" />
-            <el-table-column label="采购单项次" prop="itemNumber" />
+            <el-table-column label="采购项次" prop="itemNumber" />
             <el-table-column label="料号" prop="materialCode" min-width="100" />
             <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip />
-            <el-table-column label="订单数量" align="center" prop="orderQuantity" min-width="100" />
-            <el-table-column label="未清数量" prop="openQuantity" align="center" />
+            <el-table-column label="未清数量" prop="openQuantity" align="center">
+              <template #default="scope">
+                {{ formatQtyWithUnit(scope.row.openQuantity, scope.row.orderUnit) }}
+              </template>
+            </el-table-column>
             <el-table-column label="目标库位" width="220" v-if="stoInboundMode === 'multiple'">
               <template #default="scope">
                 <TableHistoryInput v-model="scope.row.locationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.locationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.locationCode)">
@@ -134,13 +140,17 @@
                 </TableHistoryInput>
               </template>
             </el-table-column>
-            <el-table-column label="收货数量" align="center" width="150">
+            <el-table-column label="收货数量" align="center" width="200">
               <template #default="scope">
                 <el-input-number v-model="scope.row.receivePoQuantity" :min="0" :max="parseFloat(scope.row.openQuantity || 0)" :precision="3" size="small" controls-position="right" @change="handleReceivePoQuantityChange(scope.row)" />
+                <span class="issue-qty-unit">{{ scope.row.orderUnit || '' }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="库存数量" prop="inventoryQuantity" align="center" />
-            <el-table-column label="库存单位" prop="inventoryUnit" align="center" />
+            <el-table-column label="库存数量" min-width="100" align="center">
+              <template #default="scope">
+                {{ formatQtyWithUnit(scope.row.inventoryQuantity, scope.row.inventoryUnit) }}
+              </template>
+            </el-table-column>
             <el-table-column label="操作" width="80" align="center">
               <template #default="scope">
                 <el-button type="danger" link icon="Delete" @click="removeFromStoInboundList(scope.$index)"></el-button>
@@ -170,6 +180,7 @@ import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
+import { formatQtyWithUnit } from '@/utils/ruoyi';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
@@ -200,6 +211,7 @@ const stoQueryParams = ref({
   pageNum: 1,
   pageSize: 1000,
   deliveryOrderNo: undefined as string | undefined,
+  deliveryItemNo: undefined as string | undefined,
   poNumber: undefined,
   itemNumber: undefined,
   materialCode: undefined,
@@ -243,6 +255,14 @@ const deliveryOrderNoConfig: HistoryConfig = {
   autoSave: true,
   component: { showDropdown: true, showTime: false, showDelete: true, dropdownMaxHeight: '300px' }
 };
+const deliveryItemNoConfig: HistoryConfig = {
+  key: 'deliveryItemNo',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'purchaseInbound',
+  autoSave: true,
+  component: { showDropdown: true, showTime: false, showDelete: true, dropdownMaxHeight: '300px' }
+};
 
 const stoColumns = ref([
   { key: 0, label: `交货单号`, visible: true, children: [] },
@@ -253,7 +273,6 @@ const stoColumns = ref([
   { key: 5, label: `料号`, visible: true, children: [] },
   { key: 6, label: `旧料号`, visible: false, children: [] },
   { key: 7, label: `物料描述`, visible: true, children: [] },
-  { key: 17, label: `批次号`, visible: true, children: [] },
   { key: 8, label: `订单数量`, visible: true, children: [] },
   { key: 9, label: `已收数量`, visible: true, children: [] },
   { key: 10, label: `未清数量`, visible: true, children: [] },
@@ -262,7 +281,8 @@ const stoColumns = ref([
   { key: 13, label: `库存单位`, visible: false, children: [] },
   { key: 14, label: `换算比例`, visible: false, children: [] },
   { key: 15, label: `供应商代码`, visible: true, children: [] },
-  { key: 16, label: `供应商名称`, visible: true, children: [] }
+  { key: 16, label: `供应商名称`, visible: true, children: [] },
+  { key: 17, label: `批次号`, visible: false, children: [] }
 ]);
 
 const disabledFutureDate = (time: Date) => {
@@ -339,6 +359,13 @@ const handleReceivePoQuantityChange = (row) => {
 };
 
 const getStoList = async (needValidate = false) => {
+  const deliveryOrderNo = String(stoQueryParams.value.deliveryOrderNo ?? '').trim();
+  if (!deliveryOrderNo) {
+    if (needValidate) {
+      await stoQueryFormRef.value?.validate().catch(() => false);
+    }
+    return;
+  }
   if (needValidate) {
     const valid = await stoQueryFormRef.value?.validate().catch(() => false);
     if (!valid) {
@@ -538,7 +565,7 @@ const submitStoForm = async () => {
   user-select: none;
 }
 .history-collapse-icon {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
   transition: transform 0.2s;
 }
@@ -546,7 +573,7 @@ const submitStoForm = async () => {
   transform: rotate(90deg);
 }
 .history-header-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 .search-result {
@@ -577,5 +604,10 @@ const submitStoForm = async () => {
 .rotate-button {
   transform: rotate(90deg);
   margin: 0 auto;
+}
+.issue-qty-unit {
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
+  margin-left: 2px;
 }
 </style>

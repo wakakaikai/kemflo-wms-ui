@@ -71,13 +71,16 @@
               </el-form-item>
             </template>
             <el-form-item label="入库数量" prop="qty">
-              <el-input-number
-                ref="qtyInputRef"
-                v-model="workOrderInfo.qty"
-                :precision="3"
-                :max="isUnlimitedPrintQty ? undefined : workOrderInfo.plannedQty || undefined"
-                style="width: 100%"
-              />
+              <div class="qty-with-unit">
+                <el-input-number
+                  ref="qtyInputRef"
+                  v-model="workOrderInfo.qty"
+                  :precision="3"
+                  :max="isUnlimitedPrintQty ? undefined : workOrderInfo.plannedQty || undefined"
+                  style="width: 100%"
+                />
+                <span class="qty-unit-text">{{ inboundUnitDisplay }}</span>
+              </div>
             </el-form-item>
             <el-form-item label="条码内容" prop="sfcContent">
               <el-input v-model="workOrderInfo.sfcContent" placeholder="请输入条码内容" />
@@ -192,7 +195,7 @@
                     <div class="info-column">
                       <div class="info-row">
                         <label>入库数量</label>
-                        <span>{{ workOrderInfo.qty }} {{ workOrderInfo.unit }}</span>
+                        <span>{{ workOrderInfo.qty }} {{ inboundUnitDisplay }}</span>
                         <span>{{ workOrderInfo.remark }}</span>
                       </div>
                       <div class="info-row">
@@ -280,7 +283,7 @@
                         <div class="qr-info border-qty">
                           <div style="display: flex; flex-direction: column; justify-content: center; height: 100%">
                             <p style="margin: 0; padding: 0">本卡数量</p>
-                            <p style="margin: 20px 0 0 0; padding: 0">{{ workOrderInfo.qty }} {{ workOrderInfo.unit }}</p>
+                            <p style="margin: 20px 0 0 0; padding: 0">{{ workOrderInfo.qty }} {{ inboundUnitDisplay }}</p>
                           </div>
                         </div>
                       </div>
@@ -443,7 +446,7 @@
                       </div>
                       <div class="info-row">
                         <label>入库数量</label>
-                        <span>{{ workOrderInfo.qty }} {{ workOrderInfo.unit }}</span>
+                        <span>{{ workOrderInfo.qty }} {{ inboundUnitDisplay }}</span>
                         <span>{{ workOrderInfo.remark }}</span>
                       </div>
                       <div class="info-row">
@@ -514,7 +517,7 @@
                 <div class="qr-info">
                   <p>{{ workOrderInfo.workOrderNo }}</p>
                   <p>{{ workOrderInfo.material }}</p>
-                  <p>{{ workOrderInfo.qty }} {{ workOrderInfo.unit }}</p>
+                  <p>{{ workOrderInfo.qty }} {{ inboundUnitDisplay }}</p>
                 </div>
               </div>
             </div>
@@ -523,7 +526,7 @@
           <div class="action-buttons">
             <!--            <el-button type="primary" @click="generateSerialNumber" :icon="Printer">演示效果图</el-button>-->
             <!--            <el-button type="primary" @click="generateSerialNumbers" :icon="Printer">查询工单已下达条码</el-button>-->
-            <el-button v-hasPermi="['wms:workOrderSn:add']" @click="handlePrint" color="#626aef" :icon="Printer">下达打印</el-button>
+            <el-button v-hasPermi="['wms:workOrderSn:add']" :loading="printLoading" :disabled="printLoading" @click="handlePrint" color="#626aef" :icon="Printer">下达打印</el-button>
             <!--            <el-button type="primary" @click="handlePrintCurrent" :icon="Printer">立即打印</el-button>-->
             <el-button @click="handleExportImage" :icon="Picture">导出图片</el-button>
 
@@ -600,6 +603,8 @@ interface PrintRule {
   sources: MaterialSource[];
   /** 选中工单后是否默认带出工单成品料号 */
   useWorkOrderItemAsDefault: boolean;
+  /** 「所有料号」中排除当前工单 BOM 料号 */
+  filterAllByBom?: boolean;
 }
 
 const MATERIAL_SOURCE_LABELS: Record<MaterialSource, string> = {
@@ -613,13 +618,14 @@ const DEFAULT_PRINT_RULE: PrintRule = {
   showMaterialSelect: false,
   defaultSource: 'workOrder',
   sources: ['workOrder'],
-  useWorkOrderItemAsDefault: true
+  useWorkOrderItemAsDefault: true,
+  filterAllByBom: false
 };
 
 /**
- * 按工单类型配置打印规则（参考 workOrderSpecialReceive）
- * ZP92：所有料号；ZP93/ZP94：工单成品料号 / BOM / 所有料号
- * 数量：有成品料号仍限制，工单无料号才不限制
+ * 按工单类型配置打印规则
+ * ZP92：所有料号（排除 BOM 料号）；ZP93：工单成品料号 / BOM；ZP94：工单成品料号 / BOM / 所有料号
+ * 特殊工单入库数量不校验最大值
  */
 const WORK_ORDER_PRINT_RULES: Record<string, PrintRule> = {
   ZP92: {
@@ -627,13 +633,14 @@ const WORK_ORDER_PRINT_RULES: Record<string, PrintRule> = {
     showMaterialSelect: true,
     defaultSource: 'all',
     sources: ['all'],
-    useWorkOrderItemAsDefault: false
+    useWorkOrderItemAsDefault: false,
+    filterAllByBom: true
   },
   ZP93: {
     unlimitedPrintQtyWhenNoItem: true,
     showMaterialSelect: true,
     defaultSource: 'workOrder',
-    sources: ['workOrder', 'bom', 'all'],
+    sources: ['workOrder', 'bom'],
     useWorkOrderItemAsDefault: true
   },
   ZP94: {
@@ -681,6 +688,9 @@ const copies = ref(1);
 // 添加序列号列表状态
 const serialNumbers = ref<string[]>([]);
 const isBatchPrinting = ref(false);
+const printLoading = ref(false);
+const PRINT_RECEIVED_MESSAGE = 'WMS_PRINT_RECEIVED';
+let printWaitCleanup: (() => void) | null = null;
 const printTemplates = ref([
   // { value: 'A4', label: 'A4 (210×297mm)' },
   // { value: 'A5', label: 'A5 (148×210mm)' },
@@ -719,6 +729,7 @@ const workOrderInfo = ref({
   qty: null as number | null,
   plannedQty: null as number | null,
   unit: 'PCS',
+  inboundUnit: 'PCS',
   productDate: '',
   makeDate: '',
   productLine: '',
@@ -748,6 +759,10 @@ const currentPrintRule = computed(() => {
 });
 
 const isUnlimitedPrintQty = computed(() => {
+  // 特殊工单（需选料）不限制入库数量最大值
+  if (currentPrintRule.value.showMaterialSelect) {
+    return true;
+  }
   if (!currentPrintRule.value.unlimitedPrintQtyWhenNoItem) {
     return false;
   }
@@ -755,6 +770,16 @@ const isUnlimitedPrintQty = computed(() => {
   return !String(workOrderInfo.value.item || '').trim();
 });
 const showMaterialSelect = computed(() => currentPrintRule.value.showMaterialSelect);
+/** ZP92 等：选「所有料号」时需排除 BOM 料号 */
+const shouldExcludeBomFromAll = computed(
+  () => !!currentPrintRule.value.filterAllByBom && materialSource.value === 'all'
+);
+
+const shouldPreloadBom = computed(
+  () =>
+    showMaterialSelect.value &&
+    (currentPrintRule.value.sources.includes('bom') || !!currentPrintRule.value.filterAllByBom)
+);
 
 const materialSourceOptions = computed(() =>
   currentPrintRule.value.sources.map((value) => ({
@@ -769,6 +794,14 @@ const workOrderItemDisplay = computed(() => {
   const desc = workOrderInfo.value.itemDesc || '';
   return desc ? `${code} - ${desc}` : code;
 });
+
+/** 入库单位：单独选料时用物料单位，否则用工单单位 */
+const inboundUnitDisplay = computed(() => workOrderInfo.value.inboundUnit || workOrderInfo.value.unit || '');
+
+const setInboundUnit = (unit?: string | null) => {
+  const next = String(unit || '').trim();
+  workOrderInfo.value.inboundUnit = next || workOrderInfo.value.unit || '';
+};
 
 const filteredBomList = computed(() => {
   const keyword = bomKeyword.value.trim().toUpperCase();
@@ -794,6 +827,7 @@ const copiesMax = computed(() => {
 const applyWorkOrderItemMaterial = () => {
   workOrderInfo.value.material = workOrderInfo.value.item || '';
   workOrderInfo.value.materialDesc = workOrderInfo.value.itemDesc || '';
+  setInboundUnit(workOrderInfo.value.unit);
 };
 
 const applyWorkOrderBase = (workOrderNoInfo: any) => {
@@ -805,6 +839,7 @@ const applyWorkOrderBase = (workOrderNoInfo: any) => {
   workOrderInfo.value.productLine = workOrderNoInfo.productLine;
   workOrderInfo.value.plannedQty = Number(workOrderNoInfo.plannedQty);
   workOrderInfo.value.unit = workOrderNoInfo.unit;
+  workOrderInfo.value.inboundUnit = workOrderNoInfo.unit;
   workOrderInfo.value.previousOrderNo = workOrderNoInfo.previousOrderNo;
   workOrderInfo.value.previousWorkCenter = workOrderNoInfo.previousWorkCenter;
   workOrderInfo.value.nextOrderNo = workOrderNoInfo.nextOrderNo;
@@ -823,6 +858,7 @@ const resetMaterialSelection = () => {
   } else if (showMaterialSelect.value) {
     workOrderInfo.value.material = '';
     workOrderInfo.value.materialDesc = '';
+    setInboundUnit(workOrderInfo.value.unit);
   } else {
     applyWorkOrderItemMaterial();
   }
@@ -863,6 +899,7 @@ const onMaterialSourceChange = () => {
   } else {
     workOrderInfo.value.material = '';
     workOrderInfo.value.materialDesc = '';
+    setInboundUnit(workOrderInfo.value.unit);
   }
 };
 
@@ -896,24 +933,53 @@ const confirmBomSelect = () => {
   }
   workOrderInfo.value.material = bom.componentMaterial;
   workOrderInfo.value.materialDesc = bom.componentDesc || '';
-  if (bom.unit) {
-    workOrderInfo.value.unit = bom.unit;
-  }
+  setInboundUnit(bom.unit);
   selectedBomDisplay.value = `${bom.componentMaterial}${bom.componentDesc ? ` - ${bom.componentDesc}` : ''}`;
   bomDialogVisible.value = false;
 };
 
-const showItemDialog = () => {
+const isBomMaterialCode = (code: string) => {
+  const normalized = String(code || '')
+    .trim()
+    .toUpperCase();
+  if (!normalized) return false;
+  return bomList.value.some(
+    (row) =>
+      String(row.componentMaterial || '')
+        .trim()
+        .toUpperCase() === normalized
+  );
+};
+
+const ensureBomListLoaded = async () => {
+  if (!workOrderInfo.value.workOrderNo) {
+    ElMessage.warning('请先选择工单');
+    return false;
+  }
+  if (!bomList.value.length) {
+    await loadBomList(workOrderInfo.value.workOrderNo);
+  }
+  return true;
+};
+
+const showItemDialog = async () => {
+  if (shouldExcludeBomFromAll.value) {
+    const ready = await ensureBomListLoaded();
+    if (!ready) return;
+  }
   itemDialogRef.value?.openDialog();
   itemDialogRef.value?.handleQuery();
 };
 
 const itemSelectCallBack = (record: any) => {
-  workOrderInfo.value.material = record.item || '';
-  workOrderInfo.value.materialDesc = record.itemDesc || '';
-  if (record.unit) {
-    workOrderInfo.value.unit = record.unit;
+  const code = record.item || '';
+  if (shouldExcludeBomFromAll.value && isBomMaterialCode(code)) {
+    ElMessage.warning(`物料 ${code} 属于当前工单 BOM，请勿在「所有料号」中选择`);
+    return;
   }
+  workOrderInfo.value.material = code;
+  workOrderInfo.value.materialDesc = record.itemDesc || '';
+  setInboundUnit(record.unit);
 };
 
 async function resolveMaterial(code: string): Promise<ItemVO | null> {
@@ -934,6 +1000,22 @@ async function resolveMaterial(code: string): Promise<ItemVO | null> {
 const resolveManualMaterial = async () => {
   const code = (workOrderInfo.value.material || '').trim();
   if (!code) return;
+  if (shouldExcludeBomFromAll.value) {
+    const ready = await ensureBomListLoaded();
+    if (!ready) {
+      workOrderInfo.value.material = '';
+      workOrderInfo.value.materialDesc = '';
+      setInboundUnit(workOrderInfo.value.unit);
+      return;
+    }
+    if (isBomMaterialCode(code)) {
+      ElMessage.error(`物料 ${code} 属于当前工单 BOM，请勿在「所有料号」中输入`);
+      workOrderInfo.value.material = '';
+      workOrderInfo.value.materialDesc = '';
+      setInboundUnit(workOrderInfo.value.unit);
+      return;
+    }
+  }
   const item = await resolveMaterial(code);
   if (!item) {
     ElMessage.error(`物料 ${code} 不存在`);
@@ -942,9 +1024,7 @@ const resolveManualMaterial = async () => {
   }
   workOrderInfo.value.material = item.item;
   workOrderInfo.value.materialDesc = item.itemDesc || '';
-  if (item.unit) {
-    workOrderInfo.value.unit = item.unit;
-  }
+  setInboundUnit(item.unit);
 };
 
 /** 查询工单信息列表 */
@@ -968,7 +1048,7 @@ const keyDownTab = async () => {
     const workOrderNoInfo = res.rows[0] || { workOrderNo: '', item: '', itemDesc: '', productLine: '', workOrderType: '' };
     applyWorkOrderBase(workOrderNoInfo);
     fillDefaultMaterialFromWorkOrder();
-    if (showMaterialSelect.value && currentPrintRule.value.sources.includes('bom')) {
+    if (shouldPreloadBom.value) {
       await loadBomList(workOrderInfo.value.workOrderNo);
     }
     nextTick(() => {
@@ -989,7 +1069,7 @@ const showWorkOrderDialog = () => {
 const workOrderCallBack = async (workOrderNoInfo: any) => {
   applyWorkOrderBase(workOrderNoInfo);
   fillDefaultMaterialFromWorkOrder();
-  if (showMaterialSelect.value && currentPrintRule.value.sources.includes('bom')) {
+  if (shouldPreloadBom.value) {
     await loadBomList(workOrderInfo.value.workOrderNo);
   }
 };
@@ -1088,24 +1168,17 @@ const generateSerialNumbers = async () => {
     productLine: workOrderInfo.value.productLine,
     productDate: workOrderInfo.value.productDate + ' 00:00:00',
     workOrderNo: workOrderInfo.value.workOrderNo,
+    materialCode: workOrderInfo.value.material,
+    materialName: workOrderInfo.value.materialDesc,
     qty: workOrderInfo.value.qty,
     continuousQty: copies.value,
+    unit: inboundUnitDisplay.value,
     remark: workOrderInfo.value.remark
   });
   return res.data || [];
 };
 
-const generateSerialNumber = () => {
-  workOrderInfo.value.companyName = '溢泰（南京）环保科技有限公司';
-  workOrderInfo.value.workOrderNo = '000170000312';
-  workOrderInfo.value.sfcContent = 'SCRK-20250801-0001';
-  workOrderInfo.value.material = 'A02000600004';
-  workOrderInfo.value.materialDesc = 'BSH嵌入式饮水机，博世AV Pro黑色款，型号WBB8060C1C';
-  workOrderInfo.value.qty = 1;
-  workOrderInfo.value.productDate = '2025-08-01';
-  workOrderInfo.value.productLine = 'YS0028-1';
-  workOrderInfo.value.version = 1;
-};
+
 // 打印当前预览内容
 const handlePrintCurrent = async () => {
   if (!printContent.value) return;
@@ -1366,62 +1439,128 @@ const immediatelyPrint = async () => {
     }
   });
 };
+const startPrintLoading = (text = '正在下达打印，请稍候...') => {
+  printLoading.value = true;
+  proxy?.$modal.loading(text);
+};
+
+const stopPrintLoading = () => {
+  printLoading.value = false;
+  proxy?.$modal.closeLoading();
+  if (printWaitCleanup) {
+    printWaitCleanup();
+    printWaitCleanup = null;
+  }
+};
+
+/** 等待打印窗口完成打印接收（afterprint / 关闭窗口）后再结束 loading */
+const waitPrintReceived = (printWindow: Window) =>
+  new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', onMessage);
+      window.clearInterval(closeTimer);
+      window.clearTimeout(fallbackTimer);
+      if (printWaitCleanup === finish) {
+        printWaitCleanup = null;
+      }
+      resolve();
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.source === printWindow && event.data?.type === PRINT_RECEIVED_MESSAGE) {
+        finish();
+      }
+    };
+    window.addEventListener('message', onMessage);
+    const closeTimer = window.setInterval(() => {
+      if (printWindow.closed) {
+        finish();
+      }
+    }, 300);
+    const fallbackTimer = window.setTimeout(finish, 120000);
+    printWaitCleanup = finish;
+  });
+
+const buildPrintWindowScript = () => `
+  window.onload = function () {
+    var notified = false;
+    function notifyParent() {
+      if (notified) return;
+      notified = true;
+      try {
+        if (window.opener) {
+          window.opener.postMessage({ type: '${PRINT_RECEIVED_MESSAGE}' }, '*');
+        }
+      } catch (e) {}
+    }
+    window.onafterprint = function () {
+      notifyParent();
+      setTimeout(function () { window.close(); }, 100);
+    };
+    window.addEventListener('beforeunload', notifyParent);
+    window.focus();
+    window.print();
+  };
+`;
+
 // 打印处理支持连续打印不同二维码
 const handlePrint = async () => {
-  if (!printContent.value) return;
+  if (!printContent.value || printLoading.value) return;
   queryFormRef.value?.validate(async (valid: boolean) => {
-    if (valid) {
-      if (showMaterialSelect.value && !String(workOrderInfo.value.material || '').trim()) {
-        ElMessage.warning('请选择产品品号');
-        return;
-      }
-      try {
-        // 生成序列号列表
-        const snList = await generateSerialNumbers();
+    if (!valid) return;
+    if (showMaterialSelect.value && !String(workOrderInfo.value.material || '').trim()) {
+      ElMessage.warning('请选择产品品号');
+      return;
+    }
+    startPrintLoading('正在下达打印，请稍候...');
+    try {
+      // 生成序列号列表
+      const snList = await generateSerialNumbers();
 
-        let printContentHTML = '';
+      let printContentHTML = '';
 
-        // 为每个序列号生成一个打印页面
-        for (let i = 0; i < snList.length; i++) {
-          // 临时更新二维码内容
-          // const originalSfcContent = workOrderInfo.value.sfcContent;
-          workOrderInfo.value.sfcContent = snList[i].sn;
-          workOrderInfo.value.sequence = snList[i].sequence;
-          workOrderInfo.value.printTotal = snList[i].printTotal;
+      // 为每个序列号生成一个打印页面
+      for (let i = 0; i < snList.length; i++) {
+        workOrderInfo.value.sfcContent = snList[i].sn;
+        workOrderInfo.value.sequence = snList[i].sequence;
+        workOrderInfo.value.printTotal = snList[i].printTotal;
 
-          // 重新生成二维码
-          await nextTick();
-          generateQRCode();
-          await nextTick(); // 确保二维码渲染完成
-
-          // 生成截图
-          const canvas = await html2canvas(printContent.value, {
-            scale: 2,
-            logging: false,
-            useCORS: true,
-            scrollX: 0,
-            scrollY: 0
-          });
-
-          printContentHTML += `<div style="page-break-after: ${i < snList.length - 1 ? 'always' : 'auto'};"><img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" /></div>`;
-
-          // 恢复原始内容
-          // workOrderInfo.value.sfcContent = originalSfcContent;
-        }
-
-        // 重新生成原始二维码
+        // 重新生成二维码
         await nextTick();
         generateQRCode();
+        await nextTick(); // 确保二维码渲染完成
 
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-          // 根据纸张大小设置打印页面尺寸
-          let printStyles = '';
-          switch (paperSize.value) {
-            case '9784-2':
-            case '9784-3':
-            case '9784':
-              printStyles = `
+        // 生成截图
+        const canvas = await html2canvas(printContent.value, {
+          scale: 2,
+          logging: false,
+          useCORS: true,
+          scrollX: 0,
+          scrollY: 0
+        });
+
+        printContentHTML += `<div style="page-break-after: ${i < snList.length - 1 ? 'always' : 'auto'};"><img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" /></div>`;
+      }
+
+      // 重新生成原始二维码
+      await nextTick();
+      generateQRCode();
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        ElMessage.error('打印窗口被拦截，请允许弹窗后重试');
+        return;
+      }
+
+      // 根据纸张大小设置打印页面尺寸
+      let printStyles = '';
+      switch (paperSize.value) {
+        case '9784-2':
+        case '9784-3':
+        case '9784':
+          printStyles = `
               @page {
                 size: 97mm 84mm;
                 margin: 0;
@@ -1433,9 +1572,9 @@ const handlePrint = async () => {
                 padding: 0;
               }
             `;
-              break;
-            case '8060':
-              printStyles = `
+          break;
+        case '8060':
+          printStyles = `
               @page {
                 size: 80mm 60mm;
                 margin: 0;
@@ -1447,9 +1586,9 @@ const handlePrint = async () => {
                 padding: 0;
               }
             `;
-              break;
-            case '5060':
-              printStyles = `
+          break;
+        case '5060':
+          printStyles = `
               @page {
                 size: 50mm 60mm;
                 margin: 0;
@@ -1461,9 +1600,9 @@ const handlePrint = async () => {
                 padding: 0;
               }
             `;
-              break;
-            case '3040':
-              printStyles = `
+          break;
+        case '3040':
+          printStyles = `
               @page {
                 size: 30mm 40mm;
                 margin: 0;
@@ -1475,9 +1614,9 @@ const handlePrint = async () => {
                 padding: 0;
               }
             `;
-              break;
-            default:
-              printStyles = `
+          break;
+        default:
+          printStyles = `
               @page {
                 margin: 0;
               }
@@ -1486,14 +1625,15 @@ const handlePrint = async () => {
                 padding: 0;
               }
             `;
-          }
+      }
 
-          printWindow.document.write(`
+      printWindow.document.write(`
             <html>
               <head>
                 <title>批量打印预览</title>
                 <style>
-                  ${printStyles}              @media print {
+                  ${printStyles}
+                  @media print {
                     img {
                       width: 100%;
                       height: 100%;
@@ -1503,15 +1643,21 @@ const handlePrint = async () => {
                   }
                 </style>
               </head>
-              <body onload="window.print(); setTimeout(() => window.close(), 500);">
-                ${printContentHTML}          </body>
+              <body>
+                ${printContentHTML}
+                <script>
+                  ${buildPrintWindowScript()}
+                <\/script>
+              </body>
             </html>
       `);
-          printWindow.document.close();
-        }
-      } catch (error) {
-        console.error('打印失败:', error);
-      }
+      printWindow.document.close();
+      await waitPrintReceived(printWindow);
+    } catch (error) {
+      console.error('打印失败:', error);
+      ElMessage.error('打印失败');
+    } finally {
+      stopPrintLoading();
     }
   });
 };
@@ -1589,6 +1735,19 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background-color: #f5f7fa;
+}
+
+.qty-with-unit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.qty-unit-text {
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .el-container {

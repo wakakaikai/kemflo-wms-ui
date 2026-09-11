@@ -52,7 +52,7 @@
         </el-row>
       </template>
 
-      <el-table v-loading="loading" :data="workOrderSnList" @selection-change="handleSelectionChange">
+      <el-table v-loading="loading" :data="workOrderSnList" height="calc(100vh - 280px)" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="公司名称" align="center" prop="companyName" />
         <el-table-column label="工单号" align="center" prop="workOrderNo" />
@@ -60,12 +60,14 @@
         <el-table-column label="版本" align="center" prop="version">
           <template #default="scope">
             <el-tag v-if="scope.row.version" type="success">V{{ scope.row.version }}</el-tag>
-            <el-tag v-else>--</el-tag>
+            <el-tag v-else></el-tag>
           </template>
         </el-table-column>
         <el-table-column label="数量" align="center" prop="qty" />
-        <el-table-column label="产品品号" align="center" prop="item" />
-        <el-table-column label="产品描述" align="center" prop="itemDesc" />
+        <el-table-column label="工单料号" align="center" prop="item" />
+        <el-table-column label="物料描述" align="center" prop="itemDesc" show-overflow-tooltip />
+        <el-table-column label="标签料号" align="center" prop="materialCode" />
+        <el-table-column label="描述" align="center" prop="materialName" show-overflow-tooltip />
         <el-table-column label="生产线别" align="center" prop="productLine" />
         <el-table-column label="生产日期" align="center" prop="productDate" width="180">
           <template #default="scope">

@@ -15,11 +15,20 @@
 
       <div v-show="historyExpanded" class="history-card-body">
         <el-form v-show="showSearch" ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
+          <el-form-item label="移动类型">
+            <HistoryInput v-model="searchMoveType" :config="moveTypeConfig" placeholder="请输入移动类型" @keyup.enter="handleQuery" />
+          </el-form-item>
           <el-form-item label="物料凭证号" prop="sapMaterialOrderNo">
             <HistoryInput v-model="searchSapMaterialOrderNo" :config="sapMaterialOrderNoConfig" placeholder="请输入物料凭证号" @keyup.enter="handleQuery" />
           </el-form-item>
+          <el-form-item label="物料凭证项次" prop="sapMaterialItem">
+            <HistoryInput v-model="queryParams.sapMaterialItem" :config="sapMaterialItemConfig" placeholder="请输入物料凭证项次" @keyup.enter="handleQuery" />
+          </el-form-item>
           <el-form-item label="工单号" prop="sourceDocCode">
             <HistoryInput v-model="searchSourceDocCode" :config="sourceDocCodeConfig" placeholder="请输入工单号" @keyup.enter="handleQuery" />
+          </el-form-item>
+          <el-form-item label="物料编码" prop="itemCode">
+            <HistoryInput v-model="searchItemCode" :config="itemCodeConfig" placeholder="请输入物料编码" @keyup.enter="handleQuery" />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" icon="Search" :loading="loading" @click="handleQuery">搜索</el-button>
@@ -208,15 +217,20 @@ const resultStatus = ref(false);
 const historyTableRef = ref();
 const queryFormRef = ref();
 const cancelFormRef = ref<ElFormInstance>();
+const searchMoveType = ref('');
 const searchSapMaterialOrderNo = ref('');
 const searchSourceDocCode = ref('');
+const searchItemCode = ref('');
 
 const queryParams = ref<InventoryMovementQuery>({
   pageNum: 1,
   pageSize: 20,
   sourceDocType: 'WO',
+  moveType: undefined,
   sapMaterialOrderNo: undefined,
+  sapMaterialItem: undefined,
   sourceDocCode: undefined,
+  itemCode: undefined,
   sapMaterialOrderNoEmpty: true,
   params: {}
 });
@@ -263,6 +277,15 @@ const historyComponentConfig = {
   dropdownMaxHeight: '300px'
 };
 
+const moveTypeConfig: HistoryConfig = {
+  key: 'moveType',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: historyPage,
+  autoSave: true,
+  component: historyComponentConfig
+};
+
 const sapMaterialOrderNoConfig: HistoryConfig = {
   key: 'sapMaterialOrderNo',
   storage: 'indexedDB',
@@ -272,8 +295,26 @@ const sapMaterialOrderNoConfig: HistoryConfig = {
   component: historyComponentConfig
 };
 
+const sapMaterialItemConfig: HistoryConfig = {
+  key: 'sapMaterialItem',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: historyPage,
+  autoSave: true,
+  component: historyComponentConfig
+};
+
 const sourceDocCodeConfig: HistoryConfig = {
   key: 'sourceDocCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: historyPage,
+  autoSave: true,
+  component: historyComponentConfig
+};
+
+const itemCodeConfig: HistoryConfig = {
+  key: 'itemCode',
   storage: 'indexedDB',
   maxSize: 10,
   page: historyPage,
@@ -300,8 +341,8 @@ const formatQtyWithUnit = (qty?: number | string | null, unit?: string) => {
   return unit ? `${text} ${unit}` : text;
 };
 
-const resolveRowQuantity = (row: InventoryMovementVO & Record<string, any>) => row.quantity ?? row.poQuantity;
-const resolveRowUnit = (row: InventoryMovementVO & Record<string, any>) => row.unit ?? row.poUnit;
+const resolveRowQuantity = (row: InventoryMovementVO & Record<string, any>) => row.quantity ?? row.orderQuantity ?? row.poQuantity;
+const resolveRowUnit = (row: InventoryMovementVO & Record<string, any>) => row.unit ?? row.orderUnit ?? row.poUnit;
 
 const isOutMovement = (row: InventoryMovementVO) => Number(row.inventoryDirection) === -1;
 const isInMovement = (row: InventoryMovementVO) => Number(row.inventoryDirection) === 1;
@@ -326,7 +367,7 @@ function buildGroupedRows(rows: InventoryMovementVO[]): VoucherItemGroup[] {
         itemName: row.itemName,
         batchCode: row.batchCode,
         sourceDocCode: row.sourceDocCode,
-        poItemNo: row.poItemNo,
+        poItemNo: row.sourceDocItem ?? row.poItemNo,
         quantity: resolveRowQuantity(row),
         unit: resolveRowUnit(row),
         reversalFlag: row.reversalFlag,
@@ -360,7 +401,7 @@ function buildGroupedRows(rows: InventoryMovementVO[]): VoucherItemGroup[] {
         group.itemName = primary.itemName ?? group.itemName;
         group.batchCode = primary.batchCode ?? group.batchCode;
         group.sourceDocCode = primary.sourceDocCode ?? group.sourceDocCode;
-        group.poItemNo = primary.poItemNo ?? group.poItemNo;
+        group.poItemNo = primary.sourceDocItem ?? primary.poItemNo ?? group.poItemNo;
       }
       group.hasPair = Boolean(group.outMovement && group.inMovement);
       return group;
@@ -411,9 +452,6 @@ function handleHistoryRowClick(row: VoucherItemGroup, _column: any, event: Mouse
 
 const getList = async () => {
   syncSapMaterialOrderNoEmptyFilter(queryParams.value);
-  if (!queryParams.value.sapMaterialOrderNo && !queryParams.value.sourceDocCode) {
-    return;
-  }
   loading.value = true;
   try {
     const res = await listInventoryMovement(queryParams.value);
@@ -425,24 +463,29 @@ const getList = async () => {
 };
 
 const handleQuery = async () => {
+  const moveType = String(searchMoveType.value ?? '').trim();
   const voucherNo = String(searchSapMaterialOrderNo.value ?? '').trim();
   const sourceDocCode = String(searchSourceDocCode.value ?? '').trim();
-  if (!voucherNo && !sourceDocCode) {
-    showResultMessage('请输入物料凭证号或工单号');
-    return;
-  }
+  const itemCode = String(searchItemCode.value ?? '').trim();
+  queryParams.value.moveType = moveType || undefined;
   queryParams.value.sapMaterialOrderNo = voucherNo || undefined;
   queryParams.value.sourceDocCode = sourceDocCode || undefined;
+  queryParams.value.itemCode = itemCode || undefined;
   queryParams.value.sourceDocType = 'WO';
   queryParams.value.pageNum = 1;
   await getList();
 };
 
 const resetQuery = () => {
+  searchMoveType.value = '';
   searchSapMaterialOrderNo.value = '';
   searchSourceDocCode.value = '';
+  searchItemCode.value = '';
+  queryParams.value.moveType = undefined;
   queryParams.value.sapMaterialOrderNo = undefined;
+  queryParams.value.sapMaterialItem = undefined;
   queryParams.value.sourceDocCode = undefined;
+  queryParams.value.itemCode = undefined;
   queryParams.value.sourceDocType = 'WO';
   inventoryDetailList.value = [];
   total.value = 0;
@@ -630,7 +673,7 @@ const submitCancel = async () => {
 }
 
 .history-collapse-icon {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
   transition: transform 0.2s;
 }
@@ -641,7 +684,7 @@ const submitCancel = async () => {
 
 .header-title,
 .history-header-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 

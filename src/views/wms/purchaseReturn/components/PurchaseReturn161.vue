@@ -176,7 +176,7 @@
           <div style="margin-top: 20px; text-align: center">
             <el-button :loading="buttonLoading" type="primary" @click="submitForm" :disabled="returnList.length === 0">
               采购退货161
-              <el-tooltip :content="主要用于跨月向供应商退货的业务" placement="top">
+              <el-tooltip content="主要用于跨月向供应商退货的业务" placement="top">
                 <el-icon class="ml-1"><QuestionFilled /></el-icon>
               </el-tooltip>
             </el-button>
@@ -586,7 +586,7 @@ onMounted(() => {
   user-select: none;
 }
 .history-collapse-icon {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
   transition: transform 0.2s ease;
 }

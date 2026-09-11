@@ -173,6 +173,8 @@ interface ReceiveRule {
   defaultSource: MaterialSource;
   sources: MaterialSource[];
   autoAddWorkOrderItem: boolean;
+  /** 「所有料号」中排除当前工单 BOM 料号 */
+  excludeBomFromAll?: boolean;
 }
 
 const MATERIAL_SOURCE_LABELS: Record<MaterialSource, string> = {
@@ -186,7 +188,8 @@ const DEFAULT_RECEIVE_RULE: ReceiveRule = {
   moveTypeName: '入库',
   defaultSource: 'workOrder',
   sources: ['workOrder'],
-  autoAddWorkOrderItem: true
+  autoAddWorkOrderItem: true,
+  excludeBomFromAll: false
 };
 
 const WORK_ORDER_RECEIVE_RULES: Record<string, ReceiveRule> = {
@@ -202,7 +205,8 @@ const WORK_ORDER_RECEIVE_RULES: Record<string, ReceiveRule> = {
     moveTypeName: '入库',
     defaultSource: 'all',
     sources: ['all'],
-    autoAddWorkOrderItem: false
+    autoAddWorkOrderItem: false,
+    excludeBomFromAll: true
   },
   ZP93: {
     moveType: '531',
@@ -264,6 +268,10 @@ const currentReceiveRule = computed(() => {
     .toUpperCase();
   return WORK_ORDER_RECEIVE_RULES[type] || DEFAULT_RECEIVE_RULE;
 });
+
+const shouldExcludeBomFromAll = computed(
+  () => !!currentReceiveRule.value.excludeBomFromAll && materialSource.value === 'all'
+);
 
 const materialSourceOptions = computed(() =>
   currentReceiveRule.value.sources.map((value) => ({
@@ -480,6 +488,39 @@ async function resolveMaterial(code: string): Promise<ItemVO | null> {
   );
 }
 
+function isBomMaterialCode(code: string) {
+  const normalized = String(code || '')
+    .trim()
+    .toUpperCase();
+  if (!normalized) return false;
+  return bomList.value.some(
+    (row) =>
+      String(row.componentMaterial || '')
+        .trim()
+        .toUpperCase() === normalized
+  );
+}
+
+async function ensureBomListLoaded() {
+  if (!workOrder.value?.workOrderNo) {
+    ElMessage.warning('请先选择工单');
+    return false;
+  }
+  if (bomList.value.length) {
+    return true;
+  }
+  bomLoading.value = true;
+  try {
+    const res = await listWorkOrderBom({ workOrderNo: workOrder.value.workOrderNo, pageNum: 1, pageSize: 2000 } as any);
+    bomList.value = normalizeBomList(res.rows || []);
+  } catch {
+    bomList.value = [];
+  } finally {
+    bomLoading.value = false;
+  }
+  return true;
+}
+
 const handleAddMaterial = async () => {
   if (!workOrder.value) {
     ElMessage.warning('请先选择工单');
@@ -515,6 +556,15 @@ const handleAddMaterial = async () => {
   if (!matCode) {
     ElMessage.warning(materialSource.value === 'workOrder' ? '当前工单无产品料号' : '请选择或输入物料编码');
     return;
+  }
+
+  if (shouldExcludeBomFromAll.value) {
+    const ready = await ensureBomListLoaded();
+    if (!ready) return;
+    if (isBomMaterialCode(matCode)) {
+      ElMessage.warning(`物料 ${matCode} 属于当前工单 BOM，请勿在「所有料号」中选择`);
+      return;
+    }
   }
 
   if ((materialSource.value === 'all' || materialSource.value === 'workOrder') && (!matName || !matUnit)) {
@@ -593,13 +643,22 @@ const handleSubmit = async () => {
   }
 };
 
-const showItemDialog = () => {
+const showItemDialog = async () => {
+  if (shouldExcludeBomFromAll.value) {
+    const ready = await ensureBomListLoaded();
+    if (!ready) return;
+  }
   itemDialogRef.value?.openDialog();
   itemDialogRef.value?.handleQuery();
 };
 
 const itemSelectCallBack = (record: any) => {
-  manualMaterialCode.value = record.item;
+  const code = record.item || '';
+  if (shouldExcludeBomFromAll.value && isBomMaterialCode(code)) {
+    ElMessage.warning(`物料 ${code} 属于当前工单 BOM，请勿在「所有料号」中选择`);
+    return;
+  }
+  manualMaterialCode.value = code;
 };
 
 const locationCodeKeyDownTab = async (row: ReceiveLine) => {

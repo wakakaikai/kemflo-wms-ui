@@ -57,8 +57,8 @@ defineProps<{
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag'));
 
-const resolveQuantity = (row: InventoryMovementVO & Record<string, any>) => row.quantity ?? row.poQuantity;
-const resolveUnit = (row: InventoryMovementVO & Record<string, any>) => row.unit ?? row.poUnit;
+const resolveQuantity = (row: InventoryMovementVO & Record<string, any>) => row.quantity ?? row.orderQuantity ?? row.poQuantity;
+const resolveUnit = (row: InventoryMovementVO & Record<string, any>) => row.unit ?? row.orderUnit ?? row.poUnit;
 
 const formatQtyWithUnit = (qty?: number | string | null, unit?: string) => {
   const text = formatQty(qty);

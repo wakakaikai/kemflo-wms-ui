@@ -37,21 +37,10 @@
             </template>
           </el-table-column>
           <el-table-column label="条码" align="center" width="130" prop="sn" />
-          <el-table-column label="产品料号" align="center" width="150" prop="item" />
-          <el-table-column label="产品描述" align="left" prop="itemDesc" :show-overflow-tooltip="true" />
+          <el-table-column label="标签料号" align="center" width="150" prop="materialCode" />
+          <el-table-column label="描述" align="left" prop="materialName" :show-overflow-tooltip="true" />
           <el-table-column label="计划数量" align="center" prop="plannedQty" />
           <el-table-column label="打包数量" align="center" min-width="120" prop="packingQty">
-            <!--            <template #default="scope">
-              <div @dblclick="enableEditing(scope.row)" style="cursor: pointer">
-                <div v-if="!scope.row.isEditing">
-                  {{ scope.row.packingQty }}
-                </div>
-                <div v-else>
-                  <el-input-number :min="1" v-model="scope.row.packingQty" @blur="savePackingQty(scope.row)" @keyup.enter="savePackingQty(scope.row)" autofocus size="small" style="width: 100px" />
-                  <div class="el-form-item__tip">当前最大可入打包数量: {{ scope.row.maxInboundQty || 0 }}</div>
-                </div>
-              </div>
-            </template>-->
           </el-table-column>
           <el-table-column label="入库检" align="center" prop="checkEnable">
             <template #default="scope">

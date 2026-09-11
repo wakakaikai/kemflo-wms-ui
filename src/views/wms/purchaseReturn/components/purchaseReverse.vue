@@ -52,7 +52,7 @@
             <el-table-column v-if="columns[1].visible" label="物料凭证号" prop="sapMaterialOrderNo" min-width="120" />
             <el-table-column v-if="columns[2].visible" label="凭证项次" prop="sapMaterialItem" width="90" />
             <el-table-column v-if="columns[3].visible" label="采购单号" prop="sourceDocCode" min-width="120" />
-            <el-table-column v-if="columns[4].visible" label="采购项次" prop="poItemNo" width="90" />
+            <el-table-column v-if="columns[4].visible" label="采购项次" prop="sourceDocItem" width="90" />
             <el-table-column v-if="columns[5].visible" label="物料编码" prop="itemCode" min-width="120" />
             <el-table-column v-if="columns[6].visible" label="物料名称" prop="itemName" min-width="140" show-overflow-tooltip />
             <el-table-column v-if="columns[7].visible" label="批次号" prop="batchCode" min-width="100" />
@@ -317,8 +317,8 @@ const bktxtConfig: HistoryConfig = {
 
 const groupedRows = computed(() => buildGroupedRows(inventoryDetailList.value));
 
-const resolveRowQuantity = (row: InventoryMovementVO & Record<string, any>) => row.quantity ?? row.poQuantity;
-const resolveRowUnit = (row: InventoryMovementVO & Record<string, any>) => row.unit ?? row.poUnit;
+const resolveRowQuantity = (row: InventoryMovementVO & Record<string, any>) => row.quantity ?? row.orderQuantity ?? row.poQuantity;
+const resolveRowUnit = (row: InventoryMovementVO & Record<string, any>) => row.unit ?? row.orderUnit ?? row.poUnit;
 
 const isOutMovement = (row: InventoryMovementVO) => Number(row.inventoryDirection) === -1;
 const isInMovement = (row: InventoryMovementVO) => Number(row.inventoryDirection) === 1;
@@ -343,7 +343,7 @@ function buildGroupedRows(rows: InventoryMovementVO[]): VoucherItemGroup[] {
         itemName: row.itemName,
         batchCode: row.batchCode,
         sourceDocCode: row.sourceDocCode,
-        poItemNo: row.poItemNo,
+        poItemNo: row.sourceDocItem ?? row.poItemNo,
         quantity: resolveRowQuantity(row),
         unit: resolveRowUnit(row),
         reversalFlag: row.reversalFlag,
@@ -377,7 +377,7 @@ function buildGroupedRows(rows: InventoryMovementVO[]): VoucherItemGroup[] {
         group.itemName = primary.itemName ?? group.itemName;
         group.batchCode = primary.batchCode ?? group.batchCode;
         group.sourceDocCode = primary.sourceDocCode ?? group.sourceDocCode;
-        group.poItemNo = primary.poItemNo ?? group.poItemNo;
+        group.poItemNo = primary.sourceDocItem ?? primary.poItemNo ?? group.poItemNo;
       }
       group.hasPair = Boolean(group.outMovement && group.inMovement);
       return group;
@@ -642,7 +642,7 @@ onMounted(() => {
 }
 
 .history-collapse-icon {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
   transition: transform 0.2s;
 }
@@ -653,7 +653,7 @@ onMounted(() => {
 
 .header-title,
 .history-header-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 

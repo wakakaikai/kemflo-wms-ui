@@ -5,84 +5,70 @@
         <el-card shadow="hover" class="inventory-search-header-card">
           <el-form ref="queryFormRef" :model="queryParams" label-width="auto" class="inventory-search-form">
             <el-row :gutter="16">
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item label="移动类型" prop="moveType">
                   <HistoryInput v-model="queryParams.moveType" :config="moveTypeConfig" placeholder="请输入移动类型" @keyup.enter="handleQuery" />
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
+                <el-form-item label="凭证年度" prop="sapMaterialDocYear">
+                  <HistoryInput v-model="queryParams.sapMaterialDocYear" :config="sapMaterialDocYearConfig" placeholder="请输入SAP凭证年度" @keyup.enter="handleQuery" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
+                <el-form-item label="物料凭证号" prop="sapMaterialOrderNo">
+                  <HistoryInput v-model="queryParams.sapMaterialOrderNo" :config="sapMaterialOrderNoConfig" placeholder="请输入SAP物料凭证号" @keyup.enter="handleQuery" />
+                </el-form-item>
+              </el-col>
+<!--              <el-col :xs="24" :sm="12" :md="6" :lg="4" :xl="4">
                 <el-form-item label="库存方向" prop="inventoryDirection">
                   <el-select v-model="queryParams.inventoryDirection" placeholder="请选择库存方向" filterable clearable style="width: 100%">
                     <el-option v-for="dict in wms_inventory_direction" :key="dict.value" :label="dict.label" :value="dict.value" />
                   </el-select>
                 </el-form-item>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              </el-col>-->
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item label="物料编码" prop="itemCode">
                   <HistoryInput v-model="queryParams.itemCode" :config="itemCodeConfig" placeholder="请输入物料编码" @keyup.enter="handleQuery" />
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item label="仓库编码" prop="warehouseCode">
                   <HistoryInput v-model="queryParams.warehouseCode" :config="warehouseCodeConfig" placeholder="请输入仓库编码" @keyup.enter="handleQuery" />
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-                <el-form-item label="物料凭证号" prop="sapMaterialOrderNo">
-                  <HistoryInput v-model="queryParams.sapMaterialOrderNo" :config="sapMaterialOrderNoConfig" placeholder="请输入SAP物料凭证号" @keyup.enter="handleQuery" />
-                </el-form-item>
-              </el-col>
-              <el-col :xs="24" :sm="24" :md="16" :lg="12" :xl="12">
-                <el-form-item label="移动时间" prop="dateTimeRange">
-                  <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" :shortcuts="shortcuts" value-format="YYYY-MM-DD HH:mm:ss" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]" style="width: 100%" />
-                </el-form-item>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-                <el-form-item class="search-actions">
-                  <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-                  <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-                  <el-button link type="primary" @click="toggleAdvancedSearch">
-                    {{ showAdvancedSearch ? '收起' : '高级搜索' }}
-                    <el-icon class="el-icon--right">
-                      <ArrowDown v-if="!showAdvancedSearch" />
-                      <ArrowUp v-else />
-                    </el-icon>
-                  </el-button>
-                </el-form-item>
-              </el-col>
-            </el-row>
-
-            <el-row v-show="showAdvancedSearch" :gutter="16">
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-                <el-form-item label="批次号" prop="batchCode">
-                  <HistoryInput v-model="queryParams.batchCode" :config="batchCodeConfig" placeholder="请输入批次号" @keyup.enter="handleQuery" />
-                </el-form-item>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-                <el-form-item label="单据编号" prop="sourceDocCode">
-                  <HistoryInput v-model="queryParams.sourceDocCode" :config="sourceDocCodeConfig" placeholder="请输入单据编号" @keyup.enter="handleQuery" />
-                </el-form-item>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item label="库位编码" prop="locationCode">
                   <HistoryInput v-model="queryParams.locationCode" :config="locationCodeConfig" placeholder="请输入库位编码" @keyup.enter="handleQuery" />
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="12" :lg="12" :xl="8">
+                <el-form-item label="移动时间" prop="dateTimeRange">
+                  <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" :shortcuts="shortcuts" value-format="YYYY-MM-DD HH:mm:ss" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
+                <el-form-item label="单据编号" prop="sourceDocCode">
+                  <HistoryInput v-model="queryParams.sourceDocCode" :config="sourceDocCodeConfig" placeholder="请输入单据编号" @keyup.enter="handleQuery" />
+                </el-form-item>
+              </el-col>
+
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item label="栈板编号" prop="palletCode">
                   <HistoryInput v-model="queryParams.palletCode" :config="palletCodeConfig" placeholder="请输入栈板编号" @keyup.enter="handleQuery" />
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
                   <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable style="width: 100%">
                     <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
                   </el-select>
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-                <el-form-item label="凭证年度" prop="sapMaterialDocYear">
-                  <HistoryInput v-model="queryParams.sapMaterialDocYear" :config="sapMaterialDocYearConfig" placeholder="请输入SAP凭证年度" @keyup.enter="handleQuery" />
+              <el-col :xs="24" :sm="12" :md="8" :lg="4" :xl="4">
+                <el-form-item class="search-actions">
+                  <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+                  <el-button icon="Refresh" @click="resetQuery">重置</el-button>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -113,12 +99,11 @@
       <el-table v-loading="loading" :data="inventoryMovementList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <!--        <el-table-column label="移动记录ID" align="center" prop="id" v-if="true" />-->
-        <el-table-column v-if="columns[0].visible" label="移动类型" align="center" prop="moveType">
-          <!--          <template #default="scope">-->
-          <!--            <dict-tag :options="wms_inventory_move_type" :value="scope.row.moveType" />-->
-          <!--          </template>-->
-        </el-table-column>
-        <el-table-column v-if="columns[1].visible" label="移动时间" align="center" prop="moveDate" width="180" />
+        <el-table-column v-if="columns[0].visible" label="移动类型" align="center" prop="moveType" />
+        <el-table-column v-if="columns[19].visible" label="凭证年度" align="center" prop="sapMaterialDocYear" />
+        <el-table-column v-if="columns[20].visible" label="物料凭证号" align="center" prop="sapMaterialOrderNo" min-width="110" />
+        <el-table-column v-if="columns[21].visible" label="凭证项次" align="center" prop="sapMaterialItem" />
+        <el-table-column v-if="columns[1].visible" label="移动时间" align="center" prop="moveDate" width="160" />
         <el-table-column v-if="columns[2].visible" label="追踪ID" align="center" prop="traceId" />
         <el-table-column v-if="columns[3].visible" label="物料编码" align="center" prop="itemCode" />
         <el-table-column v-if="columns[4].visible" label="物料名称" align="center" prop="itemName" :show-overflow-tooltip="true" />
@@ -128,33 +113,37 @@
             <dict-tag :options="wms_inventory_direction" :value="scope.row.inventoryDirection" />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[7].visible" label="数量" align="center" prop="quantity">
-          <template #default="{ row }">{{ formatQty(row.quantity) }}</template>
+        <el-table-column v-if="columns[7].visible" label="库存数量" align="center" prop="quantity" min-width="110">
+          <template #default="{ row }">{{ formatQtyWithUnit(row.quantity, row.unit) }}</template>
         </el-table-column>
-        <el-table-column v-if="columns[8].visible" label="基本单位" align="center" prop="unit" />
-        <el-table-column v-if="columns[9].visible" label="单据类型" align="center" prop="sourceDocType" />
-        <el-table-column v-if="columns[10].visible" label="单据编号" align="center" prop="sourceDocCode" />
-        <el-table-column v-if="columns[11].visible" label="仓库编码" align="center" prop="warehouseCode" />
-        <el-table-column v-if="columns[12].visible" label="库区编码" align="center" prop="areaCode" />
-        <el-table-column v-if="columns[13].visible" label="库位编码" align="center" prop="locationCode" />
-        <el-table-column v-if="columns[14].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
+        <el-table-column v-if="columns[8].visible" label="单据类型" align="center" prop="sourceDocType" />
+        <el-table-column v-if="columns[9].visible" label="单据编号" align="center" prop="sourceDocCode" />
+        <el-table-column v-if="columns[10].visible" label="单据项次" align="center" prop="sourceDocItem" />
+        <el-table-column v-if="columns[11].visible" label="订单数量" align="center" prop="orderQuantity" min-width="110">
+          <template #default="{ row }">{{ formatQtyWithUnit(row.orderQuantity, row.orderUnit) }}</template>
+        </el-table-column>
+        <el-table-column v-if="columns[12].visible" label="换算比例" align="center" prop="conversionRatio">
+          <template #default="{ row }">{{ formatQty(row.conversionRatio) }}</template>
+        </el-table-column>
+        <el-table-column v-if="columns[13].visible" label="仓库编码" align="center" prop="warehouseCode" />
+        <el-table-column v-if="columns[14].visible" label="库区编码" align="center" prop="areaCode" />
+        <el-table-column v-if="columns[15].visible" label="库位编码" align="center" prop="locationCode" min-width="110" />
+        <el-table-column v-if="columns[16].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
           <template #default="scope">
             <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[15].visible" label="业务伙伴" align="center" prop="businessCode" />
-        <el-table-column v-if="columns[16].visible" label="伙伴名称" align="center" prop="businessName" />
-        <el-table-column v-if="columns[17].visible" label="凭证年度" align="center" prop="sapMaterialDocYear" />
-        <el-table-column v-if="columns[18].visible" label="物料凭证号" align="center" prop="sapMaterialOrderNo" />
-        <el-table-column v-if="columns[19].visible" label="凭证项次" align="center" prop="sapMaterialItem" />
-        <el-table-column v-if="columns[20].visible" label="检验批号" align="center" prop="sapInspectionNo" />
-        <el-table-column v-if="columns[21].visible" label="创建时间" align="center" prop="createTime" width="180" />
-        <el-table-column v-if="columns[22].visible" label="创建者" align="center" prop="createByName" />
-        <el-table-column v-if="columns[23].visible" label="更新时间" align="center" prop="updateTime" width="180" />
-        <el-table-column v-if="columns[24].visible" label="更新者" align="center" prop="updateByName" />
-        <el-table-column v-if="columns[26].visible" label="移动原因编码" align="center" prop="moveReasonCode" min-width="110" show-overflow-tooltip />
-        <el-table-column v-if="columns[27].visible" label="移动原因描述" align="center" prop="moveReasonDesc" min-width="140" show-overflow-tooltip />
-        <el-table-column v-if="columns[25].visible" label="备注" align="center" prop="remark" />
+        <el-table-column v-if="columns[17].visible" label="业务伙伴" align="center" prop="businessCode" />
+        <el-table-column v-if="columns[18].visible" label="伙伴名称" align="center" prop="businessName" />
+
+        <el-table-column v-if="columns[22].visible" label="检验批号" align="center" prop="sapInspectionNo" />
+        <el-table-column v-if="columns[23].visible" label="创建时间" align="center" prop="createTime" width="180" />
+        <el-table-column v-if="columns[24].visible" label="创建者" align="center" prop="createByName" />
+        <el-table-column v-if="columns[25].visible" label="更新时间" align="center" prop="updateTime" width="180" />
+        <el-table-column v-if="columns[26].visible" label="更新者" align="center" prop="updateByName" />
+        <el-table-column v-if="columns[27].visible" label="移动原因编码" align="center" prop="moveReasonCode" min-width="110" show-overflow-tooltip />
+        <el-table-column v-if="columns[28].visible" label="移动原因描述" align="center" prop="moveReasonDesc" min-width="140" show-overflow-tooltip />
+        <el-table-column v-if="columns[29].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -192,11 +181,23 @@
         <el-form-item label="数量" prop="quantity">
           <el-input v-model="form.quantity" placeholder="请输入数量" />
         </el-form-item>
-        <el-form-item label="基本单位" prop="unit">
-          <el-input v-model="form.unit" placeholder="请输入基本单位" />
+        <el-form-item label="库存单位" prop="unit">
+          <el-input v-model="form.unit" placeholder="请输入库存单位" />
         </el-form-item>
         <el-form-item label="单据编号" prop="sourceDocCode">
           <el-input v-model="form.sourceDocCode" placeholder="请输入单据编号" />
+        </el-form-item>
+        <el-form-item label="单据项次" prop="sourceDocItem">
+          <el-input v-model="form.sourceDocItem" placeholder="请输入单据项次" />
+        </el-form-item>
+        <el-form-item label="订单数量" prop="orderQuantity">
+          <el-input v-model="form.orderQuantity" placeholder="请输入订单数量" />
+        </el-form-item>
+        <el-form-item label="订单单位" prop="orderUnit">
+          <el-input v-model="form.orderUnit" placeholder="请输入订单单位" />
+        </el-form-item>
+        <el-form-item label="换算比例" prop="conversionRatio">
+          <el-input v-model="form.conversionRatio" placeholder="请输入换算比例" />
         </el-form-item>
         <el-form-item label="仓库编码" prop="warehouseCode">
           <el-input v-model="form.warehouseCode" placeholder="请输入仓库编码" />
@@ -256,7 +257,7 @@ import { listInventoryMovement, getInventoryMovement, delInventoryMovement, addI
 import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } from '@/api/wms/inventoryMovement/types';
 import { ArrowDown, ArrowUp } from '@element-plus/icons-vue';
 import { ref } from 'vue';
-import { formatQty } from '@/utils/ruoyi';
+import { formatQty, formatQtyWithUnit } from '@/utils/ruoyi';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import { HistoryConfig } from '@/types/history';
 
@@ -292,6 +293,10 @@ const initFormData: InventoryMovementForm = {
   unit: undefined,
   sourceDocType: undefined,
   sourceDocCode: undefined,
+  sourceDocItem: undefined,
+  orderQuantity: undefined,
+  orderUnit: undefined,
+  conversionRatio: undefined,
   warehouseCode: undefined,
   warehouseName: undefined,
   areaCode: undefined,
@@ -517,27 +522,29 @@ const columns = ref<FieldOption[]>([
   { key: 4, label: `物料名称`, visible: true, children: [] },
   { key: 5, label: `批次号`, visible: true, children: [] },
   { key: 6, label: `库存方向`, visible: true, children: [] },
-  { key: 7, label: `数量`, visible: true, children: [] },
-  { key: 8, label: `基本单位`, visible: false, children: [] },
-  { key: 9, label: `单据类型`, visible: false, children: [] },
-  { key: 10, label: `单据编号`, visible: true, children: [] },
-  { key: 11, label: `仓库编码`, visible: false, children: [] },
-  { key: 12, label: `库区编码`, visible: false, children: [] },
-  { key: 13, label: `库位编码`, visible: true, children: [] },
-  { key: 14, label: `栈板编号`, visible: true, children: [] },
-  { key: 15, label: `业务伙伴`, visible: false, children: [] },
-  { key: 16, label: `伙伴名称`, visible: false, children: [] },
-  { key: 17, label: `凭证年度`, visible: false, children: [] },
-  { key: 18, label: `物料凭证号`, visible: true, children: [] },
-  { key: 19, label: `凭证项次`, visible: false, children: [] },
-  { key: 20, label: `检验批号`, visible: false, children: [] },
-  { key: 21, label: `创建时间`, visible: false, children: [] },
-  { key: 22, label: `创建者`, visible: false, children: [] },
-  { key: 23, label: `更新时间`, visible: false, children: [] },
-  { key: 24, label: `更新者`, visible: false, children: [] },
-  { key: 26, label: `移动原因编码`, visible: false, children: [] },
-  { key: 27, label: `移动原因描述`, visible: false, children: [] },
-  { key: 25, label: `备注`, visible: false, children: [] }
+  { key: 7, label: `库存数量`, visible: true, children: [] },
+  { key: 8, label: `单据类型`, visible: false, children: [] },
+  { key: 9, label: `单据编号`, visible: true, children: [] },
+  { key: 10, label: `单据项次`, visible: true, children: [] },
+  { key: 11, label: `订单数量`, visible: true, children: [] },
+  { key: 12, label: `换算比例`, visible: false, children: [] },
+  { key: 13, label: `仓库编码`, visible: false, children: [] },
+  { key: 14, label: `库区编码`, visible: false, children: [] },
+  { key: 15, label: `库位编码`, visible: true, children: [] },
+  { key: 16, label: `特殊库存`, visible: true, children: [] },
+  { key: 17, label: `业务伙伴`, visible: false, children: [] },
+  { key: 18, label: `伙伴名称`, visible: false, children: [] },
+  { key: 19, label: `凭证年度`, visible: false, children: [] },
+  { key: 20, label: `物料凭证号`, visible: true, children: [] },
+  { key: 21, label: `凭证项次`, visible: true, children: [] },
+  { key: 22, label: `检验批号`, visible: false, children: [] },
+  { key: 23, label: `创建时间`, visible: false, children: [] },
+  { key: 24, label: `创建者`, visible: false, children: [] },
+  { key: 25, label: `更新时间`, visible: false, children: [] },
+  { key: 26, label: `更新者`, visible: false, children: [] },
+  { key: 27, label: `移动原因编码`, visible: false, children: [] },
+  { key: 28, label: `移动原因描述`, visible: false, children: [] },
+  { key: 29, label: `备注`, visible: false, children: [] }
 ]);
 
 /** 查询库存移动记录列表 */

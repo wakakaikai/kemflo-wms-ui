@@ -41,9 +41,15 @@
               <el-table-column v-if="columns[1].visible" label="项次" align="left" prop="itemNumber" fixed="left" min-width="80" />
               <el-table-column v-if="columns[2].visible" label="组件物料" align="left" prop="componentMaterial" min-width="135" />
               <el-table-column v-if="columns[3].visible" label="物料描述" align="left" prop="componentDesc" show-overflow-tooltip min-width="140" />
-              <el-table-column v-if="columns[4].visible" label="需求数量" align="right" prop="componentQty" min-width="100" />
-              <el-table-column v-if="columns[5].visible" label="已发数量" align="right" prop="receivedQuantity" min-width="100" />
-              <el-table-column v-if="columns[6].visible" label="待发数量" align="right" prop="componentQty" min-width="100" />
+              <el-table-column v-if="columns[4].visible" label="需求数量" align="right" min-width="100">
+                <template #default="scope">{{ formatQty(scope.row.componentQty) }}</template>
+              </el-table-column>
+              <el-table-column v-if="columns[5].visible" label="已发数量" align="right" min-width="100">
+                <template #default="scope">{{ formatQty(scope.row.receivedQuantity) }}</template>
+              </el-table-column>
+              <el-table-column v-if="columns[6].visible" label="未清数量" align="right" min-width="100">
+                <template #default="scope">{{ formatQty(scope.row.openQuantity) }}</template>
+              </el-table-column>
               <el-table-column v-if="columns[7].visible" label="单位" align="center" prop="orderUnit" min-width="70" />
               <el-table-column v-if="columns[8].visible" label="供应商代码" align="center" prop="supplierCode" min-width="120" />
               <el-table-column v-if="columns[9].visible" label="供应商名称" align="center" prop="supplierName" show-overflow-tooltip min-width="120" />
@@ -94,7 +100,6 @@
                   <el-date-picker clearable v-model="fixedIssueForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择过账日期" />
                 </el-form-item>
               </el-col>
-
             </el-row>
           </el-form>
 
@@ -112,7 +117,7 @@
             <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip min-width="140" />
             <el-table-column label="供应商" prop="supplierCode" min-width="110" />
             <el-table-column label="供应商" prop="supplierName" show-overflow-tooltip min-width="110" />
-            <el-table-column label="库存来源" min-width="200">
+            <el-table-column label="源库位信息" min-width="200">
               <template #default="scope">
                 <div class="inventory-source-cell">
                   <div v-if="scope.row.locationCode">
@@ -125,18 +130,24 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="待发数量" prop="openQuantity" min-width="100" />
-            <el-table-column label="可用库存" align="right" min-width="100">
+            <el-table-column label="未清数量（发料单位）" min-width="155" align="right">
               <template #default="scope">
-                {{ scope.row.inventoryAvailableQuantity ?? '-' }}
+                {{ formatQtyWithUnit(scope.row.orderOpenQuantity, scope.row.orderUnit) }}
               </template>
             </el-table-column>
-            <el-table-column label="发料数量" align="center" width="160">
+            <el-table-column label="未清数量（库存单位）" min-width="155" align="right">
               <template #default="scope">
-                <el-input-number v-model="scope.row.issueQuantity" :min="0" :max="resolveIssueQuantityMax(scope.row)" :precision="3" size="small" controls-position="right" />
+                {{ formatQtyWithUnit(scope.row.openQuantity, scope.row.unit) }}
               </template>
             </el-table-column>
-            <el-table-column label="单位" prop="unit" width="70" />
+            <el-table-column label="发料数量" align="center" min-width="200">
+              <template #default="scope">
+                <div class="issue-qty-cell">
+                  <el-input-number v-model="scope.row.issueQuantity" :min="0" :max="resolveIssueQuantityMax(scope.row)" :precision="3" size="small" controls-position="right" />
+                  <span class="issue-qty-unit">{{ scope.row.unit || '' }}</span>
+                </div>
+              </template>
+            </el-table-column>
             <el-table-column label="操作" width="80" align="center">
               <template #default="scope">
                 <el-button type="danger" link icon="Delete" @click="removeFromIssueList(scope.$index)"></el-button>
@@ -171,6 +182,7 @@ import InventorySelectionDialog from '@/views/wms/inventoryDetail/components/Inv
 import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import { HistoryConfig } from '@/types/history';
+import { formatQty, formatQtyWithUnit } from '@/utils/ruoyi';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
@@ -260,7 +272,7 @@ const columns = ref<FieldOption[]>([
   { key: 3, label: `物料描述`, visible: true, children: [] },
   { key: 4, label: `需求数量`, visible: true, children: [] },
   { key: 5, label: `已发数量`, visible: true, children: [] },
-  { key: 6, label: `待发数量`, visible: true, children: [] },
+  { key: 6, label: `未清数量`, visible: true, children: [] },
   { key: 7, label: `单位`, visible: true, children: [] },
   { key: 8, label: `供应商代码`, visible: true, children: [] },
   { key: 9, label: `供应商名称`, visible: true, children: [] }
@@ -305,6 +317,43 @@ const handleSelectionChange = (selection: PurchaseOrderBomVO[]) => {
   selectedSearchItems.value = selection;
 };
 
+const toNumber = (value: unknown, fallback = 0) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+const roundQty = (value: number) => Number(value.toFixed(3));
+
+/** 未清数量（订单单位）按换算比例转为库存数量 */
+const toInventoryOpenQuantity = (item: PurchaseOrderBomVO) => {
+  const orderOpenQty = toNumber(item.openQuantity ?? item.componentQty);
+  const ratio = toNumber(item.conversionRatio, 1) || 1;
+  return roundQty(orderOpenQty * ratio);
+};
+
+const resolveDemandKey = (row: any) => `${row.poNumber || ''}|${row.itemNumber || ''}|${row.materialCode || ''}`;
+
+/** 同一 BOM 行已分配发料数量合计（可排除当前行） */
+const resolveAllocatedIssueQuantity = (row: any, excludeIndex?: number) => {
+  const key = resolveDemandKey(row);
+  return roundQty(
+    issueList.value.reduce((sum, item, index) => {
+      if (excludeIndex !== undefined && index === excludeIndex) {
+        return sum;
+      }
+      if (resolveDemandKey(item) !== key) {
+        return sum;
+      }
+      return sum + toNumber(item.issueQuantity);
+    }, 0)
+  );
+};
+
+const resolveRemainingOpenQuantity = (row: any, excludeIndex?: number) => {
+  const openQty = toNumber(row.openQuantity);
+  return Math.max(0, roundQty(openQty - resolveAllocatedIssueQuantity(row, excludeIndex)));
+};
+
 const addSelectedToIssueList = () => {
   if (selectedSearchItems.value.length === 0) {
     proxy?.$modal.msgWarning('请先选择需要发料的 BOM 行');
@@ -315,18 +364,26 @@ const addSelectedToIssueList = () => {
     proxy?.$modal.msgWarning('选中行存在未维护供应商的物料，请先维护供应商');
     return;
   }
-  const newItems = selectedSearchItems.value.map((item) => ({
-    issueMode: 'PO',
-    poNumber: item.poNumber,
-    itemNumber: item.itemNumber,
-    materialCode: item.componentMaterial,
-    materialDesc: item.componentDesc,
-    supplierCode: item.supplierCode,
-    supplierName: item.supplierName,
-    openQuantity: item.openQuantity ?? item.componentQty ?? 0,
-    issueQuantity: undefined,
-    unit: item.orderUnit || item.inventoryUnit
-  }));
+  const newItems = selectedSearchItems.value.map((item) => {
+    const conversionRatio = toNumber(item.conversionRatio, 1) || 1;
+    const orderOpenQuantity = toNumber(item.openQuantity ?? item.componentQty);
+    const openQuantity = toInventoryOpenQuantity(item);
+    return {
+      issueMode: 'PO',
+      poNumber: item.poNumber,
+      itemNumber: item.itemNumber,
+      materialCode: item.componentMaterial,
+      materialDesc: item.componentDesc,
+      supplierCode: item.supplierCode,
+      supplierName: item.supplierName,
+      orderOpenQuantity,
+      orderUnit: item.orderUnit,
+      conversionRatio,
+      openQuantity,
+      issueQuantity: undefined,
+      unit: item.inventoryUnit || item.orderUnit
+    };
+  });
   issueList.value.push(...newItems);
   proxy?.$modal.msgSuccess(`已添加 ${newItems.length} 条发料明细`);
   bomTableRef.value?.clearSelection();
@@ -337,16 +394,17 @@ const removeFromIssueList = (index: number) => {
 };
 
 const resolveIssueQuantityMax = (row: any) => {
-  const available = Number(row.inventoryAvailableQuantity ?? 0);
-  return available > 0 ? available : undefined;
+  const openQty = toNumber(row.openQuantity);
+  return openQty > 0 ? openQty : undefined;
 };
 
 const openInventoryDialog = (index: number, row: any) => {
   inventoryDialogIndex.value = index;
+  const remainingQty = resolveRemainingOpenQuantity(row, index);
   inventoryDialogMaterial.value = {
     materialCode: row.materialCode || '',
     materialDesc: row.materialDesc || '',
-    issueQty: Number(row.issueQuantity ?? row.openQuantity ?? 0),
+    issueQty: remainingQty > 0 ? remainingQty : toNumber(row.openQuantity),
     unit: row.unit || ''
   };
   inventoryDialogVisible.value = true;
@@ -359,19 +417,34 @@ const handleInventoryConfirm = ({ locations }: { locations: any[] }) => {
     return;
   }
 
-  const splitRows = locations.map((location, locationIndex) => ({
-    ...source,
-    issueQuantity: Number(location.pickQty ?? 0),
-    unit: location.unit || source.unit,
-    warehouseCode: location.warehouseCode,
-    areaCode: location.areaCode,
-    locationCode: location.locationCode,
-    batchCode: location.batchCode,
-    specialInventoryFlag: location.specialInventoryFlag || 'N',
-    inventoryAvailableQuantity: Number(location.availableQuantity ?? 0),
-    inventoryRowId: location.id,
-    inventorySplitKey: `${source.poNumber || ''}_${source.itemNumber || ''}_${source.materialCode || ''}_${location.rowKey || locationIndex}`
-  }));
+  const maxDemand = resolveRemainingOpenQuantity(source, index) || toNumber(source.openQuantity);
+  let remainDemand = maxDemand;
+  const splitRows = locations
+    .map((location, locationIndex) => {
+      const available = toNumber(location.availableQuantity);
+      const requested = toNumber(location.pickQty);
+      const issueQuantity = roundQty(Math.max(0, Math.min(requested, available, remainDemand)));
+      remainDemand = Math.max(0, roundQty(remainDemand - issueQuantity));
+      return {
+        ...source,
+        issueQuantity,
+        unit: location.unit || source.unit,
+        warehouseCode: location.warehouseCode,
+        areaCode: location.areaCode,
+        locationCode: location.locationCode,
+        batchCode: location.batchCode,
+        specialInventoryFlag: location.specialInventoryFlag || 'N',
+        inventoryAvailableQuantity: available,
+        inventoryRowId: location.id,
+        inventorySplitKey: `${source.poNumber || ''}_${source.itemNumber || ''}_${source.materialCode || ''}_${location.rowKey || locationIndex}`
+      };
+    })
+    .filter((row) => toNumber(row.issueQuantity) > 0);
+
+  if (!splitRows.length) {
+    proxy?.$modal.msgWarning('发料数量不能超过未清数量（库存单位）');
+    return;
+  }
 
   issueList.value.splice(index, 1, ...splitRows);
   inventoryDialogIndex.value = -1;
@@ -399,9 +472,23 @@ const submitForm = async () => {
     resultStatus.value = false;
     return;
   }
-  const overInventory = validList.filter((item) => Number(item.inventoryAvailableQuantity ?? 0) > 0 && Number(item.issueQuantity ?? 0) > Number(item.inventoryAvailableQuantity ?? 0));
-  if (overInventory.length > 0) {
-    resultMessage.value = '发料数量不能大于所选库位可用库存';
+  const overOpen = validList.filter((item) => Number(item.openQuantity ?? 0) > 0 && Number(item.issueQuantity ?? 0) > Number(item.openQuantity ?? 0));
+  if (overOpen.length > 0) {
+    resultMessage.value = '发料数量不能大于未清数量（库存单位）';
+    resultStatus.value = false;
+    return;
+  }
+  const demandTotals = new Map<string, { openQuantity: number; issueQuantity: number }>();
+  for (const item of validList) {
+    const key = resolveDemandKey(item);
+    const current = demandTotals.get(key) || { openQuantity: toNumber(item.openQuantity), issueQuantity: 0 };
+    current.issueQuantity = roundQty(current.issueQuantity + toNumber(item.issueQuantity));
+    current.openQuantity = toNumber(item.openQuantity) || current.openQuantity;
+    demandTotals.set(key, current);
+  }
+  const overDemand = [...demandTotals.values()].some((item) => item.openQuantity > 0 && item.issueQuantity > item.openQuantity);
+  if (overDemand) {
+    resultMessage.value = '同一物料发料合计不能超过未清数量（库存单位）';
     resultStatus.value = false;
     return;
   }
@@ -491,5 +578,15 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+.issue-qty-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.issue-qty-unit {
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
 }
 </style>

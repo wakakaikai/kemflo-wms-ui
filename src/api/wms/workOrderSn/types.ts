@@ -15,6 +15,16 @@ export interface WorkOrderSnVO {
   workOrderNo: string;
 
   /**
+   * 物料编码
+   */
+  materialCode?: string;
+
+  /**
+   * 物料描述
+   */
+  materialName?: string;
+
+  /**
    * 条码
    */
   sn: string;
@@ -77,6 +87,16 @@ export interface WorkOrderSnForm extends BaseEntity {
   workOrderNo?: string;
 
   /**
+   * 物料编码
+   */
+  materialCode?: string;
+
+  /**
+   * 物料描述
+   */
+  materialName?: string;
+
+  /**
    * 条码
    */
   sn?: string;
@@ -85,6 +105,11 @@ export interface WorkOrderSnForm extends BaseEntity {
    * 数量
    */
   qty?: number;
+
+  /**
+   * 连续打印标签数量
+   */
+  continuousQty?: number;
 
   /**
    * 顺序
@@ -109,7 +134,7 @@ export interface WorkOrderSnForm extends BaseEntity {
   /**
    * 单位
    */
-  unit: string;
+  unit?: string;
 
   /**
    * 备注

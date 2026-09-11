@@ -5,7 +5,7 @@
         <el-card shadow="hover" class="inventory-detail-search-header-card">
           <el-form ref="queryFormRef" :model="queryParams" label-width="auto" class="inventory-detail-search-form">
             <el-row :gutter="16">
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item label="物料编码" prop="itemCodeStr">
                   <HistoryInput v-model="queryParams.itemCodeStr" :config="itemCodeConfig" placeholder="请输入物料编码" @keyup.enter="handleQuery">
                     <template #append>
@@ -14,34 +14,34 @@
                   </HistoryInput>
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
                   <el-select v-model="queryParams.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable style="width: 100%">
                     <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.value + ' - ' + dict.label" :value="dict.value" />
                   </el-select>
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item label="业务伙伴" prop="businessCode">
                   <HistoryInput v-model="queryParams.businessCode" :config="businessCodeConfig" placeholder="请输入业务伙伴" @keyup.enter="handleQuery" />
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item label="批次号" prop="batchCode">
                   <HistoryInput v-model="queryParams.batchCode" :config="batchCodeConfig" placeholder="请输入批次号" @keyup.enter="handleQuery" />
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item label="仓库编码" prop="warehouseCode">
                   <HistoryInput v-model="queryParams.warehouseCode" :config="warehouseCodeConfig" placeholder="请输入仓库编码" @keyup.enter="handleQuery" />
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item label="库位编码" prop="locationCode">
                   <HistoryInput v-model="queryParams.locationCode" :config="locationCodeConfig" placeholder="请输入库位编码" @keyup.enter="handleQuery" />
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4">
                 <el-form-item class="search-actions">
                   <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
                   <el-button icon="Refresh" @click="resetQuery">重置</el-button>

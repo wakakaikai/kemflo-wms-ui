@@ -163,7 +163,7 @@
         </el-table-column>
         <el-table-column label="库区" align="left" prop="areaCode" />
         <el-table-column label="库位" align="left" prop="locationCode" />
-        <el-table-column label="状态" align="center" prop="status">
+        <el-table-column label="状态" align="center" prop="status" min-width="110">
           <template #default="scope">
             <dict-tag :options="wms_packing_status" :value="scope.row.status" />
           </template>
@@ -177,7 +177,14 @@
         <el-table-column label="创建者" align="center" prop="createByName" />
         <el-table-column label="更新时间" align="center" prop="updateTime" />
         <el-table-column label="更新者" align="center" prop="updateByName" />
-        <el-table-column label="备注" align="left" prop="remark" />
+        <el-table-column label="备注" align="left" prop="remark" min-width="140">
+          <template #default="scope">
+            <el-tooltip v-if="scope.row.remark" :content="scope.row.remark" placement="top" :show-after="300">
+              <div class="remark-clamp">{{ scope.row.remark }}</div>
+            </el-tooltip>
+            <span v-else></span>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" align="center" class-name="small-padding" fixed="right" width="220">
           <template #default="scope">
             <el-tooltip content="修改" placement="top" v-if="scope.row.packingType == 0 && (scope.row.status == 1 || scope.row.status == 4 || scope.row.status == 5)">
@@ -1320,5 +1327,18 @@ onMounted(() => {
   .preview-content {
     padding: 10px;
   }
+}
+
+.remark-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-all;
+  line-height: 1.4;
+  cursor: default;
 }
 </style>

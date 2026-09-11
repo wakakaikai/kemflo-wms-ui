@@ -16,30 +16,24 @@
       <div v-show="historyExpanded" class="history-card-body">
         <el-form v-show="showSearch" ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
           <!-- 默认显示的搜索项 -->
+<!--          <el-form-item label="移动类型" prop="moveType">
+            <HistoryInput v-model="queryParams.moveType" :config="moveTypeConfig" placeholder="请输入移动类型" @keyup.enter="handleQuery" />
+          </el-form-item>-->
           <el-form-item label="物料凭证号" prop="sapMaterialOrderNo">
             <HistoryInput v-model="queryParams.sapMaterialOrderNo" :config="sapMaterialOrderNoConfig" placeholder="请输入物料凭证号" @keyup.enter="handleQuery" />
           </el-form-item>
-
+          <el-form-item label="物料凭证项次" prop="sapMaterialItem">
+            <HistoryInput v-model="queryParams.sapMaterialItem" :config="sapMaterialItemConfig" placeholder="请输入物料凭证项次" @keyup.enter="handleQuery" />
+          </el-form-item>
           <el-form-item label="工单号" prop="sourceDocCode">
             <HistoryInput v-model="queryParams.sourceDocCode" :config="sourceDocCodeConfig" placeholder="请输入工单号" @keyup.enter="handleQuery" />
           </el-form-item>
-          <!-- 高级搜索项，默认隐藏 -->
-          <div v-show="showAdvancedSearch">
-            <el-form-item label="物料凭证项次" prop="sapMaterialItem">
-              <HistoryInput v-model="queryParams.sapMaterialItem" :config="sapMaterialItemConfig" placeholder="请输入物料凭证项次" @keyup.enter="handleQuery" />
-            </el-form-item>
-          </div>
-
+          <el-form-item label="物料编码" prop="itemCode">
+            <HistoryInput v-model="queryParams.itemCode" :config="itemCodeConfig" placeholder="请输入物料编码" @keyup.enter="handleQuery" />
+          </el-form-item>
           <el-form-item>
             <el-button type="primary" icon="Search" @click="handleQuery" :loading="loading">搜索</el-button>
             <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-            <el-button link type="primary" @click="toggleAdvancedSearch">
-              {{ showAdvancedSearch ? '收起' : '高级搜索' }}
-              <el-icon class="el-icon--right">
-                <ArrowDown v-if="!showAdvancedSearch" />
-                <ArrowUp v-else />
-              </el-icon>
-            </el-button>
           </el-form-item>
         </el-form>
 
@@ -362,6 +356,20 @@ const data = reactive<PageData<InventoryMovementForm, InventoryMovementQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 
+const moveTypeConfig: HistoryConfig = {
+  key: 'moveType',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'workOrderReturnMaterial',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
 const sapMaterialOrderNoConfig: HistoryConfig = {
   key: 'sapMaterialOrderNo',
   storage: 'indexedDB',
@@ -392,6 +400,20 @@ const sapMaterialItemConfig: HistoryConfig = {
 
 const sourceDocCodeConfig: HistoryConfig = {
   key: 'sourceDocCode',
+  storage: 'indexedDB',
+  maxSize: 10,
+  page: 'workOrderReturnMaterial',
+  autoSave: true,
+  component: {
+    showDropdown: true,
+    showTime: false,
+    showDelete: true,
+    dropdownMaxHeight: '300px'
+  }
+};
+
+const itemCodeConfig: HistoryConfig = {
+  key: 'itemCode',
   storage: 'indexedDB',
   maxSize: 10,
   page: 'workOrderReturnMaterial',

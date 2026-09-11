@@ -154,6 +154,11 @@ export interface PackingDetailQuery extends PageQuery {
   materialItem?: string;
 
   /**
+   * 状态
+   */
+  status?: number | string;
+
+  /**
    * 日期范围参数
    */
   params?: any;

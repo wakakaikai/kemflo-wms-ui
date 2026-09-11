@@ -73,6 +73,26 @@ export interface InventoryMovementForm extends BaseEntity {
   sourceDocCode?: string;
 
   /**
+   * 单据项次
+   */
+  sourceDocItem?: string;
+
+  /**
+   * 订单数量
+   */
+  orderQuantity?: number;
+
+  /**
+   * 订单单位
+   */
+  orderUnit?: string;
+
+  /**
+   * 换算比例
+   */
+  conversionRatio?: number;
+
+  /**
    * 仓库编码
    */
   warehouseCode?: string;
@@ -245,6 +265,26 @@ export interface InventoryMovementQuery extends PageQuery {
    * 单据编号
    */
   sourceDocCode?: string;
+
+  /**
+   * 单据项次
+   */
+  sourceDocItem?: string;
+
+  /**
+   * 订单数量
+   */
+  orderQuantity?: number;
+
+  /**
+   * 订单单位
+   */
+  orderUnit?: string;
+
+  /**
+   * 换算比例
+   */
+  conversionRatio?: number;
 
   /**
    * 仓库编码

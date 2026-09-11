@@ -47,7 +47,7 @@
         </el-table-column>
         <el-table-column label="本次数量" width="150" align="right" fixed="right">
           <template #default="{ row }">
-            <el-input-number v-if="isRowSelected(row)" :model-value="row.pickQty" :min="0" :max="row.availableQuantity" :precision="3" :step="1" controls-position="right" size="small" class="pick-qty-input" :disabled="!isRowSelected(row)" @click.stop @change="(val: number | undefined) => onPickQtyChange(row, val)" />
+            <el-input-number v-if="isRowSelected(row)" :model-value="row.pickQty" :min="0" :max="getPickQtyMax(row)" :precision="3" :step="1" controls-position="right" size="small" class="pick-qty-input" :disabled="!isRowSelected(row)" @click.stop @change="(val: number | undefined) => onPickQtyChange(row, val)" />
             <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
@@ -159,6 +159,21 @@ const isRowSelectable = (row: InventoryPickRow) => row.availableQuantity > 0;
 
 const isRowSelected = (row: InventoryPickRow) => selectedRowKeys.value.has(row.rowKey);
 
+const demandQty = computed(() => Number(props.issueQty ?? 0));
+
+const hasDemandCap = computed(() => demandQty.value > 0);
+
+const getOtherPickedQty = (row: InventoryPickRow) =>
+  selectedRows.value.reduce((sum, item) => (item.rowKey === row.rowKey ? sum : sum + item.pickQty), 0);
+
+const getPickQtyMax = (row: InventoryPickRow) => {
+  if (!hasDemandCap.value) {
+    return row.availableQuantity;
+  }
+  const remainByDemand = Math.max(0, Number((demandQty.value - getOtherPickedQty(row)).toFixed(3)));
+  return Math.min(row.availableQuantity, remainByDemand);
+};
+
 const onSelectionChange = (rows: InventoryPickRow[]) => {
   if (applyingSelection.value) return;
   const newKeys = new Set(rows.map((r) => r.rowKey));
@@ -168,17 +183,20 @@ const onSelectionChange = (rows: InventoryPickRow[]) => {
       row.pickQty = 0;
     }
   }
-  // 新勾选的行设置默认数量
+  // 新勾选的行设置默认数量（不超过可用库存与剩余需求）
+  let allocated = totalPicked.value;
   for (const row of rows) {
     if (!selectedRowKeys.value.has(row.rowKey) && row.pickQty <= 0) {
-      row.pickQty = row.availableQuantity;
+      const remainByDemand = hasDemandCap.value ? Math.max(0, Number((demandQty.value - allocated).toFixed(3))) : row.availableQuantity;
+      row.pickQty = Math.min(row.availableQuantity, remainByDemand);
+      allocated = Number((allocated + row.pickQty).toFixed(3));
     }
   }
   selectedRowKeys.value = newKeys;
 };
 
 const onPickQtyChange = (row: InventoryPickRow, val: number | undefined) => {
-  row.pickQty = Math.max(0, Math.min(row.availableQuantity, Number(val ?? 0)));
+  row.pickQty = Math.max(0, Math.min(getPickQtyMax(row), Number(val ?? 0)));
   if (row.pickQty <= 0 && selectedRowKeys.value.has(row.rowKey)) {
     applyingSelection.value = true;
     tableRef.value?.toggleRowSelection(row, false);
@@ -245,6 +263,10 @@ const handleConfirm = () => {
   const picked = selectedRows.value.map((r) => ({ ...r }));
   if (!picked.length) {
     ElMessage.warning('请至少选择一条库存明细并填写本次数量');
+    return;
+  }
+  if (hasDemandCap.value && totalPicked.value > demandQty.value) {
+    ElMessage.warning('本次发料合计不能超过待发/需求数量');
     return;
   }
   emit('confirm', { locations: picked });

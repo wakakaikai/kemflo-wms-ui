@@ -43,12 +43,16 @@
             <el-table-column v-if="columns[2].visible" label="凭证项次" align="left" prop="sapMaterialItem" />
             <el-table-column v-if="columns[16].visible" label="凭证年度" align="left" prop="sapMaterialDocYear" />
             <el-table-column v-if="columns[3].visible" label="采购单号" align="left" prop="sourceDocCode" />
-            <el-table-column v-if="columns[4].visible" label="采购项次" align="left" prop="poItemNo" />
+            <el-table-column v-if="columns[4].visible" label="采购项次" align="left" prop="sourceDocItem" />
             <el-table-column v-if="columns[5].visible" label="物料编码" align="left" prop="itemCode" />
             <el-table-column v-if="columns[6].visible" label="物料名称" align="left" prop="itemName" show-overflow-tooltip />
             <el-table-column v-if="columns[7].visible" label="批次号" align="center" prop="batchCode" />
-            <el-table-column v-if="columns[8].visible" label="数量" align="center" prop="poQuantity" />
-            <el-table-column v-if="columns[9].visible" label="单位" align="center" prop="poUnit" />
+            <el-table-column v-if="columns[8].visible" label="数量" align="center" prop="orderQuantity">
+              <template #default="scope">
+                {{ formatQty(scope.row.orderQuantity) }}
+              </template>
+            </el-table-column>
+            <el-table-column v-if="columns[9].visible" label="单位" align="center" prop="orderUnit" />
             <el-table-column v-if="columns[10].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
               <template #default="scope">
                 <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
@@ -140,25 +144,18 @@
           <el-table-column v-if="transferColumns[1].visible" label="采购项次" prop="poItemNo" />
           <el-table-column v-if="transferColumns[2].visible" label="物料编码" prop="itemCode" />
           <el-table-column v-if="transferColumns[3].visible" label="物料名称" prop="itemName" show-overflow-tooltip />
-          <el-table-column v-if="transferColumns[4].visible" label="批次号" prop="batchCode" show-overflow-tooltip />
-          <el-table-column v-if="transferColumns[5].visible" label="源库位信息" min-width="120">
+          <el-table-column v-if="transferColumns[5].visible" label="源库位信息" min-width="200">
             <template #default="scope">
-              <div>
-                <div>仓库: {{ scope.row.sourceWarehouseCode }}</div>
-                <div>库区: {{ scope.row.sourceAreaCode }}</div>
-                <div>库位: {{ scope.row.sourceLocationCode }}</div>
+              <div class="source-location-cell">
+                <div>
+                  <div>仓库: {{ scope.row.sourceWarehouseCode || '-' }}</div>
+                  <div>库位: {{ scope.row.sourceLocationCode || '-' }}</div>
+                  <div>批次: {{ scope.row.batchCode || '-' }}</div>
+                </div>
+                <el-button link type="primary" icon="Search" @click="openInventoryDialog(scope.$index, scope.row)"></el-button>
               </div>
             </template>
           </el-table-column>
-          <!--              <el-table-column label="数量" min-width="180">
-              <template #default="scope">
-                <div>
-                  <div>非限制数量: {{ scope.row.availableQuantity }}</div>
-                  <div>质 检 数 量: {{ scope.row.inspectionQuantity }}</div>
-                  <div>冻 结 数 量: {{ scope.row.blockedQuantity }}</div>
-                </div>
-              </template>
-            </el-table-column>-->
           <el-table-column v-if="transferColumns[6].visible" label="库存标识" align="center" prop="specialInventoryFlag" min-width="100">
             <template #default="scope">
               <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
@@ -183,17 +180,6 @@
           <!-- 多库位模式下显示独立的当前库位设置 -->
           <el-table-column v-if="transferColumns[9].visible && transferMode === 'multiple'" label="当前库位" width="220">
             <template #default="scope">
-              <!--                <el-input
-                  v-model.trim="scope.row.targetLocationCode"
-                  placeholder="请输入当前库位编码"
-                  clearable
-                  @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)"
-                  @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)"
-                >
-                  <template #append>
-                    <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
-                  </template>
-                </el-input>-->
               <TableHistoryInput v-model="scope.row.targetLocationCode" :config="locationCodeConfig" placeholder="请输入当前库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)">
                 <template #append>
                   <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
@@ -202,14 +188,17 @@
             </template>
           </el-table-column>
 
-          <el-table-column v-if="transferColumns[10].visible" label="退货数量" width="140">
+          <el-table-column v-if="transferColumns[10].visible" label="退货数量" width="200" align="center">
             <template #default="scope">
-              <el-input-number v-model="scope.row.returnQuantity" :min="0" :max="parseFloat(scope.row.poQuantity || 0)" :precision="3" size="small" controls-position="right" @change="handleReturnPoQuantityChange(scope.row)" />
+              <el-input-number v-model="scope.row.returnQuantity" :min="0" :max="parseFloat(scope.row.originQuantity || scope.row.orderQuantity || scope.row.poQuantity || 0)" :precision="3" size="small" controls-position="right" @change="handleReturnPoQuantityChange(scope.row)" />
+              <span class="issue-qty-unit">{{ scope.row.poUnit || scope.row.orderUnit || '' }}</span>
             </template>
           </el-table-column>
-          <el-table-column v-if="transferColumns[11].visible" label="单位" align="center" prop="poUnit" />
-          <el-table-column v-if="transferColumns[12].visible" label="库存数量" prop="inventoryQuantity" align="center" />
-          <el-table-column v-if="transferColumns[13].visible" label="库存单位" prop="inventoryUnit" align="center" />
+          <el-table-column v-if="transferColumns[11].visible" label="库存数量" min-width="100" align="center">
+            <template #default="scope">
+              {{ formatQtyWithUnit(scope.row.inventoryQuantity, scope.row.inventoryUnit) }}
+            </template>
+          </el-table-column>
           <el-table-column label="操作" width="80" align="center">
             <template #default="scope">
               <el-button type="danger" link icon="Delete" @click="removeFromTransferList(scope.$index)"></el-button>
@@ -235,6 +224,15 @@
     </el-card>
     <!-- 库位选择对话框 -->
     <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
+    <InventorySelectionDialog
+      v-model="inventoryDialog.visible"
+      :material-code="inventoryDialog.row?.itemCode || inventoryDialog.row?.materialCode || ''"
+      :material-desc="inventoryDialog.row?.itemName || inventoryDialog.row?.materialName || ''"
+      :issue-qty="inventoryDialog.issueQty"
+      :unit="inventoryDialog.row?.inventoryUnit || inventoryDialog.row?.unit || inventoryDialog.row?.poUnit || inventoryDialog.row?.orderUnit || ''"
+      :general-only="false"
+      @confirm="applyInventorySelection"
+    />
   </div>
 </template>
 
@@ -247,6 +245,7 @@ import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } fr
 import { ArrowDown, ArrowRight, ArrowUp, Bell, QuestionFilled, Switch } from '@element-plus/icons-vue';
 
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
+import InventorySelectionDialog from '@/views/wms/inventoryDetail/components/InventorySelectionDialog.vue';
 import { returnPurchaseInventory } from '@/api/wms/inventoryDetail';
 import { PurchaseOrderReturnBo, PurchaseOrderReturnBatchForm } from '@/api/wms/purchaseOrder/types';
 import { HttpStatus } from '@/enums/RespEnum';
@@ -254,6 +253,7 @@ import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
+import { formatQty, formatQtyWithUnit } from '@/utils/ruoyi';
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_type, wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_type', 'wms_inventory_special_flag'));
@@ -292,6 +292,18 @@ const queryFormRef = ref<any>(null);
 const fixedTransferFormRef = ref<any>(null);
 
 const inventoryTableRef = ref(null);
+
+const inventoryDialog = reactive<{
+  visible: boolean;
+  index: number;
+  row: any | null;
+  issueQty: number;
+}>({
+  visible: false,
+  index: -1,
+  row: null,
+  issueQty: 0
+});
 
 const initFormData: InventoryMovementForm = {
   id: undefined,
@@ -519,9 +531,7 @@ const transferColumns = ref<FieldOption[]>([
   { key: 8, label: `库存类型`, visible: true, children: [] },
   { key: 9, label: `当前库位`, visible: true, children: [] },
   { key: 10, label: `退货数量`, visible: true, children: [] },
-  { key: 11, label: `单位`, visible: true, children: [] },
-  { key: 12, label: `库存数量`, visible: true, children: [] },
-  { key: 13, label: `库存单位`, visible: true, children: [] }
+  { key: 11, label: `库存数量`, visible: true, children: [] }
 ]);
 
 // 禁用未来的时间
@@ -551,7 +561,7 @@ const calculateInventoryQuantity = (row) => {
 // 监听收货数量变化的处理方法
 const handleReturnPoQuantityChange = (row) => {
   // 如果输入为空，则库存数量也设为0
-  if (row.poQuantity === null || row.poQuantity === undefined || row.poQuantity === '') {
+  if (row.returnQuantity === null || row.returnQuantity === undefined || row.returnQuantity === '') {
     row.inventoryQuantity = 0;
   } else {
     calculateInventoryQuantity(row);
@@ -600,30 +610,42 @@ const addSelectedToTransferList = () => {
     return;
   }
 
-  const newItems = selectedSearchItems.value.map((item) => ({
-    ...item,
-    currentQuantity: item.availableQuantity || 0,
-    availableQuantity: item.availableQuantity,
-    inspectionQuantity: item.inspectionQuantity,
-    blockedQuantity: item.blockedQuantity,
-    unit: item.unit,
-    sourceWarehouseCode: item.warehouseCode,
-    sourceAreaCode: item.areaCode,
-    sourceLocationCode: item.locationCode,
-    targetWarehouseCode: item.warehouseCode,
-    targetAreaCode: item.areaCode,
-    targetLocationCode: item.locationCode,
-    specialInventoryFlag: item.specialInventoryFlag,
-    inventoryType: item.inventoryType,
-    returnQuantity: item.poQuantity,
-    inventoryQuantity: (item.poQuantity * (item.conversionRatio || 1)).toFixed(3),
-    inventoryUnit: item.unit
-  }));
+  const newItems = selectedSearchItems.value.map((item: any) => {
+    const orderQuantity = item.orderQuantity ?? item.poQuantity;
+    const orderUnit = item.orderUnit ?? item.poUnit;
+    const poItemNo = item.sourceDocItem ?? item.poItemNo;
+    const conversionRatio = Number(item.conversionRatio || 1) || 1;
+    return {
+      ...item,
+      originId: item.id,
+      originQuantity: orderQuantity,
+      poItemNo,
+      poUnit: orderUnit,
+      orderQuantity,
+      currentQuantity: item.availableQuantity || 0,
+      availableQuantity: item.availableQuantity,
+      inspectionQuantity: item.inspectionQuantity,
+      blockedQuantity: item.blockedQuantity,
+      unit: item.unit,
+      sourceWarehouseCode: item.warehouseCode,
+      sourceAreaCode: item.areaCode,
+      sourceLocationCode: item.locationCode,
+      targetWarehouseCode: item.warehouseCode,
+      targetAreaCode: item.areaCode,
+      targetLocationCode: item.locationCode,
+      specialInventoryFlag: item.specialInventoryFlag,
+      inventoryType: item.inventoryType,
+      returnQuantity: orderQuantity,
+      conversionRatio,
+      inventoryQuantity: (Number(orderQuantity || 0) * conversionRatio).toFixed(3),
+      inventoryUnit: item.unit
+    };
+  });
 
   // 避免重复添加
   let addedCount = 0;
   newItems.forEach((newItem) => {
-    const exists = transferList.value.some((item) => item.id === newItem.id);
+    const exists = transferList.value.some((item) => (item.originId || item.id) === (newItem.originId || newItem.id));
     if (!exists) {
       transferList.value.push(newItem);
       addedCount++;
@@ -715,6 +737,121 @@ const handleInventoryTypeChange = (index: number, value: any) => {
   }
 };
 
+const toNumber = (value: unknown, fallback = 0) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+const roundQty = (value: number) => Number(value.toFixed(3));
+
+const resolveDemandKey = (row: any) =>
+  String(row.originId || row.id || `${row.sourceDocCode || ''}_${row.poItemNo || row.sourceDocItem || ''}_${row.itemCode || ''}`);
+
+const resolveOrderOpenQuantity = (row: any) => toNumber(row.originQuantity ?? row.orderQuantity ?? row.poQuantity);
+
+const resolveInventoryOpenQuantity = (row: any) => {
+  const ratio = toNumber(row.conversionRatio, 1) || 1;
+  return roundQty(resolveOrderOpenQuantity(row) * ratio);
+};
+
+const resolveAllocatedReturnQuantity = (row: any, excludeIndex?: number) => {
+  const key = resolveDemandKey(row);
+  return roundQty(
+    transferList.value.reduce((sum, item, index) => {
+      if (excludeIndex != null && index === excludeIndex) {
+        return sum;
+      }
+      if (resolveDemandKey(item) !== key) {
+        return sum;
+      }
+      return sum + toNumber(item.returnQuantity);
+    }, 0)
+  );
+};
+
+const resolveRemainingReturnQuantity = (row: any, excludeIndex?: number) => {
+  return Math.max(0, roundQty(resolveOrderOpenQuantity(row) - resolveAllocatedReturnQuantity(row, excludeIndex)));
+};
+
+const openInventoryDialog = (index: number, row: any) => {
+  if (!String(row.itemCode || row.materialCode || '').trim()) {
+    proxy.$modal.msgWarning('请先选择物料');
+    return;
+  }
+  const remainingOrderQty = resolveRemainingReturnQuantity(row, index);
+  const ratio = toNumber(row.conversionRatio, 1) || 1;
+  inventoryDialog.index = index;
+  inventoryDialog.row = row;
+  inventoryDialog.issueQty = remainingOrderQty > 0 ? roundQty(remainingOrderQty * ratio) : resolveInventoryOpenQuantity(row);
+  inventoryDialog.visible = true;
+};
+
+const applyInventorySelection = (payload: { locations: any[] }) => {
+  const index = inventoryDialog.index;
+  const source = transferList.value[index];
+  const locations = payload.locations || [];
+  if (!source || !locations.length) {
+    return;
+  }
+
+  const originId = source.originId || source.id;
+  const originQuantity = resolveOrderOpenQuantity(source);
+  const ratio = toNumber(source.conversionRatio, 1) || 1;
+  let remainDemandInv = roundQty(resolveRemainingReturnQuantity(source, index) * ratio) || resolveInventoryOpenQuantity(source);
+
+  const splitRows = locations
+    .map((location, locationIndex) => {
+      const available = toNumber(location.availableQuantity);
+      const requested = toNumber(location.pickQty);
+      const inventoryQuantity = roundQty(Math.max(0, Math.min(requested, available, remainDemandInv)));
+      remainDemandInv = Math.max(0, roundQty(remainDemandInv - inventoryQuantity));
+      const returnQuantity = roundQty(inventoryQuantity / ratio);
+      const specialInventoryFlag = location.specialInventoryFlag || source.specialInventoryFlag || '';
+      const businessCode = location.businessCode || '';
+      const businessName = location.businessName || '';
+      return {
+        ...source,
+        originId,
+        originQuantity,
+        inventoryDetailId: location.id,
+        batchCode: location.batchCode || '',
+        warehouseCode: location.warehouseCode,
+        areaCode: location.areaCode,
+        locationCode: location.locationCode,
+        sourceWarehouseCode: location.warehouseCode,
+        sourceAreaCode: location.areaCode,
+        sourceLocationCode: location.locationCode,
+        specialInventoryFlag,
+        inventoryType: location.inventoryType || source.inventoryType || 'N',
+        availableQuantity: available,
+        inspectionQuantity: toNumber(location.inspectionQuantity ?? location.inspectionQty),
+        blockedQuantity: toNumber(location.blockedQuantity ?? location.blockedQty),
+        currentQuantity: available,
+        returnQuantity,
+        inventoryQuantity,
+        inventoryUnit: location.unit || source.inventoryUnit || source.unit,
+        unit: location.unit || source.unit,
+        businessCode,
+        businessName,
+        supplierCode: specialInventoryFlag === 'K' ? businessCode : source.supplierCode,
+        customerCode: specialInventoryFlag === 'W' ? businessCode : source.customerCode,
+        inventorySplitKey: `${originId}_${location.rowKey || location.id || locationIndex}`
+      };
+    })
+    .filter((row) => toNumber(row.returnQuantity) > 0 || toNumber(row.inventoryQuantity) > 0);
+
+  if (!splitRows.length) {
+    proxy.$modal.msgWarning('退货数量必须大于 0');
+    return;
+  }
+
+  transferList.value.splice(index, 1, ...splitRows);
+  inventoryDialog.visible = false;
+  inventoryDialog.index = -1;
+  inventoryDialog.row = null;
+  inventoryDialog.issueQty = 0;
+};
+
 /** 提交移转 */
 const submitTransfer = async (moveType: any) => {
   const validTransfers = transferList.value.filter((item) => item.returnQuantity > 0);
@@ -760,9 +897,22 @@ const submitTransfer = async (moveType: any) => {
   }
 
   // 验证退货数量是否超过当前数量
-  const overQuantityItems = validTransfers.filter((item) => item.returnQuantity > item.poQuantity);
+  const overQuantityItems = validTransfers.filter((item) => item.returnQuantity > resolveOrderOpenQuantity(item));
   if (overQuantityItems.length > 0) {
     resultMessage.value = '退货数量不能超过当前可用数量';
+    resultStatus.value = false;
+    return;
+  }
+  const demandTotals = new Map<string, { originQuantity: number; returnQuantity: number }>();
+  for (const item of validTransfers) {
+    const key = resolveDemandKey(item);
+    const current = demandTotals.get(key) || { originQuantity: resolveOrderOpenQuantity(item), returnQuantity: 0 };
+    current.returnQuantity = roundQty(current.returnQuantity + toNumber(item.returnQuantity));
+    current.originQuantity = resolveOrderOpenQuantity(item) || current.originQuantity;
+    demandTotals.set(key, current);
+  }
+  if ([...demandTotals.values()].some((item) => item.originQuantity > 0 && item.returnQuantity > item.originQuantity)) {
+    resultMessage.value = '同一来源行的退货数量合计不能超过可用数量';
     resultStatus.value = false;
     return;
   }
@@ -876,7 +1026,7 @@ onMounted(() => {
 }
 
 .history-collapse-icon {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
   transition: transform 0.2s;
 }
@@ -886,7 +1036,7 @@ onMounted(() => {
 }
 
 .history-header-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -942,6 +1092,18 @@ onMounted(() => {
 .rotate-button {
   transform: rotate(90deg);
   margin: 0 auto;
+}
+
+.issue-qty-unit {
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
+}
+
+.source-location-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 @media (max-width: 768px) {

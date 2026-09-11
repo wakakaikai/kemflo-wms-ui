@@ -70,12 +70,6 @@
     <el-card shadow="never">
       <template #header>
         <el-row :gutter="24" class="mb8">
-          <!--          <el-col v-if="tabActiveName == 'pendingInbound'" :span="1.5">
-            <el-button v-hasPermi="['wms:packing:edit']" type="danger" plain icon="RefreshLeft" :disabled="multiple" @click="handleRejectPacking()">信息不一致-退回 </el-button>
-          </el-col>
-          <el-col v-if="tabActiveName == 'pendingInbound'" :span="1.5">
-            <el-button v-hasPermi="['wms:packing:edit']" type="success" plain icon="CircleCheck" :disabled="multiple" @click="handleBatchReceivePacking()">信息一致-接收 </el-button>
-          </el-col>-->
           <el-col :span="1.5">
             <el-button v-hasPermi="['wms:packing:export']" type="warning" plain icon="Download" @click="handleExport"> 导出 </el-button>
           </el-col>
@@ -102,8 +96,10 @@
                 </template>
               </el-table-column>
               <el-table-column label="标签码" align="center" width="130" prop="sn" />
-              <el-table-column label="产品料号" align="center" prop="item" />
-              <el-table-column label="产品描述" align="left" prop="itemDesc" />
+<!--              <el-table-column label="产品料号" align="center" prop="item" />
+              <el-table-column label="产品描述" align="left" prop="itemDesc"  show-overflow-tooltip />-->
+              <el-table-column label="标签料号" align="center" prop="materialCode" />
+              <el-table-column label="标签描述" align="left" prop="materialName" show-overflow-tooltip />
               <el-table-column label="计划数量" align="center" prop="plannedQty" />
               <el-table-column label="打包数量" align="center" prop="packingQty" />
               <el-table-column label="入库检" prop="checkEnable" align="center">
@@ -245,8 +241,8 @@
         <el-table :data="returnForm.packingDetailVoList" style="width: 100%; margin-top: 20px">
           <el-table-column label="工单号" align="center" prop="workOrderNo" />
           <el-table-column label="标签码" align="center" prop="sn" />
-          <el-table-column label="产品料号" align="center" prop="item" />
-          <el-table-column label="产品描述" align="left" prop="itemDesc" />
+          <el-table-column label="标签物料编码" align="center" prop="materialCode" />
+          <el-table-column label="标签物料描述" align="left" prop="materialName" show-overflow-tooltip />
           <el-table-column label="计划数量" align="center" prop="plannedQty" />
           <el-table-column label="打包数量" align="center" prop="packingQty" />
           <el-table-column label="物料凭证号" prop="materialOrderNo" align="center" />

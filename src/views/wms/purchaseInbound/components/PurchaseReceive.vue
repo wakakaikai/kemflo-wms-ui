@@ -39,7 +39,7 @@
           <div class="search-result">
             <el-table ref="purchaseTableRef" :data="purchaseOrderDetailList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
               <el-table-column type="selection" width="55" align="center" />
-              <el-table-column v-if="columns[0].visible" label="采购单" align="left" prop="poNumber" fixed="left" min-width="120" />
+              <el-table-column v-if="columns[0].visible" label="采购单" align="left" prop="poNumber" fixed="left" min-width="130" />
               <el-table-column v-if="columns[1].visible" label="项次" align="left" prop="itemNumber" fixed="left" min-width="65" />
               <el-table-column v-if="columns[17].visible" label="采购类别" align="center" prop="poCategory" min-width="100">
                 <template #default="scope">
@@ -93,11 +93,11 @@
               <span class="header-title">入库列表</span>
             </div>
             <div class="header-actions" @click.stop>
-              <el-radio-group v-model="inboundMode" size="small">
+              <el-radio-group v-model="inboundMode">
                 <el-radio-button label="fixed">固定库位</el-radio-button>
                 <el-radio-button label="multiple">多库位</el-radio-button>
               </el-radio-group>
-              <el-button type="danger" size="small" @click="clearInboundList" :disabled="inboundList.length === 0">清空列表</el-button>
+              <el-button type="danger" @click="clearInboundList" :disabled="inboundList.length === 0">清空列表</el-button>
             </div>
           </div>
         </template>
@@ -119,12 +119,20 @@
                   <HistoryInput v-model="fixedInboundForm.lfsnr" :config="lfsnrConfig" placeholder="请输入交货单" />
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="8" :lg="8">
+              <el-col :sm="24" :md="inboundMode === 'fixed' ? 7 : 8" :lg="inboundMode === 'fixed' ? 7 : 8">
                 <el-form-item label="抬头文本" prop="bktxt">
                   <HistoryInput v-model="fixedInboundForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="8" :lg="8">
+              <el-col v-if="inboundMode === 'fixed'" :sm="1" :md="1" :lg="1" class="posting-date-toggle-col">
+                <el-form-item label-width="0" class="posting-date-toggle-item">
+                  <el-icon class="posting-date-toggle-icon" @click.stop="postingDateVisible = !postingDateVisible">
+                    <ArrowUp v-if="postingDateVisible" />
+                    <ArrowDown v-else />
+                  </el-icon>
+                </el-form-item>
+              </el-col>
+              <el-col v-show="inboundMode === 'multiple' || postingDateVisible" :sm="24" :md="8" :lg="8">
                 <el-form-item label="过账日期" prop="postingDate">
                   <el-date-picker clearable v-model="fixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
                 </el-form-item>
@@ -151,8 +159,11 @@
             </el-table-column>
             <el-table-column label="料号" prop="materialCode" />
             <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip />
-            <el-table-column label="订单数量" align="left" prop="orderQuantity" min-width="100" />
-            <el-table-column label="未清数量" prop="openQuantity" />
+            <el-table-column label="未清数量" prop="openQuantity" align="center">
+              <template #default="scope">
+                {{ formatQtyWithUnit(scope.row.openQuantity, scope.row.orderUnit) }}
+              </template>
+            </el-table-column>
             <el-table-column label="目标库位" width="220" v-if="inboundMode === 'multiple'">
               <template #default="scope">
                 <TableHistoryInput v-model="scope.row.locationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.locationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.locationCode)">
@@ -162,13 +173,17 @@
                 </TableHistoryInput>
               </template>
             </el-table-column>
-            <el-table-column label="收货数量" align="center" width="150">
+            <el-table-column label="收货数量" align="center" width="200">
               <template #default="scope">
                 <el-input-number v-model="scope.row.receivePoQuantity" :min="0" :max="parseFloat(scope.row.openQuantity || 0)" :precision="3" size="small" controls-position="right" @change="handleReceivePoQuantityChange(scope.row)" />
+                <span class="issue-qty-unit">{{ scope.row.orderUnit || '' }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="库存数量" prop="inventoryQuantity" />
-            <el-table-column label="库存单位" prop="inventoryUnit" />
+            <el-table-column label="库存数量" min-width="100" align="center">
+              <template #default="scope">
+                {{ formatQtyWithUnit(scope.row.inventoryQuantity, scope.row.inventoryUnit) }}
+              </template>
+            </el-table-column>
             <el-table-column label="操作" width="80" align="center">
               <template #default="scope">
                 <el-button type="danger" link icon="Delete" @click="removeFromInboundList(scope.$index)"></el-button>
@@ -195,10 +210,11 @@ import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
-import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
+import { ArrowDown, ArrowRight, ArrowUp, Bell, Switch } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
+import { formatQtyWithUnit } from '@/utils/ruoyi';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_purchase_category } = toRefs<any>(proxy?.useDict('wms_purchase_category'));
@@ -210,6 +226,7 @@ const loading = ref(true);
 const showSearch = ref(true);
 const historyExpanded = ref(true);
 const transferExpanded = ref(true);
+const postingDateVisible = ref(false);
 const ids = ref<Array<string | number>>([]);
 const single = ref(true);
 const multiple = ref(true);
@@ -617,7 +634,7 @@ onMounted(() => {
   user-select: none;
 }
 .history-collapse-icon {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
   transition: transform 0.2s;
 }
@@ -625,7 +642,7 @@ onMounted(() => {
   transform: rotate(90deg);
 }
 .history-header-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 .search-result {
@@ -653,8 +670,30 @@ onMounted(() => {
   gap: 10px;
   flex-wrap: wrap;
 }
+.posting-date-toggle-col {
+  display: flex;
+  align-items: center;
+}
+.posting-date-toggle-item {
+  margin: 0 0 20px 0;
+}
+.posting-date-toggle-item :deep(.el-form-item__content) {
+  margin-left: 0 !important;
+  line-height: 32px;
+}
+.posting-date-toggle-icon {
+  color: var(--el-color-primary);
+  cursor: pointer;
+  font-size: 16px;
+}
 .rotate-button {
   transform: rotate(90deg);
   margin: 0 auto;
+}
+
+.issue-qty-unit {
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
+  margin-left: 2px;
 }
 </style>
