@@ -291,6 +291,7 @@ watch(
         display: flex;
         align-items: center;
         height: 100%;
+        line-height: normal;
         position: relative;
 
         .user-avatar {
@@ -302,12 +303,14 @@ watch(
         }
 
         .user-nickname {
+          display: inline-block;
           font-size: 16px;
           font-weight: bold;
+          line-height: 22px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          max-width: 120px;
+          max-width: 200px;
         }
 
         i {

@@ -283,7 +283,7 @@ const handleSelectionChange = (selection: WorkOrderProcessVO[]) => {
 /** 导出按钮操作 */
 const handleExport = () => {
   proxy?.download(
-    'wms/scada/exportWorkOrderProcess',
+    'wms/report/workOrder/process/export',
     {
       ...queryParams.value
     },

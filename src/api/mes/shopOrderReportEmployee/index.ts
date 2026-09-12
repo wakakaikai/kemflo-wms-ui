@@ -10,7 +10,7 @@ import { ShopOrderReportEmployeeVO, ShopOrderReportEmployeeForm, ShopOrderReport
 
 export const listShopOrderReportEmployee = (query?: ShopOrderReportEmployeeQuery): AxiosPromise<ShopOrderReportEmployeeVO[]> => {
   return request({
-    url: '/mes/shopOrderReportEmployee/list',
+    url: '/wms/report/workOrder/reportEmployee/list',
     method: 'get',
     params: query
   });

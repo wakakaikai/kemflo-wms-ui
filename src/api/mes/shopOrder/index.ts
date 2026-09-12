@@ -21,7 +21,7 @@ export const listShopOrder = (query?: any) => {
  */
 export const listImmediateShopOrder = (data?: ImmediateShopOrderQuery): AxiosPromise<ImmediateShopOrderVO[]> => {
   return request({
-    url: '/mes/shopOrder/immediate/shopOrder',
+    url: '/wms/report/immediate/shopOrder',
     method: 'post',
     params: {
       pageNum: data?.pageNum,
@@ -36,7 +36,7 @@ export const listImmediateShopOrder = (data?: ImmediateShopOrderQuery): AxiosPro
  */
 export const listImmediateOperation = (data: ImmediateOperationQuery): AxiosPromise<ImmediateOperationVO[]> => {
   return request({
-    url: '/mes/shopOrder/immediate/operation',
+    url: '/wms/report/immediate/operation',
     method: 'post',
     params: {
       pageNum: data.pageNum,
@@ -51,7 +51,7 @@ export const listImmediateOperation = (data: ImmediateOperationQuery): AxiosProm
  */
 export const listImmediateSfc = (data: ImmediateSfcQuery): AxiosPromise<ImmediateSfcVO[]> => {
   return request({
-    url: '/mes/shopOrder/immediate/sfc',
+    url: '/wms/report/immediate/sfc',
     method: 'post',
     params: {
       pageNum: data.pageNum,

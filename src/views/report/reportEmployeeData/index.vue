@@ -59,14 +59,14 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <el-button type="primary" icon="Search" :loading="summaryLoading || detailLoading || duplicateLoading" @click="handleQuery">查询统计</el-button>
+          <el-button type="primary" icon="Search" :loading="chartLoading || summaryLoading || detailLoading || duplicateLoading" @click="handleQuery">查询统计</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
 
       <el-tabs v-model="activeTab">
         <el-tab-pane label="图表分析" name="charts">
-          <employee-duration-charts ref="employeeDurationChartsRef" :summary-list="summaryList" :duplicate-list="duplicateList" :employee-id="chartEmployeeId" :display-unit="displayUnit" :fill-height="isFullscreen" />
+          <employee-duration-charts ref="employeeDurationChartsRef" :chart-data="chartData" :employee-id="chartEmployeeId" :display-unit="displayUnit" :fill-height="isFullscreen" />
         </el-tab-pane>
         <el-tab-pane label="员工每日汇总" name="summary">
           <div class="table-pane">
@@ -122,8 +122,8 @@
 </template>
 
 <script setup name="ReportEmployeeData" lang="ts">
-import { listEmployeeDurationSummary, listEmployeeDurationDetail, listEmployeeDurationDuplicate } from '@/api/mes/shopOrderReport';
-import type { ShopOrderReportEmployeeDurationQuery, ShopOrderReportEmployeeDurationSummaryVO, ShopOrderReportEmployeeDurationDetailVO, ShopOrderReportEmployeeDurationDuplicateVO } from '@/api/mes/shopOrderReport/types';
+import { getEmployeeDurationChart, listEmployeeDurationSummary, listEmployeeDurationDetail, listEmployeeDurationDuplicate } from '@/api/mes/shopOrderReport';
+import type { ShopOrderReportEmployeeDurationChartVO, ShopOrderReportEmployeeDurationQuery, ShopOrderReportEmployeeDurationSummaryVO, ShopOrderReportEmployeeDurationDetailVO, ShopOrderReportEmployeeDurationDuplicateVO } from '@/api/mes/shopOrderReport/types';
 import { ArrowDown } from '@element-plus/icons-vue';
 import BatchInputDialog from '@/components/BatchInputDialog/index.vue';
 import EmployeeDurationCharts from './components/EmployeeDurationCharts.vue';
@@ -136,15 +136,20 @@ const employeeDurationChartsRef = ref<{ resizeCharts: () => void }>();
 const batchInputDialogRef = ref<InstanceType<typeof BatchInputDialog>>();
 const batchInputDialogVisible = ref(false);
 const activeTab = ref('charts');
+/** 图表聚合接口加载状态。 */
+const chartLoading = ref(false);
 const summaryLoading = ref(false);
 const detailLoading = ref(false);
 const duplicateLoading = ref(false);
 const summaryList = ref<ShopOrderReportEmployeeDurationSummaryVO[]>([]);
 const detailList = ref<ShopOrderReportEmployeeDurationDetailVO[]>([]);
 const duplicateList = ref<ShopOrderReportEmployeeDurationDuplicateVO[]>([]);
+/** 后端按完整查询范围聚合的图表数据，避免图表受到表格分页条数限制。 */
+const chartData = ref<ShopOrderReportEmployeeDurationChartVO>();
 const detailTotal = ref(0);
 const displayUnit = ref<'hour' | 'minute'>('hour');
-const defaultReportTime = [new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59, 999)];
+/** 日期范围选择器使用的固定开始、结束时间，显式声明为二元组以匹配组件类型。 */
+const defaultReportTime: [Date, Date] = [new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59, 999)];
 const isFullscreen = ref(false);
 const tableHeight = ref<string | number>('calc(100vh - 330px)');
 const detailTableHeight = ref<string | number>('calc(100vh - 380px)');
@@ -344,7 +349,8 @@ const getSummary = async () => {
   summaryLoading.value = true;
   try {
     const res = await listEmployeeDurationSummary(buildQuery());
-    summaryList.value = res.data || [];
+    // 汇总接口返回TableDataInfo，列表字段为rows而不是data。
+    summaryList.value = res.rows || [];
   } finally {
     summaryLoading.value = false;
   }
@@ -371,9 +377,24 @@ const getDuplicate = async () => {
   duplicateLoading.value = true;
   try {
     const res = await listEmployeeDurationDuplicate(buildQuery());
-    duplicateList.value = res.data || [];
+    // 重复上线接口返回TableDataInfo，列表字段为rows而不是data。
+    duplicateList.value = res.rows || [];
   } finally {
     duplicateLoading.value = false;
+  }
+};
+
+/** 查询不受表格分页影响的完整图表聚合数据。 */
+const getChart = async () => {
+  if (!hasReportTimeRange()) {
+    return;
+  }
+  chartLoading.value = true;
+  try {
+    const res = await getEmployeeDurationChart(buildQuery());
+    chartData.value = res.data;
+  } finally {
+    chartLoading.value = false;
   }
 };
 
@@ -383,7 +404,8 @@ const handleQuery = async () => {
   }
   syncEmployeeIdFilter();
   queryParams.pageNum = 1;
-  await Promise.all([getSummary(), getDetail(), getDuplicate()]);
+  // 图表使用专用聚合接口，三个表格继续分别查询自己的分页数据。
+  await Promise.all([getChart(), getSummary(), getDetail(), getDuplicate()]);
 };
 
 const resetQuery = () => {
@@ -399,6 +421,7 @@ const resetQuery = () => {
   summaryList.value = [];
   detailList.value = [];
   duplicateList.value = [];
+  chartData.value = undefined;
   detailTotal.value = 0;
   batchInputDialogRef.value?.resetInput();
 };
@@ -414,15 +437,15 @@ const handleBatchInputConfirm = (values: string[]) => {
 
 const exportMap = {
   summary: {
-    url: 'mes/shopOrderReport/employeeDuration/summary/export',
+    url: 'wms/report/employeeDuration/summary/export',
     fileName: '员工每日汇总'
   },
   detail: {
-    url: 'mes/shopOrderReport/employeeDuration/detail/export',
+    url: 'wms/report/employeeDuration/detail/export',
     fileName: '员工每日明细'
   },
   duplicate: {
-    url: 'mes/shopOrderReport/employeeDuration/duplicate/export',
+    url: 'wms/report/employeeDuration/duplicate/export',
     fileName: '重复上线统计'
   }
 };

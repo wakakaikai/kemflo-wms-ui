@@ -59,27 +59,15 @@
 
 <script setup lang="ts">
 import * as echarts from 'echarts';
-import type { ShopOrderReportEmployeeDurationDuplicateVO, ShopOrderReportEmployeeDurationSummaryVO } from '@/api/mes/shopOrderReport/types';
+import type { ShopOrderReportEmployeeDurationChartVO } from '@/api/mes/shopOrderReport/types';
 
 const props = defineProps<{
-  summaryList: ShopOrderReportEmployeeDurationSummaryVO[];
-  duplicateList: ShopOrderReportEmployeeDurationDuplicateVO[];
+  /** 后端根据完整查询范围生成的图表聚合结果。 */
+  chartData?: ShopOrderReportEmployeeDurationChartVO;
   employeeId?: string;
   displayUnit?: 'hour' | 'minute';
   fillHeight?: boolean;
 }>();
-
-type SummaryDisplayRow = Omit<ShopOrderReportEmployeeDurationSummaryVO, 'totalDuration' | 'operationDuration' | 'effectiveDuration' | 'distinctDuration' | 'duplicateDuration'> & {
-  totalDuration: number;
-  operationDuration: number;
-  effectiveDuration: number;
-  distinctDuration: number;
-  duplicateDuration: number;
-};
-
-type DuplicateDisplayRow = Omit<ShopOrderReportEmployeeDurationDuplicateVO, 'duplicateDuration'> & {
-  duplicateDuration: number;
-};
 
 const employeeTrendRef = ref<HTMLDivElement>();
 const employeeTopRef = ref<HTMLDivElement>();
@@ -209,47 +197,25 @@ const barSeries = (name: string, data: number[], color: string) => ({
   data
 });
 
-const displaySummaryList = computed<SummaryDisplayRow[]>(() =>
-  props.summaryList.map((item) => ({
-    ...item,
-    totalDuration: toDisplayValue(item.totalDuration),
-    operationDuration: toDisplayValue(item.operationDuration),
-    effectiveDuration: toDisplayValue(item.effectiveDuration),
-    distinctDuration: toDisplayValue(item.distinctDuration),
-    duplicateDuration: toDisplayValue(item.duplicateDuration)
-  }))
-);
-
-const displayDuplicateList = computed<DuplicateDisplayRow[]>(() =>
-  props.duplicateList.map((item) => ({
-    ...item,
-    duplicateDuration: toDisplayValue(item.duplicateDuration)
-  }))
-);
-
+/** 将图表汇总指标从后端分钟单位转换为当前页面展示单位。 */
 const totalStats = computed(() => {
-  const employeeSet = new Set<string>();
-  return displaySummaryList.value.reduce(
-    (stats, item) => {
-      employeeSet.add(item.employeeId);
-      stats.totalDuration += Number(item.totalDuration || 0);
-      stats.operationDuration += Number(item.operationDuration || 0);
-      stats.effectiveDuration += Number(item.effectiveDuration || 0);
-      stats.duplicateDuration += Number(item.duplicateDuration || 0);
-      stats.employeeCount = employeeSet.size;
-      return stats;
-    },
-    { totalDuration: 0, operationDuration: 0, effectiveDuration: 0, duplicateDuration: 0, employeeCount: 0 }
-  );
+  const stats = props.chartData?.totalStats;
+  return {
+    totalDuration: toDisplayValue(stats?.totalDuration),
+    operationDuration: toDisplayValue(stats?.operationDuration),
+    effectiveDuration: toDisplayValue(stats?.effectiveDuration),
+    duplicateDuration: toDisplayValue(stats?.duplicateDuration),
+    employeeCount: Number(stats?.employeeCount || 0)
+  };
 });
 
 const trendEmployeeLabel = computed(() => {
-  const employeeId = props.employeeId || findTopEmployeeId();
-  const row = displaySummaryList.value.find((item) => item.employeeId === employeeId);
-  if (!row) {
-    return props.employeeId ? `${props.employeeId}工号` : '自动展示出勤最高员工';
+  const employeeId = props.chartData?.trendEmployeeId || props.employeeId;
+  const employeeName = props.chartData?.trendEmployeeName;
+  if (!employeeId && !employeeName) {
+    return '自动展示出勤最高员工';
   }
-  return formatEmployeeLabel(row.employeeName, row.employeeId);
+  return formatEmployeeLabel(employeeName, employeeId);
 });
 
 const unitLabel = computed(() => (props.displayUnit === 'minute' ? '分钟' : '小时'));
@@ -311,11 +277,13 @@ const renderCharts = () => {
 };
 
 const renderEmployeeTrend = () => {
-  const employeeId = props.employeeId || findTopEmployeeId();
-  const rows = displaySummaryList.value
-    .filter((item) => item.employeeId === employeeId)
-    .slice()
-    .sort((a, b) => String(a.reportDate).localeCompare(String(b.reportDate)));
+  // 专用图表接口已经确定目标员工并按日期返回趋势，此处只负责单位转换。
+  const rows = (props.chartData?.employeeDailyTrend || []).map((item) => ({
+    ...item,
+    totalDuration: toDisplayValue(item.totalDuration),
+    operationDuration: toDisplayValue(item.operationDuration),
+    effectiveDuration: toDisplayValue(item.effectiveDuration)
+  }));
   employeeTrendChart?.setOption(
     {
       color: [palette.blue, palette.orange, palette.green],
@@ -359,9 +327,9 @@ const renderEmployeeTrend = () => {
 };
 
 const renderEmployeeTop = () => {
-  const rows = aggregateByEmployee()
-    .sort((a, b) => b.operationDuration - a.operationDuration)
-    .slice(0, 10)
+  // 后端已经按累计操作时长取TOP10，反转后适配横向柱状图由下到上的显示顺序。
+  const rows = (props.chartData?.employeeTop10 || [])
+    .map((item) => ({ ...item, operationDuration: toDisplayValue(item.operationDuration) }))
     .reverse();
   employeeTopChart?.setOption(
     {
@@ -387,10 +355,9 @@ const renderEmployeeTop = () => {
 };
 
 const renderDuplicateTop = () => {
-  const rows = displayDuplicateList.value
-    .slice()
-    .sort((a, b) => (b.duplicateDuration || 0) - (a.duplicateDuration || 0))
-    .slice(0, 10)
+  // 后端已经按重复上线时长取TOP10，前端仅转换展示单位和柱状图顺序。
+  const rows = (props.chartData?.duplicateTop10 || [])
+    .map((item) => ({ ...item, duplicateDuration: toDisplayValue(item.duplicateDuration) }))
     .reverse();
   duplicateTopChart?.setOption(
     {
@@ -416,7 +383,12 @@ const renderDuplicateTop = () => {
 };
 
 const renderDailyCompare = () => {
-  const rows = aggregateByDate();
+  // 每日操作与重复时长已由后端按日期聚合，避免使用表格分页数据造成图表缺失。
+  const rows = (props.chartData?.dailyCompare || []).map((item) => ({
+    ...item,
+    operationDuration: toDisplayValue(item.operationDuration),
+    duplicateDuration: toDisplayValue(item.duplicateDuration)
+  }));
   dailyCompareChart?.setOption(
     {
       color: [palette.indigo, palette.blue, palette.amber],
@@ -517,31 +489,6 @@ const renderDailyCompare = () => {
   );
 };
 
-const findTopEmployeeId = () => aggregateByEmployee().sort((a, b) => b.totalDuration - a.totalDuration)[0]?.employeeId;
-
-const aggregateByEmployee = () => {
-  const map = new Map<string, { employeeId: string; employeeName: string; totalDuration: number; operationDuration: number }>();
-  displaySummaryList.value.forEach((item) => {
-    const key = item.employeeId;
-    const row = map.get(key) || { employeeId: item.employeeId, employeeName: item.employeeName, totalDuration: 0, operationDuration: 0 };
-    row.totalDuration += Number(item.totalDuration || 0);
-    row.operationDuration += Number(item.operationDuration || 0);
-    map.set(key, row);
-  });
-  return Array.from(map.values());
-};
-
-const aggregateByDate = () => {
-  const map = new Map<string, { reportDate: string; operationDuration: number; duplicateDuration: number }>();
-  displaySummaryList.value.forEach((item) => {
-    const row = map.get(item.reportDate) || { reportDate: item.reportDate, operationDuration: 0, duplicateDuration: 0 };
-    row.operationDuration += Number(item.operationDuration || 0);
-    row.duplicateDuration += Number(item.duplicateDuration || 0);
-    map.set(item.reportDate, row);
-  });
-  return Array.from(map.values()).sort((a, b) => a.reportDate.localeCompare(b.reportDate));
-};
-
 const resizeCharts = () => {
   employeeTrendChart?.resize();
   employeeTopChart?.resize();
@@ -553,7 +500,8 @@ defineExpose({
   resizeCharts
 });
 
-watch(() => [props.summaryList, props.duplicateList, props.employeeId, props.displayUnit], renderCharts, { deep: true });
+// 图表聚合结果或展示单位变化后重新绘制全部图表。
+watch(() => [props.chartData, props.employeeId, props.displayUnit], renderCharts, { deep: true });
 watch(
   () => props.fillHeight,
   () => nextTick(resizeCharts)

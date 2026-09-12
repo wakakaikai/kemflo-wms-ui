@@ -8,7 +8,7 @@ import request from '@/utils/request';
 
 export const listWorkOrderProcess = (query?: any) => {
   return request({
-    url: '/wms/scada/listWorkOrderProcess',
+    url: '/wms/report/workOrder/process/list',
     method: 'get',
     params: query
   });
@@ -21,7 +21,7 @@ export const listWorkOrderProcess = (query?: any) => {
  */
 export const listWorkOrderSummary = (data?: any) => {
   return request({
-    url: '/wms/scada/listWorkOrderSummary',
+    url: '/wms/report/workOrder/summary/list',
     method: 'post',
     data: data,
     timeout: 180000
@@ -34,7 +34,7 @@ export const listWorkOrderSummary = (data?: any) => {
  */
 export const listGanttTaskList = (query?: any) => {
   return request({
-    url: '/wms/scada/listGanttTaskList',
+    url: '/wms/report/workOrder/ganttTask/list',
     method: 'get',
     params: query
   });
@@ -46,7 +46,7 @@ export const listGanttTaskList = (query?: any) => {
  */
 export const listWorkOrderReport = (query?: any) => {
   return request({
-    url: '/wms/scada/listWorkOrderReport',
+    url: '/wms/report/workOrder/report/list',
     method: 'get',
     params: query
   });

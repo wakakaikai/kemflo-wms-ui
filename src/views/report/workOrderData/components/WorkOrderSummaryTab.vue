@@ -467,7 +467,7 @@ const resetQuery = () => {
 /** 导出按钮操作 */
 const handleExport = () => {
   proxy?.download(
-    'wms/workOrder/export',
+    'wms/report/workOrder/summary/export',
     {
       ...queryParams.value
     },

@@ -10,7 +10,7 @@ import { ShopOrderReportAbnormalTimeVO, ShopOrderReportAbnormalTimeForm, ShopOrd
 
 export const listShopOrderReportAbnormalTime = (query?: ShopOrderReportAbnormalTimeQuery): AxiosPromise<ShopOrderReportAbnormalTimeVO[]> => {
   return request({
-    url: '/mes/shopOrderReportAbnormalTime/list',
+    url: '/wms/report/workOrder/abnormalTime/list',
     method: 'get',
     params: query
   });

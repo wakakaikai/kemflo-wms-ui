@@ -424,7 +424,7 @@ const handleSelectionChange = (selection: PackingVO[]) => {
 /** 导出按钮操作 */
 const handleExport = () => {
   proxy?.download(
-    'wms/packing/export',
+    'wms/report/packing/export',
     {
       ...queryParams.value
     },

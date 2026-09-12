@@ -395,7 +395,7 @@ const handleExport = () => {
   }
 
   proxy?.download(
-    '/mes/scada/productData/export',
+    '/wms/report/mesProductData/export',
     {
       ...queryParams.value,
       sfcList: []

@@ -184,7 +184,7 @@ const resetQuery = () => {
 /** 导出按钮操作 */
 const handleExport = () => {
   proxy?.download(
-    'mes/shopOrderReportEmployee/export',
+    'wms/report/workOrder/reportEmployee/export',
     {
       ...queryParams.value
     },

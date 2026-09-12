@@ -149,7 +149,7 @@ const handleSelectionChange = (selection: ShopOrderReportAbnormalTimeVO[]) => {
 /** 导出按钮操作 */
 const handleExport = () => {
   proxy?.download(
-    'mes/shopOrderReportAbnormalTime/export',
+    'wms/report/workOrder/abnormalTime/export',
     {
       ...queryParams.value
     },

@@ -21,7 +21,7 @@ export const listShopOrderReport = (query?: ShopOrderReportQuery): AxiosPromise<
  */
 export const listImmediateShopOrder = (data?: ImmediateShopOrderQuery): AxiosPromise<ImmediateShopOrderVO[]> => {
   return request({
-    url: '/mes/shopOrder/immediate/shopOrder',
+    url: '/wms/report/immediate/shopOrder',
     method: 'post',
     params: {
       pageNum: data?.pageNum,
@@ -36,7 +36,7 @@ export const listImmediateShopOrder = (data?: ImmediateShopOrderQuery): AxiosPro
  */
 export const listImmediateOperation = (data: ImmediateOperationQuery): AxiosPromise<ImmediateOperationVO[]> => {
   return request({
-    url: '/mes/shopOrder/immediate/operation',
+    url: '/wms/report/immediate/operation',
     method: 'post',
     params: {
       pageNum: data.pageNum,
@@ -51,7 +51,7 @@ export const listImmediateOperation = (data: ImmediateOperationQuery): AxiosProm
  */
 export const listImmediateSfc = (data: ImmediateSfcQuery): AxiosPromise<ImmediateSfcVO[]> => {
   return request({
-    url: '/mes/shopOrder/immediate/sfc',
+    url: '/wms/report/immediate/sfc',
     method: 'post',
     params: {
       pageNum: data.pageNum,
@@ -112,7 +112,7 @@ export const delShopOrderReport = (id: string | number | Array<string | number>)
  */
 export const listEmployeeDurationSummary = (data: ShopOrderReportEmployeeDurationQuery): AxiosPromise<ShopOrderReportEmployeeDurationSummaryVO[]> => {
   return request({
-    url: '/mes/shopOrderReport/employeeDuration/summary',
+    url: '/wms/report/employeeDuration/summary',
     method: 'post',
     params: {
       pageNum: data.pageNum,
@@ -127,7 +127,7 @@ export const listEmployeeDurationSummary = (data: ShopOrderReportEmployeeDuratio
  */
 export const getEmployeeDurationChart = (data: ShopOrderReportEmployeeDurationQuery): AxiosPromise<ShopOrderReportEmployeeDurationChartVO> => {
   return request({
-    url: '/mes/shopOrderReport/employeeDuration/chart',
+    url: '/wms/report/employeeDuration/chart',
     method: 'post',
     data
   });
@@ -138,7 +138,7 @@ export const getEmployeeDurationChart = (data: ShopOrderReportEmployeeDurationQu
  */
 export const listEmployeeDurationDetail = (data: ShopOrderReportEmployeeDurationQuery): AxiosPromise<ShopOrderReportEmployeeDurationDetailVO[]> => {
   return request({
-    url: '/mes/shopOrderReport/employeeDuration/detail',
+    url: '/wms/report/employeeDuration/detail',
     method: 'post',
     params: {
       pageNum: data.pageNum,
@@ -153,7 +153,7 @@ export const listEmployeeDurationDetail = (data: ShopOrderReportEmployeeDuration
  */
 export const listEmployeeDurationDuplicate = (data: ShopOrderReportEmployeeDurationQuery): AxiosPromise<ShopOrderReportEmployeeDurationDuplicateVO[]> => {
   return request({
-    url: '/mes/shopOrderReport/employeeDuration/duplicate',
+    url: '/wms/report/employeeDuration/duplicate',
     method: 'post',
     params: {
       pageNum: data.pageNum,

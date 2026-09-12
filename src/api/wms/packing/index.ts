@@ -51,7 +51,7 @@ export const listPackingAndDetail = (query?: PackingQuery): AxiosPromise<Packing
  */
 export const listScadaPackingAndDetail = (query?: PackingQuery): AxiosPromise<PackingVO[]> => {
   return request({
-    url: '/wms/scada/packingDetail/list',
+    url: '/wms/report/packing/detail/list',
     method: 'get',
     params: query
   });

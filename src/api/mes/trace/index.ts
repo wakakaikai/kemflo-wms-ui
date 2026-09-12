@@ -8,7 +8,7 @@ import { ProductTraceQuery, ProductTraceVO } from '@/api/mes/trace/types';
  */
 export const traceSfc = (query: ProductTraceQuery): AxiosPromise<ProductTraceVO[]> => {
   return request({
-    url: '/mes/trace/tranceSfc',
+    url: '/wms/report/productTrace/tranceSfc',
     method: 'post',
     data: query
   });
