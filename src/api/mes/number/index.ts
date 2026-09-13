@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { NumberVO, NumberForm, NumberQuery, NumberDetailForm, NumberDetailVO, NumberObjectOption } from '@/api/mes/number/types';
+import { NumberVO, NumberForm, NumberQuery, NumberDetailForm, NumberDetailVO } from '@/api/mes/number/types';
 
 /**
  * 查询编号规则定义主表列表
@@ -34,9 +34,17 @@ export const getNumberDetail = (id: string | number): AxiosPromise<NumberDetailV
   });
 };
 
-export const listNumberObject = (query: { definedBy?: string; keyword?: string }): AxiosPromise<NumberObjectOption[]> => {
+export const listNumberItem = (query?: Record<string, any>): AxiosPromise<any[]> => {
   return request({
-    url: '/mes/number/object/list',
+    url: '/mes/item/list',
+    method: 'get',
+    params: query
+  });
+};
+
+export const listNumberItemGroup = (query?: Record<string, any>): AxiosPromise<any[]> => {
+  return request({
+    url: '/mes/itemGroup/list',
     method: 'get',
     params: query
   });

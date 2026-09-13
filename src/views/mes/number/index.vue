@@ -10,12 +10,16 @@
               </el-select>
             </el-form-item>
             <el-form-item label="定义方式" prop="definedBy">
-              <el-select v-model="queryParams.definedBy" placeholder="请选择定义方式" clearable filterable @change="handleQuery">
+              <el-select v-model="queryParams.definedBy" placeholder="请选择定义方式" clearable filterable @change="handleQueryDefinedByChange">
                 <el-option v-for="item in definedByOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
             <el-form-item label="编号对象" prop="contextBo">
-              <el-input v-model="queryParams.contextBo" placeholder="请输入编号对象" clearable @keyup.enter="handleQuery" />
+              <el-input v-model="queryContextObject" :placeholder="queryObjectPlaceholder" readonly clearable @clear="handleQueryObjectClear">
+                <template #append>
+                  <el-button icon="Search" :disabled="!queryParams.definedBy" @click="openObjectDialog('query')"></el-button>
+                </template>
+              </el-input>
             </el-form-item>
             <el-form-item label="描述" prop="description">
               <el-input v-model="queryParams.description" placeholder="请输入描述" clearable @keyup.enter="handleQuery" />
@@ -58,13 +62,13 @@
           <template #default="{ row }">{{ getOptionLabel(definedByOptions, row.definedBy) }}</template>
         </el-table-column>
         <el-table-column label="编号对象" align="center" prop="contextBo" min-width="180">
-          <template #default="{ row }">{{ formatContextBo(row.contextBo) }}</template>
+          <template #default="{ row }">{{ formatContextBo(row) }}</template>
         </el-table-column>
         <el-table-column label="版本" align="center" min-width="90">
           <template #default="{ row }">{{ getContextRevision(row.contextBo) }}</template>
         </el-table-column>
         <el-table-column label="描述" align="center" prop="description" min-width="180" show-overflow-tooltip />
-        <el-table-column label="示例" align="center" prop="example" min-width="220" show-overflow-tooltip />
+<!--        <el-table-column label="示例" align="center" prop="example" min-width="220" show-overflow-tooltip />-->
         <el-table-column label="创建人" align="center" prop="creator" min-width="100" />
         <el-table-column label="创建时间" align="center" prop="createTime" width="170">
           <template #default="{ row }">{{ parseTime(row.createTime) }}</template>
@@ -112,12 +116,11 @@
               </el-col>
               <el-col :span="8">
                 <el-form-item :label="objectLabel" prop="contextObject">
-                  <el-select v-model="form.contextObject" :placeholder="objectPlaceholder" filterable remote clearable :remote-method="remoteObjectSearch" :loading="objectLoading" :disabled="objectDisabled || isEdit" @change="handleObjectChange">
-                    <el-option v-for="item in objectOptions" :key="item.contextBo" :label="item.label" :value="item.value">
-                      <span>{{ item.label }}</span>
-                      <span class="option-extra">{{ item.revision }}</span>
-                    </el-option>
-                  </el-select>
+                  <el-input v-model="form.contextObject" :placeholder="objectPlaceholder" readonly clearable :disabled="objectDisabled || isEdit" @clear="handleObjectClear">
+                    <template #append>
+                      <el-button icon="Search" :disabled="objectDisabled || isEdit" @click="openObjectDialog('form')">选择</el-button>
+                    </template>
+                  </el-input>
                 </el-form-item>
               </el-col>
               <el-col :span="8">
@@ -212,6 +215,50 @@
       </template>
     </el-drawer>
 
+    <el-dialog v-model="objectDialog.visible" :title="objectDialog.title" width="920px" append-to-body destroy-on-close>
+      <el-form :model="objectQuery" :inline="true">
+        <template v-if="currentObjectDefinedBy === 'ITEM_GROUP'">
+          <el-form-item label="物料组">
+            <el-input v-model="objectQuery.itemGroup" placeholder="请输入物料组" clearable @keyup.enter="handleObjectQuery" />
+          </el-form-item>
+          <el-form-item label="描述">
+            <el-input v-model="objectQuery.description" placeholder="请输入描述" clearable @keyup.enter="handleObjectQuery" />
+          </el-form-item>
+        </template>
+        <template v-else>
+          <el-form-item label="物料">
+            <el-input v-model="objectQuery.item" placeholder="请输入物料" clearable @keyup.enter="handleObjectQuery" />
+          </el-form-item>
+          <el-form-item label="描述">
+            <el-input v-model="objectQuery.itemDesc" placeholder="请输入描述" clearable @keyup.enter="handleObjectQuery" />
+          </el-form-item>
+        </template>
+        <el-form-item>
+          <el-button type="primary" icon="Search" @click="handleObjectQuery">查询</el-button>
+          <el-button icon="Refresh" @click="resetObjectQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
+      <el-table v-loading="objectDialog.loading" :data="objectList" border max-height="430" @row-dblclick="selectObject">
+        <el-table-column width="55" align="center">
+          <template #default="{ row }">
+            <el-radio :model-value="selectedObjectHandle" :value="row.handle" @change="selectObject(row)" />
+          </template>
+        </el-table-column>
+        <template v-if="currentObjectDefinedBy === 'ITEM_GROUP'">
+          <el-table-column label="物料组" prop="itemGroup" min-width="160" show-overflow-tooltip />
+          <el-table-column label="描述" prop="description" min-width="220" show-overflow-tooltip />
+        </template>
+        <template v-else>
+          <el-table-column label="物料" prop="item" min-width="160" show-overflow-tooltip />
+          <el-table-column label="描述" min-width="220" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.itemDesc || row.description }}</template>
+          </el-table-column>
+          <el-table-column label="版本" prop="revision" width="100" align="center" />
+        </template>
+      </el-table>
+      <pagination v-show="objectTotal > 0" v-model:page="objectQuery.pageNum" v-model:limit="objectQuery.pageSize" :total="objectTotal" @pagination="getObjectList" />
+    </el-dialog>
+
     <el-dialog v-model="sequenceDialog.visible" title="序列规则" width="520px" append-to-body>
       <el-form ref="sequenceFormRef" :model="sequenceForm" :rules="sequenceRules" label-width="110px">
         <el-form-item label="序列长度" prop="sequenceLength">
@@ -248,8 +295,8 @@
 
 <script setup name="Number" lang="ts">
 import { listHiddenCode } from '@/api/mes/hiddenCode';
-import { getNumberDetail, listNumber, addNumberDetail, updateNumberDetail, delNumber, listNumberObject } from '@/api/mes/number';
-import { NumberDetailForm, NumberDetailVO, NumberObjectOption, NumberQuery, NumberRuleLineVO, NumberVO } from '@/api/mes/number/types';
+import { listNumber, addNumberDetail, updateNumberDetail, delNumber, listNumberItem, listNumberItemGroup } from '@/api/mes/number';
+import { NumberDetailForm, NumberQuery, NumberRuleLineVO, NumberVO } from '@/api/mes/number/types';
 
 type Option = {
   label: string;
@@ -260,7 +307,11 @@ type RuleLine = NumberRuleLineVO & {
   rowKey: string | number;
 };
 
+type ObjectRow = Record<string, any>;
+type ObjectDialogTarget = 'query' | 'form';
+
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const vueRouter = useRouter();
 
 const nextNumberTypeOptions: Option[] = [
   { label: '物料条码', value: 'ITEM' },
@@ -352,8 +403,11 @@ const ids = ref<Array<string | number>>([]);
 const single = ref(true);
 const multiple = ref(true);
 const isEdit = ref(false);
-const objectLoading = ref(false);
-const objectOptions = ref<NumberObjectOption[]>([]);
+const objectList = ref<ObjectRow[]>([]);
+const objectTotal = ref(0);
+const objectDialogTarget = ref<ObjectDialogTarget>('form');
+const selectedObjectHandle = ref('');
+const queryContextObject = ref('');
 const hiddenCodeOptions = ref<Option[]>([]);
 const selectedRuleRows = ref<RuleLine[]>([]);
 const activeSequenceRow = ref<RuleLine>();
@@ -370,6 +424,21 @@ const drawer = reactive<DialogOption>({
 const sequenceDialog = reactive<DialogOption>({
   visible: false,
   title: '序列规则'
+});
+
+const objectDialog = reactive<DialogOption & { loading: boolean }>({
+  visible: false,
+  title: '',
+  loading: false
+});
+
+const objectQuery = reactive({
+  pageNum: 1,
+  pageSize: 10,
+  item: undefined as string | undefined,
+  itemDesc: undefined as string | undefined,
+  itemGroup: undefined as string | undefined,
+  description: undefined as string | undefined
 });
 
 const initFormData: NumberDetailForm = {
@@ -432,6 +501,8 @@ const definedByDisabled = computed(() => !['PRODUCT', 'ITEM', 'CUSTOMER_BARCODE'
 const objectDisabled = computed(() => definedByDisabled.value || !form.value.definedBy);
 const objectLabel = computed(() => (form.value.definedBy === 'ITEM_GROUP' ? '编号对象物料组' : '编号对象物料'));
 const objectPlaceholder = computed(() => (form.value.definedBy === 'ITEM_GROUP' ? '请选择物料组' : '请选择物料'));
+const queryObjectPlaceholder = computed(() => (queryParams.value.definedBy === 'ITEM_GROUP' ? '请选择物料组' : queryParams.value.definedBy === 'ITEM' ? '请选择物料' : '请先选择定义方式'));
+const currentObjectDefinedBy = computed(() => (objectDialogTarget.value === 'query' ? queryParams.value.definedBy : form.value.definedBy));
 const canEditSequence = computed(() => selectedRuleRows.value.length === 1 && selectedRuleRows.value[0].partType === 'SEQUENCE');
 const sample = computed(() => buildSample(ruleLines.value));
 
@@ -453,7 +524,8 @@ const getList = async () => {
 const reset = () => {
   form.value = { ...initFormData };
   ruleLines.value = [];
-  objectOptions.value = [];
+  objectList.value = [];
+  objectTotal.value = 0;
   selectedRuleRows.value = [];
   numberFormRef.value?.resetFields();
 };
@@ -463,9 +535,21 @@ const handleQuery = () => {
   getList();
 };
 
+const handleQueryDefinedByChange = () => {
+  queryParams.value.contextBo = undefined;
+  queryContextObject.value = '';
+  handleQuery();
+};
+
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
+  queryContextObject.value = '';
   handleQuery();
+};
+
+const handleQueryObjectClear = () => {
+  queryParams.value.contextBo = undefined;
+  queryContextObject.value = '';
 };
 
 const handleSelectionChange = (selection: NumberVO[]) => {
@@ -474,46 +558,13 @@ const handleSelectionChange = (selection: NumberVO[]) => {
   multiple.value = !selection.length;
 };
 
-const handleAdd = async () => {
-  reset();
-  isEdit.value = false;
-  drawer.title = '新增编号规则';
-  drawer.visible = true;
-  await loadHiddenCodes();
+const handleAdd = () => {
+  vueRouter.push('/mes/number/create');
 };
 
-const handleUpdate = async (row?: NumberVO) => {
-  reset();
-  isEdit.value = true;
+const handleUpdate = (row?: NumberVO) => {
   const id = row?.id || ids.value[0];
-  const res = await getNumberDetail(id);
-  const detail = getData<NumberDetailVO>(res);
-  const contextInfo = parseContextBo(detail.contextBo);
-  form.value = {
-    ...initFormData,
-    ...detail,
-    contextObject: contextInfo.object,
-    contextRevision: contextInfo.revision,
-    dataModifyUser: contextInfo.object
-  };
-  objectOptions.value = contextInfo.object
-    ? [
-        {
-          label: contextInfo.object,
-          value: contextInfo.object,
-          revision: contextInfo.revision,
-          contextBo: detail.contextBo || ''
-        }
-      ]
-    : [];
-  ruleLines.value = (detail.nextNumberRuleVOList || []).map((item, index) => ({
-    ...item,
-    rowKey: item.id || `row_${index}_${Date.now()}`,
-    example1: buildLineSample(item)
-  }));
-  drawer.title = '编辑编号规则';
-  drawer.visible = true;
-  await loadHiddenCodes();
+  vueRouter.push(`/mes/number/edit/${id}`);
 };
 
 const submitForm = () => {
@@ -579,27 +630,92 @@ const handleDefinedByChange = () => {
   form.value.contextObject = undefined;
   form.value.contextRevision = undefined;
   form.value.dataModifyUser = undefined;
-  objectOptions.value = [];
+  objectList.value = [];
+  objectTotal.value = 0;
 };
 
-const remoteObjectSearch = async (keyword: string) => {
-  if (!form.value.definedBy) {
+const resetObjectQuery = () => {
+  objectQuery.pageNum = 1;
+  objectQuery.item = undefined;
+  objectQuery.itemDesc = undefined;
+  objectQuery.itemGroup = undefined;
+  objectQuery.description = undefined;
+  getObjectList();
+};
+
+const handleObjectQuery = () => {
+  objectQuery.pageNum = 1;
+  getObjectList();
+};
+
+const openObjectDialog = (target: ObjectDialogTarget) => {
+  objectDialogTarget.value = target;
+  if (!currentObjectDefinedBy.value) {
+    proxy?.$modal.msgWarning('请先选择定义方式');
     return;
   }
-  objectLoading.value = true;
+  selectedObjectHandle.value = objectDialogTarget.value === 'query' ? queryParams.value.contextBo || '' : form.value.contextBo || '';
+  objectDialog.title = currentObjectDefinedBy.value === 'ITEM_GROUP' ? '选择物料组' : '选择物料';
+  objectDialog.visible = true;
+  resetObjectQuery();
+};
+
+const getObjectList = async () => {
+  if (!currentObjectDefinedBy.value) {
+    return;
+  }
+  objectDialog.loading = true;
   try {
-    const res = await listNumberObject({ definedBy: form.value.definedBy, keyword });
-    objectOptions.value = getData<NumberObjectOption[]>(res, []);
+    const params = {
+      pageNum: objectQuery.pageNum,
+      pageSize: objectQuery.pageSize,
+      ...(currentObjectDefinedBy.value === 'ITEM_GROUP' ? { itemGroup: objectQuery.itemGroup, description: objectQuery.description } : { item: objectQuery.item, itemDesc: objectQuery.itemDesc })
+    };
+    const res = currentObjectDefinedBy.value === 'ITEM_GROUP' ? await listNumberItemGroup(params) : await listNumberItem(params);
+    objectList.value = getRows<ObjectRow>(res);
+    objectTotal.value = getTotal(res);
   } finally {
-    objectLoading.value = false;
+    objectDialog.loading = false;
   }
 };
 
-const handleObjectChange = (value?: string) => {
-  const selected = objectOptions.value.find((item) => item.value === value);
-  form.value.contextBo = selected?.contextBo || (value ? buildContextBo(form.value.definedBy || '', value, selected?.revision) : undefined);
-  form.value.contextRevision = selected?.revision || '';
-  form.value.dataModifyUser = value;
+const getObjectCode = (row: ObjectRow) => {
+  if (currentObjectDefinedBy.value === 'ITEM_GROUP') {
+    return row.itemGroup || row.group || row.code || row.name || '';
+  }
+  return row.item || row.itemCode || row.materialCode || row.code || '';
+};
+
+const getObjectDescription = (row: ObjectRow) => (currentObjectDefinedBy.value === 'ITEM_GROUP' ? row.description || row.itemGroupDesc || row.itemGroupName || '' : row.itemDesc || row.description || '');
+
+const handleObjectClear = () => {
+  form.value.contextBo = undefined;
+  form.value.contextObject = undefined;
+  form.value.contextRevision = undefined;
+  form.value.description = undefined;
+  form.value.dataModifyUser = undefined;
+};
+
+const selectObject = (row: ObjectRow) => {
+  if (!row?.handle) {
+    proxy?.$modal.msgWarning('所选数据缺少handle字段');
+    return;
+  }
+  const objectCode = getObjectCode(row) || row.handle;
+  selectedObjectHandle.value = row.handle;
+  if (objectDialogTarget.value === 'query') {
+    queryParams.value.contextBo = row.handle;
+    queryContextObject.value = objectCode;
+    objectDialog.visible = false;
+    handleQuery();
+    return;
+  }
+  form.value.contextBo = row.handle;
+  form.value.contextObject = objectCode;
+  form.value.contextRevision = currentObjectDefinedBy.value === 'ITEM_GROUP' ? '' : row.revision || row.itemRevision || '';
+  form.value.description = getObjectDescription(row) || form.value.description;
+  form.value.dataModifyUser = objectCode;
+  objectDialog.visible = false;
 };
 
 const addRuleLine = () => {
@@ -749,16 +865,6 @@ function getOptionLabel(options: Option[], value?: string) {
   return options.find((item) => item.value === value)?.label || value || '';
 }
 
-const buildContextBo = (definedBy: string, value: string, revision?: string) => {
-  if (!value) {
-    return '';
-  }
-  if (definedBy === 'ITEM_GROUP') {
-    return `ItemGroupBO:CN00,${value}`;
-  }
-  return `ItemBO:CN00,${value},${revision || 'A0'}`;
-};
-
 const parseContextBo = (contextBo?: string) => {
   if (!contextBo) {
     return { object: '', revision: '' };
@@ -770,7 +876,7 @@ const parseContextBo = (contextBo?: string) => {
   };
 };
 
-const formatContextBo = (contextBo?: string) => parseContextBo(contextBo).object;
+const formatContextBo = (row: NumberVO) => parseContextBo(row.contextBo).object;
 const getContextRevision = (contextBo?: string) => parseContextBo(contextBo).revision;
 
 onMounted(() => {

@@ -468,6 +468,34 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         meta: { title: '新增工艺路线', activeMenu: '/mes/router', noCache: true }
       }
     ]
+  },
+  {
+    path: '/mes/number/edit',
+    component: Layout,
+    hidden: true,
+    permissions: ['mes:number:edit'],
+    children: [
+      {
+        path: ':id',
+        component: () => import('@/views/mes/number/edit.vue'),
+        name: 'MesNumberEdit',
+        meta: { title: '编辑编号规则', activeMenu: '/mes/number', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/mes/number/create',
+    component: Layout,
+    hidden: true,
+    permissions: ['mes:number:add'],
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mes/number/edit.vue'),
+        name: 'MesNumberCreate',
+        meta: { title: '新增编号规则', activeMenu: '/mes/number', noCache: true }
+      }
+    ]
   }
 ];
 
