@@ -55,9 +55,7 @@ const handleNodeActivate = ({ node, cell }: { node?: Cell; cell?: Cell }) => {
   selectedNode.value = node || cell;
 };
 
-let unwatchGraph: (() => void) | undefined;
-
-unwatchGraph = watch(
+const unwatchGraph = watch(
   graph,
   (value) => {
     if (!value) {
@@ -126,7 +124,7 @@ defineExpose({ graph, fitView });
 
 <template>
   <div class="routing-designer">
-    <div class="routing-designer__body">
+    <div class="routing-designer__body" :class="{ 'routing-designer__body--property-visible': selectedNode }">
       <RoutingSidebar :processes="processes" @drag-start="onDragStart" />
       <section class="routing-designer__main">
         <RoutingCanvas ref="canvasRef" @drop="onDrop" @ready="handleCanvasReady">
@@ -148,7 +146,7 @@ defineExpose({ graph, fitView });
           </template>
         </RoutingCanvas>
       </section>
-      <aside class="routing-designer__property">
+      <aside v-if="selectedNode" class="routing-designer__property">
         <RoutingNodeProperty :routing-node="selectedNode" />
       </aside>
     </div>
@@ -165,7 +163,7 @@ defineExpose({ graph, fitView });
 
 .routing-designer__body {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 240px;
+  grid-template-columns: 220px minmax(0, 1fr);
   gap: 0;
   width: 100%;
   height: 100%;
@@ -176,12 +174,19 @@ defineExpose({ graph, fitView });
   background: #fff;
 }
 
+.routing-designer__body--property-visible {
+  grid-template-columns: 220px minmax(0, 1fr) 240px;
+}
+
 .routing-designer__main {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
   border-left: 1px solid #e8e8e8;
+}
+
+.routing-designer__body--property-visible .routing-designer__main {
   border-right: 1px solid #e8e8e8;
 }
 

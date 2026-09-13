@@ -4,8 +4,8 @@
       <div class="router-section__header">
         <span>基础信息</span>
         <el-space class="router-actions">
-          <el-button plain icon="Back" @click="goBack">返回</el-button>
-          <el-button type="primary" plain icon="Check" :loading="buttonLoading" @click="handleSave">保存</el-button>
+          <el-button plain icon="ArrowLeft" @click="goBack">返回</el-button>
+          <el-button type="primary" icon="Check" :loading="buttonLoading" @click="handleSave">保存</el-button>
         </el-space>
       </div>
       <el-form ref="routerFormRef" :model="form" :rules="rules" label-width="110px" class="router-base-form">
@@ -87,13 +87,6 @@ import { addRouter, getRouter, updateRouter } from '@/api/mes/router';
 import { ExtFieldRow, RouterForm } from '@/api/mes/router/types';
 import { ROUTING_EDGE_NAME, ROUTING_NODE_NAME } from './components/routing-config';
 
-const RoutingDesigner = defineAsyncComponent(() =>
-  import('./components/routing-designer.vue').then((mod) => {
-    designerReady.value = true;
-    return mod;
-  })
-);
-
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const route = useRoute();
 const vueRouter = useRouter();
@@ -116,6 +109,18 @@ const routerFormRef = ref<ElFormInstance>();
 
 provide('stepTypeOptions', stepTypeOptions);
 
+let routingDesignerLoader: Promise<typeof import('./components/routing-designer.vue')> | undefined;
+const loadRoutingDesigner = () => {
+  routingDesignerLoader ||= import('./components/routing-designer.vue');
+  return routingDesignerLoader;
+};
+const RoutingDesigner = defineAsyncComponent(() =>
+  loadRoutingDesigner().then((mod) => {
+    designerReady.value = true;
+    return mod;
+  })
+);
+
 const form = reactive<RouterForm>({
   id: undefined,
   handle: undefined,
@@ -137,11 +142,11 @@ const rules = {
 };
 
 const goBack = () => {
-  if (proxy?.$tab?.closeOpenPage) {
-    proxy.$tab.closeOpenPage({ path: '/mes/router' });
+  if (proxy?.$tab?.closePage) {
+    proxy.$tab.closePage();
     return;
   }
-  vueRouter.push('/mes/router');
+  vueRouter.back();
 };
 
 const mapExtFieldDefs = (rows: any[] = []) =>
@@ -237,18 +242,26 @@ const handleSave = () => {
 
 onMounted(async () => {
   loading.value = true;
+  void loadRoutingDesigner()
+    .then(() => {
+      designerReady.value = true;
+    })
+    .catch((error) => {
+      console.error('[router] failed to preload routing designer', error);
+    });
+  void fetchOperations()
+    .then((data) => {
+      operations.value = data;
+    })
+    .catch((error) => {
+      console.error('[router] failed to load operations', error);
+      operations.value = [];
+    });
   try {
-    const [routerTypeRes, statusRes, stepTypeRes, operationList, detailResult] = await Promise.all([
-      getDicts('ROUTER_TYPE'),
-      getDicts('ROUTER_STATUS'),
-      getDicts('ROUTER_OPERATION_TYPE'),
-      fetchOperations(),
-      id.value ? getRouter(id.value) : fetchExtFieldDefs()
-    ]);
+    const [routerTypeRes, statusRes, stepTypeRes, detailResult] = await Promise.all([getDicts('ROUTER_TYPE'), getDicts('ROUTER_STATUS'), getDicts('ROUTER_OPERATION_TYPE'), id.value ? getRouter(id.value) : fetchExtFieldDefs()]);
     routerTypeOptions.value = routerTypeRes.data || [];
     statusOptions.value = statusRes.data || [];
     stepTypeOptions.value = stepTypeRes.data || [];
-    operations.value = operationList;
     if (id.value) {
       Object.assign(form, detailResult.data);
       routingData.value = detailResult.data || {};
