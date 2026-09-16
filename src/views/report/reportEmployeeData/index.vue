@@ -46,19 +46,7 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item>
-          <el-dropdown class="mr-2" :teleported="!isFullscreen" @command="handleExport">
-            <el-button icon="Download">
-              导出
-              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="summary">员工每日汇总</el-dropdown-item>
-                <el-dropdown-item command="detail">员工每日明细</el-dropdown-item>
-                <el-dropdown-item command="duplicate">重复上线统计</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <el-button class="mr-2" icon="Download" @click="handleExport">导出</el-button>
           <el-button type="primary" icon="Search" :loading="chartLoading || summaryLoading || detailLoading || duplicateLoading" @click="handleQuery">查询统计</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
         </el-form-item>
@@ -124,7 +112,6 @@
 <script setup name="ReportEmployeeData" lang="ts">
 import { getEmployeeDurationChart, listEmployeeDurationSummary, listEmployeeDurationDetail, listEmployeeDurationDuplicate } from '@/api/mes/shopOrderReport';
 import type { ShopOrderReportEmployeeDurationChartVO, ShopOrderReportEmployeeDurationQuery, ShopOrderReportEmployeeDurationSummaryVO, ShopOrderReportEmployeeDurationDetailVO, ShopOrderReportEmployeeDurationDuplicateVO } from '@/api/mes/shopOrderReport/types';
-import { ArrowDown } from '@element-plus/icons-vue';
 import BatchInputDialog from '@/components/BatchInputDialog/index.vue';
 import EmployeeDurationCharts from './components/EmployeeDurationCharts.vue';
 
@@ -435,28 +422,13 @@ const handleBatchInputConfirm = (values: string[]) => {
   handleQuery();
 };
 
-const exportMap = {
-  summary: {
-    url: 'wms/report/employeeDuration/summary/export',
-    fileName: '员工每日汇总'
-  },
-  detail: {
-    url: 'wms/report/employeeDuration/detail/export',
-    fileName: '员工每日明细'
-  },
-  duplicate: {
-    url: 'wms/report/employeeDuration/duplicate/export',
-    fileName: '重复上线统计'
-  }
-};
-
-const handleExport = (type: 'summary' | 'detail' | 'duplicate') => {
+/** 将三个统计视图导出到同一个多工作表Excel。 */
+const handleExport = () => {
   if (!validateReportTimeRange()) {
     return;
   }
   syncEmployeeIdFilter();
-  const exportConfig = exportMap[type];
-  proxy?.download(exportConfig.url, buildQuery(), `${exportConfig.fileName}_${new Date().getTime()}.xlsx`);
+  proxy?.download('wms/report/employeeDuration/export', buildQuery(), `报工成功员工报表统计_${new Date().getTime()}.xlsx`);
 };
 
 const toggleFullscreen = async () => {

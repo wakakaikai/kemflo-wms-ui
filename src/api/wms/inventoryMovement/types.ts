@@ -1,4 +1,19 @@
 export interface InventoryMovementVO {
+  /** 后端按凭证年度、物料凭证号及项次生成的分组键。 */
+  groupKey?: string;
+
+  /** 同一凭证项下的原始移动记录。 */
+  movements?: InventoryMovementVO[];
+
+  /** 同一凭证项下的出库记录。 */
+  outMovement?: InventoryMovementVO;
+
+  /** 同一凭证项下的入库记录。 */
+  inMovement?: InventoryMovementVO;
+
+  /** 是否同时存在出库和入库记录。 */
+  hasPair?: boolean;
+
   /**
    * 冲销标识：0-正常 1-已冲销 2-冲销记录
    */
@@ -400,6 +415,9 @@ export interface InventoryMovementQuery extends PageQuery {
    * SAP物料凭证号是否为空
    */
   sapMaterialOrderNoEmpty?: boolean;
+
+  /** 是否由后端按凭证年度、物料凭证号及项次合并。 */
+  groupBySapDocumentItem?: boolean;
 
     /**
      * 日期范围参数

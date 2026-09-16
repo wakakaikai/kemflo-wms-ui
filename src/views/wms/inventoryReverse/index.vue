@@ -200,7 +200,7 @@ const transferExpanded = ref(true);
 const loading = ref(false);
 const buttonLoading = ref(false);
 const total = ref(0);
-const inventoryDetailList = ref<InventoryMovementVO[]>([]);
+const inventoryDetailList = ref<VoucherItemGroup[]>([]);
 const selectedSearchItems = ref<VoucherItemGroup[]>([]);
 const reverseList = ref<VoucherItemGroup[]>([]);
 const resultMessage = ref('');
@@ -214,6 +214,7 @@ const searchSapMaterialOrderNo = ref('');
 const queryParams = ref<InventoryMovementQuery>({
   pageNum: 1,
   pageSize: 20,
+  groupBySapDocumentItem: true,
   moveType: undefined,
   sapMaterialOrderNo: undefined,
   sapMaterialOrderNoEmpty: true,
@@ -289,7 +290,7 @@ const bktxtConfig: HistoryConfig = {
   component: historyComponentConfig
 };
 
-const groupedRows = computed(() => buildGroupedRows(inventoryDetailList.value));
+const groupedRows = computed(() => inventoryDetailList.value);
 
 const formatQtyWithUnit = (qty?: number | string | null, unit?: string) => {
   const text = formatQty(qty);
@@ -299,72 +300,12 @@ const formatQtyWithUnit = (qty?: number | string | null, unit?: string) => {
   return unit ? `${text} ${unit}` : text;
 };
 
-const resolveRowQuantity = (row: InventoryMovementVO & Record<string, any>) => row.quantity ?? row.orderQuantity ?? row.poQuantity;
-const resolveRowUnit = (row: InventoryMovementVO & Record<string, any>) => row.unit ?? row.orderUnit ?? row.poUnit;
-
-const isOutMovement = (row: InventoryMovementVO) => Number(row.inventoryDirection) === -1;
-const isInMovement = (row: InventoryMovementVO) => Number(row.inventoryDirection) === 1;
-
-function buildGroupKey(row: InventoryMovementVO) {
-  return `${row.sapMaterialOrderNo ?? ''}|${row.sapMaterialItem ?? ''}`;
-}
-
-function buildGroupedRows(rows: InventoryMovementVO[]): VoucherItemGroup[] {
-  const groupMap = new Map<string, VoucherItemGroup>();
-  for (const row of rows) {
-    const groupKey = buildGroupKey(row);
-    let group = groupMap.get(groupKey);
-    if (!group) {
-      group = {
-        groupKey,
-        sapMaterialOrderNo: row.sapMaterialOrderNo,
-        sapMaterialItem: row.sapMaterialItem,
-        sapMaterialDocYear: row.sapMaterialDocYear,
-        moveType: row.moveType,
-        itemCode: row.itemCode,
-        itemName: row.itemName,
-        batchCode: row.batchCode,
-        sourceDocCode: row.sourceDocCode,
-        poItemNo: row.sourceDocItem ?? row.poItemNo,
-        quantity: resolveRowQuantity(row),
-        unit: resolveRowUnit(row),
-        reversalFlag: row.reversalFlag,
-        hasPair: false,
-        movements: []
-      };
-      groupMap.set(groupKey, group);
-    }
-    group.movements.push(row);
-    if (isOutMovement(row)) {
-      group.outMovement = row;
-    } else if (isInMovement(row)) {
-      group.inMovement = row;
-    }
-    if (!group.moveType) {
-      group.moveType = row.moveType;
-    }
-    if (isInventoryMovementReversed(row)) {
-      group.reversalFlag = row.reversalFlag;
-    }
-  }
-
-  return Array.from(groupMap.values())
-    .map((group) => {
-      const primary = group.outMovement ?? group.inMovement ?? group.movements[0];
-      if (primary) {
-        group.quantity = resolveRowQuantity(primary);
-        group.unit = resolveRowUnit(primary);
-        group.moveType = primary.moveType ?? group.moveType;
-        group.itemCode = primary.itemCode ?? group.itemCode;
-        group.itemName = primary.itemName ?? group.itemName;
-        group.batchCode = primary.batchCode ?? group.batchCode;
-        group.sourceDocCode = primary.sourceDocCode ?? group.sourceDocCode;
-        group.poItemNo = primary.sourceDocItem ?? primary.poItemNo ?? group.poItemNo;
-      }
-      group.hasPair = Boolean(group.outMovement && group.inMovement);
-      return group;
-    })
-    .sort((a, b) => String(a.sapMaterialItem ?? '').localeCompare(String(b.sapMaterialItem ?? ''), undefined, { numeric: true }));
+function buildGroupKey(
+  row: Pick<VoucherItemGroup, 'sapMaterialDocYear' | 'sapMaterialOrderNo' | 'sapMaterialItem'>,
+  includeMaterialItem = true
+) {
+  const voucherKey = `${String(row.sapMaterialDocYear ?? '').trim()}|${String(row.sapMaterialOrderNo ?? '').trim()}`;
+  return includeMaterialItem ? `${voucherKey}|${String(row.sapMaterialItem ?? '').trim()}` : voucherKey;
 }
 
 const disabledFutureDate = (time: Date) => {
@@ -389,15 +330,15 @@ function formatPostingDate(postingDate?: string | null): string | undefined {
 const isRowSelectable = (row: VoucherItemGroup) => !isInventoryMovementReversed(row);
 
 function syncCancelVoucherFromReverseList() {
-  const voucherSet = new Set(reverseList.value.map((row) => String(row.sapMaterialOrderNo ?? '').trim()).filter(Boolean));
-  const sapMaterialOrderNo = voucherSet.size === 1 ? [...voucherSet][0] : '';
-  const matched = reverseList.value.find((row) => String(row.sapMaterialOrderNo ?? '').trim() === sapMaterialOrderNo);
+  const voucherSet = new Set(reverseList.value.map((row) => buildGroupKey(row, false)));
+  const matched = voucherSet.size === 1 ? reverseList.value[0] : undefined;
   cancelForm.value.sapMaterialDocYear = matched?.sapMaterialDocYear;
 }
 
 function getSingleReverseVoucherNo(): string {
-  const voucherSet = new Set(reverseList.value.map((item) => String(item.sapMaterialOrderNo ?? '').trim()).filter(Boolean));
-  return voucherSet.size === 1 ? [...voucherSet][0] : '';
+  const rows = reverseList.value.filter((item) => String(item.sapMaterialOrderNo ?? '').trim());
+  const voucherSet = new Set(rows.map((row) => buildGroupKey(row, false)));
+  return voucherSet.size === 1 ? String(rows[0]?.sapMaterialOrderNo ?? '').trim() : '';
 }
 
 function handleHistoryRowClick(row: VoucherItemGroup, _column: any, event: MouseEvent) {
@@ -413,7 +354,7 @@ const getList = async () => {
   loading.value = true;
   try {
     const res = await listInventoryMovement(queryParams.value);
-    inventoryDetailList.value = res.rows || [];
+    inventoryDetailList.value = (res.rows || []) as VoucherItemGroup[];
     total.value = res.total || 0;
   } finally {
     loading.value = false;
@@ -458,7 +399,11 @@ const addSelectedToReverseList = () => {
     return;
   }
 
-  const selectedVouchers = new Set(selectedSearchItems.value.map((item) => String(item.sapMaterialOrderNo ?? '').trim()).filter(Boolean));
+  const selectedVouchers = new Set(
+    selectedSearchItems.value
+      .filter((item) => String(item.sapMaterialOrderNo ?? '').trim())
+      .map((item) => buildGroupKey(item, false))
+  );
   if (selectedVouchers.size === 0) {
     showResultMessage('所选记录缺少物料凭证号');
     return;
@@ -470,9 +415,11 @@ const addSelectedToReverseList = () => {
 
   const selectedVoucher = [...selectedVouchers][0] || '';
   if (reverseList.value.length > 0) {
-    const existingVoucher = String(reverseList.value[0].sapMaterialOrderNo ?? '').trim();
+    const existingVoucher = buildGroupKey(reverseList.value[0], false);
     if (existingVoucher && selectedVoucher && existingVoucher !== selectedVoucher) {
-      showResultMessage(`冲销列表已锁定凭证 ${existingVoucher}，请先清空后再加入其他凭证`);
+      const existingYear = String(reverseList.value[0].sapMaterialDocYear ?? '').trim();
+      const existingVoucherNo = String(reverseList.value[0].sapMaterialOrderNo ?? '').trim();
+      showResultMessage(`冲销列表已锁定凭证 ${existingYear}/${existingVoucherNo}，请先清空后再加入其他凭证`);
       return;
     }
   }

@@ -26,17 +26,29 @@
       <div class="summary-item difference">
         <span>净差异工时</span><strong>{{ signedHours(summaryStats.differenceHours) }}</strong>
       </div>
-      <div class="summary-item exception">
-        <span>MES报工无排班</span><strong>{{ summaryStats.noScheduleReportCount }} 条</strong>
+      <div class="summary-item achievement">
+        <span>考勤达成率</span><strong>{{ formatPercent(attendanceAchievementRate) }}</strong>
       </div>
       <div class="summary-item exception">
-        <span>平日时段差异</span><strong>{{ summaryStats.weekdayTimeDifferenceCount }} 条</strong>
+        <span>非直接报工工时</span><strong>{{ formatHours(nonDirectMesReportHours) }}</strong>
       </div>
       <div class="summary-item exception">
-        <span>假日时段差异</span><strong>{{ summaryStats.holidayTimeDifferenceCount }} 条</strong>
+        <span>人员报工覆盖率</span><strong>{{ formatPercent(auditStats.employeeCoverageRate) }}</strong>
       </div>
       <div class="summary-item exception">
-        <span>节日时段差异</span><strong>{{ summaryStats.festivalTimeDifferenceCount }} 条</strong>
+        <span>总异常工时</span><strong>{{ formatHours(effectiveShutdownDuration) }}</strong>
+      </div>
+      <div class="summary-item operation">
+        <span>员工操作工时</span><strong>{{ formatHours(employeeOperationHours) }}</strong>
+      </div>
+      <div class="summary-item person-time">
+        <span>员工时间</span><strong>{{ formatHours(personHours) }}</strong>
+      </div>
+      <div class="summary-item operation-exception">
+        <span>操作-员工异常</span><strong>{{ signedHours(operationExceptionHours) }}</strong>
+      </div>
+      <div class="summary-item operation-exception">
+        <span>操作异常占比</span><strong>{{ formatPercent(operationExceptionRate) }}</strong>
       </div>
     </div>
 
@@ -52,27 +64,41 @@
       <div ref="attendanceCompareRef" class="chart-box"></div>
     </section>
 
+    <section class="chart-panel chart-panel--wide">
+      <div class="chart-title">成本中心报工与考勤分析</div>
+      <div ref="costCenterAttendanceRef" class="chart-box"></div>
+    </section>
+
+    <section class="chart-panel">
+      <div class="chart-title">稽核异常构成</div>
+      <div ref="auditIssueRef" class="chart-box"></div>
+    </section>
+
+    <section class="chart-panel">
+      <div class="chart-title">工单类别异常工时占比</div>
+      <div ref="workOrderCategoryAbnormalRef" class="chart-box"></div>
+    </section>
+
+    <section class="chart-panel">
+      <div class="chart-title">每日稽核异常趋势</div>
+      <div ref="dailyAuditRef" class="chart-box"></div>
+    </section>
+
+    <!-- 异常原因：按成功工单有效异常小时汇总前十名。 -->
+    <section class="chart-panel">
+      <div class="chart-title">异常原因 TOP10</div>
+      <div ref="abnormalReasonRef" class="chart-box"></div>
+    </section>
+
     <!-- 部门差异：按照员工当前部门汇总净差异工时，展示绝对差异最大的十个部门。 -->
     <section class="chart-panel">
       <div class="chart-title">部门差异 TOP10</div>
       <div ref="departmentDifferenceRef" class="chart-box"></div>
     </section>
 
-    <!-- 成本中心差异：按照HR CostCenter.Code分组，帮助HR定位差异集中区域。 -->
-    <section class="chart-panel">
-      <div class="chart-title">成本中心差异分析 TOP10</div>
-      <div ref="costCenterDifferenceRef" class="chart-box"></div>
-    </section>
-
-    <!-- 加班时段差异员工：按HR加班范围与MES刷卡范围的累计偏差分钟排行。 -->
-    <section class="chart-panel">
-      <div class="chart-title">加班时间范围与MES刷卡差异 TOP10员工</div>
-      <div ref="overtimeTimeEmployeeRef" class="chart-box"></div>
-    </section>
-
     <!-- 员工差异：展示累计绝对差异最大的员工，便于HR直接核查个人考勤。 -->
     <section class="chart-panel">
-      <div class="chart-title">员工差异 TOP10</div>
+      <div class="chart-title">员工稽核风险 TOP10</div>
       <div ref="employeeDifferenceRef" class="chart-box"></div>
     </section>
   </div>
@@ -80,34 +106,58 @@
 
 <script setup lang="ts">
 import * as echarts from 'echarts';
-import type { AttendanceWorkDifferenceVO } from '@/api/report/attendanceWorkDifference/types';
+import type { AttendanceAbnormalTimeVO, AttendanceShopOrderAnalysisVO, AttendanceWorkDifferenceVO } from '@/api/report/attendanceWorkDifference/types';
 
 /** 图表组件输入参数。 */
 const props = defineProps<{
   /** 当前查询范围内的完整HR考勤差异数据。 */
   rows: AttendanceWorkDifferenceVO[];
+  /** 成功工单异常时间明细。 */
+  abnormalRows?: AttendanceAbnormalTimeVO[];
+  /** 成功工单按日期及工单类型汇总的分析数据。 */
+  shopOrderAnalysisRows?: AttendanceShopOrderAnalysisVO[];
+  /** mes_shutdown_reason字典选项。 */
+  shutdownReasonOptions?: Array<{ label?: string; value?: string }>;
   /** 当前查询范围内HR侧员工数，按工号去重。 */
   hrEmployeeCount?: number;
   /** 当前查询范围内MES侧报工人数，按工号去重。 */
   mesReportEmployeeCount?: number;
+  /** 间接及办公室人员MES成功报工总工时。 */
+  nonDirectMesReportHours?: number;
+  /** 成功工单有效异常时长，后端单位为小时。 */
+  effectiveShutdownDuration?: number;
+  /** employee_operation_duration汇总，后端已转为小时。 */
+  employeeOperationHours?: number;
+  /** person_time汇总，后端已转为小时。 */
+  personHours?: number;
+  /** 员工操作时间减员工时间，单位为小时。 */
+  operationExceptionHours?: number;
+  /** 操作异常工时占员工操作工时的比例。 */
+  operationExceptionRate?: number;
   /** 是否占满全屏Tab剩余高度。 */
   fillHeight?: boolean;
 }>();
 
-/** 六个HR分析图表容器。 */
+/** 稽核分析图表容器。 */
 const hrCompositionRef = ref<HTMLDivElement>();
 const attendanceCompareRef = ref<HTMLDivElement>();
+const costCenterAttendanceRef = ref<HTMLDivElement>();
+const auditIssueRef = ref<HTMLDivElement>();
+const workOrderCategoryAbnormalRef = ref<HTMLDivElement>();
+const dailyAuditRef = ref<HTMLDivElement>();
 const departmentDifferenceRef = ref<HTMLDivElement>();
-const costCenterDifferenceRef = ref<HTMLDivElement>();
-const overtimeTimeEmployeeRef = ref<HTMLDivElement>();
+const abnormalReasonRef = ref<HTMLDivElement>();
 const employeeDifferenceRef = ref<HTMLDivElement>();
 
-/** 六个ECharts实例，在组件销毁时统一释放。 */
+/** ECharts实例，在组件销毁时统一释放。 */
 let hrCompositionChart: echarts.ECharts | undefined;
 let attendanceCompareChart: echarts.ECharts | undefined;
+let costCenterAttendanceChart: echarts.ECharts | undefined;
+let auditIssueChart: echarts.ECharts | undefined;
+let workOrderCategoryAbnormalChart: echarts.ECharts | undefined;
+let dailyAuditChart: echarts.ECharts | undefined;
 let departmentDifferenceChart: echarts.ECharts | undefined;
-let costCenterDifferenceChart: echarts.ECharts | undefined;
-let overtimeTimeEmployeeChart: echarts.ECharts | undefined;
+let abnormalReasonChart: echarts.ECharts | undefined;
 let employeeDifferenceChart: echarts.ECharts | undefined;
 
 /** 图表容器尺寸监听器，处理Tab切换和页面宽度变化。 */
@@ -136,6 +186,9 @@ const formatHours = (value?: number) => `${hours(value).toFixed(2)} h`;
 
 /** 将人数指标格式化为整数。 */
 const formatCount = (value?: number) => `${Number(value || 0)} 人`;
+
+/** 将比例格式化为百分比。 */
+const formatPercent = (value?: number) => `${Number(value || 0).toFixed(1)}%`;
 
 /** 为正差异增加加号，突出MES报工超出HR应计的情况。 */
 const signedHours = (value?: number) => `${hours(value) > 0 ? '+' : ''}${formatHours(value)}`;
@@ -173,6 +226,59 @@ const summaryStats = computed(() =>
     }
   )
 );
+
+/** 从稽核角度汇总覆盖率、差异暴露和待处理记录。 */
+const auditStats = computed(() => {
+  const hrEmployees = new Set<string>();
+  const matchedEmployees = new Set<string>();
+  props.rows.forEach((item) => {
+    const hasHr = hours(item.scheduleHours) > 0 || hours(item.leaveHours) > 0 || hours(item.overtimeHours) > 0;
+    const hasMes = Number(item.reportCount || 0) > 0;
+    if (hasHr && item.employeeId) hrEmployees.add(item.employeeId);
+    if (hasHr && hasMes && item.employeeId) matchedEmployees.add(item.employeeId);
+  });
+  return {
+    employeeCoverageRate: hrEmployees.size ? (matchedEmployees.size * 100) / hrEmployees.size : 0
+  };
+});
+
+/** 考勤达成率：MES报工工时占HR应计工时的比例。 */
+const attendanceAchievementRate = computed(() =>
+  summaryStats.value.attendanceHours > 0 ? (summaryStats.value.reportHours * 100) / summaryStats.value.attendanceHours : 0
+);
+
+/** 返回单条记录对应的稽核问题，多个问题可以同时存在。 */
+const getAuditIssues = (item: AttendanceWorkDifferenceVO) => {
+  const issues: string[] = [];
+  const hasHr = hours(item.scheduleHours) > 0 || hours(item.leaveHours) > 0 || hours(item.overtimeHours) > 0;
+  if (hasHr && Number(item.reportCount || 0) <= 0) issues.push('HR有考勤无MES报工');
+  if (item.mesReportedWithoutSchedule) issues.push('MES报工无排班');
+  if (hours(item.differenceHours) < 0) issues.push('报工不足');
+  if (hours(item.differenceHours) > 0) issues.push('报工超出');
+  if (Number(item.reportCount || 0) > 0 && item.timeRangeDifferent) issues.push('上下线时段差异');
+  return issues;
+};
+
+/** 稽核问题类型分布。 */
+const auditIssueRows = computed(() => {
+  const counts = new Map<string, number>();
+  props.rows.forEach((item) => getAuditIssues(item).forEach((issue) => counts.set(issue, (counts.get(issue) || 0) + 1)));
+  return [...counts.entries()].map(([name, value]) => ({ name, value })).sort((left, right) => right.value - left.value);
+});
+
+/** 按日期统计主要稽核异常数量。 */
+const dailyAuditRows = computed(() => {
+  const rows = new Map<string, { date: string; shortage: number; excess: number; timeRange: number }>();
+  props.rows.forEach((item) => {
+    const row = rows.get(item.attendanceDate) || { date: item.attendanceDate, shortage: 0, excess: 0, timeRange: 0 };
+    const issues = getAuditIssues(item);
+    if (issues.includes('报工不足')) row.shortage += 1;
+    if (issues.includes('报工超出')) row.excess += 1;
+    if (issues.includes('上下线时段差异')) row.timeRange += 1;
+    rows.set(item.attendanceDate, row);
+  });
+  return [...rows.values()].sort((left, right) => left.date.localeCompare(right.date));
+});
 
 /** 图表无数据时显示的居中提示。 */
 const emptyGraphic = (show: boolean) => ({
@@ -252,26 +358,41 @@ const dailyRows = computed(() => {
   return [...dailyMap.values()].sort((left, right) => left.date.localeCompare(right.date));
 });
 
-/** 按CostCenter.Code累计差异工时，并选取绝对差异最大的十个成本中心。 */
-const costCenterRows = computed(() => {
-  const costCenterMap = new Map<string, { costCenterCode: string; costCenterName: string; differenceHours: number }>();
+/** 按CostCenter.Code汇总HR应计、MES报工及考勤达成率。 */
+const costCenterAttendanceRows = computed(() => {
+  const costCenterMap = new Map<
+    string,
+    {
+      costCenterCode: string;
+      costCenterName: string;
+      attendanceHours: number;
+      reportHours: number;
+      differenceHours: number;
+      achievementRate: number;
+    }
+  >();
   props.rows.forEach((item) => {
-    // 编码是分组依据；缺少编码的数据统一归入“未维护编码”。
     const costCenterCode = item.costCenterCode || '未维护编码';
     const row = costCenterMap.get(costCenterCode) || {
       costCenterCode,
       costCenterName: item.costCenterName || '',
-      differenceHours: 0
+      attendanceHours: 0,
+      reportHours: 0,
+      differenceHours: 0,
+      achievementRate: 0
     };
+    row.attendanceHours += hours(item.attendanceHours);
+    row.reportHours += hours(item.reportHours);
     row.differenceHours += hours(item.differenceHours);
-    // 同一编码首次没有描述时，允许后续记录补充成本中心描述。
     if (!row.costCenterName && item.costCenterName) row.costCenterName = item.costCenterName;
     costCenterMap.set(costCenterCode, row);
   });
   return [...costCenterMap.values()]
-    .sort((left, right) => Math.abs(right.differenceHours) - Math.abs(left.differenceHours))
-    .slice(0, 10)
-    .reverse();
+    .map((item) => ({
+      ...item,
+      achievementRate: item.attendanceHours > 0 ? (item.reportHours * 100) / item.attendanceHours : 0
+    }))
+    .sort((left, right) => Math.max(right.attendanceHours, right.reportHours) - Math.max(left.attendanceHours, left.reportHours));
 });
 
 /** 按当前部门名称累计净差异工时，并选取绝对差异最大的十个部门。 */
@@ -289,45 +410,37 @@ const departmentRows = computed(() => {
     .reverse();
 });
 
-/**
- * 按员工累计“HR加班时间范围与MES刷卡范围”的绝对偏差分钟，并选取前十名。
- * 排名值=|开始时间差|+|结束时间差|；多天异常继续累加，避免正负偏差互相抵消。
- */
-const overtimeTimeEmployeeRows = computed(() => {
-  const employeeMap = new Map<string, { employeeId: string; employeeName: string; differenceMinutes: number; abnormalDays: number }>();
-  props.rows.forEach((item) => {
-    // 只分析有HR加班、有MES成功报工且能够计算起止时间差的员工日期。
-    if (hours(item.overtimeHours) <= 0 || item.reportCount <= 0 || !item.timeRangeDifferent) return;
-    if (item.beginDifferenceMinutes == null && item.endDifferenceMinutes == null) return;
-    const employeeId = item.employeeId || '未维护工号';
-    const row = employeeMap.get(employeeId) || {
-      employeeId,
-      employeeName: item.employeeName || '',
-      differenceMinutes: 0,
-      abnormalDays: 0
-    };
-    row.differenceMinutes += Math.abs(Number(item.beginDifferenceMinutes || 0)) + Math.abs(Number(item.endDifferenceMinutes || 0));
-    row.abnormalDays += 1;
-    if (!row.employeeName && item.employeeName) row.employeeName = item.employeeName;
-    employeeMap.set(employeeId, row);
+/** 按mes_shutdown_reason字典名称累计有效异常小时，并选取前十名。 */
+const abnormalReasonRows = computed(() => {
+  const reasonMap = new Map<string, { reason: string; duration: number; count: number }>();
+  const reasonLabels = new Map((props.shutdownReasonOptions || []).map((item) => [String(item.value || ''), item.label || item.value || '']));
+  (props.abnormalRows || []).forEach((item) => {
+    const reasonCode = item.shutdownReason || '';
+    const reason = reasonLabels.get(reasonCode) || reasonCode || '未维护原因';
+    const row = reasonMap.get(reason) || { reason, duration: 0, count: 0 };
+    row.duration += Number(item.effectiveShutdownHours || 0);
+    row.count += 1;
+    reasonMap.set(reason, row);
   });
-  return [...employeeMap.values()]
-    .sort((left, right) => right.differenceMinutes - left.differenceMinutes)
+  return [...reasonMap.values()]
+    .sort((left, right) => right.duration - left.duration)
     .slice(0, 10)
     .reverse();
 });
 
 /** 按员工累计净差异工时，并选取绝对差异最大的十名员工。 */
 const employeeRows = computed(() => {
-  const employeeMap = new Map<string, { employeeId: string; employeeName: string; differenceHours: number }>();
+  const employeeMap = new Map<string, { employeeId: string; employeeName: string; differenceHours: number; issueCount: number }>();
   props.rows.forEach((item) => {
     const employeeId = item.employeeId || '未维护工号';
     const row = employeeMap.get(employeeId) || {
       employeeId,
       employeeName: item.employeeName || '',
-      differenceHours: 0
+      differenceHours: 0,
+      issueCount: 0
     };
     row.differenceHours += hours(item.differenceHours);
+    if (getAuditIssues(item).length) row.issueCount += 1;
     // 同一工号首次缺少姓名时，允许后续记录补充HR员工姓名。
     if (!row.employeeName && item.employeeName) row.employeeName = item.employeeName;
     employeeMap.set(employeeId, row);
@@ -338,13 +451,32 @@ const employeeRows = computed(() => {
     .reverse();
 });
 
+/** 按工单类别累计异常工时绝对值，用于观察各类别对总异常的贡献占比。 */
+const workOrderCategoryAbnormalRows = computed(() => {
+  const categoryMap = new Map<string, { name: string; value: number; reportCount: number }>();
+  (props.shopOrderAnalysisRows || []).forEach((item) => {
+    const type = item.workOrderType || 'OTHER';
+    const name = item.workOrderTypeName || (type === 'OTHER' ? '普通工单' : type);
+    const row = categoryMap.get(type) || { name: `${type} ${name}`, value: 0, reportCount: 0 };
+    row.value += Math.abs(hours(item.operationExceptionHours));
+    row.reportCount += Number(item.reportCount || 0);
+    categoryMap.set(type, row);
+  });
+  return [...categoryMap.values()]
+    .filter((item) => item.value > 0)
+    .sort((left, right) => right.value - left.value);
+});
+
 /** 初始化尚未创建的ECharts实例。 */
 const initCharts = () => {
   if (hrCompositionRef.value && !hrCompositionChart) hrCompositionChart = echarts.init(hrCompositionRef.value);
   if (attendanceCompareRef.value && !attendanceCompareChart) attendanceCompareChart = echarts.init(attendanceCompareRef.value);
+  if (costCenterAttendanceRef.value && !costCenterAttendanceChart) costCenterAttendanceChart = echarts.init(costCenterAttendanceRef.value);
+  if (auditIssueRef.value && !auditIssueChart) auditIssueChart = echarts.init(auditIssueRef.value);
+  if (workOrderCategoryAbnormalRef.value && !workOrderCategoryAbnormalChart) workOrderCategoryAbnormalChart = echarts.init(workOrderCategoryAbnormalRef.value);
+  if (dailyAuditRef.value && !dailyAuditChart) dailyAuditChart = echarts.init(dailyAuditRef.value);
   if (departmentDifferenceRef.value && !departmentDifferenceChart) departmentDifferenceChart = echarts.init(departmentDifferenceRef.value);
-  if (costCenterDifferenceRef.value && !costCenterDifferenceChart) costCenterDifferenceChart = echarts.init(costCenterDifferenceRef.value);
-  if (overtimeTimeEmployeeRef.value && !overtimeTimeEmployeeChart) overtimeTimeEmployeeChart = echarts.init(overtimeTimeEmployeeRef.value);
+  if (abnormalReasonRef.value && !abnormalReasonChart) abnormalReasonChart = echarts.init(abnormalReasonRef.value);
   if (employeeDifferenceRef.value && !employeeDifferenceChart) employeeDifferenceChart = echarts.init(employeeDifferenceRef.value);
 };
 
@@ -391,6 +523,159 @@ const renderAttendanceCompare = () => {
   );
 };
 
+/** 对比各成本中心的HR应计与MES报工工时，并叠加考勤达成率。 */
+const renderCostCenterAttendance = () => {
+  const rows = costCenterAttendanceRows.value;
+  costCenterAttendanceChart?.setOption(
+    {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params: any[]) => {
+          const row = rows[params?.[0]?.dataIndex];
+          if (!row) return '';
+          const name = row.costCenterName ? `${row.costCenterCode} ${row.costCenterName}` : row.costCenterCode;
+          return [
+            name,
+            `HR应计工时：${row.attendanceHours.toFixed(2)} 小时`,
+            `MES报工工时：${row.reportHours.toFixed(2)} 小时`,
+            `差异工时：${row.differenceHours.toFixed(2)} 小时`,
+            `考勤达成率：${row.achievementRate.toFixed(2)}%`
+          ].join('<br/>');
+        }
+      },
+      legend: { top: 0, data: ['HR应计工时', 'MES报工工时', '考勤达成率'], textStyle: { color: colors.subText } },
+      grid: { left: 24, right: 38, top: 52, bottom: rows.length > 10 ? 74 : 54, containLabel: true },
+      graphic: emptyGraphic(!rows.length),
+      xAxis: {
+        type: 'category',
+        data: rows.map((item) => (item.costCenterName ? `${item.costCenterCode} ${item.costCenterName}` : item.costCenterCode)),
+        axisLabel: { color: colors.text, rotate: rows.length > 6 ? 28 : 0, width: 130, overflow: 'truncate' },
+        axisTick: { alignWithLabel: true }
+      },
+      yAxis: [
+        { type: 'value', name: '工时(h)', min: 0, splitLine: { lineStyle: { color: colors.split } }, axisLabel: { color: colors.subText } },
+        { type: 'value', name: '达成率(%)', min: 0, splitLine: { show: false }, axisLabel: { color: colors.subText, formatter: '{value}%' } }
+      ],
+      dataZoom: rows.length > 10 ? [{ type: 'slider', height: 18, bottom: 4, start: 0, end: Math.min(100, (10 / rows.length) * 100) }] : [],
+      series: [
+        {
+          name: 'HR应计工时',
+          type: 'bar',
+          barMaxWidth: 30,
+          data: rows.map((item) => Number(item.attendanceHours.toFixed(2))),
+          itemStyle: { color: colors.attendance }
+        },
+        {
+          name: 'MES报工工时',
+          type: 'bar',
+          barMaxWidth: 30,
+          data: rows.map((item) => Number(item.reportHours.toFixed(2))),
+          itemStyle: { color: colors.report }
+        },
+        {
+          name: '考勤达成率',
+          type: 'line',
+          yAxisIndex: 1,
+          smooth: true,
+          symbolSize: 7,
+          data: rows.map((item) => Number(item.achievementRate.toFixed(2))),
+          itemStyle: { color: colors.normal },
+          lineStyle: { width: 2 }
+        }
+      ]
+    },
+    true
+  );
+};
+
+/** 渲染稽核问题类型分布，一条员工日期记录可命中多个问题。 */
+const renderAuditIssue = () => {
+  const rows = auditIssueRows.value;
+  auditIssueChart?.setOption(
+    {
+      tooltip: { trigger: 'item', formatter: '{b}<br/>{c} 条（{d}%）' },
+      legend: { orient: 'vertical', right: 18, top: 'middle', textStyle: { color: colors.subText } },
+      graphic: emptyGraphic(!rows.length),
+      series: [
+        {
+          name: '稽核问题',
+          type: 'pie',
+          radius: ['42%', '68%'],
+          center: ['38%', '52%'],
+          avoidLabelOverlap: true,
+          itemStyle: { borderColor: '#fff', borderWidth: 2 },
+          label: { formatter: '{b}\n{c}条', color: colors.text },
+          data: rows
+        }
+      ]
+    },
+    true
+  );
+};
+
+/** 参照稽核异常构成，以环形图展示各工单类别的异常工时占比。 */
+const renderWorkOrderCategoryAbnormal = () => {
+  const rows = workOrderCategoryAbnormalRows.value;
+  workOrderCategoryAbnormalChart?.setOption(
+    {
+      tooltip: {
+        trigger: 'item',
+        formatter: (params: any) => {
+          const row = rows[params?.dataIndex];
+          if (!row) return '';
+          return `${row.name}<br/>异常工时：${row.value.toFixed(2)} 小时<br/>占比：${Number(params.percent || 0).toFixed(2)}%<br/>报工记录：${row.reportCount} 条`;
+        }
+      },
+      legend: {
+        type: 'scroll',
+        orient: 'vertical',
+        right: 12,
+        top: 24,
+        bottom: 16,
+        textStyle: { color: colors.subText },
+        formatter: (name: string) => (name.length > 18 ? `${name.slice(0, 18)}...` : name)
+      },
+      graphic: emptyGraphic(!rows.length),
+      series: [
+        {
+          name: '工单类别异常工时',
+          type: 'pie',
+          radius: ['42%', '68%'],
+          center: ['36%', '52%'],
+          avoidLabelOverlap: true,
+          itemStyle: { borderColor: '#fff', borderWidth: 2 },
+          label: { formatter: '{b}\n{d}%', color: colors.text },
+          labelLine: { length: 10, length2: 8 },
+          data: rows
+        }
+      ]
+    },
+    true
+  );
+};
+
+/** 渲染每日稽核异常数量趋势，便于识别异常集中日期。 */
+const renderDailyAudit = () => {
+  const rows = dailyAuditRows.value;
+  dailyAuditChart?.setOption(
+    {
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      legend: { top: 0, textStyle: { color: colors.subText } },
+      grid: { left: 18, right: 24, top: 48, bottom: 20, containLabel: true },
+      graphic: emptyGraphic(!rows.length),
+      xAxis: { type: 'category', data: rows.map((item) => item.date), axisLabel: { color: colors.subText, hideOverlap: true } },
+      yAxis: { type: 'value', name: '条数', minInterval: 1, splitLine: { lineStyle: { color: colors.split } }, axisLabel: { color: colors.subText } },
+      series: [
+        { name: '报工不足', type: 'bar', stack: 'audit', data: rows.map((item) => item.shortage), itemStyle: { color: colors.shortage } },
+        { name: '报工超出', type: 'bar', stack: 'audit', data: rows.map((item) => item.excess), itemStyle: { color: colors.excess } },
+        { name: '时段差异', type: 'bar', stack: 'audit', data: rows.map((item) => item.timeRange), itemStyle: { color: '#0ea5e9' } }
+      ]
+    },
+    true
+  );
+};
+
 /** 渲染按员工当前部门分组的累计净差异工时排行。 */
 const renderDepartmentDifference = () => {
   const rows = departmentRows.value;
@@ -420,60 +705,31 @@ const renderDepartmentDifference = () => {
   );
 };
 
-/** 渲染按CostCenter.Code分组的累计差异工时横向排行。 */
-const renderCostCenterDifference = () => {
-  const rows = costCenterRows.value;
-  const differenceValues = rows.map((item) => item.differenceHours);
-  costCenterDifferenceChart?.setOption(
+/** 渲染有效异常时长最大的十个异常原因。 */
+const renderAbnormalReason = () => {
+  const rows = abnormalReasonRows.value;
+  abnormalReasonChart?.setOption(
     {
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: formatHours },
-      grid: { left: 20, right: 54, top: 18, bottom: 18, containLabel: true },
-      graphic: emptyGraphic(!rows.length),
-      xAxis: { type: 'value', ...differenceAxisRange(differenceValues), splitLine: { lineStyle: { color: colors.split } }, axisLabel: { color: colors.subText } },
-      yAxis: {
-        type: 'category',
-        data: rows.map((item) => (item.costCenterName ? `${item.costCenterCode} ${item.costCenterName}` : item.costCenterCode)),
-        axisLabel: { color: colors.text, width: 180, overflow: 'truncate' },
-        axisTick: { show: false },
-        axisLine: { show: false }
-      },
-      series: [
-        {
-          name: '差异工时',
-          type: 'bar',
-          data: differenceBarData(differenceValues)
-        }
-      ]
-    },
-    true
-  );
-};
-
-/** 渲染加班时间范围与MES刷卡范围累计偏差最大的十名员工。 */
-const renderOvertimeTimeEmployee = () => {
-  const rows = overtimeTimeEmployeeRows.value;
-  overtimeTimeEmployeeChart?.setOption(
-    {
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${Number(value || 0).toFixed(0)} 分钟` },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: number) => `${Number(value || 0).toFixed(2)} 小时` },
       grid: { left: 20, right: 78, top: 18, bottom: 18, containLabel: true },
       graphic: emptyGraphic(!rows.length),
-      xAxis: { type: 'value', name: '分钟', min: 0, splitLine: { lineStyle: { color: colors.split } }, axisLabel: { color: colors.subText } },
+      xAxis: { type: 'value', name: '小时', min: 0, splitLine: { lineStyle: { color: colors.split } }, axisLabel: { color: colors.subText } },
       yAxis: {
         type: 'category',
-        data: rows.map((item) => `${item.employeeId} ${item.employeeName || ''}（${item.abnormalDays}天）`),
+        data: rows.map((item) => `${item.reason}（${item.count}条）`),
         axisLabel: { color: colors.text, width: 180, overflow: 'truncate' },
         axisTick: { show: false },
         axisLine: { show: false }
       },
       series: [
         {
-          name: '累计时段偏差',
+          name: '有效异常时长',
           type: 'bar',
           barMaxWidth: 42,
           data: rows.map((item) => ({
-            value: item.differenceMinutes,
+            value: item.duration,
             itemStyle: { color: colors.overtime },
-            label: { show: true, position: 'right', formatter: `${item.differenceMinutes.toFixed(0)} 分` }
+            label: { show: true, position: 'right', formatter: `${item.duration.toFixed(2)} h` }
           }))
         }
       ]
@@ -494,7 +750,7 @@ const renderEmployeeDifference = () => {
       xAxis: { type: 'value', ...differenceAxisRange(differenceValues), splitLine: { lineStyle: { color: colors.split } }, axisLabel: { color: colors.subText } },
       yAxis: {
         type: 'category',
-        data: rows.map((item) => (item.employeeName ? `${item.employeeId} ${item.employeeName}` : item.employeeId)),
+        data: rows.map((item) => `${item.employeeId} ${item.employeeName || ''}（${item.issueCount}条）`),
         axisLabel: { color: colors.text, width: 180, overflow: 'truncate' },
         axisTick: { show: false },
         axisLine: { show: false }
@@ -516,9 +772,12 @@ const renderCharts = () => {
   initCharts();
   renderHrComposition();
   renderAttendanceCompare();
+  renderCostCenterAttendance();
+  renderAuditIssue();
+  renderWorkOrderCategoryAbnormal();
+  renderDailyAudit();
+  renderAbnormalReason();
   renderDepartmentDifference();
-  renderCostCenterDifference();
-  renderOvertimeTimeEmployee();
   renderEmployeeDifference();
   nextTick(resizeCharts);
 };
@@ -527,16 +786,19 @@ const renderCharts = () => {
 const resizeCharts = () => {
   hrCompositionChart?.resize();
   attendanceCompareChart?.resize();
+  costCenterAttendanceChart?.resize();
+  auditIssueChart?.resize();
+  workOrderCategoryAbnormalChart?.resize();
+  dailyAuditChart?.resize();
   departmentDifferenceChart?.resize();
-  costCenterDifferenceChart?.resize();
-  overtimeTimeEmployeeChart?.resize();
+  abnormalReasonChart?.resize();
   employeeDifferenceChart?.resize();
 };
 
 defineExpose({ resizeCharts });
 
 /** 完整图表数据变化后重新绘图。 */
-watch(() => props.rows, renderCharts, { deep: true });
+watch([() => props.rows, () => props.abnormalRows, () => props.shopOrderAnalysisRows, () => props.shutdownReasonOptions], renderCharts, { deep: true });
 
 onMounted(() => {
   nextTick(renderCharts);
@@ -548,9 +810,12 @@ onBeforeUnmount(() => {
   chartResizeObserver?.disconnect();
   hrCompositionChart?.dispose();
   attendanceCompareChart?.dispose();
+  costCenterAttendanceChart?.dispose();
+  auditIssueChart?.dispose();
+  workOrderCategoryAbnormalChart?.dispose();
+  dailyAuditChart?.dispose();
   departmentDifferenceChart?.dispose();
-  costCenterDifferenceChart?.dispose();
-  overtimeTimeEmployeeChart?.dispose();
+  abnormalReasonChart?.dispose();
   employeeDifferenceChart?.dispose();
 });
 </script>
@@ -565,7 +830,7 @@ onBeforeUnmount(() => {
 .chart-summary {
   display: grid;
   grid-column: 1 / -1;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -632,6 +897,18 @@ onBeforeUnmount(() => {
 .summary-item.exception {
   --summary-color: #dc2626;
 }
+.summary-item.achievement {
+  --summary-color: #16a34a;
+}
+.summary-item.operation {
+  --summary-color: #2563eb;
+}
+.summary-item.person-time {
+  --summary-color: #14b8a6;
+}
+.summary-item.operation-exception {
+  --summary-color: #b91c1c;
+}
 
 .chart-panel {
   min-width: 0;
@@ -653,11 +930,11 @@ onBeforeUnmount(() => {
   height: clamp(300px, 32vh, 410px);
 }
 
-/* 全屏时汇总卡占固定高度，四张图表均分剩余空间。 */
+/* 全屏时汇总卡占固定高度，五行图表均分剩余空间。 */
 .attendance-difference-charts.is-fill {
   height: 100%;
   min-height: 0;
-  grid-template-rows: auto repeat(3, minmax(260px, 1fr));
+  grid-template-rows: auto repeat(5, minmax(260px, 1fr));
   overflow-y: auto;
 }
 
@@ -679,7 +956,17 @@ onBeforeUnmount(() => {
   }
 
   .chart-summary {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.chart-panel--wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 700px) {
+  .chart-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

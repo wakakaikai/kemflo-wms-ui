@@ -1,6 +1,14 @@
 import request from '@/utils/request';
 import type { AxiosPromise } from 'axios';
-import type { AttendanceWorkDifferenceChartVO, AttendanceWorkDifferenceQuery, AttendanceWorkDifferenceVO } from './types';
+import type { AttendanceCostCenterOption, AttendanceWorkDifferenceChartVO, AttendanceWorkDifferenceQuery, AttendanceWorkDifferenceVO } from './types';
+
+/** 查询当前租户存在ZhiJian_001直接人员的成本中心选项。 */
+export const listAttendanceCostCenters = (): AxiosPromise<AttendanceCostCenterOption[]> => {
+  return request({
+    url: '/wms/report/attendanceWorkDifference/cost-centers',
+    method: 'get'
+  });
+};
 
 /**
  * 分页查询HR考勤与MES报工差异。

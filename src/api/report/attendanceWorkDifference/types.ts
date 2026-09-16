@@ -1,8 +1,12 @@
 /** HR员工考勤与MES报工差异查询参数。 */
 export interface AttendanceWorkDifferenceQuery extends PageQuery {
-  /** 查询开始时间，包含该时刻，格式为YYYY-MM-DD HH:mm:ss。 */
+  /** 班次开始日期范围起点，格式为YYYY-MM-DD。 */
+  beginDate?: string;
+  /** 班次开始日期范围终点，格式为YYYY-MM-DD。 */
+  endDate?: string;
+  /** 兼容旧调用的查询开始时间。 */
   beginTime?: string;
-  /** 查询结束时间，不包含该时刻，格式为YYYY-MM-DD HH:mm:ss。 */
+  /** 兼容旧调用的查询结束时间。 */
   endTime?: string;
   /** 单个员工工号，兼容单值查询。 */
   employeeId?: string;
@@ -10,6 +14,16 @@ export interface AttendanceWorkDifferenceQuery extends PageQuery {
   employeeIdList?: string[];
   /** 批量输入的工号字符串，支持逗号、分号和空白字符分隔。 */
   employeeIdStr?: string;
+  /** 用户选择的HR成本中心编码集合。 */
+  costCenterCodes?: string[];
+}
+
+/** HR考勤报表成本中心选项。 */
+export interface AttendanceCostCenterOption {
+  /** HR成本中心编码。 */
+  costCenterCode: string;
+  /** HR成本中心名称。 */
+  costCenterName?: string;
 }
 
 /** HR员工每日考勤与MES报工差异结果。 */
@@ -84,12 +98,89 @@ export interface AttendanceWorkDifferenceVO {
   beginDifferenceMinutes?: number;
   /** MES结束时间减HR结束时间，单位为分钟。 */
   endDifferenceMinutes?: number;
+  /** MES开始时间减HR开始时间，展示单位为小时。 */
+  beginDifferenceHours?: number;
+  /** MES结束时间减HR结束时间，展示单位为小时。 */
+  endDifferenceHours?: number;
   /** MES有报工但HR没有排班。 */
   mesReportedWithoutSchedule?: boolean;
   /** HR与MES时间范围是否存在差异。 */
   timeRangeDifferent?: boolean;
   /** HR与MES时间范围比较结果。 */
   timeRangeStatus?: string;
+}
+
+/** 间接及办公室人员MES成功报工明细。 */
+export interface NonDirectMesReportVO {
+  reportDate: string;
+  employeeTypeName: '间接' | '办公室' | string;
+  employeeTypeCode: 'ZhiJian_002' | 'ZhiJian_003' | string;
+  employeeId: string;
+  employeeName: string;
+  corporationName?: string;
+  departmentCode?: string;
+  departmentName?: string;
+  costCenterCode?: string;
+  costCenterName?: string;
+  mesBeginTime?: string;
+  mesEndTime?: string;
+  reportHours: number;
+  reportCount: number;
+}
+
+/** 成功工单的员工在线明细。 */
+export interface AttendanceMesEmployeeOnlineVO {
+  reportDate: string;
+  reportId: number;
+  workCenter?: string;
+  shopOrder?: string;
+  employeeTypeName?: string;
+  employeeTypeCode?: string;
+  employeeId: string;
+  employeeName?: string;
+  corporationName?: string;
+  departmentCode?: string;
+  departmentName?: string;
+  costCenterCode?: string;
+  costCenterName?: string;
+  mesBeginTime?: string;
+  mesEndTime?: string;
+  reportHours: number;
+  reportCount: number;
+}
+
+/** 成功工单的异常时间明细。 */
+export interface AttendanceAbnormalTimeVO {
+  reportDate: string;
+  id: number;
+  reportId: number;
+  workCenter?: string;
+  shopOrder?: string;
+  shutdownStartTime?: string;
+  shutdownEndTime?: string;
+  abnormalClass?: string;
+  abnormalType?: string;
+  shutdownReason?: string;
+  shutdownDuration: number;
+  effectiveShutdownDuration: number;
+  /** 停机时长，展示单位为小时。 */
+  shutdownHours: number;
+  /** 有效异常时长，展示单位为小时。 */
+  effectiveShutdownHours: number;
+  costCenterCode?: string;
+  costCenterName?: string;
+}
+
+/** MES成功工单按日期及工单类型汇总的稽核分析数据。 */
+export interface AttendanceShopOrderAnalysisVO {
+  reportDate: string;
+  workOrderType: string;
+  workOrderTypeName: string;
+  workOrderCategory: '常规工单' | '重工/返修/拆解' | '打样/研发' | string;
+  reportCount: number;
+  employeeOperationHours: number;
+  personHours: number;
+  operationExceptionHours: number;
 }
 
 /** HR员工考勤与MES报工差异图表分析结果。 */
@@ -100,4 +191,34 @@ export interface AttendanceWorkDifferenceChartVO {
   hrEmployeeCount: number;
   /** 有MES成功报工记录的员工人数，按工号去重。 */
   mesReportEmployeeCount: number;
+  /** 间接及办公室人员MES成功报工明细。 */
+  nonDirectReportRows: NonDirectMesReportVO[];
+  /** 有成功报工的非直接员工人数。 */
+  nonDirectMesReportEmployeeCount: number;
+  /** 间接人员MES报工工时。 */
+  indirectMesReportHours: number;
+  /** 办公室人员MES报工工时。 */
+  officeMesReportHours: number;
+  /** 非直接人员MES报工总工时。 */
+  nonDirectMesReportHours: number;
+  /** 成功工单员工在线明细。 */
+  employeeOnlineRows: AttendanceMesEmployeeOnlineVO[];
+  /** 成功工单异常时间明细。 */
+  abnormalTimeRows: AttendanceAbnormalTimeVO[];
+  /** 有效异常时长合计，单位为小时。 */
+  effectiveShutdownDuration: number;
+  /** 成功工单员工操作工时，单位为小时。 */
+  employeeOperationHours: number;
+  /** 成功工单员工时间，单位为小时。 */
+  personHours: number;
+  /** 员工操作时间减员工时间，单位为小时。 */
+  operationExceptionHours: number;
+  /** 操作异常工时占员工操作工时的比例。 */
+  operationExceptionRate: number;
+  /** ZP81、ZP83、ZP92、ZP94工单员工操作工时。 */
+  reworkDisassemblyHours: number;
+  /** ZP82、ZP91、ZP99工单员工操作工时。 */
+  sampleDevelopmentHours: number;
+  /** 成功工单按日期及工单类型汇总的分析数据。 */
+  shopOrderAnalysisRows: AttendanceShopOrderAnalysisVO[];
 }

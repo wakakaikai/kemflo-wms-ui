@@ -1,6 +1,7 @@
 <template>
   <main ref="boardRef" class="shipping-board" :class="{ 'is-fullscreen': isFullscreen }">
-    <div class="dashboard-canvas" :style="canvasStyle">
+    <div class="dashboard-stage" :style="stageStyle">
+      <div class="dashboard-canvas" :style="canvasStyle">
       <header class="dashboard-header">
         <div class="header-left">
           <img v-if="tenantId == '000001'" src="@/assets/logo/yakima-logo.png" alt="Logo" class="logo" @click="toggleFullscreen" />
@@ -148,7 +149,7 @@
         </div>
       </section>
 
-      <footer class="dashboard-footer">
+        <footer class="dashboard-footer">
         <div v-for="item in footerStats" :key="item.label" class="footer-stat">
           <img :src="iconMap[item.icon]" :alt="item.label" />
           <div>
@@ -157,7 +158,8 @@
           </div>
         </div>
         <p>KEMFLO&nbsp;&nbsp;|&nbsp;&nbsp;智能制造&nbsp;&nbsp;数字物流</p>
-      </footer>
+        </footer>
+      </div>
     </div>
 
     <el-dialog v-model="showSettings" title="看板设置" width="520px" append-to-body :append-to="settingsDialogAppendTo" class="shipping-config-dialog">
@@ -273,7 +275,13 @@ let trendChart: echarts.ECharts | undefined;
 let ratioChart: echarts.ECharts | undefined;
 let webMcpController: AbortController | undefined;
 
-const canvasStyle = computed(() => ({ transform: `scale(${viewport.scale})`, left: `${viewport.left}px`, top: `${viewport.top}px` }));
+const stageStyle = computed(() => ({
+  width: `${designWidth * viewport.scale}px`,
+  height: `${designHeight * viewport.scale}px`,
+  marginLeft: `${viewport.left}px`,
+  marginTop: `${viewport.top}px`
+}));
+const canvasStyle = computed(() => ({ transform: `scale(${viewport.scale})` }));
 const settingsDialogAppendTo = computed<HTMLElement | string>(() => (isFullscreen.value && boardRef.value ? boardRef.value : 'body'));
 const detailScrollRows = computed(() => detailRows.value.map((row, index) => ({ ...row, displayIndex: index + 1 })));
 const topCustomerMax = computed(() => Math.max(1, ...topCustomers.value.map((item) => Number(item.qty || 0))));
@@ -602,8 +610,8 @@ onBeforeUnmount(() => {
 .shipping-board {
   position: relative;
   width: 100%;
-  height: 100vh;
-  min-height: 720px;
+  height: calc(100vh - 84px);
+  min-height: 0;
   overflow: auto;
   color: #f3f9ff;
   background:
@@ -623,8 +631,22 @@ onBeforeUnmount(() => {
   }
 }
 
-.dashboard-canvas {
+.shipping-board.is-fullscreen,
+.shipping-board:fullscreen {
+  width: 100vw;
+  height: 100vh;
+}
+
+.dashboard-stage {
   position: relative;
+  flex: none;
+  overflow: hidden;
+}
+
+.dashboard-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 1920px;
   height: 1080px;
   transform-origin: left top;

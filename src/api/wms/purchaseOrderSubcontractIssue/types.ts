@@ -38,6 +38,8 @@ export interface PurchaseOrderSubcontractIssueForm {
   supplierName?: string;
   issueQuantity?: number;
   unit?: string;
+  orderUnit?: string;
+  conversionRatio?: number;
   locationCode?: string;
   warehouseCode?: string;
   areaCode?: string;

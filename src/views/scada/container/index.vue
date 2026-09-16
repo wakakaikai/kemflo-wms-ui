@@ -1,6 +1,7 @@
 <template>
   <main ref="boardRef" class="dashboard-shell" :class="{ 'is-fullscreen': isFullscreen }">
-    <div class="dashboard-canvas" :style="canvasStyle">
+    <div class="dashboard-stage" :style="stageStyle">
+      <div class="dashboard-canvas" :style="canvasStyle">
       <header class="dashboard-header">
         <div class="header-left">
           <img v-if="tenantId === '000001'" src="@/assets/logo/yakima-logo.png" alt="Logo" class="logo" title="点击切换全屏" @click="toggleFullscreen" />
@@ -94,14 +95,15 @@
         </DashboardPanel>
       </section>
 
-      <footer class="dashboard-footer">
+        <footer class="dashboard-footer">
         <div v-for="item in footerStats" :key="item.label" class="footer-stat">
           <img :src="iconMap[item.icon]" :alt="item.label" />
           <span>{{ item.label }}</span>
           <strong>{{ item.value }}</strong>
         </div>
         <p>KEMFLO&nbsp;&nbsp;|&nbsp;&nbsp;智能制造&nbsp;&nbsp;数字物流</p>
-      </footer>
+        </footer>
+      </div>
     </div>
 
     <el-dialog v-model="showSettings" title="看板设置" width="620px" append-to-body :append-to="settingsDialogAppendTo">
@@ -264,7 +266,13 @@ const data = reactive<PageData<Record<string, never>, ContainerScadaQuery>>({
 });
 const { queryParams } = toRefs(data);
 
-const canvasStyle = computed(() => ({ transform: `scale(${viewport.scale})`, left: `${viewport.left}px`, top: `${viewport.top}px` }));
+const stageStyle = computed(() => ({
+  width: `${designWidth * viewport.scale}px`,
+  height: `${designHeight * viewport.scale}px`,
+  marginLeft: `${viewport.left}px`,
+  marginTop: `${viewport.top}px`
+}));
+const canvasStyle = computed(() => ({ transform: `scale(${viewport.scale})` }));
 const settingsDialogAppendTo = computed<HTMLElement | string>(() => (isFullscreen.value && boardRef.value ? boardRef.value : 'body'));
 
 const formatNumber = (value: number | string | undefined) => Number(value || 0).toLocaleString('zh-CN');
@@ -673,8 +681,16 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.dashboard-canvas {
+.dashboard-stage {
   position: relative;
+  flex: none;
+  overflow: hidden;
+}
+
+.dashboard-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 1680px;
   height: 945px;
   padding: 12px 14px 14px;
