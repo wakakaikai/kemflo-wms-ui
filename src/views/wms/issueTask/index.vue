@@ -21,10 +21,22 @@
               </el-button>
             </div>
           </el-form-item>
-          <el-form-item label="视图">
+          <el-form-item label="数据视图">
             <el-radio-group v-model="viewMode" @change="onViewModeChange">
               <el-radio-button value="group">聚合</el-radio-button>
               <el-radio-button value="detail">明细</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="布局">
+            <el-radio-group v-model="activeLayoutMode" @change="onLayoutModeChange">
+              <el-radio-button value="card">
+                <el-icon><Grid /></el-icon>
+                <span>卡片</span>
+              </el-radio-button>
+              <el-radio-button value="table">
+                <el-icon><ListIcon /></el-icon>
+                <span>列表</span>
+              </el-radio-button>
             </el-radio-group>
           </el-form-item>
           <el-form-item label="需求单号" prop="demandNo">
@@ -51,17 +63,50 @@
         </el-form>
       </transition>
 
-      <issue-task-line-card-list v-if="viewMode === 'detail'" :rows="issueTaskList" :loading="loading" :total="total" v-model:page-num="queryParams.pageNum" v-model:page-size="queryParams.pageSize" :selected-line-ids="selectedLineIds" :selected-total-count="selectedLineIds.size" :issueable-count="selectedIssueableRows.length" :consignment-print-count="selectedConsignmentPrintRows.length" :result-message="resultMessage" :result-status="resultStatus" @pagination="getList()" @toggle-select-all="toggleSelectAllLines" @toggle-select="toggleLineSelect" @actual-issue-change="updateLineActualIssueQty" @print="printSingleLine" @issue="openLineIssueAction" @print-selected="printSelectedLines" @print-consignment-selected="printSelectedConsignmentLines" @issue-selected="issueSelectedLines" />
+      <issue-task-line-card-list v-if="viewMode === 'detail'" :rows="issueTaskList" :loading="loading" :total="total" v-model:page-num="queryParams.pageNum" v-model:page-size="queryParams.pageSize" :selected-line-ids="selectedLineIds" :selected-total-count="selectedLineIds.size" :issueable-count="selectedIssueableRows.length" :consignment-print-count="selectedConsignmentPrintRows.length" :result-message="resultMessage" :result-status="resultStatus" :layout-mode="lineLayoutMode" @pagination="getList()" @toggle-select-all="toggleSelectAllLines" @toggle-select="toggleLineSelect" @actual-issue-change="updateLineActualIssueQty" @print="printSingleLine" @issue="openLineIssueAction" @print-selected="printSelectedLines" @print-consignment-selected="printSelectedConsignmentLines" @issue-selected="issueSelectedLines" />
 
       <div v-else-if="total > 0" class="list-action-bar list-action-bar--group">
         <pagination class="list-action-pagination" :auto-scroll="false" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
       </div>
 
       <template v-if="viewMode === 'group'">
-        <div v-loading="loading" class="card-grid">
+        <div v-if="groupLayoutMode === 'card'" v-loading="loading" class="card-grid">
           <issue-task-group-card v-for="row in issueTaskGroupList" :key="row.key" :row="row" @detail="goIssueTaskDetail" />
           <el-empty v-if="!loading && !issueTaskGroupList.length" description="暂无发料任务" />
         </div>
+        <el-table v-else v-loading="loading" :data="issueTaskGroupList" border stripe row-key="key" class="group-table" @row-dblclick="goIssueTaskDetail">
+          <el-table-column prop="demandNo" label="需求单号" min-width="160" fixed="left" show-overflow-tooltip />
+          <el-table-column label="类型" width="110" align="center">
+            <template #default="{ row }"><dict-tag :options="wms_prepare_demand_type" :value="row.demandType" /></template>
+          </el-table-column>
+          <el-table-column label="状态" width="110" align="center">
+            <template #default="{ row }"><dict-tag :options="wms_prepare_demand_status" :value="row.demandStatus" /></template>
+          </el-table-column>
+          <el-table-column label="需求人" min-width="130" show-overflow-tooltip>
+            <template #default="{ row }">{{ formatMaterialUser(row) }}</template>
+          </el-table-column>
+          <el-table-column prop="workOrderCount" label="工单数" width="82" align="right" />
+          <el-table-column prop="lineCount" label="行数" width="76" align="right" />
+          <el-table-column label="齐套率" width="150">
+            <template #default="{ row }">
+              <el-progress :percentage="groupKitRate(row)" :stroke-width="8" />
+            </template>
+          </el-table-column>
+          <el-table-column prop="totalRequired" label="待发" width="100" align="right" />
+          <el-table-column prop="totalIssuedQty" label="已发" width="100" align="right" />
+          <el-table-column prop="totalShortage" label="缺料" width="100" align="right">
+            <template #default="{ row }"><span :class="{ 'shortage-value': Number(row.totalShortage || 0) > 0 }">{{ row.totalShortage ?? 0 }}</span></template>
+          </el-table-column>
+          <el-table-column prop="pendingPickCount" label="待拣" width="82" align="right" />
+          <el-table-column label="紧急" width="72" align="center">
+            <template #default="{ row }"><el-tag v-if="row.isEmergency" type="danger" size="small" effect="dark">紧急</el-tag><span v-else>-</span></template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="创建时间" width="168" />
+          <el-table-column label="操作" width="92" align="center" fixed="right">
+            <template #default="{ row }"><el-button link type="primary" @click="goIssueTaskDetail(row)">查看明细</el-button></template>
+          </el-table-column>
+          <template #empty><el-empty description="暂无发料任务" /></template>
+        </el-table>
       </template>
 
     </el-card>
@@ -75,10 +120,10 @@
 
 <script setup name="IssueTask" lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Close } from '@element-plus/icons-vue';
+import { Close, Grid, List as ListIcon } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
-import { ISSUE_TASK_STATUS_TAB_OPTIONS, canExecuteIssueTaskLine261, getIssueTaskViewMode, getIssueTaskWarehouse, lineStatusBadgeColor, listIssueTaskDetail, listIssueTaskGroup, normalizeIssueTaskGroup, normalizeIssueTaskLineListResponse, removeIssueTaskWarehouse, saveIssueTaskViewMode, saveIssueTaskWarehouse, syncIssueTaskLineActualIssueDefaults } from '@/api/wms/issueTask';
-import type { IssueTaskDemandGroup, IssueTaskDemandGroupVO, IssueTaskLineVO, IssueTaskQuery, IssueTaskViewMode } from '@/api/wms/issueTask/types';
+import { ISSUE_TASK_STATUS_TAB_OPTIONS, canExecuteIssueTaskLine261, getIssueTaskGroupLayout, getIssueTaskLineLayout, getIssueTaskViewMode, getIssueTaskWarehouse, lineStatusBadgeColor, listIssueTaskDetail, listIssueTaskGroup, normalizeIssueTaskGroup, normalizeIssueTaskLineListResponse, removeIssueTaskWarehouse, saveIssueTaskGroupLayout, saveIssueTaskLineLayout, saveIssueTaskViewMode, saveIssueTaskWarehouse, syncIssueTaskLineActualIssueDefaults } from '@/api/wms/issueTask';
+import type { IssueTaskDemandGroup, IssueTaskDemandGroupVO, IssueTaskGroupLayoutMode, IssueTaskLineLayoutMode, IssueTaskLineVO, IssueTaskQuery, IssueTaskViewMode } from '@/api/wms/issueTask/types';
 import type { WarehouseVO } from '@/api/wms/warehouse/types';
 import WarehouseDialog from '@/views/wms/warehouse/components/warehouseDialog.vue';
 import IssueTaskGroupCard from './components/IssueTaskGroupCard.vue';
@@ -88,13 +133,15 @@ import IssueTaskBatchIssueDialog from './components/IssueTaskBatchIssueDialog.vu
 import IssuePrint from './components/IssuePrint.vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag'));
+const { wms_inventory_special_flag, wms_prepare_demand_type, wms_prepare_demand_status } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag', 'wms_prepare_demand_type', 'wms_prepare_demand_status'));
 const router = useRouter();
 const { currentRoute } = router;
 
 const issueTaskList = ref<IssueTaskLineVO[]>([]);
 const issueTaskGroupList = ref<IssueTaskDemandGroup[]>([]);
 const viewMode = ref<IssueTaskViewMode>('group');
+const groupLayoutMode = ref<IssueTaskGroupLayoutMode>('card');
+const lineLayoutMode = ref<IssueTaskLineLayoutMode>('card');
 const loading = ref(true);
 const showSearch = ref(true);
 const total = ref(0);
@@ -112,6 +159,17 @@ const resultStatus = ref(false);
 const selectedLineIds = ref<Set<string>>(new Set());
 const selectedLineRows = ref<Map<string, IssueTaskLineVO>>(new Map());
 const issuePrintRef = ref<InstanceType<typeof IssuePrint>>();
+
+const activeLayoutMode = computed<IssueTaskGroupLayoutMode | IssueTaskLineLayoutMode>({
+  get: () => (viewMode.value === 'group' ? groupLayoutMode.value : lineLayoutMode.value),
+  set: (mode) => {
+    if (viewMode.value === 'group') {
+      groupLayoutMode.value = mode;
+    } else {
+      lineLayoutMode.value = mode;
+    }
+  }
+});
 
 const queryParams = ref<IssueTaskQuery>({
   pageNum: 1,
@@ -318,6 +376,26 @@ const onViewModeChange = () => {
   getList(true);
 };
 
+const onLayoutModeChange = () => {
+  if (viewMode.value === 'group') {
+    saveIssueTaskGroupLayout(currentRoute.value.fullPath, groupLayoutMode.value);
+  } else {
+    saveIssueTaskLineLayout(currentRoute.value.fullPath, lineLayoutMode.value);
+  }
+};
+
+const formatMaterialUser = (row: IssueTaskDemandGroup) => {
+  const name = String(row.materialUserName || '').trim();
+  const code = String(row.materialUserCode || '').trim();
+  return name && code ? `${name} (${code})` : name || code || '-';
+};
+
+const groupKitRate = (row: IssueTaskDemandGroup) => {
+  const raw = Number(row.kitRate ?? 0);
+  if (!Number.isFinite(raw)) return 0;
+  return Math.max(0, Math.min(100, raw <= 1 ? raw * 100 : raw));
+};
+
 const applyStatusTabToQuery = (tab: string) => {
   queryParams.value.lineStatus = tab || undefined;
 };
@@ -369,6 +447,8 @@ const onLineIssueResult = (payload: { message: string; success: boolean }) => {
 
 onMounted(() => {
   viewMode.value = getIssueTaskViewMode(currentRoute.value.fullPath);
+  groupLayoutMode.value = getIssueTaskGroupLayout(currentRoute.value.fullPath);
+  lineLayoutMode.value = getIssueTaskLineLayout(currentRoute.value.fullPath);
   applyStatusTabToQuery(statusTab.value);
   restoreWarehouseFromCache();
   getList();
@@ -412,6 +492,21 @@ onMounted(() => {
   :deep(.el-form-item__label) {
     padding-right: 6px;
   }
+}
+
+.issue-search-form :deep(.el-radio-button__inner) {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.group-table {
+  width: 100%;
+}
+
+.shortage-value {
+  color: var(--el-color-danger);
+  font-weight: 600;
 }
 
 .warehouse-form-item {

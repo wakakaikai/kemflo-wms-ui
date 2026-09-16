@@ -16,9 +16,9 @@
       <div v-show="historyExpanded" class="history-card-body">
         <el-form v-show="showSearch" ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
           <!-- 默认显示的搜索项 -->
-          <el-form-item label="移动类型" prop="moveType">
+<!--          <el-form-item label="移动类型" prop="moveType">
             <HistoryInput v-model="queryParams.moveType" :config="moveTypeConfig" placeholder="请输入移动类型" @keyup.enter="handleQuery" />
-          </el-form-item>
+          </el-form-item>-->
           <el-form-item label="物料凭证号" prop="sapMaterialOrderNo">
             <!--                <el-input v-model="queryParams.sapMaterialOrderNo" placeholder="请输入物料凭证号" clearable @keyup.enter="handleQuery" />-->
             <HistoryInput v-model="queryParams.sapMaterialOrderNo" :config="sapMaterialOrderNoConfig" placeholder="请输入物料凭证号" @keyup.enter="handleQuery" />

@@ -32,7 +32,6 @@
           <el-icon><Plus /></el-icon>
           选择工单
         </el-button>
-        <el-button type="primary" plain :disabled="!selectedOrders.length" @click="openMergedPrepBom">填写合并备料清单</el-button>
         <span v-if="selectedOrders.length" class="hint">已选 {{ selectedOrders.length }} 个工单 · 备料 {{ totalPrepLineCount }} 条</span>
       </div>
       <el-table v-if="selectedOrders.length" :data="selectedOrders" border size="small" max-height="420">
@@ -69,6 +68,7 @@
       <!-- 上一步 + 确认备料并分类（底部居中） -->
       <div class="step-footer-row">
         <el-button @click="goToDemandUserStep">上一步</el-button>
+        <el-button type="primary" plain :disabled="!selectedOrders.length" @click="openMergedPrepBom">填写合并备料清单</el-button>
         <el-button type="success" :disabled="!canClassify" :loading="classifying" @click="confirmClassify">
           <el-icon><Sort /></el-icon>
           确认备料并分类
@@ -394,7 +394,7 @@
       </el-collapse>
       <el-empty v-else-if="!currentDemand" :description="请在上一步生成备料需求" />
     </div>
-    <work-order-selection-dialog v-model="showOrderDialog" :selected-orders="selectedOrders" :show-bom-action="false" @confirm="handleOrderSelection" />
+    <work-order-selection-dialog :key="orderSelectionRoundKey" v-model="showOrderDialog" :selected-orders="selectedOrders" :show-bom-action="false" @confirm="handleOrderSelection" />
     <work-order-prep-demand-dialog v-model="showPrepBomDialog" :work-orders="prepBomOrders" :material-issues-by-work-order="prepMaterialIssuesMap" :demand-user-no="materialDemandUserCode" :initial-material-code="prepBomFilterMaterialCode" @save="onBomSave" />
     <issue-process-drawer v-model="issueDrawerVisible" :issue-id="currentIssueId" />
     <target-demand-location-dialog v-model="showTargetLocationDialog" :user-name="materialDemandUserCode" :submitting="generatingPrep" @confirm="onTargetLocationConfirm" />
@@ -438,6 +438,8 @@ const otherUserCode = ref('');
 const isClassified = ref(false);
 const selectedOrders = ref<WorkOrderVO[]>([]);
 const showOrderDialog = ref(false);
+/** 每轮备料使用新的工单选择弹窗实例，避免沿用上一轮查询条件。 */
+const orderSelectionRoundKey = ref(0);
 const classifying = ref(false);
 const materialDemandUserCode = ref('');
 const materialDemandUserLabel = ref('');
@@ -767,6 +769,8 @@ const checkTaskStepCompletion = () => {
 watch([activeStep, hasWarehouse261Tasks, currentDemand], () => checkTaskStepCompletion(), { immediate: true });
 
 const resetForNextPrepRound = () => {
+  showOrderDialog.value = false;
+  orderSelectionRoundKey.value += 1;
   selectedOrders.value = [];
   currentDemand.value = null;
   currentDemandId.value = null;

@@ -203,7 +203,7 @@
                 <el-table-column label="停机开始" prop="shutdownStartTime" width="165" />
                 <el-table-column label="停机结束" prop="shutdownEndTime" width="165" />
                 <el-table-column label="停机原因" prop="shutdownReason" min-width="140">
-                  <template #default="scope"><dict-tag :options="mes_shutdown_reason" :value="scope.row.shutdownReason" /></template>
+                  <template #default="scope">{{ scope.row.shutdownReasonName || scope.row.shutdownReason || '未维护原因' }}</template>
                 </el-table-column>
                 <el-table-column label="停机时长(h)" prop="shutdownHours" width="125" align="right" />
                 <el-table-column label="有效异常(h)" prop="effectiveShutdownHours" width="125" align="right" />
@@ -652,7 +652,8 @@ const handleBatchConfirm = (values: string[]) => {
  */
 const handleExport = () => {
   if (!validateDate()) return;
-  proxy?.download('wms/report/attendanceWorkDifference/export', buildQuery(), `HR员工考勤与报工差异_${Date.now()}.xlsx`);
+  const [beginDate, endDate] = queryParams.dateRange;
+  proxy?.download('wms/report/attendanceWorkDifference/export', buildQuery(), `HR员工考勤与报工差异_${beginDate}_${endDate}.xlsx`);
 };
 
 /** 切换报表全屏状态。 */

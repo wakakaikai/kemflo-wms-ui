@@ -416,7 +416,7 @@ const abnormalReasonRows = computed(() => {
   const reasonLabels = new Map((props.shutdownReasonOptions || []).map((item) => [String(item.value || ''), item.label || item.value || '']));
   (props.abnormalRows || []).forEach((item) => {
     const reasonCode = item.shutdownReason || '';
-    const reason = reasonLabels.get(reasonCode) || reasonCode || '未维护原因';
+    const reason = item.shutdownReasonName || reasonLabels.get(reasonCode) || reasonCode || '未维护原因';
     const row = reasonMap.get(reason) || { reason, duration: 0, count: 0 };
     row.duration += Number(item.effectiveShutdownHours || 0);
     row.count += 1;

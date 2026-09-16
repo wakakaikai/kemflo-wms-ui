@@ -111,7 +111,7 @@
           </el-table-column>
           <el-table-column :label="dialogCopy.qtyColumnLabel" min-width="150" align="right">
             <template #default="{ row }">
-              <issue-qty-dual-input v-if="isIssueQtyEditing(row)" :row="row" :disabled="!canEditIssueQty(row)" :max-issue-qty="resolveIssueQtyMax(row)" autofocus @change="(val: number) => onIssueQtyChange(row, val)" @unit-change="(altUnit: string) => onIssueUnitChange(row, altUnit)" @blur="stopIssueQtyEditing" />
+              <issue-qty-dual-input v-if="isPrepMode || isIssueQtyEditing(row)" :row="row" :disabled="!canEditIssueQty(row)" :max-issue-qty="resolveIssueQtyMax(row)" :autofocus="!isPrepMode" @change="(val: number) => onIssueQtyChange(row, val)" @unit-change="(altUnit: string) => onIssueUnitChange(row, altUnit)" @blur="stopIssueQtyEditing" />
               <span v-else class="issue-qty-display" :class="{ 'is-editable': canEditIssueQty(row) }" :title="canEditIssueQty(row) ? '双击编辑' : undefined" @dblclick="startIssueQtyEditing(row)">
                 {{ formatQtyWithUnit(row.issueQty, row.inventoryUnit) }}
               </span>

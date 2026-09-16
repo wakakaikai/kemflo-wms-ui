@@ -45,7 +45,7 @@
 
         <section v-for="(sheet, sheetIndex) in consignmentPrintSheets" :key="`consignment-${sheet.key}-${sheetIndex}`" class="consignment-sheet">
           <div class="consignment-head">
-            <div class="consignment-company">益泰(南京)环保科技有限公司</div>
+            <div class="consignment-company">{{ consignmentCompanyName }}</div>
             <div class="consignment-title">托售物料专用领料单</div>
           </div>
           <div class="consignment-meta">
@@ -55,7 +55,7 @@
             </div>
             <div class="consignment-order">
               <div>
-                单号 <span>{{ sheet.sheetNo || '-' }}</span>
+                单号 <span>{{ }}</span>
               </div>
               <div>填表日期：{{ fillDateParts.year }} 年 {{ fillDateParts.month }} 月 {{ fillDateParts.day }} 日</div>
             </div>
@@ -118,7 +118,12 @@ export interface IssuePrintContext {
 }
 
 const PRINT_WIDTH_MM = 80;
-const CONSIGNMENT_PAGE_ROWS = 8;
+const CONSIGNMENT_PAGE_ROWS = 16;
+
+const TENANT_COMPANY_NAMES: Record<string, string> = {
+  '000000': '溢泰（南京）环保科技有限公司',
+  '000001': '亿泰精密工业（南京）有限公司'
+};
 
 const ISSUE_PRINT_STYLES = `
   @page {
@@ -126,8 +131,8 @@ const ISSUE_PRINT_STYLES = `
     margin: 2mm 3mm;
   }
   @page consignmentPage {
-    size: 210mm 99mm;
-    margin: 7mm 10mm;
+    size: A4 portrait;
+    margin: 12mm;
   }
   * {
     box-sizing: border-box;
@@ -275,9 +280,10 @@ const ISSUE_PRINT_STYLES = `
   }
   .consignment-sheet {
     page: consignmentPage;
-    width: 190mm;
-    min-height: 82mm;
+    width: 186mm;
+    min-height: 273mm;
     page-break-before: always;
+    page-break-after: always;
     background: #fff;
     color: #000;
     font-family: 'SimSun', 'SimHei', 'Microsoft YaHei', sans-serif;
@@ -290,16 +296,20 @@ const ISSUE_PRINT_STYLES = `
   .consignment-sheet:first-child {
     page-break-before: auto;
   }
+  .consignment-sheet:last-child {
+    page-break-after: auto;
+  }
   .consignment-head {
-    min-height: 16mm;
+    min-height: 22mm;
     text-align: center;
   }
   .consignment-company {
-    font-size: 16pt;
+    font-size: 18pt;
     line-height: 1.45;
+    font-weight: 600;
   }
   .consignment-title {
-    font-size: 20pt;
+    font-size: 22pt;
     line-height: 1.2;
   }
   .consignment-meta {
@@ -329,16 +339,26 @@ const ISSUE_PRINT_STYLES = `
   }
   .consignment-table th,
   .consignment-table td {
-    height: 6mm;
+    height: 10mm;
     border: 1px solid #000;
     padding: 1mm 1.5mm;
     text-align: center;
     vertical-align: middle;
     word-break: break-all;
   }
+  .consignment-table thead {
+    display: table-header-group;
+  }
+  .consignment-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   .consignment-table th:nth-child(1),
   .consignment-table td:nth-child(1) {
-    width: 10mm;
+    width: 14mm;
+    padding-left: 0.5mm;
+    padding-right: 0.5mm;
+    white-space: nowrap;
   }
   .consignment-table th:nth-child(2),
   .consignment-table td:nth-child(2) {
@@ -364,7 +384,7 @@ const ISSUE_PRINT_STYLES = `
     text-align: left;
   }
   .consignment-copy {
-    margin-top: 2mm;
+    margin-top: 6mm;
     font-size: 10pt;
     line-height: 1.6;
   }
@@ -372,18 +392,23 @@ const ISSUE_PRINT_STYLES = `
     display: grid;
     grid-template-columns: 1.25fr 1fr 1fr 1fr;
     gap: 8mm;
-    margin-top: 2mm;
+    margin-top: 4mm;
     font-size: 10pt;
     line-height: 1.8;
   }
 `;
 
 const userStore = useUserStore();
-const { nickname, name } = storeToRefs(userStore);
+const { nickname, name, tenantId } = storeToRefs(userStore);
 
 const operatorLabel = computed(() => {
   const nick = String(nickname.value || '').trim();
   return nick || name.value || '-';
+});
+
+const consignmentCompanyName = computed(() => {
+  const currentTenantId = String(tenantId.value || localStorage.getItem('tenantId') || '').trim();
+  return TENANT_COMPANY_NAMES[currentTenantId] || TENANT_COMPANY_NAMES['000000'];
 });
 
 const printPreviewContent = ref<HTMLElement>();
@@ -548,7 +573,6 @@ const print = async (rows: IssueTaskLineVO[], context: IssuePrintContext = {}) =
 const clearCache = () => {
   qtyCache.clear();
 };
-
 defineExpose({ print, printing, clearCache });
 </script>
 
@@ -737,8 +761,8 @@ defineExpose({ print, printing, clearCache });
 }
 
 .consignment-sheet {
-  width: 190mm;
-  min-height: 82mm;
+  width: 186mm;
+  min-height: 273mm;
   background: #fff;
   color: #000;
   font-family: 'SimSun', 'SimHei', 'Microsoft YaHei', sans-serif;
@@ -746,17 +770,18 @@ defineExpose({ print, printing, clearCache });
 }
 
 .consignment-head {
-  min-height: 16mm;
+  min-height: 22mm;
   text-align: center;
 }
 
 .consignment-company {
-  font-size: 16pt;
+  font-size: 18pt;
+  font-weight: 600;
   line-height: 1.45;
 }
 
 .consignment-title {
-  font-size: 20pt;
+  font-size: 22pt;
   line-height: 1.2;
 }
 
@@ -782,7 +807,7 @@ defineExpose({ print, printing, clearCache });
 
 .consignment-table th,
 .consignment-table td {
-  height: 6mm;
+  height: 10mm;
   border: 1px solid #000;
   padding: 1mm 1.5mm;
   text-align: center;
@@ -794,15 +819,15 @@ defineExpose({ print, printing, clearCache });
   text-align: left;
 }
 
-.consignment-copy,
-.consignment-sign {
-  margin-top: 2mm;
+.consignment-copy {
+  margin-top: 6mm;
 }
 
 .consignment-sign {
   display: grid;
   grid-template-columns: 1.25fr 1fr 1fr 1fr;
   gap: 8mm;
+  margin-top: 4mm;
   line-height: 1.8;
 }
 

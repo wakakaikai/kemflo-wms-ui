@@ -161,6 +161,7 @@ export interface AttendanceAbnormalTimeVO {
   abnormalClass?: string;
   abnormalType?: string;
   shutdownReason?: string;
+  shutdownReasonName?: string;
   shutdownDuration: number;
   effectiveShutdownDuration: number;
   /** 停机时长，展示单位为小时。 */

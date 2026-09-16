@@ -524,14 +524,14 @@ const submitForm = async () => {
       specialInventoryFlag: item.specialInventoryFlag,
       businessCode: item.businessCode,
       businessName: item.businessName,
-      targetLocationCode: item.sourceLocationCode || item.locationCode,
-      lfsnr: fixedReturnForm.value.lfsnr || '',
-      bktxt: fixedReturnForm.value.bktxt || '',
-      postingDate
+      targetLocationCode: item.sourceLocationCode || item.locationCode
     }));
     const res: any = await returnPurchaseInventory({
       purchaseOrderReturnBoList: returnRequests,
-      returnType: 1
+      returnType: 1,
+      lfsnr: fixedReturnForm.value.lfsnr || '',
+      bktxt: fixedReturnForm.value.bktxt || '',
+      postingDate: postingDate
     });
     if (res.code !== HttpStatus.SUCCESS) {
       resultMessage.value = res.msg;
