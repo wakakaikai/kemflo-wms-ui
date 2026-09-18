@@ -15,6 +15,10 @@ export interface NcCodeVO {
   autoClosePrimary?: string;
   secondaryReqdForClose?: string;
   remark?: string;
+  creator?: string;
+  createTime?: string;
+  updater?: string;
+  modifyTime?: string;
 }
 
 export interface NcCodeForm extends BaseEntity {

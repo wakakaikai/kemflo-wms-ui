@@ -3,12 +3,15 @@
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="成本中心" prop="costCenter">
-              <el-input v-model="queryParams.costCenter" placeholder="请输入成本中心" clearable @keyup.enter="handleQuery" />
+              <el-input v-model="queryParams.costCenter" placeholder="请输入成本中心" :disabled="isCostCenterScoped" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="成本中心名称" prop="costCenterName">
-              <el-input v-model="queryParams.costCenterName" placeholder="请输入成本中心名称" clearable @keyup.enter="handleQuery" />
+              <el-input v-model="queryParams.costCenterName" placeholder="请输入成本中心名称" :disabled="isCostCenterScoped" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="移动类型" prop="moveType">
+              <el-input v-model="queryParams.moveType" placeholder="请输入移动类型" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -62,10 +65,13 @@
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px" append-to-body>
       <el-form ref="costCenterMoveTypeFormRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="成本中心" prop="costCenter">
-          <el-input v-model="form.costCenter" placeholder="请输入成本中心" />
+          <el-input v-model="form.costCenter" placeholder="请输入成本中心" :disabled="isCostCenterScoped" />
         </el-form-item>
         <el-form-item label="成本中心名称" prop="costCenterName">
-          <el-input v-model="form.costCenterName" placeholder="请输入成本中心名称" />
+          <el-input v-model="form.costCenterName" placeholder="请输入成本中心名称" :disabled="isCostCenterScoped" />
+        </el-form-item>
+        <el-form-item label="移动类型" prop="moveType">
+          <el-input v-model="form.moveType" placeholder="请输入移动类型" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -82,6 +88,16 @@
 import { listCostCenterMoveType, getCostCenterMoveType, delCostCenterMoveType, addCostCenterMoveType, updateCostCenterMoveType } from '@/api/wms/costCenterMoveType';
 import { CostCenterMoveTypeVO, CostCenterMoveTypeQuery, CostCenterMoveTypeForm } from '@/api/wms/costCenterMoveType/types';
 
+interface Props {
+  costCenter?: string;
+  costCenterName?: string;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  costCenter: '',
+  costCenterName: ''
+});
+
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const costCenterMoveTypeList = ref<CostCenterMoveTypeVO[]>([]);
@@ -92,6 +108,7 @@ const ids = ref<Array<string | number>>([]);
 const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
+const isCostCenterScoped = computed(() => Boolean(props.costCenter));
 
 const queryFormRef = ref<ElFormInstance>();
 const costCenterMoveTypeFormRef = ref<ElFormInstance>();
@@ -125,6 +142,9 @@ const data = reactive<PageData<CostCenterMoveTypeForm, CostCenterMoveTypeQuery>>
     costCenter: [
       { required: true, message: "成本中心不能为空", trigger: "blur" }
     ],
+    moveType: [
+      { required: true, message: "移动类型不能为空", trigger: "blur" }
+    ],
   }
 });
 
@@ -133,7 +153,10 @@ const { queryParams, form, rules } = toRefs(data);
 /** 查询成本中心移动类型列表 */
 const getList = async () => {
   loading.value = true;
-  const res = await listCostCenterMoveType(queryParams.value);
+  const res = await listCostCenterMoveType({
+    ...queryParams.value,
+    costCenterName: isCostCenterScoped.value ? undefined : queryParams.value.costCenterName
+  });
   costCenterMoveTypeList.value = res.rows;
   total.value = res.total;
   loading.value = false;
@@ -147,8 +170,12 @@ const cancel = () => {
 
 /** 表单重置 */
 const reset = () => {
-  form.value = {...initFormData};
   costCenterMoveTypeFormRef.value?.resetFields();
+  form.value = {
+    ...initFormData,
+    costCenter: props.costCenter || undefined,
+    costCenterName: props.costCenterName || undefined
+  };
 }
 
 /** 搜索按钮操作 */
@@ -160,6 +187,8 @@ const handleQuery = () => {
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
+  queryParams.value.costCenter = props.costCenter || undefined;
+  queryParams.value.costCenterName = props.costCenterName || undefined;
   handleQuery();
 }
 
@@ -216,11 +245,19 @@ const handleDelete = async (row?: CostCenterMoveTypeVO) => {
 /** 导出按钮操作 */
 const handleExport = () => {
   proxy?.download('wms/costCenterMoveType/export', {
-    ...queryParams.value
+    ...queryParams.value,
+    costCenterName: isCostCenterScoped.value ? undefined : queryParams.value.costCenterName
   }, `costCenterMoveType_${new Date().getTime()}.xlsx`)
 }
 
-onMounted(() => {
-  getList();
-});
+watch(
+  () => [props.costCenter, props.costCenterName],
+  ([costCenter, costCenterName]) => {
+    queryParams.value.costCenter = costCenter || undefined;
+    queryParams.value.costCenterName = costCenterName || undefined;
+    queryParams.value.pageNum = 1;
+    getList();
+  },
+  { immediate: true }
+);
 </script>

@@ -198,13 +198,13 @@
                   <el-input v-else v-model="row.fixedValue" :disabled="row.partType !== 'FIXED'" clearable @input="refreshLine(row)" />
                 </template>
               </el-table-column>
-              <el-table-column label="最小序列" min-width="110" align="center" prop="minSequence" />
+<!--              <el-table-column label="最小序列" min-width="110" align="center" prop="minSequence" />
               <el-table-column label="最大序列" min-width="110" align="center" prop="maxSequence" />
               <el-table-column label="序列长度" min-width="110" align="center" prop="sequenceLength" />
               <el-table-column label="当前序列" min-width="110" align="center" prop="currentSequence" />
               <el-table-column label="重置规则" min-width="120" align="center">
                 <template #default="{ row }">{{ getOptionLabel(resetRuleOptions, row.resetRule) }}</template>
-              </el-table-column>
+              </el-table-column>-->
             </el-table>
           </el-card>
         </el-form>

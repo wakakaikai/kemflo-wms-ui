@@ -10,111 +10,6 @@
             <el-form-item label="工作中心" prop="workCenter">
               <el-input v-model="queryParams.workCenter" placeholder="请输入工作中心" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="班次" prop="productionShift">
-              <el-input v-model="queryParams.productionShift" placeholder="请输入班次" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="作业人数" prop="personNumber">
-              <el-input v-model="queryParams.personNumber" placeholder="请输入作业人数" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="机台数" prop="machineNumber">
-              <el-input v-model="queryParams.machineNumber" placeholder="请输入机台数" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="模取数" prop="moduleNumber">
-              <el-input v-model="queryParams.moduleNumber" placeholder="请输入模取数" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="开工时间" prop="startDateTime">
-              <el-date-picker clearable v-model="queryParams.startDateTime" type="date" value-format="YYYY-MM-DD" placeholder="请选择开工时间" />
-            </el-form-item>
-            <el-form-item label="完工时间" prop="endDateTime">
-              <el-date-picker clearable v-model="queryParams.endDateTime" type="date" value-format="YYYY-MM-DD" placeholder="请选择完工时间" />
-            </el-form-item>
-            <el-form-item label="良品数" prop="qtyReport">
-              <el-input v-model="queryParams.qtyReport" placeholder="请输入良品数" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="报废数" prop="qtyScrapped">
-              <el-input v-model="queryParams.qtyScrapped" placeholder="请输入报废数" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="SAP工单号" prop="erpShopOrder">
-              <el-input v-model="queryParams.erpShopOrder" placeholder="请输入SAP工单号" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="SAP工序" prop="erpOperation">
-              <el-input v-model="queryParams.erpOperation" placeholder="请输入SAP工序" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="起迄时长" prop="totalDuration">
-              <el-input v-model="queryParams.totalDuration" placeholder="请输入起迄时长" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="休息时长" prop="restDuration">
-              <el-input v-model="queryParams.restDuration" placeholder="请输入休息时长" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="操作时长" prop="operationDuration">
-              <el-input v-model="queryParams.operationDuration" placeholder="请输入操作时长" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="停止时间" prop="stopDuration">
-              <el-input v-model="queryParams.stopDuration" placeholder="请输入停止时间" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="负荷时间" prop="loadDuration">
-              <el-input v-model="queryParams.loadDuration" placeholder="请输入负荷时间" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="例外时间" prop="abnormalDuration">
-              <el-input v-model="queryParams.abnormalDuration" placeholder="请输入例外时间" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="有效时长" prop="effectiveDuration">
-              <el-input v-model="queryParams.effectiveDuration" placeholder="请输入有效时长" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="实际人时" prop="personTime">
-              <el-input v-model="queryParams.personTime" placeholder="请输入实际人时" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="报工结果" prop="reportResult">
-              <el-input v-model="queryParams.reportResult" placeholder="请输入报工结果" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="报工结果描述" prop="reportMessage">
-              <el-input v-model="queryParams.reportMessage" placeholder="请输入报工结果描述" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="报工次数" prop="reportCount">
-              <el-input v-model="queryParams.reportCount" placeholder="请输入报工次数" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="所属组织ID" prop="belongOrgId">
-              <el-input v-model="queryParams.belongOrgId" placeholder="请输入所属组织ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="租户组织ID" prop="tenantOrgId">
-              <el-input v-model="queryParams.tenantOrgId" placeholder="请输入租户组织ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录创建者ID" prop="createUserId">
-              <el-input v-model="queryParams.createUserId" placeholder="请输入记录创建者ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录创建者" prop="creator">
-              <el-input v-model="queryParams.creator" placeholder="请输入记录创建者" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录最后更新者ID" prop="modifyUserId">
-              <el-input v-model="queryParams.modifyUserId" placeholder="请输入记录最后更新者ID" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录最后更新者" prop="updater">
-              <el-input v-model="queryParams.updater" placeholder="请输入记录最后更新者" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="记录最后更新时间" prop="modifyTime">
-              <el-date-picker clearable v-model="queryParams.modifyTime" type="date" value-format="YYYY-MM-DD" placeholder="请选择记录最后更新时间" />
-            </el-form-item>
-            <el-form-item label="删除标记" prop="deleteFlag">
-              <el-input v-model="queryParams.deleteFlag" placeholder="请输入删除标记" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="锁版本" prop="auditDataVersion">
-              <el-input v-model="queryParams.auditDataVersion" placeholder="请输入锁版本" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数据归属组织id" prop="secBuId">
-              <el-input v-model="queryParams.secBuId" placeholder="请输入数据归属组织id" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数据归属雇员id" prop="secUserId">
-              <el-input v-model="queryParams.secUserId" placeholder="请输入数据归属雇员id" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="数据归属公司id" prop="secOuId">
-              <el-input v-model="queryParams.secOuId" placeholder="请输入数据归属公司id" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="实际员工出勤时长" prop="employeeTotalDuration">
-              <el-input v-model="queryParams.employeeTotalDuration" placeholder="请输入实际员工出勤时长" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="实际人员操作时长" prop="employeeOperationDuration">
-              <el-input v-model="queryParams.employeeOperationDuration" placeholder="请输入实际人员操作时长" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
               <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -165,7 +60,7 @@
         <el-table-column label="良品数" align="center" prop="qtyReport" />
         <el-table-column label="报废数" align="center" prop="qtyScrapped" />
         <el-table-column label="状态" align="center" prop="status" />
-        <el-table-column label="报工类型：1：组装报工，2：预装报工，3：注塑报工" align="center" prop="businessType" />
+        <el-table-column label="报工类型" align="center" prop="businessType" />
         <el-table-column label="SAP工单号" align="center" prop="erpShopOrder" />
         <el-table-column label="SAP工序" align="center" prop="erpOperation" />
         <el-table-column label="起迄时长" align="center" prop="totalDuration" />
@@ -176,28 +71,16 @@
         <el-table-column label="例外时间" align="center" prop="abnormalDuration" />
         <el-table-column label="有效时长" align="center" prop="effectiveDuration" />
         <el-table-column label="实际人时" align="center" prop="personTime" />
+        <el-table-column label="实际员工出勤时长" align="center" prop="employeeTotalDuration" />
+        <el-table-column label="实际人员操作时长" align="center" prop="employeeOperationDuration" />
         <el-table-column label="报工结果" align="center" prop="reportResult" />
         <el-table-column label="报工结果描述" align="center" prop="reportMessage" />
         <el-table-column label="报工次数" align="center" prop="reportCount" />
-        <el-table-column label="所属组织ID" align="center" prop="belongOrgId" />
-        <el-table-column label="租户组织ID" align="center" prop="tenantOrgId" />
         <el-table-column label="备注" align="center" prop="remark" />
-        <el-table-column label="记录创建者ID" align="center" prop="createUserId" />
-        <el-table-column label="记录创建者" align="center" prop="creator" />
-        <el-table-column label="记录最后更新者ID" align="center" prop="modifyUserId" />
-        <el-table-column label="记录最后更新者" align="center" prop="updater" />
-        <el-table-column label="记录最后更新时间" align="center" prop="modifyTime" width="180">
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.modifyTime, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="删除标记" align="center" prop="deleteFlag" />
-        <el-table-column label="锁版本" align="center" prop="auditDataVersion" />
-        <el-table-column label="数据归属组织id" align="center" prop="secBuId" />
-        <el-table-column label="数据归属雇员id" align="center" prop="secUserId" />
-        <el-table-column label="数据归属公司id" align="center" prop="secOuId" />
-        <el-table-column label="实际员工出勤时长" align="center" prop="employeeTotalDuration" />
-        <el-table-column label="实际人员操作时长" align="center" prop="employeeOperationDuration" />
+        <el-table-column label="创建者" align="center" prop="creator" />
+        <el-table-column label="创建时间" align="center" prop="createTime" width="180" />
+        <el-table-column label="更新者" align="center" prop="updater" />
+        <el-table-column label="更新时间" align="center" prop="modifyTime" width="180" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">

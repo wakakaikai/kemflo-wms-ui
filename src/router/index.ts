@@ -403,6 +403,21 @@ export const dynamicRoutes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/warehouse/costCenter',
+    component: Layout,
+    hidden: true,
+    permissions: ['wms:costCenter:list'],
+    children: [
+      {
+        path: 'detail/:costCenter',
+        component: () => import('@/views/wms/costCenter/components/CostCenterDetail.vue'),
+        name: 'costCenterDetail',
+        meta: { title: '成本中心明细', activeMenu: '/basic/warehouse/costCenter', icon: '' },
+        hidden: true
+      }
+    ]
+  },
+  {
     path: '/warehouse/warehouseManage',
     component: Layout,
     hidden: true,
@@ -494,6 +509,62 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/mes/number/edit.vue'),
         name: 'MesNumberCreate',
         meta: { title: '新增编号规则', activeMenu: '/mes/number', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/mes/hiddenCode/edit',
+    component: Layout,
+    hidden: true,
+    permissions: ['mes:hiddenCode:edit'],
+    children: [
+      {
+        path: ':id',
+        component: () => import('@/views/mes/hiddenCode/edit.vue'),
+        name: 'MesHiddenCodeEdit',
+        meta: { title: '隐码变量编辑', activeMenu: '/mes/hiddenCode', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/mes/hiddenCode/create',
+    component: Layout,
+    hidden: true,
+    permissions: ['mes:hiddenCode:add'],
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mes/hiddenCode/edit.vue'),
+        name: 'MesHiddenCodeCreate',
+        meta: { title: '新增隐码变量', activeMenu: '/mes/hiddenCode', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/mes/ncCode/edit',
+    component: Layout,
+    hidden: true,
+    permissions: ['mes:ncCode:edit'],
+    children: [
+      {
+        path: ':id',
+        component: () => import('@/views/mes/ncCode/edit.vue'),
+        name: 'MesNcCodeEdit',
+        meta: { title: '不合格代码编辑', activeMenu: '/mes/ncCode', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/mes/ncCode/create',
+    component: Layout,
+    hidden: true,
+    permissions: ['mes:ncCode:add'],
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mes/ncCode/edit.vue'),
+        name: 'MesNcCodeCreate',
+        meta: { title: '新增不合格代码', activeMenu: '/mes/ncCode', noCache: true }
       }
     ]
   }

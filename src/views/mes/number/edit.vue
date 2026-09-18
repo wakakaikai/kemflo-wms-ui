@@ -1,8 +1,8 @@
 <template>
-  <div v-loading="loading" class="number-edit-page p-2">
+  <div v-loading="loading" class="number-edit-page">
     <div class="number-edit-page__actions">
-      <el-button plain icon="ArrowLeft" size="small" @click="goBack">返回</el-button>
-      <el-button type="primary" icon="Check" size="small" :loading="editorRef?.buttonLoading" @click="handleSave">保存</el-button>
+      <el-button @click="goBack">返回</el-button>
+      <el-button type="primary" :loading="editorRef?.buttonLoading" @click="handleSave">保存</el-button>
     </div>
     <NumberRuleEditor ref="editorRef" :id="id" @loaded="loading = false" @saved="goBack" />
   </div>
@@ -35,16 +35,17 @@ const goBack = () => {
 <style scoped>
 .number-edit-page {
   min-height: calc(100vh - 84px);
-  background: #f5f7fa;
+  background: #f4f6f8;
 }
 
 .number-edit-page__actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 42px;
-  padding: 0 8px;
-  margin-bottom: 8px;
+  min-height: 60px;
+  padding: 0 16px;
+  margin-bottom: 10px;
   background: #fff;
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 </style>

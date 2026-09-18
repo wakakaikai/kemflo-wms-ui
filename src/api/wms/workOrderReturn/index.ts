@@ -62,7 +62,7 @@ export const workOrderOutbound = (data: any): AxiosPromise<void> => {
   });
 };
 
-/** sourceDocType=WO �? sourceDocCode 即工单号 */
+/** sourceDocType=WO  sourceDocCode 即工单号 */
 export function resolveWorkOrderNo(row: WorkOrderReturnSourceRow): string {
   if (row.sourceDocType === WORK_ORDER_SOURCE_DOC_TYPE) {
     return String(row.sourceDocCode ?? '').trim();
@@ -112,6 +112,8 @@ export function buildWorkOrderReturnBo(item: Record<string, unknown>, extra?: Pa
     returnQuantity: item.returnQuantity as number | string | undefined,
     quantity: item.returnQuantity as number | string | undefined,
     unit: item.unit as string | undefined,
+    reserveNo: item.reserveNo as string | undefined,
+    reserveItemNo: item.reserveItemNo as string | undefined,
     specialInventoryFlag: item.specialInventoryFlag as string | undefined,
     ...extra
   };

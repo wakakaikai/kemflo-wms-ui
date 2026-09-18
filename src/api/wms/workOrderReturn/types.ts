@@ -16,6 +16,10 @@ export interface WorkOrderReturnLineBO {
   returnQuantity?: number | string;
   quantity?: number | string;
   unit?: string;
+  /** 预留单号 */
+  reserveNo?: string;
+  /** 预留单项次 */
+  reserveItemNo?: string;
   specialInventoryFlag?: string;
   /** 前端表单字段，提交时映射为 locationCode */
   targetLocationCode?: string;

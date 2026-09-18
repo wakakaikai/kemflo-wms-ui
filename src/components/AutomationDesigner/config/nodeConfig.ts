@@ -30,8 +30,19 @@ function getTypeSpecificFields(type: string): FormField[] {
       { key: 'inputFields', label: '输入字段(JSON)', type: 'json', placeholder: '[{"name":"question","description":"用户问题"}]' },
     ],
     CRON_TRIGGER: [
-      { key: 'cronExpression', label: 'Cron表达式', type: 'input', required: true, placeholder: '0 * * * * ?' },
+      { key: 'scheduleEnabled', label: '启用定时', type: 'switch', defaultValue: true },
+      { key: 'scheduleFrequency', label: '循环频率', type: 'select', defaultValue: 'MINUTE', options: [
+        { label: '每分钟', value: 'MINUTE' },
+        { label: '每小时', value: 'HOUR' },
+        { label: '每天', value: 'DAY' },
+        { label: '自定义 Cron', value: 'CUSTOM' },
+      ]},
+      { key: 'cronExpression', label: 'Cron表达式', type: 'input', required: true, placeholder: '0 0/1 * * * ?' },
       { key: 'timeZone', label: '时区', type: 'input', defaultValue: 'Asia/Shanghai' },
+      { key: 'startTime', label: '开始执行时间', type: 'input', placeholder: 'YYYY-MM-DD HH:mm:ss' },
+      { key: 'endTime', label: '结束执行时间', type: 'input', placeholder: 'YYYY-MM-DD HH:mm:ss' },
+      { key: 'defaultParams', label: '默认参数(JSON)', type: 'json', placeholder: '{"content":"定时巡检"}' },
+      { key: 'inputFields', label: '输入字段(JSON)', type: 'json', placeholder: '[{"name":"content","displayName":"用户问题","type":"text","required":true}]' },
     ],
     WEBHOOK_TRIGGER: [
       { key: 'path', label: 'Webhook路径', type: 'input', required: true },

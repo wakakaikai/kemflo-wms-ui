@@ -139,7 +139,7 @@
     </el-card>
 
     <IotReadCollectDialog v-if="!isTcpClientDevice" v-model:visible="readDialog.visible" :title="readDialog.title" :rows="readDialog.rows" :refreshing="reading" empty-text="暂无点位数据，请先配置点位" @refresh="handleRead" />
-    <TcpCollectDialog v-else v-model:visible="tcpReadDialog.visible" :title="tcpReadDialog.title" :raw-payload="tcpReadDialog.rawPayload" :points="tcpReadDialog.points" :refreshing="reading" @refresh="handleRead" />
+    <TcpCollectDialog v-else v-model:visible="tcpReadDialog.visible" :title="tcpReadDialog.title" :raw-payload="tcpReadDialog.rawPayload" :messages="tcpReadDialog.messages" :points="tcpReadDialog.points" :refreshing="reading" @refresh="handleRead" />
 
     <el-dialog v-model="displayConfigDialog.visible" :title="displayConfigDialog.title" width="980px" destroy-on-close append-to-body class="display-config-dialog">
       <el-table v-loading="displayConfigLoading" :data="displayConfigRows" border stripe max-height="560">
@@ -192,7 +192,6 @@
 
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="760px" destroy-on-close append-to-body class="point-dialog">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-alert v-if="isTcpClientDevice" class="mb-3" type="info" :closable="false" show-icon title="TCP Client 数据解析" description="点位用于从采集 JSON 中取值。数据地址填写 V.GetData(KEY)；明细项会展平为 GB_VALUE / GB_STATUS。业务请求请在设备连接参数 request 中配置。" />
         <div class="form-section">
           <div class="form-section__title">基础信息</div>
           <el-row :gutter="16">
@@ -223,10 +222,10 @@
             <el-col :span="24">
               <el-form-item label="数据地址" prop="tagAddress">
                 <el-input v-model="form.tagAddress" placeholder="V.GetData(TEST_STATUS) 或 V.GetData(GB_VALUE)" />
-                <div class="form-tip">快捷：</div>
+<!--                <div class="form-tip">快捷：</div>
                 <div class="tcp-expr-chips">
                   <el-button v-for="item in tcpExprPresets" :key="item" size="small" plain @click="form.tagAddress = `V.GetData(${item})`">{{ item }}</el-button>
-                </div>
+                </div>-->
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -445,13 +444,15 @@
 </template>
 
 <script setup name="IotPoint" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed, onMounted, onActivated, watch } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed, onMounted, onActivated, onBeforeUnmount, watch } from 'vue';
 import type { ElFormInstance } from 'element-plus';
 import { Coin } from '@element-plus/icons-vue';
 import { useRoute, useRouter } from 'vue-router';
+import { getToken } from '@/utils/auth';
 import { listPoint, getPoint, addPoint, updatePoint, getPointDisplayConfig, savePointDisplayConfig, delPoint } from '@/api/iot/point';
 import { PointDisplayConfigForm, PointForm, PointQuery, PointVO } from '@/api/iot/point/types';
-import { listDevice, getDevice, readDevicePoints, readDeviceTcpPoints, PointReadItem } from '@/api/iot/device';
+import { listDevice, getDevice, readDevicePoints, readDeviceTcpPoints, PointReadItem, TcpMessageItem } from '@/api/iot/device';
+import { TcpMessageEvent } from '@/api/iot/device/types';
 import { DeviceVO } from '@/api/iot/device/types';
 import IotReadCollectDialog from '@/views/iot/components/IotReadCollectDialog.vue';
 import TcpCollectDialog from '@/views/iot/components/TcpCollectDialog.vue';
@@ -1325,11 +1326,14 @@ const tcpReadDialog = reactive({
   visible: false,
   title: 'TCP 采集结果',
   rawPayload: undefined as unknown,
+  messages: [] as TcpMessageItem[],
   points: [] as PointReadItem[]
 });
+let tcpCollectRefreshVersion = 0;
 const tcpExprPresets = ['BARCODE', 'TEST_STATUS', 'WORKCENTER_CODE', 'Group_Code', 'GB_VALUE', 'GB_STATUS', 'ACW_VALUE', 'ACW_STATUS', 'IR_VALUE', 'IR_STATUS'];
 const queryFormRef = ref<ElFormInstance>();
 const formRef = ref<ElFormInstance>();
+let tcpMessageSource: EventSource | undefined;
 
 const protocolGroup = computed(() => getProtocolGroup(selectedProtocol.value));
 const isModbusDeviceList = computed(() => protocolGroup.value === 'modbus');
@@ -1840,8 +1844,11 @@ const handleRead = async () => {
   reading.value = true;
   try {
     if (isTcpClientDevice.value) {
+      const refreshVersion = ++tcpCollectRefreshVersion;
       const res = await readDeviceTcpPoints(currentDeviceId.value);
+      if (refreshVersion !== tcpCollectRefreshVersion) return;
       tcpReadDialog.rawPayload = res.data?.rawPayload;
+      tcpReadDialog.messages = (res.data?.messages || []) as TcpMessageItem[];
       tcpReadDialog.points = (res.data?.points || []) as PointReadItem[];
       tcpReadDialog.title = `TCP 采集${headerDeviceName.value ? ` - ${headerDeviceName.value}` : ''}`;
       tcpReadDialog.visible = true;
@@ -1870,8 +1877,63 @@ const bootstrapPointList = async () => {
   await getList();
 };
 
+const appendTcpMessage = (message: TcpMessageEvent) => {
+  const deviceId = currentDeviceId.value;
+  if (!deviceId || !tcpReadDialog.visible || String(message.deviceId) !== String(deviceId)) return;
+  tcpReadDialog.messages.push({
+    receiveTime: message.receiveTime,
+    messageType: message.tcpMessageType,
+    tcpMessageType: message.tcpMessageType,
+    payload: message.payload
+  });
+  if (tcpReadDialog.messages.length > 100) {
+    tcpReadDialog.messages.splice(0, tcpReadDialog.messages.length - 100);
+  }
+  if (message.tcpMessageType === 'BUSINESS') void refreshTcpCollectResult(deviceId);
+};
+
+const refreshTcpCollectResult = async (deviceId: string | number) => {
+  const refreshVersion = ++tcpCollectRefreshVersion;
+  try {
+    const res = await readDeviceTcpPoints(deviceId);
+    if (refreshVersion !== tcpCollectRefreshVersion || !tcpReadDialog.visible || String(currentDeviceId.value) !== String(deviceId)) {
+      return;
+    }
+    tcpReadDialog.rawPayload = res.data?.rawPayload;
+    tcpReadDialog.points = (res.data?.points || []) as PointReadItem[];
+  } catch (error) {
+    console.warn('TCP实时数据解析刷新失败:', error);
+  }
+};
+
+const connectTcpMessageSse = () => {
+  const params = new URLSearchParams({
+    Authorization: `Bearer ${getToken() || ''}`,
+    clientid: import.meta.env.VITE_APP_CLIENT_ID,
+    connectionId: crypto.randomUUID()
+  });
+  tcpMessageSource = new EventSource(`${import.meta.env.VITE_APP_BASE_API}/iot/device/status/sse?${params.toString()}`);
+  tcpMessageSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data) as TcpMessageEvent;
+      if (data.messageType === 'iot-tcp-message') {
+        appendTcpMessage(data);
+      }
+    } catch (error) {
+      console.error('TCP实时报文解析失败:', error);
+    }
+  };
+  tcpMessageSource.onerror = (error) => console.warn('TCP实时报文SSE连接异常，浏览器将自动重连', error);
+};
+
 onMounted(async () => {
+  connectTcpMessageSse();
   await bootstrapPointList();
+});
+
+onBeforeUnmount(() => {
+  tcpMessageSource?.close();
+  tcpMessageSource = undefined;
 });
 
 onActivated(async () => {

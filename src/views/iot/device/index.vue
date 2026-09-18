@@ -113,9 +113,14 @@
               </div>
             </div>
 
-            <div class="device-card__footer">
-              <dict-tag :options="sys_normal_disable" :value="row.status" />
-              <div class="device-card__actions" @click.stop>
+            <div class="device-card__footer" @click.stop>
+              <div class="device-card__status">
+                <dict-tag :options="sys_normal_disable" :value="row.status" />
+              </div>
+              <div class="device-card__actions">
+                <el-tooltip content="读取采集" placement="top" effect="dark" :show-after="200">
+                  <el-button v-hasPermi="['iot:device:query']" link type="success" icon="DataLine" :loading="readingId === row.id" @click="handleReadCollect(row)" />
+                </el-tooltip>
                 <el-tooltip content="测试连接" placement="top" effect="dark" :show-after="200">
                   <el-button v-hasPermi="['iot:device:query']" link type="primary" icon="Connection" :loading="actionId === row.id && actionType === 'test'" @click="handleTest(row)" />
                 </el-tooltip>
@@ -201,6 +206,24 @@
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
     </el-card>
 
+    <IotReadCollectDialog
+      v-model:visible="readDialog.visible"
+      :title="readDialog.title"
+      :rows="readDialog.rows"
+      :refreshing="!!readingId"
+      empty-text="暂无点位数据，请先配置点位"
+      @refresh="handleReadCollect()"
+    />
+    <TcpCollectDialog
+      v-model:visible="tcpReadDialog.visible"
+      :title="tcpReadDialog.title"
+      :raw-payload="tcpReadDialog.rawPayload"
+      :messages="tcpReadDialog.messages"
+      :points="tcpReadDialog.points"
+      :refreshing="!!readingId"
+      @refresh="handleReadCollect()"
+    />
+
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="820px" destroy-on-close append-to-body>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
         <el-row :gutter="16">
@@ -263,36 +286,27 @@
 
           <template v-if="isTcpClient">
             <el-col :span="8">
-              <el-form-item label="启用心跳">
+              <el-form-item label="自动应答心跳">
                 <el-switch v-model="tcpHeartbeat.heartbeatEnable" />
               </el-form-item>
             </el-col>
-            <el-col :span="8">
-              <el-form-item label="保活频率(ms)">
-                <el-input-number v-model="tcpHeartbeat.heartbeatInterval" :min="1000" :step="1000" :disabled="!tcpHeartbeat.heartbeatEnable" controls-position="right" style="width: 100%" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="等待应答">
-                <el-switch v-model="tcpHeartbeat.heartbeatWaitReply" :disabled="!tcpHeartbeat.heartbeatEnable" />
+            <el-col :span="24">
+              <el-form-item label="心跳询问">
+                <el-input v-model="tcpHeartbeat.heartbeat" :disabled="!tcpHeartbeat.heartbeatEnable" placeholder='设备发送内容，例如 {"Heart":"Ask"}' />
+                <div class="form-tip">TCP Client 长连接被动接收该报文，识别为心跳后不会作为业务数据采集。</div>
               </el-form-item>
             </el-col>
             <el-col :span="24">
-              <el-form-item label="保活命令">
-                <el-input v-model="tcpHeartbeat.heartbeat" :disabled="!tcpHeartbeat.heartbeatEnable" placeholder='按品牌填写，例如 {"Heart":"Ask"} 或 text:PING\r\n 或 hex:FF01...' />
-                <div class="form-tip">连接后按保活频率发送；每次业务读写前也会先发一次。不填则不发。</div>
-              </el-form-item>
-            </el-col>
-            <el-col :span="24">
-              <el-form-item label="业务请求">
-                <el-input v-model="tcpRequest" placeholder="可选。空=被动收帧；例 text:STATUS? 或 hex:FF01..." @change="applyTcpConnectionParamsToForm" />
-                <div class="form-tip">主动轮询时发送；写入 connectionParamsJson.request。点位只做 V.GetData 映射。</div>
+              <el-form-item label="心跳应答">
+                <el-input v-model="tcpHeartbeat.heartbeatReply" :disabled="!tcpHeartbeat.heartbeatEnable" placeholder='回复设备内容，例如 {"Back":"OK"}' />
+                <div class="form-tip">收到心跳询问后立即通过当前长连接回复。</div>
               </el-form-item>
             </el-col>
             <el-col v-if="form.id" :span="12">
               <el-form-item label="连接状态">
                 <dict-tag :options="IOT_ONLINE_STATUS_OPTIONS" :value="formOnlineStatus" />
-                <span v-if="formLastOnlineTime" class="form-tip inline">最近在线 {{ formLastOnlineTime }}</span>
+                <span v-if="formOnlineStatus === '1' && formLastOnlineTime" class="form-tip inline">最近在线 {{ formLastOnlineTime }}</span>
+                <span v-else-if="formLastOfflineTime" class="form-tip inline">最近离线 {{ formLastOfflineTime }}</span>
               </el-form-item>
             </el-col>
           </template>
@@ -411,13 +425,17 @@
 </template>
 
 <script setup name="IotDevice" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, computed, reactive, ref, toRefs, onMounted, watch } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, computed, reactive, ref, toRefs, onBeforeUnmount, onMounted, watch } from 'vue';
 import type { CheckboxValueType, FormInstance } from 'element-plus';
 import { Monitor } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
-import { listDevice, getDevice, addDevice, updateDevice, copyDevice, delDevice, testDeviceConnection } from '@/api/iot/device';
-import { DeviceCopyForm, DeviceForm, DeviceQuery, DeviceVO } from '@/api/iot/device/types';
+import { getToken } from '@/utils/auth';
+import { listDevice, getDevice, addDevice, updateDevice, copyDevice, delDevice, testDeviceConnection, readDevicePoints, readDeviceTcpPoints } from '@/api/iot/device';
+import type { PointReadItem, TcpMessageItem } from '@/api/iot/device';
+import { DeviceCopyForm, DeviceForm, DeviceQuery, DeviceStatusEvent, DeviceVO, TcpMessageEvent } from '@/api/iot/device/types';
 import { DEFAULT_INJECTION_VIEW, INJECTION_VIEW_OPTIONS } from '@/views/iot/injection/views/registry';
+import IotReadCollectDialog from '@/views/iot/components/IotReadCollectDialog.vue';
+import TcpCollectDialog from '@/views/iot/components/TcpCollectDialog.vue';
 
 // ===== iot-options (inlined) =====
 /** IoT 前端写死选项（PLC4X 协议编码） */
@@ -1134,23 +1152,23 @@ const IOT_TCP_CLIENT_PARAMS_EXAMPLE = `{
   "soTimeout": 5000,
   "maxFrameBytes": 65536,
   "responseAsHex": false,
-  "request": ""
+  "heartbeatEnable": true,
+  "heartbeat": "{\"Heart\":\"Ask\"}",
+  "heartbeatReply": "{\"Back\":\"OK\"}"
 }`;
 
 /** TCP Client 保活表单（写入 connectionParamsJson） */
 interface TcpClientHeartbeatForm {
   heartbeatEnable: boolean;
   heartbeat: string;
-  heartbeatInterval: number;
-  heartbeatWaitReply: boolean;
+  heartbeatReply: string;
 }
 
 function createDefaultTcpHeartbeat(): TcpClientHeartbeatForm {
   return {
-    heartbeatEnable: false,
-    heartbeat: '',
-    heartbeatInterval: 30000,
-    heartbeatWaitReply: false
+    heartbeatEnable: true,
+    heartbeat: '{"Heart":"Ask"}',
+    heartbeatReply: '{"Back":"OK"}'
   };
 }
 
@@ -1277,13 +1295,13 @@ function mergeOpcUaAuth(json: string | undefined, auth: OpcUaAuthForm): string {
 /** 从连接参数 JSON 解析保活字段 */
 function parseTcpHeartbeat(json?: string): TcpClientHeartbeatForm {
   const params = parseConnectionParamsJson(json);
-  const heartbeat = typeof params.heartbeat === 'string' ? params.heartbeat : '';
-  const enable = typeof params.heartbeatEnable === 'boolean' ? params.heartbeatEnable : !!heartbeat;
+  const heartbeat = typeof params.heartbeat === 'string' ? params.heartbeat : '{"Heart":"Ask"}';
+  const heartbeatReply = typeof params.heartbeatReply === 'string' ? params.heartbeatReply : '{"Back":"OK"}';
+  const enable = typeof params.heartbeatEnable === 'boolean' ? params.heartbeatEnable : true;
   return {
     heartbeatEnable: enable,
     heartbeat,
-    heartbeatInterval: Number(params.heartbeatInterval) > 0 ? Number(params.heartbeatInterval) : 30000,
-    heartbeatWaitReply: !!params.heartbeatWaitReply
+    heartbeatReply
   };
 }
 
@@ -1292,18 +1310,20 @@ function mergeTcpHeartbeat(json: string | undefined, heartbeat: TcpClientHeartbe
   const params = parseConnectionParamsJson(json);
   if (heartbeat.heartbeatEnable) {
     params.heartbeatEnable = true;
-    params.heartbeatInterval = heartbeat.heartbeatInterval > 0 ? heartbeat.heartbeatInterval : 30000;
-    params.heartbeatWaitReply = !!heartbeat.heartbeatWaitReply;
+    delete params.heartbeatInterval;
+    delete params.heartbeatWaitReply;
     if (heartbeat.heartbeat?.trim()) {
       params.heartbeat = heartbeat.heartbeat.trim();
     } else {
       delete params.heartbeat;
     }
+    params.heartbeatReply = heartbeat.heartbeatReply?.trim() || '{"Back":"OK"}';
   } else {
     delete params.heartbeatEnable;
     delete params.heartbeat;
     delete params.heartbeatInterval;
     delete params.heartbeatWaitReply;
+    delete params.heartbeatReply;
   }
   if (request?.trim()) {
     params.request = request.trim();
@@ -1336,6 +1356,8 @@ const ids = ref<Array<string | number>>([]);
 const multiple = ref(true);
 const actionId = ref<string | number>();
 const actionType = ref<'test'>();
+const readingId = ref<string | number>();
+const readingDevice = ref<DeviceVO>();
 const copySubmitting = ref(false);
 const copySource = ref<DeviceVO>();
 const tcpHeartbeat = reactive<TcpClientHeartbeatForm>(createDefaultTcpHeartbeat());
@@ -1344,9 +1366,20 @@ const modbusAddressBase = ref('1');
 const opcUaAuth = reactive<OpcUaAuthForm>(createDefaultOpcUaAuth());
 const formOnlineStatus = ref<string>('0');
 const formLastOnlineTime = ref<string>('');
+const formLastOfflineTime = ref<string>('');
+let deviceStatusSource: EventSource | undefined;
 
 const dialog = reactive<DialogOption>({ visible: false, title: '' });
 const copyDialog = reactive<DialogOption>({ visible: false, title: '复制采集设备' });
+const readDialog = reactive({ visible: false, title: '采集结果', rows: [] as PointReadItem[] });
+const tcpReadDialog = reactive({
+  visible: false,
+  title: 'TCP 采集结果',
+  rawPayload: undefined as unknown,
+  messages: [] as TcpMessageItem[],
+  points: [] as PointReadItem[]
+});
+let tcpCollectRefreshVersion = 0;
 const pageOnlineCount = computed(() => deviceList.value.filter((d) => isOnline(d)).length);
 const pageOfflineCount = computed(() => deviceList.value.length - pageOnlineCount.value);
 
@@ -1677,6 +1710,7 @@ const reset = () => {
   Object.assign(opcUaAuth, createDefaultOpcUaAuth());
   formOnlineStatus.value = '0';
   formLastOnlineTime.value = '';
+  formLastOfflineTime.value = '';
   formRef.value?.resetFields();
 };
 
@@ -1695,6 +1729,7 @@ const handleUpdate = async (row: DeviceVO) => {
   form.value.displayView = form.value.displayView || DEFAULT_INJECTION_VIEW;
   formOnlineStatus.value = String(res.data?.onlineStatus ?? '0');
   formLastOnlineTime.value = res.data?.lastOnlineTime || '';
+  formLastOfflineTime.value = res.data?.lastOfflineTime || '';
   syncTcpHeartbeatFromForm();
   syncModbusAddressBaseFromForm();
   syncOpcUaAuthFromForm();
@@ -1750,6 +1785,32 @@ const handleTest = async (row: DeviceVO) => {
   }
 };
 
+const handleReadCollect = async (row?: DeviceVO) => {
+  const target = row?.id != null ? row : readingDevice.value;
+  if (!target?.id || readingId.value != null) return;
+  readingDevice.value = target;
+  readingId.value = target.id;
+  try {
+    if (isTcpClientRow(target)) {
+      const refreshVersion = ++tcpCollectRefreshVersion;
+      const res = await readDeviceTcpPoints(target.id);
+      if (refreshVersion !== tcpCollectRefreshVersion) return;
+      tcpReadDialog.rawPayload = res.data?.rawPayload;
+      tcpReadDialog.messages = (res.data?.messages || []) as TcpMessageItem[];
+      tcpReadDialog.points = (res.data?.points || []) as PointReadItem[];
+      tcpReadDialog.title = `TCP 采集 - ${target.deviceName || target.deviceCode}`;
+      tcpReadDialog.visible = true;
+    } else {
+      const res = await readDevicePoints(target.id);
+      readDialog.rows = (res.data || []) as PointReadItem[];
+      readDialog.title = `采集结果 - ${target.deviceName || target.deviceCode}`;
+      readDialog.visible = true;
+    }
+  } finally {
+    readingId.value = undefined;
+  }
+};
+
 
 
 
@@ -1760,8 +1821,8 @@ const submitForm = () => {
     if (form.value.protocol) form.value.protocol = normalizeProtocolValue(form.value.protocol);
     if (form.value.transportCode) form.value.transportCode = normalizeTransportValue(form.value.transportCode);
     if (isTcpClient.value) {
-      if (tcpHeartbeat.heartbeatEnable && !tcpHeartbeat.heartbeat?.trim()) {
-        proxy?.$modal.msgError('已启用心跳，请填写保活命令');
+      if (tcpHeartbeat.heartbeatEnable && (!tcpHeartbeat.heartbeat?.trim() || !tcpHeartbeat.heartbeatReply?.trim())) {
+        proxy?.$modal.msgError('已启用心跳，请填写心跳询问和应答内容');
         return;
       }
       applyTcpHeartbeatToForm();
@@ -1792,7 +1853,81 @@ const handleDelete = async (row?: DeviceVO) => {
   await getList();
 };
 
-onMounted(getList);
+const handleDeviceStatusChanged = (status: DeviceStatusEvent) => {
+  if (!status?.deviceId) return;
+  const row = deviceList.value.find((item) => String(item.id) === String(status.deviceId));
+  if (row) {
+    row.onlineStatus = status.onlineStatus;
+    row.lastOnlineTime = status.lastOnlineTime;
+    row.lastOfflineTime = status.lastOfflineTime;
+  }
+  if (form.value.id && String(form.value.id) === String(status.deviceId)) {
+    formOnlineStatus.value = status.onlineStatus;
+    formLastOnlineTime.value = status.lastOnlineTime || '';
+    formLastOfflineTime.value = status.lastOfflineTime || '';
+  }
+};
+
+const appendTcpMessage = (message: TcpMessageEvent) => {
+  const deviceId = readingDevice.value?.id;
+  if (!deviceId || !tcpReadDialog.visible || String(message.deviceId) !== String(deviceId)) return;
+  tcpReadDialog.messages.push({
+    receiveTime: message.receiveTime,
+    messageType: message.tcpMessageType,
+    tcpMessageType: message.tcpMessageType,
+    payload: message.payload
+  });
+  if (tcpReadDialog.messages.length > 100) {
+    tcpReadDialog.messages.splice(0, tcpReadDialog.messages.length - 100);
+  }
+  if (message.tcpMessageType === 'BUSINESS') void refreshTcpCollectResult(deviceId);
+};
+
+const refreshTcpCollectResult = async (deviceId: string | number) => {
+  const refreshVersion = ++tcpCollectRefreshVersion;
+  try {
+    const res = await readDeviceTcpPoints(deviceId);
+    if (refreshVersion !== tcpCollectRefreshVersion || !tcpReadDialog.visible || String(readingDevice.value?.id) !== String(deviceId)) {
+      return;
+    }
+    tcpReadDialog.rawPayload = res.data?.rawPayload;
+    tcpReadDialog.points = (res.data?.points || []) as PointReadItem[];
+  } catch (error) {
+    console.warn('TCP实时数据解析刷新失败:', error);
+  }
+};
+
+const connectDeviceStatusSse = () => {
+  const params = new URLSearchParams({
+    Authorization: `Bearer ${getToken() || ''}`,
+    clientid: import.meta.env.VITE_APP_CLIENT_ID,
+    connectionId: crypto.randomUUID()
+  });
+  deviceStatusSource = new EventSource(`${import.meta.env.VITE_APP_BASE_API}/iot/device/status/sse?${params.toString()}`);
+  deviceStatusSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data) as DeviceStatusEvent | TcpMessageEvent;
+      if (data.messageType === 'iot-tcp-message') {
+        appendTcpMessage(data);
+        return;
+      }
+      handleDeviceStatusChanged(data as DeviceStatusEvent);
+    } catch (error) {
+      console.error('数采设备状态消息解析失败:', error);
+    }
+  };
+  deviceStatusSource.onerror = (error) => console.warn('数采设备状态SSE连接异常，浏览器将自动重连', error);
+};
+
+onMounted(() => {
+  connectDeviceStatusSse();
+  getList();
+});
+
+onBeforeUnmount(() => {
+  deviceStatusSource?.close();
+  deviceStatusSource = undefined;
+});
 </script>
 
 <style scoped lang="scss">
@@ -1867,17 +2002,17 @@ onMounted(getList);
 
 .device-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 16px;
   min-height: 140px;
 }
 
 .device-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  min-height: 210px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px;
+  overflow: hidden;
   border-radius: 12px;
   border: 1px solid var(--el-border-color-lighter);
   background: var(--el-bg-color);
@@ -1890,13 +2025,14 @@ onMounted(getList);
   &:hover,
   &:focus-visible {
     border-color: var(--el-color-primary-light-5);
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 10px 24px rgba(31, 45, 61, 0.1);
     transform: translateY(-2px);
     outline: none;
   }
 
   &.online {
-    background: linear-gradient(180deg, var(--el-color-success-light-9) 0%, var(--el-bg-color) 48%);
+    border-color: var(--el-color-success-light-7);
+    background: linear-gradient(160deg, var(--el-color-success-light-9) 0%, var(--el-bg-color) 38%);
   }
 
   &.selected {
@@ -1909,45 +2045,69 @@ onMounted(getList);
     grid-template-columns: auto auto 1fr auto;
     align-items: center;
     gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--el-border-color-extra-light);
   }
 
   &__meta {
     display: grid;
-    gap: 10px;
-    flex: 1;
-    padding: 12px 14px;
+    gap: 7px;
+    padding: 10px 12px;
+    border: 1px solid var(--el-border-color-extra-light);
     border-radius: 10px;
-    background: var(--el-fill-color-lighter);
+    background: color-mix(in srgb, var(--el-fill-color-lighter) 72%, transparent);
   }
 
   &__footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
-    margin-top: auto;
+    min-height: 36px;
+    padding: 4px 6px 4px 8px;
+    border: 1px solid var(--el-border-color-extra-light);
+    border-radius: 10px;
+    background: var(--el-fill-color-lighter);
+  }
+
+  &__status {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    padding-right: 8px;
+    border-right: 1px solid var(--el-border-color-light);
   }
 
   &__actions {
-    display: inline-flex;
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: 2px;
+  }
 
-    :deep(.el-button.is-link) {
-      padding: 6px;
-    }
+  &__actions :deep(.el-button.is-link) {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin-left: 0;
+    border-radius: 7px;
+    transition: background-color 0.15s, color 0.15s;
 
-    :deep(.el-icon) {
-      font-size: 16px;
+    &:hover {
+      background: var(--el-bg-color);
     }
   }
 
+  &__actions :deep(.el-icon) {
+    font-size: 15px;
+  }
 }
 
 .device-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1958,6 +2118,7 @@ onMounted(getList);
   &.online {
     color: var(--el-color-success);
     background: var(--el-color-success-light-8);
+    box-shadow: 0 5px 14px rgba(103, 194, 58, 0.16);
   }
 }
 
@@ -1966,8 +2127,8 @@ onMounted(getList);
 }
 
 .device-name {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 650;
   line-height: 1.35;
   color: var(--el-text-color-primary);
   overflow: hidden;
@@ -1990,6 +2151,9 @@ onMounted(getList);
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--el-fill-color-light);
 }
 
 .online-dot {

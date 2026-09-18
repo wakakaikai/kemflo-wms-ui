@@ -15,6 +15,7 @@ export interface DeviceVO {
   reconnectInterval?: number;
   onlineStatus?: string;
   lastOnlineTime?: string;
+  lastOfflineTime?: string;
   deviceLocation?: string;
   displayView?: string;
   status?: string;
@@ -56,4 +57,22 @@ export interface DeviceCopyForm {
   deviceCode?: string;
   deviceName?: string;
   copyPoints?: boolean;
+}
+
+export interface DeviceStatusEvent {
+  messageType: 'iot-device-status';
+  deviceId: string | number;
+  deviceCode?: string;
+  onlineStatus: string;
+  lastOnlineTime?: string;
+  lastOfflineTime?: string;
+}
+
+export interface TcpMessageEvent {
+  messageType: 'iot-tcp-message';
+  deviceId: string | number;
+  deviceCode?: string;
+  receiveTime?: string;
+  tcpMessageType?: string;
+  payload?: string;
 }

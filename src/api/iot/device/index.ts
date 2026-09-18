@@ -57,5 +57,13 @@ export interface PointReadItem {
 
 export interface TcpCollectResult {
   rawPayload?: any;
+  messages?: TcpMessageItem[];
   points?: PointReadItem[];
+}
+
+export interface TcpMessageItem {
+  receiveTime?: string;
+  messageType?: string;
+  tcpMessageType?: string;
+  payload?: string;
 }

@@ -24,7 +24,7 @@
             <el-form-item :label="objectLabel" prop="contextObject">
               <el-input v-model="form.contextObject" :placeholder="objectPlaceholder" readonly clearable :disabled="objectDisabled || isEdit" @clear="handleObjectClear">
                 <template #append>
-                  <el-button icon="Search" :disabled="objectDisabled || isEdit" @click="openObjectDialog">选择</el-button>
+                  <el-button icon="Search" :disabled="objectDisabled || isEdit" aria-label="选择编号对象" @click="openObjectDialog" />
                 </template>
               </el-input>
             </el-form-item>
@@ -46,7 +46,7 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="示例">
-              <el-input :model-value="sample" disabled />
+              <span class="number-sample">{{ sample || '-' }}</span>
             </el-form-item>
           </el-col>
         </el-row>
@@ -96,13 +96,13 @@
               <el-input v-else v-model="row.fixedValue" :disabled="row.partType !== 'FIXED'" clearable @input="refreshLine(row)" />
             </template>
           </el-table-column>
-          <el-table-column label="最小序列" min-width="110" align="center" prop="minSequence" />
+<!--          <el-table-column label="最小序列" min-width="110" align="center" prop="minSequence" />
           <el-table-column label="最大序列" min-width="110" align="center" prop="maxSequence" />
           <el-table-column label="序列长度" min-width="110" align="center" prop="sequenceLength" />
           <el-table-column label="当前序列" min-width="110" align="center" prop="currentSequence" />
           <el-table-column label="重置规则" min-width="120" align="center">
             <template #default="{ row }">{{ getOptionLabel(resetRuleOptions, row.resetRule) }}</template>
-          </el-table-column>
+          </el-table-column>-->
         </el-table>
       </el-card>
     </el-form>
@@ -736,13 +736,13 @@ defineExpose({ submit, buttonLoading });
   }
 
   :deep(.editor-section > .el-card__header) {
-    min-height: 38px;
-    padding: 9px 8px;
+    min-height: 46px;
+    padding: 12px 10px;
     border-bottom: 1px solid #ebeef5;
   }
 
   :deep(.editor-section > .el-card__body) {
-    padding: 12px 8px;
+    padding: 14px 10px;
   }
 
   .section-title {
@@ -762,12 +762,16 @@ defineExpose({ submit, buttonLoading });
   }
 
   .base-info-grid {
-    max-width: 720px;
+    max-width: 840px;
     margin: 0 auto;
   }
 
+  .base-info-grid > :deep(.el-col-24 .el-form-item) {
+    width: 50%;
+  }
+
   .base-info-section :deep(.el-form-item) {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
 
   .base-info-section :deep(.el-select),
@@ -781,8 +785,36 @@ defineExpose({ submit, buttonLoading });
     margin-bottom: 8px;
   }
 
+  .number-sample {
+    min-height: 32px;
+    line-height: 32px;
+    color: var(--el-text-color-primary);
+    word-break: break-all;
+  }
+
+  :deep(.code-info-section .el-table th.el-table__cell) {
+    color: var(--el-text-color-primary);
+    background: #f1f4fa;
+  }
+
+  :deep(.code-info-section .el-table .cell) {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
   .number-form {
-    padding-right: 12px;
+    padding: 0 10px 12px;
+  }
+
+  @media (max-width: 900px) {
+    .base-info-grid > :deep(.el-col-24 .el-form-item) {
+      width: 100%;
+    }
+
+    .base-info-grid > :deep(.el-col-12) {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
   }
 }
 </style>

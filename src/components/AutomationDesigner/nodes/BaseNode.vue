@@ -346,7 +346,12 @@ function bodyTypeText(c: Record<string, any>) {
 
 function startText(type: string) {
   if (type === 'DEVICE_PROPERTY_TRIGGER') return '设备采集数据';
-  if (type === 'CRON_TRIGGER') return cfg.value.cronExpression || '定时触发';
+  if (type === 'CRON_TRIGGER') {
+    if (cfg.value.scheduleEnabled === false) return '定时未启用';
+    const freqMap: Record<string, string> = { MINUTE: '每分钟', HOUR: '每小时', DAY: '每天', CUSTOM: '自定义' };
+    const freq = freqMap[cfg.value.scheduleFrequency] || '';
+    return freq ? `${freq} · ${cfg.value.cronExpression || ''}`.trim() : cfg.value.cronExpression || '定时触发';
+  }
   if (type === 'WEBHOOK_TRIGGER') return cfg.value.path || 'Webhook';
   return '手动执行';
 }

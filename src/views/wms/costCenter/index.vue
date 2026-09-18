@@ -41,7 +41,13 @@
       <el-table v-loading="loading" :data="costCenterList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="唯一ID" align="center" prop="id" v-if="true" />
-        <el-table-column label="成本中心" align="center" prop="costCenter" />
+        <el-table-column label="成本中心" align="center" prop="costCenter">
+          <template #default="scope">
+            <router-link :to="`/warehouse/costCenter/detail/${encodeURIComponent(scope.row.costCenter)}`" class="link-type">
+              <span>{{ scope.row.costCenter }}</span>
+            </router-link>
+          </template>
+        </el-table-column>
         <el-table-column label="成本中心名称" align="center" prop="costCenterName" />
         <el-table-column label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">

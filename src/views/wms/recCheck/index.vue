@@ -74,7 +74,7 @@
         <el-table-column v-if="columns[1].visible" label="入库单号" align="center" prop="receiptOrderNo" />
         <el-table-column v-if="columns[2].visible" label="工单号" align="center" prop="shopOrder" />
         <el-table-column v-if="columns[3].visible" label="物料" align="center" prop="item" />
-        <el-table-column v-if="columns[4].visible" label="物料描述" align="center" prop="itemDesc" />
+        <el-table-column v-if="columns[4].visible" label="物料描述" align="center" prop="itemDesc" show-overflow-tooltip />
         <el-table-column v-if="columns[5].visible" label="开始条码" align="center" prop="startSfc" />
         <el-table-column v-if="columns[6].visible" label="结束条码" align="center" prop="endSfc" />
         <el-table-column v-if="columns[7].visible" label="质检人" align="center" prop="checkUser" />
@@ -109,7 +109,7 @@
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="700px" append-to-body>
       <el-form ref="recCheckFormRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="检验单号" prop="checkNo">
-          <el-input v-model="form.checkNo" placeholder="请输入检验单号" />
+          <el-input v-model="form.checkNo" placeholder="请输入检验单号" disabled />
         </el-form-item>
         <el-form-item label="入库单号" prop="receiptOrderNo">
           <el-input v-model="form.receiptOrderNo" placeholder="请输入入库单号" />

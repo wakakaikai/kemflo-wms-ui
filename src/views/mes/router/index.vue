@@ -160,7 +160,7 @@ const handleDelete = async (row?: RouterVO) => {
 };
 
 onMounted(async () => {
-  const [routerTypeRes, statusRes] = await Promise.all([getDicts('ROUTER_TYPE'), getDicts('ROUTER_STATUS')]);
+  const [routerTypeRes, statusRes] = await Promise.all([getDicts('mes_router_type'), getDicts('mes_router_status')]);
   routerTypeOptions.value = routerTypeRes.data || [];
   statusOptions.value = statusRes.data || [];
   await getList();

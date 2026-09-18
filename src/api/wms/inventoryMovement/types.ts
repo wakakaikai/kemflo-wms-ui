@@ -1,4 +1,10 @@
 export interface InventoryMovementVO {
+  /** 预留单号 */
+  reserveNo?: string;
+
+  /** 预留单项次 */
+  reserveItemNo?: string;
+
   /** 后端按凭证年度、物料凭证号及项次生成的分组键。 */
   groupKey?: string;
 
@@ -76,6 +82,16 @@ export interface InventoryMovementForm extends BaseEntity {
    * 基本单位
    */
   unit?: string;
+
+  /**
+   * 预留单号
+   */
+  reserveNo?: string;
+
+  /**
+   * 预留单项次
+   */
+  reserveItemNo?: string;
 
   /**
    * 单据类型

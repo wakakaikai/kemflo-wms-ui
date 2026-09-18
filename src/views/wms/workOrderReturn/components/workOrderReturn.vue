@@ -211,19 +211,21 @@
       <el-table v-loading="bomLoading" :data="filteredBomList" border stripe max-height="420" highlight-current-row @current-change="onBomRowChange" @row-dblclick="confirmBomSelect">
         <el-table-column width="55" align="center">
           <template #default="scope">
-            <el-radio v-model="bomDialogSelectedCode" :label="scope.row.componentMaterial" class="radio-no-label">
+            <el-radio v-model="bomDialogSelectedId" :label="scope.row.id" class="radio-no-label">
               <span class="el-radio__label"></span>
             </el-radio>
           </template>
         </el-table-column>
         <el-table-column prop="componentMaterial" label="物料编码" min-width="130" />
         <el-table-column prop="componentDesc" label="物料描述" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="reserveNo" label="预留单号" min-width="120" />
+        <el-table-column prop="reserveItemNo" label="预留单项次" min-width="100" />
         <el-table-column prop="componentQty" label="BOM数量" width="100" align="right" />
         <el-table-column prop="unit" label="单位" width="70" align="center" />
       </el-table>
       <template #footer>
         <el-button @click="bomDialogVisible = false">取消</el-button>
-        <el-button type="primary" :disabled="!bomDialogSelectedCode" @click="confirmBomSelect">确定</el-button>
+        <el-button type="primary" :disabled="bomDialogSelectedId == null" @click="confirmBomSelect">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -369,7 +371,7 @@ const bomList = ref<WorkOrderBomVO[]>([]);
 const bomLoading = ref(false);
 const bomDialogVisible = ref(false);
 const bomKeyword = ref('');
-const bomDialogSelectedCode = ref('');
+const bomDialogSelectedId = ref<string | number>();
 const filterAllByBom = ref(false);
 
 const filteredBomList = computed(() => {
@@ -681,6 +683,8 @@ const applyMaterialToRow = (row: any, materialCode: string, materialName?: strin
     row.unit = unit;
     row.inventoryUnit = unit;
   }
+  row.reserveNo = undefined;
+  row.reserveItemNo = undefined;
   clearInventoryFields(row);
 };
 
@@ -773,29 +777,37 @@ const openBomMaterialDialog = async (row: any) => {
   }
   materialEditRow.value = row;
   bomKeyword.value = '';
-  bomDialogSelectedCode.value = row.itemCode || row.materialCode || '';
   await loadBomList(workOrderNo);
+  const selectedBom = bomList.value.find(
+    (bom) =>
+      bom.componentMaterial === (row.itemCode || row.materialCode) &&
+      (!row.reserveNo || bom.reserveNo === row.reserveNo) &&
+      (!row.reserveItemNo || bom.reserveItemNo === row.reserveItemNo)
+  );
+  bomDialogSelectedId.value = selectedBom?.id;
   bomDialogVisible.value = true;
 };
 
 const onBomRowChange = (row: WorkOrderBomVO | null) => {
-  bomDialogSelectedCode.value = row?.componentMaterial || '';
+  bomDialogSelectedId.value = row?.id;
 };
 
 const confirmBomSelect = () => {
-  const code = bomDialogSelectedCode.value;
+  const id = bomDialogSelectedId.value;
   const row = materialEditRow.value;
   if (!row) return;
-  if (!code) {
+  if (id == null) {
     proxy.$modal.msgWarning('请选择BOM物料');
     return;
   }
-  const bom = bomList.value.find((b) => b.componentMaterial === code);
+  const bom = bomList.value.find((b) => b.id === id);
   if (!bom) {
     proxy.$modal.msgWarning('未找到所选BOM物料');
     return;
   }
   applyMaterialToRow(row, bom.componentMaterial, bom.componentDesc || '', bom.unit || row.unit);
+  row.reserveNo = bom.reserveNo;
+  row.reserveItemNo = bom.reserveItemNo;
   bomDialogVisible.value = false;
   materialEditRow.value = null;
 };
@@ -863,6 +875,8 @@ const handleWorkOrderSelection = async (orders: any[]) => {
   const selected = orders?.[0];
   const row = workOrderDialog.row;
   if (row && selected) {
+    row.reserveNo = undefined;
+    row.reserveItemNo = undefined;
     row.workOrderNo = selected.workOrderNo;
     row.sourceDocType = 'WO';
     row.sourceDocCode = selected.workOrderNo;

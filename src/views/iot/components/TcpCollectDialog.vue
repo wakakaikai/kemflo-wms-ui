@@ -1,13 +1,5 @@
 <template>
-  <el-dialog
-    :model-value="visible"
-    :title="title"
-    class="tcp-collect-dialog"
-    width="92%"
-    destroy-on-close
-    append-to-body
-    @update:model-value="emit('update:visible', $event)"
-  >
+  <el-dialog :model-value="visible" :title="title" class="tcp-collect-dialog" width="92%" destroy-on-close append-to-body @update:model-value="emit('update:visible', $event)">
     <div ref="captureRef" class="tcp-collect-root">
       <div class="tcp-collect-summary">
         <div class="summary-item total">
@@ -26,8 +18,8 @@
 
       <el-row :gutter="16">
         <el-col :span="10">
-          <div class="panel-title">实际采集 JSON</div>
-          <pre class="raw-json">{{ rawJsonText }}</pre>
+          <div class="panel-title">实时报文</div>
+          <pre ref="realtimeLogRef" class="raw-json realtime-log">{{ realtimeText }}</pre>
         </el-col>
         <el-col :span="14">
           <div class="panel-title">数据解析结果</div>
@@ -50,14 +42,6 @@
                 <span v-else class="val fail">—</span>
               </template>
             </el-table-column>
-            <el-table-column label="结果" width="88" align="center">
-              <template #default="scope">
-                <span class="result-badge" :class="scope.row.success ? 'is-success' : 'is-fail'">
-                  {{ scope.row.success ? '成功' : '失败' }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column label="失败原因" prop="error" min-width="120" show-overflow-tooltip />
           </el-table>
         </el-col>
       </el-row>
@@ -72,8 +56,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import type { PointReadItem } from '@/api/iot/device';
+import { computed, nextTick, ref, watch } from 'vue';
+import type { PointReadItem, TcpMessageItem } from '@/api/iot/device';
 import html2canvas from 'html2canvas';
 import FileSaver from 'file-saver';
 import { ElMessage } from 'element-plus';
@@ -83,11 +67,13 @@ const props = withDefaults(
     visible: boolean;
     title?: string;
     rawPayload?: unknown;
+    messages?: TcpMessageItem[];
     points?: PointReadItem[];
     refreshing?: boolean;
   }>(),
   {
     title: 'TCP 采集结果',
+    messages: () => [],
     points: () => [],
     refreshing: false
   }
@@ -100,6 +86,7 @@ const emit = defineEmits<{
 
 const capturing = ref(false);
 const captureRef = ref<HTMLElement>();
+const realtimeLogRef = ref<HTMLElement>();
 
 const points = computed(() => props.points || []);
 const stats = computed(() => {
@@ -108,23 +95,47 @@ const stats = computed(() => {
   return { total, success, fail: total - success };
 });
 
-const rawJsonText = computed(() => {
-  if (props.rawPayload == null) return '暂无数据！';
-  if (typeof props.rawPayload === 'string') {
-    try {
-      return JSON.stringify(JSON.parse(props.rawPayload), null, 2);
-    } catch {
-      return props.rawPayload;
-    }
-  }
+const pad = (value: number, length = 2) => String(value).padStart(length, '0');
+
+const formatReceiveTime = (value?: string) => {
+  const date = value ? new Date(value.replace(' ', 'T')) : new Date();
+  const d = Number.isNaN(date.getTime()) ? new Date() : date;
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+};
+
+const formatPayload = (value?: string) => {
+  if (value == null) return '';
+  if (typeof value !== 'string') return String(value);
+  const text = value.trim();
+  if (!text.startsWith('{') && !text.startsWith('[')) return value;
   try {
-    return JSON.stringify(props.rawPayload, null, 2);
+    return JSON.stringify(JSON.parse(text), null, 2);
   } catch {
-    return String(props.rawPayload);
+    return value;
   }
+};
+
+const realtimeText = computed(() => {
+  if (!props.messages?.length) return '等待接收 TCP 报文...';
+  return props.messages.map((item) => `[${formatReceiveTime(item.receiveTime)}]收←◆${formatPayload(item.payload)}`).join('\n');
 });
 
-const hasContent = computed(() => props.rawPayload != null || points.value.length > 0);
+const scrollRealtimeToBottom = async () => {
+  await nextTick();
+  const el = realtimeLogRef.value;
+  if (!el) return;
+  el.scrollTop = el.scrollHeight;
+};
+
+watch(
+  () => [props.visible, props.messages?.length || 0],
+  () => {
+    scrollRealtimeToBottom();
+  },
+  { flush: 'post' }
+);
+
+const hasContent = computed(() => (props.messages?.length || 0) > 0 || points.value.length > 0);
 
 const formatValue = (value: unknown) => {
   if (value == null) return '—';
@@ -171,11 +182,7 @@ async function captureScreenshot(root: HTMLElement, fileName: string) {
   const snapshots: StyleSnapshot[] = [];
   const dialog = (root.closest('.el-dialog') as HTMLElement) || root;
   dialog.classList.add('is-capturing');
-  const targets = [
-    dialog,
-    root,
-    ...Array.from(root.querySelectorAll<HTMLElement>('.el-dialog__body, .el-table, .el-table__body-wrapper, .raw-json'))
-  ];
+  const targets = [dialog, root, ...Array.from(root.querySelectorAll<HTMLElement>('.el-dialog__body, .el-table, .el-table__body-wrapper, .raw-json'))];
   Array.from(new Set(targets)).forEach((el) => snapshots.push(snapshotAndExpand(el)));
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   try {
@@ -280,7 +287,11 @@ const onCapture = async () => {
   font-size: 12px;
   line-height: 1.45;
   white-space: pre-wrap;
-  word-break: break-all;
+  word-break: break-word;
+}
+
+.realtime-log {
+  max-height: 560px;
 }
 
 .val {
@@ -296,26 +307,6 @@ const onCapture = async () => {
   }
 }
 
-.result-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 52px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-
-  &.is-success {
-    color: var(--el-color-success);
-    background: var(--el-color-success-light-9);
-  }
-
-  &.is-fail {
-    color: var(--el-color-danger);
-    background: var(--el-color-danger-light-9);
-  }
-}
 </style>
 
 <style lang="scss">

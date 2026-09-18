@@ -32,7 +32,29 @@ export interface NodeConfigItem {
 // 触发节点
 const triggerNodes: NodeConfigItem[] = [
   { type: 'MANUAL_TRIGGER', category: NodeCategory.TRIGGER, label: '开始', icon: 'Hand', color: '#1677ff', shape: 'ellipse', defaultConfig: { description: '', inputFields: [{ name: 'content', displayName: '用户问题', type: 'text', required: true }, { name: 'history', displayName: '对话历史', type: 'text', required: false }, { name: 'images', displayName: '图片', type: 'image', required: false }] } },
-  { type: 'CRON_TRIGGER', category: NodeCategory.TRIGGER, label: '定时触发', icon: 'Clock', color: '#1677ff', shape: 'ellipse', defaultConfig: { cronExpression: '0 * * * * ?', timeZone: 'Asia/Shanghai' } },
+  {
+    type: 'CRON_TRIGGER',
+    category: NodeCategory.TRIGGER,
+    label: '定时触发',
+    icon: 'Clock',
+    color: '#1677ff',
+    shape: 'ellipse',
+    defaultConfig: {
+      description: '',
+      scheduleEnabled: true,
+      scheduleFrequency: 'MINUTE',
+      cronExpression: '0 0/1 * * * ?',
+      timeZone: 'Asia/Shanghai',
+      startTime: '',
+      endTime: '',
+      defaultParams: {},
+      inputFields: [
+        { name: 'content', displayName: '用户问题', type: 'text', required: true },
+        { name: 'history', displayName: '对话历史', type: 'text', required: false },
+        { name: 'images', displayName: '图片', type: 'image', required: false }
+      ]
+    }
+  },
   { type: 'WEBHOOK_TRIGGER', category: NodeCategory.TRIGGER, label: 'Webhook触发', icon: 'Link', color: '#1677ff', shape: 'ellipse', defaultConfig: { path: '/webhook/' } },
   { type: 'DATA_TRIGGER', category: NodeCategory.TRIGGER, label: '数据触发', icon: 'DataBoard', color: '#1677ff', shape: 'ellipse', defaultConfig: { worksheetId: '', eventType: 'INSERT' } },
   { type: 'MESSAGE_TRIGGER', category: NodeCategory.TRIGGER, label: '消息触发', icon: 'Message', color: '#1677ff', shape: 'ellipse', defaultConfig: { topic: '', queue: '' } },

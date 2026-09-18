@@ -258,7 +258,7 @@ onMounted(async () => {
       operations.value = [];
     });
   try {
-    const [routerTypeRes, statusRes, stepTypeRes, detailResult] = await Promise.all([getDicts('ROUTER_TYPE'), getDicts('ROUTER_STATUS'), getDicts('ROUTER_OPERATION_TYPE'), id.value ? getRouter(id.value) : fetchExtFieldDefs()]);
+    const [routerTypeRes, statusRes, stepTypeRes, detailResult] = await Promise.all([getDicts('mes_router_type'), getDicts('mes_router_status'), getDicts('ROUTER_OPERATION_TYPE'), id.value ? getRouter(id.value) : fetchExtFieldDefs()]);
     routerTypeOptions.value = routerTypeRes.data || [];
     statusOptions.value = statusRes.data || [];
     stepTypeOptions.value = stepTypeRes.data || [];
