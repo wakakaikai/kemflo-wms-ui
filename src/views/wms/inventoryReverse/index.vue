@@ -28,50 +28,7 @@
         </el-form>
 
         <div class="search-result">
-          <el-table ref="historyTableRef" :data="groupedRows" row-key="groupKey" height="300" border v-loading="loading" @selection-change="handleSelectionChange" @row-click="handleHistoryRowClick">
-            <el-table-column type="selection" width="55" align="center" :selectable="isRowSelectable" />
-            <el-table-column type="expand" width="48">
-              <template #default="{ row }">
-                <div class="movement-detail-panel">
-                  <div v-if="row.outMovement" class="detail-section detail-from">
-                    <div class="detail-section-title">从（出库）</div>
-                    <MovementDetailBlock :movement="row.outMovement" />
-                  </div>
-                  <div v-if="row.inMovement" class="detail-section detail-to">
-                    <div class="detail-section-title">目的地（入库）</div>
-                    <MovementDetailBlock :movement="row.inMovement" />
-                  </div>
-                  <div v-if="!row.outMovement && !row.inMovement" class="detail-empty">暂无进出明细</div>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column v-if="columns[0].visible" label="移动类型" prop="moveType" width="90" />
-            <el-table-column v-if="columns[1].visible" label="物料凭证号" prop="sapMaterialOrderNo" min-width="120" />
-            <el-table-column v-if="columns[2].visible" label="凭证项次" prop="sapMaterialItem" width="90" />
-            <el-table-column v-if="columns[3].visible" label="来源单号" prop="sourceDocCode" min-width="120" />
-            <el-table-column v-if="columns[4].visible" label="物料编码" prop="itemCode" min-width="120" />
-            <el-table-column v-if="columns[5].visible" label="物料名称" prop="itemName" min-width="140" show-overflow-tooltip />
-            <el-table-column v-if="columns[6].visible" label="批次号" prop="batchCode" min-width="100" />
-            <el-table-column v-if="columns[7].visible" label="数量" align="center" width="120">
-              <template #default="scope">
-                {{ formatQtyWithUnit(scope.row.quantity, scope.row.unit) }}
-              </template>
-            </el-table-column>
-            <el-table-column v-if="columns[8].visible" label="进出" align="center" width="110">
-              <template #default="scope">
-                <el-tag v-if="scope.row.hasPair" size="small" type="warning">出+入</el-tag>
-                <el-tag v-else-if="scope.row.outMovement" size="small" type="danger">出库</el-tag>
-                <el-tag v-else size="small" type="success">入库</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column v-if="columns[9].visible" label="冲销标识" align="center" width="100">
-              <template #default="scope">
-                <el-tag :type="getInventoryMovementReversalTagType(scope.row.reversalFlag)" size="small">
-                  {{ formatInventoryMovementReversalFlag(scope.row.reversalFlag) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-          </el-table>
+          <ReverseMovementTreeTable ref="historyTableRef" :groups="groupedRows" layout="inventory" :columns="columns" height="300" :loading="loading" @selection-change="handleSelectionChange" />
           <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
         </div>
       </div>
@@ -94,7 +51,7 @@
           </div>
           <div class="header-actions" @click.stop>
             <el-button type="danger" @click="clearReverseList" :disabled="reverseList.length === 0">清空列表</el-button>
-            <right-toolbar :search="false" :columns="reverseColumns" />
+            <right-toolbar :search="false" :columns="columns" />
           </div>
         </div>
       </template>
@@ -125,32 +82,15 @@
           </el-alert>
         </div>
 
-        <el-table :data="reverseList" border style="width: 100%" max-height="520" row-key="groupKey">
-          <el-table-column type="index" width="50" align="center" />
-          <el-table-column v-if="reverseColumns[0].visible" label="物料凭证号" prop="sapMaterialOrderNo" min-width="120" />
-          <el-table-column v-if="reverseColumns[1].visible" label="凭证项次" prop="sapMaterialItem" width="90" />
-          <el-table-column v-if="reverseColumns[2].visible" label="来源单号" prop="sourceDocCode" min-width="120" />
-          <el-table-column v-if="reverseColumns[3].visible" label="物料编码" prop="itemCode" min-width="120" />
-          <el-table-column v-if="reverseColumns[4].visible" label="物料名称" prop="itemName" min-width="140" show-overflow-tooltip />
-          <el-table-column v-if="reverseColumns[5].visible" label="批次号" prop="batchCode" min-width="100" />
-          <el-table-column v-if="reverseColumns[6].visible" label="数量" align="center" width="120">
-            <template #default="scope">
-              {{ formatQtyWithUnit(scope.row.quantity, scope.row.unit) }}
-            </template>
-          </el-table-column>
-          <el-table-column v-if="reverseColumns[7].visible" label="进出" align="center" width="110">
-            <template #default="scope">
-              <el-tag v-if="scope.row.hasPair" size="small" type="warning">出+入</el-tag>
-              <el-tag v-else-if="scope.row.outMovement" size="small" type="danger">出库</el-tag>
-              <el-tag v-else size="small" type="success">入库</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="80" align="center" fixed="right">
-            <template #default="scope">
-              <el-button type="danger" link icon="Delete" @click.stop="removeFromReverseList(scope.$index)"></el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+        <ReverseMovementTreeTable :groups="reverseList" layout="inventory" mode="reverse" :columns="columns" max-height="520">
+          <template #trailing>
+            <el-table-column label="操作" v-bind="REVERSE_DATA_COLUMN.action">
+              <template #default="scope">
+                <el-button v-if="scope.row.isGroupHead" type="danger" link icon="Delete" @click.stop="removeFromReverseList(scope.row.groupKey)"></el-button>
+              </template>
+            </el-table-column>
+          </template>
+        </ReverseMovementTreeTable>
 
         <div style="text-align: center">
           <el-button :loading="buttonLoading" type="primary" @click="submitCancel" :disabled="reverseList.length === 0">提交冲销</el-button>
@@ -167,12 +107,23 @@ import { listInventoryMovement } from '@/api/wms/inventoryMovement';
 import { syncSapMaterialOrderNoEmptyFilter } from '@/api/wms/inventoryMovement/query';
 import { InventoryMovementQuery, InventoryMovementVO } from '@/api/wms/inventoryMovement/types';
 import { buildInventoryCancelPayloadByVoucher, cancelInventoryMovement } from '@/api/wms/inventoryDetail';
-import { formatInventoryMovementReversalFlag, getInventoryMovementReversalTagType, isInventoryMovementReversed } from '@/api/wms/workOrderReturn';
+import { isInventoryMovementReversed } from '@/api/wms/workOrderReturn';
 import { HttpStatus } from '@/enums/RespEnum';
-import { formatQty } from '@/utils/ruoyi';
 import { HistoryConfig } from '@/types/history';
 import HistoryInput from '@/components/HistoryInput/index.vue';
-import MovementDetailBlock from './components/MovementDetailBlock.vue';
+import ReverseMovementTreeTable from './components/ReverseMovementTreeTable.vue';
+import { createReverseColumnOptions, REVERSE_DATA_COLUMN } from './utils/reverseTableLayout';
+import {
+  buildMovementDisplayGroups,
+  collectCancelSapMaterialItemsFromGroups,
+  enrichPrimaryReceiptGroupWithSubcontractChildren,
+  getMainRowMoveType,
+  isTreeParentRow,
+  normalizeReverseGroupRow,
+  resolveReverseGroupsFromSelection,
+  ReverseTreeRow,
+  validateReverseCancelSapItems
+} from './utils/reverseMovement';
 
 interface VoucherItemGroup {
   groupKey: string;
@@ -192,6 +143,10 @@ interface VoucherItemGroup {
   outMovement?: InventoryMovementVO;
   inMovement?: InventoryMovementVO;
   movements: InventoryMovementVO[];
+  mainMovement?: InventoryMovementVO;
+  childMovements?: InventoryMovementVO[];
+  childMovementList?: InventoryMovementVO[];
+  allMovementList?: InventoryMovementVO[];
 }
 
 const showSearch = ref(true);
@@ -214,7 +169,6 @@ const searchSapMaterialOrderNo = ref('');
 const queryParams = ref<InventoryMovementQuery>({
   pageNum: 1,
   pageSize: 20,
-  groupBySapDocumentItem: true,
   moveType: undefined,
   sapMaterialOrderNo: undefined,
   sapMaterialOrderNoEmpty: true,
@@ -231,29 +185,7 @@ const cancelForm = ref({
 
 const cancelRules = {};
 
-const columns = ref<FieldOption[]>([
-  { key: 0, label: '移动类型', visible: true, children: [] },
-  { key: 1, label: '物料凭证号', visible: true, children: [] },
-  { key: 2, label: '凭证项次', visible: true, children: [] },
-  { key: 3, label: '来源单号', visible: true, children: [] },
-  { key: 4, label: '物料编码', visible: true, children: [] },
-  { key: 5, label: '物料名称', visible: true, children: [] },
-  { key: 6, label: '批次号', visible: true, children: [] },
-  { key: 7, label: '数量', visible: true, children: [] },
-  { key: 8, label: '进出', visible: true, children: [] },
-  { key: 9, label: '冲销标识', visible: true, children: [] }
-]);
-
-const reverseColumns = ref<FieldOption[]>([
-  { key: 0, label: '物料凭证号', visible: true, children: [] },
-  { key: 1, label: '凭证项次', visible: true, children: [] },
-  { key: 2, label: '来源单号', visible: true, children: [] },
-  { key: 3, label: '物料编码', visible: true, children: [] },
-  { key: 4, label: '物料名称', visible: true, children: [] },
-  { key: 5, label: '批次号', visible: true, children: [] },
-  { key: 6, label: '数量', visible: true, children: [] },
-  { key: 7, label: '进出', visible: true, children: [] }
-]);
+const columns = ref<FieldOption[]>(createReverseColumnOptions('inventory'));
 
 const historyPage = 'inventoryReverse';
 const historyComponentConfig = {
@@ -292,18 +224,7 @@ const bktxtConfig: HistoryConfig = {
 
 const groupedRows = computed(() => inventoryDetailList.value);
 
-const formatQtyWithUnit = (qty?: number | string | null, unit?: string) => {
-  const text = formatQty(qty);
-  if (!text) {
-    return unit || '';
-  }
-  return unit ? `${text} ${unit}` : text;
-};
-
-function buildGroupKey(
-  row: Pick<VoucherItemGroup, 'sapMaterialDocYear' | 'sapMaterialOrderNo' | 'sapMaterialItem'>,
-  includeMaterialItem = true
-) {
+function buildGroupKey(row: Pick<VoucherItemGroup, 'sapMaterialDocYear' | 'sapMaterialOrderNo' | 'sapMaterialItem'>, includeMaterialItem = true) {
   const voucherKey = `${String(row.sapMaterialDocYear ?? '').trim()}|${String(row.sapMaterialOrderNo ?? '').trim()}`;
   return includeMaterialItem ? `${voucherKey}|${String(row.sapMaterialItem ?? '').trim()}` : voucherKey;
 }
@@ -327,8 +248,6 @@ function formatPostingDate(postingDate?: string | null): string | undefined {
   return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
 }
 
-const isRowSelectable = (row: VoucherItemGroup) => !isInventoryMovementReversed(row);
-
 function syncCancelVoucherFromReverseList() {
   const voucherSet = new Set(reverseList.value.map((row) => buildGroupKey(row, false)));
   const matched = voucherSet.size === 1 ? reverseList.value[0] : undefined;
@@ -341,20 +260,12 @@ function getSingleReverseVoucherNo(): string {
   return voucherSet.size === 1 ? String(rows[0]?.sapMaterialOrderNo ?? '').trim() : '';
 }
 
-function handleHistoryRowClick(row: VoucherItemGroup, _column: any, event: MouseEvent) {
-  const target = event.target as HTMLElement | null;
-  if (target?.closest('.el-checkbox, .el-table__expand-icon, .el-button')) {
-    return;
-  }
-  historyTableRef.value?.toggleRowExpansion(row);
-}
-
 const getList = async () => {
   syncSapMaterialOrderNoEmptyFilter(queryParams.value);
   loading.value = true;
   try {
     const res = await listInventoryMovement(queryParams.value);
-    inventoryDetailList.value = (res.rows || []) as VoucherItemGroup[];
+    inventoryDetailList.value = buildMovementDisplayGroups((res.rows || []) as InventoryMovementVO[]) as VoucherItemGroup[];
     total.value = res.total || 0;
   } finally {
     loading.value = false;
@@ -383,27 +294,32 @@ const resetQuery = () => {
   handleQuery();
 };
 
-const handleSelectionChange = (selection: VoucherItemGroup[]) => {
-  selectedSearchItems.value = selection;
+const handleSelectionChange = (selection: ReverseTreeRow[]) => {
+  selectedSearchItems.value = selection
+    .filter(isTreeParentRow)
+    .map((row) => inventoryDetailList.value.find((group) => group.groupKey === row.groupKey))
+    .filter((group): group is VoucherItemGroup => Boolean(group));
 };
 
-const addSelectedToReverseList = () => {
+const addSelectedToReverseList = async () => {
   if (selectedSearchItems.value.length === 0) {
     showResultMessage('请先选择要冲销的记录');
     return;
   }
 
-  const reversedItems = selectedSearchItems.value.filter((item) => isInventoryMovementReversed(item));
+  const groupsToAdd = resolveReverseGroupsFromSelection(selectedSearchItems.value, inventoryDetailList.value);
+  if (!groupsToAdd.length) {
+    showResultMessage('未解析到可冲销的分组');
+    return;
+  }
+
+  const reversedItems = groupsToAdd.filter((item) => isInventoryMovementReversed(item));
   if (reversedItems.length > 0) {
     showResultMessage('已冲销记录不能加入冲销列表');
     return;
   }
 
-  const selectedVouchers = new Set(
-    selectedSearchItems.value
-      .filter((item) => String(item.sapMaterialOrderNo ?? '').trim())
-      .map((item) => buildGroupKey(item, false))
-  );
+  const selectedVouchers = new Set(groupsToAdd.filter((item) => String(item.sapMaterialOrderNo ?? '').trim()).map((item) => buildGroupKey(item, false)));
   if (selectedVouchers.size === 0) {
     showResultMessage('所选记录缺少物料凭证号');
     return;
@@ -425,13 +341,19 @@ const addSelectedToReverseList = () => {
   }
 
   let addedCount = 0;
-  selectedSearchItems.value.forEach((item) => {
+  for (const item of groupsToAdd) {
     const exists = reverseList.value.some((row) => row.groupKey === item.groupKey);
-    if (!exists) {
-      reverseList.value.push({ ...item, movements: [...item.movements] });
-      addedCount++;
+    if (exists) {
+      continue;
     }
-  });
+    const enriched = await enrichPrimaryReceiptGroupWithSubcontractChildren(item);
+    const normalized = normalizeReverseGroupRow(enriched);
+    reverseList.value.push({
+      ...normalized,
+      moveType: getMainRowMoveType(normalized)
+    });
+    addedCount++;
+  }
 
   syncCancelVoucherFromReverseList();
   historyTableRef.value?.clearSelection?.();
@@ -439,8 +361,14 @@ const addSelectedToReverseList = () => {
   showResultMessage(`成功加入${addedCount}条记录`, true);
 };
 
-const removeFromReverseList = (index: number) => {
-  reverseList.value.splice(index, 1);
+const removeFromReverseList = (groupKey?: string) => {
+  if (!groupKey) {
+    return;
+  }
+  const index = reverseList.value.findIndex((row) => row.groupKey === groupKey);
+  if (index >= 0) {
+    reverseList.value.splice(index, 1);
+  }
   syncCancelVoucherFromReverseList();
 };
 
@@ -467,7 +395,18 @@ const submitCancel = async () => {
     return;
   }
 
-  const sapMaterialItems = reverseList.value.map((item) => String(item.sapMaterialItem ?? '').trim()).filter(Boolean);
+  const rowsForCancel = reverseList.value.map((row) => {
+    const fromHistory = inventoryDetailList.value.find((item) => item.groupKey === row.groupKey);
+    return normalizeReverseGroupRow(fromHistory ? { ...fromHistory, ...row } : row);
+  });
+
+  const cancelItemError = validateReverseCancelSapItems(rowsForCancel);
+  if (cancelItemError) {
+    showResultMessage(cancelItemError);
+    return;
+  }
+
+  const sapMaterialItems = collectCancelSapMaterialItemsFromGroups(rowsForCancel);
   if (sapMaterialItems.length === 0) {
     showResultMessage('冲销列表缺少物料凭证项次');
     return;
@@ -623,48 +562,5 @@ onMounted(() => {
 
 .result-alert {
   margin: 0;
-}
-
-.movement-detail-panel {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  padding: 8px 12px 12px;
-  background: var(--el-fill-color-blank);
-}
-
-.detail-section {
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 6px;
-  padding: 12px 14px;
-  background: #fff;
-}
-
-.detail-from {
-  border-left: 3px solid var(--el-color-danger);
-}
-
-.detail-to {
-  border-left: 3px solid var(--el-color-success);
-}
-
-.detail-section-title {
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 10px;
-  color: var(--el-text-color-primary);
-}
-
-.detail-empty {
-  grid-column: 1 / -1;
-  color: var(--el-text-color-secondary);
-  text-align: center;
-  padding: 12px 0;
-}
-
-@media (max-width: 992px) {
-  .movement-detail-panel {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

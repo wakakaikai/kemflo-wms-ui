@@ -151,15 +151,24 @@ function resolveCancelLfsnr(lfsnr?: string | null): string | undefined {
   return value || undefined;
 }
 
-/** 按物料凭证号冲销；可传 sapMaterialItems 指定项次，不传则冲销全部未冲销项次 */
+/** 仅以 SAP 凭证年度、物料凭证号、项次定位历史移动记录并执行冲销。 */
 export function buildInventoryCancelPayloadByVoucher(sapMaterialOrderNo: string, options: InventoryCancelBatchOptions = {}): InventoryCancelForm {
   const voucherNo = sapMaterialOrderNo.trim();
-  const sapMaterialItems = (options.sapMaterialItems || []).map((item) => String(item ?? '').trim()).filter(Boolean);
+  const sapMaterialItems = [...new Set((options.sapMaterialItems || []).map((item) => String(item ?? '').trim()).filter(Boolean))];
+  if (!voucherNo) {
+    throw new Error('SAP物料凭证号不能为空');
+  }
+  if (options.sapMaterialDocYear === undefined || options.sapMaterialDocYear === null || options.sapMaterialDocYear === '') {
+    throw new Error('SAP物料凭证年度不能为空');
+  }
+  if (sapMaterialItems.length === 0) {
+    throw new Error('SAP物料凭证项次不能为空');
+  }
 
   return {
     sapMaterialOrderNo: voucherNo,
     sapMaterialDocYear: options.sapMaterialDocYear,
-    sapMaterialItems: sapMaterialItems.length > 0 ? sapMaterialItems : undefined,
+    sapMaterialItems,
     mtsnr: resolveCancelBktxt(options.mtsnr),
     lfsnr: resolveCancelLfsnr(options.lfsnr),
     bktxt: resolveCancelBktxt(options.bktxt),

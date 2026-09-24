@@ -4,7 +4,8 @@ export default {
     dashboard: 'Dashboard',
     document: 'Document',
     printTemplateManage: 'Print templates',
-    printTemplateDesign: 'Template designer'
+    printTemplateDesign: 'Template designer',
+    licenseManage: 'License management'
   },
   // 登录页面国际化
   login: {

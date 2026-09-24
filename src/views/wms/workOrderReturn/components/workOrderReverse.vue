@@ -225,7 +225,6 @@ const searchItemCode = ref('');
 const queryParams = ref<InventoryMovementQuery>({
   pageNum: 1,
   pageSize: 20,
-  groupBySapDocumentItem: true,
   sourceDocType: 'WO',
   moveType: undefined,
   sapMaterialOrderNo: undefined,

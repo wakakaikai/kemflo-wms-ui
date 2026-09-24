@@ -68,6 +68,16 @@ export interface WorkOrderSnVO {
    * 备注
    */
   remark: string;
+
+  /**
+   * 预留单号
+   */
+  reserveNo?: string;
+
+  /**
+   * 预留单项次
+   */
+  reserveItemNo?: string;
 }
 
 export interface WorkOrderSnForm extends BaseEntity {
@@ -140,6 +150,16 @@ export interface WorkOrderSnForm extends BaseEntity {
    * 备注
    */
   remark?: string;
+
+  /**
+   * 预留单号
+   */
+  reserveNo?: string;
+
+  /**
+   * 预留单项次
+   */
+  reserveItemNo?: string;
 }
 
 export interface WorkOrderSnQuery extends PageQuery {

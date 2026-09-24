@@ -1,729 +1,749 @@
 <template>
-  <div class="app-container print-template-manage">
-    <div class="ptm-toolbar">
-      <el-input
-        v-model="searchKeyword"
-        class="ptm-search"
-        :placeholder="t('printTemplate.searchPlaceholder')"
-        clearable
-        @keyup.enter="handleQuery"
-        @clear="handleQuery"
-      >
-        <template #prefix>
-          <el-icon><Search /></el-icon>
-        </template>
+  <div class="template-library app-container">
+    <header class="library-header">
+      <div class="header-copy">
+        <span class="section-kicker">WMS PRINT STUDIO</span>
+        <h1>打印模板库</h1>
+        <p>统一设计标签、单据与连续纸版式，业务字段和样例数据由后台模板编码驱动。</p>
+      </div>
+      <div class="header-metrics">
+        <div>
+          <strong>{{ total }}</strong>
+          <span>模板总数</span>
+        </div>
+        <i />
+        <div>
+          <strong>mm</strong>
+          <span>毫米级画布</span>
+        </div>
+        <el-button type="primary" size="large" @click="openCreate">
+          <el-icon><Plus /></el-icon>
+          新建模板
+        </el-button>
+      </div>
+    </header>
+
+    <section class="filter-bar">
+      <el-input v-model="keyword" clearable placeholder="搜索模板名称或编码" class="search-input" @keyup.enter="handleSearch" @clear="handleSearch">
+        <template #prefix
+          ><el-icon><Search /></el-icon
+        ></template>
       </el-input>
-      <div class="ptm-toolbar-right">
-        <span class="ptm-total">{{ t('printTemplate.totalItems', { total }) }}</span>
-        <pagination
-          v-show="total > 0"
-          class="ptm-pagination"
-          :total="total"
-          v-model:page="queryParams.pageNum"
-          v-model:limit="queryParams.pageSize"
-          :page-sizes="[10, 20, 40]"
-          layout="total, prev, pager, next, sizes"
-          @pagination="getList"
-        />
-        <el-select v-model="viewMode" class="ptm-view-select" size="small">
-          <el-option :label="t('printTemplate.viewGrid')" value="grid" />
-          <el-option :label="t('printTemplate.viewList')" value="list" />
-        </el-select>
-      </div>
-    </div>
+      <el-button type="primary" @click="handleSearch">查询</el-button>
+      <el-button @click="resetSearch"
+        ><el-icon><Refresh /></el-icon>重置</el-button
+      >
+      <span class="filter-spacer" />
+      <el-radio-group v-model="viewMode" class="view-switch">
+        <el-radio-button value="card"
+          ><el-icon><Grid /></el-icon><span>卡片</span></el-radio-button
+        >
+        <el-radio-button value="table"
+          ><el-icon><List /></el-icon><span>列表</span></el-radio-button
+        >
+      </el-radio-group>
+    </section>
 
-    <div v-loading="loading" class="ptm-body">
-      <template v-if="viewMode === 'grid'">
-        <div class="ptm-grid">
-          <div class="ptm-card ptm-card--create" @click="openCreateDialog">
-            <div class="ptm-card-create-inner">
-              <el-icon class="ptm-create-icon"><Plus /></el-icon>
-              <span class="ptm-create-label">{{ t('printTemplate.newTemplate') }}</span>
-            </div>
-          </div>
-
-          <div
-            v-for="row in displayList"
-            :key="row.templateCode"
-            class="ptm-card"
-            :class="{ 'is-favorite': isFav(row.templateCode) }"
-            :style="{ '--ptm-card-bg': cardBgColor(row.templateCode) }"
-          >
-            <div class="ptm-card-body">
-              <div class="ptm-card-body-bg">
-                <PrintTemplateThumb class="ptm-card-thumb" :template-code="row.templateCode" :row="row" />
-                <div class="ptm-card-symbol" aria-hidden="true">
-                  <el-icon><Printer /></el-icon>
+    <main v-loading="loading" class="library-content">
+      <template v-if="viewMode === 'card'">
+        <div v-if="rows.length" class="template-grid">
+          <article v-for="row in rows" :key="row.id || row.templateCode" class="template-card">
+            <button type="button" class="preview-cover" @click="design(row)">
+              <PrintTemplateThumb :row="row" />
+              <span class="design-entry">
+                <el-icon><EditPen /></el-icon>
+                打开设计器
+              </span>
+            </button>
+            <div class="card-content">
+              <div class="card-heading">
+                <div>
+                  <h2 :title="row.templateName || row.templateCode">{{ row.templateName || row.templateCode }}</h2>
+                  <code>{{ row.templateCode }}</code>
                 </div>
+                <el-dropdown trigger="click" @command="handleCardCommand($event, row)">
+                  <el-button text circle
+                    ><el-icon><MoreFilled /></el-icon
+                  ></el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="copy"
+                        ><el-icon><CopyDocument /></el-icon>复制模板</el-dropdown-item
+                      >
+                      <el-dropdown-item command="delete" divided
+                        ><el-icon><Delete /></el-icon>删除模板</el-dropdown-item
+                      >
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </div>
-              <div class="ptm-card-hover">
-                <el-button type="primary" class="ptm-design-btn" @click.stop="handleDesign(row)">
-                  {{ t('printTemplate.design') }}
-                </el-button>
-              </div>
-              <el-tag v-if="useLocalOnly" size="small" effect="dark" class="ptm-local-tag">{{ t('printTemplate.localCache') }}</el-tag>
-            </div>
-            <div class="ptm-card-footer">
-              <span class="ptm-card-title" :title="row.templateName || row.templateCode">{{ row.templateName || row.templateCode }}</span>
-              <div class="ptm-card-actions" @click.stop>
-                <el-tooltip :content="t('printTemplate.preview')" placement="top">
-                  <el-button link class="ptm-footer-btn" @click="openPreview(row)">
-                    <el-icon><View /></el-icon>
-                  </el-button>
-                </el-tooltip>
-                <el-tooltip :content="isFav(row.templateCode) ? t('printTemplate.unfavorite') : t('printTemplate.favorite')" placement="top">
-                  <el-button link class="ptm-footer-btn" :class="{ 'is-fav': isFav(row.templateCode) }" @click="toggleFavorite(row)">
-                    <el-icon><StarFilled v-if="isFav(row.templateCode)" /><Star v-else /></el-icon>
-                  </el-button>
-                </el-tooltip>
-                <el-tooltip :content="t('printTemplate.copy')" placement="top">
-                  <el-button link class="ptm-footer-btn" @click="openCopyDialog(row)">
-                    <el-icon><CopyDocument /></el-icon>
-                  </el-button>
-                </el-tooltip>
-                <el-tooltip :content="t('printTemplate.delete')" placement="top">
-                  <el-button link class="ptm-footer-btn is-danger" @click="handleDelete(row)">
-                    <el-icon><Delete /></el-icon>
-                  </el-button>
-                </el-tooltip>
+              <p class="card-remark">{{ row.remark || '未填写模板说明' }}</p>
+              <div class="card-meta">
+                <span
+                  ><el-icon><Clock /></el-icon>{{ row.updateTime || '尚未保存' }}</span
+                >
+                <span class="format-badge">JSON</span>
               </div>
             </div>
-          </div>
+            <footer class="card-actions">
+              <el-button text @click="preview(row)"
+                ><el-icon><View /></el-icon>预览</el-button
+              >
+              <el-button text type="primary" @click="design(row)"
+                ><el-icon><EditPen /></el-icon>设计</el-button
+              >
+            </footer>
+          </article>
         </div>
-        <el-empty v-if="!loading && displayList.length === 0 && total === 0" class="ptm-empty" :description="t('printTemplate.emptyList')" />
+        <el-empty v-else-if="!loading" description="还没有打印模板">
+          <el-button type="primary" @click="openCreate">创建第一个模板</el-button>
+        </el-empty>
       </template>
 
-      <el-card v-else shadow="never" class="ptm-list-card">
-        <template #header>
-          <el-button type="primary" plain icon="Plus" @click="openCreateDialog">{{ t('printTemplate.newTemplate') }}</el-button>
-        </template>
-        <el-table :data="displayList" border stripe>
-          <el-table-column :label="t('printTemplate.templateCode')" prop="templateCode" min-width="140" show-overflow-tooltip />
-          <el-table-column :label="t('printTemplate.templateName')" prop="templateName" min-width="160" show-overflow-tooltip />
-          <el-table-column :label="t('printTemplate.remark')" prop="remark" min-width="120" show-overflow-tooltip />
-          <el-table-column :label="t('printTemplate.updateTime')" prop="updateTime" width="180" align="center" />
-          <el-table-column :label="t('printTemplate.operations')" width="280" align="center" fixed="right">
-            <template #default="{ row }">
-              <el-button link type="primary" icon="View" @click="openPreview(row)">{{ t('printTemplate.preview') }}</el-button>
-              <el-button link type="primary" icon="EditPen" @click="handleDesign(row)">{{ t('printTemplate.design') }}</el-button>
-              <el-button link type="primary" icon="CopyDocument" @click="openCopyDialog(row)">{{ t('printTemplate.copy') }}</el-button>
-              <el-button link type="danger" icon="Delete" @click="handleDelete(row)">{{ t('printTemplate.delete') }}</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-    </div>
+      <el-table v-else :data="rows" border stripe>
+        <el-table-column label="预览" width="116" align="center">
+          <template #default="{ row }"><PrintTemplateThumb class="table-thumb" :row="row" /></template>
+        </el-table-column>
+        <el-table-column prop="templateName" label="模板名称" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="templateCode" label="模板编码" min-width="170" show-overflow-tooltip>
+          <template #default="{ row }"
+            ><code>{{ row.templateCode }}</code></template
+          >
+        </el-table-column>
+        <el-table-column prop="remark" label="说明" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="updateTime" label="更新时间" width="180" align="center" />
+        <el-table-column label="操作" width="260" fixed="right" align="center">
+          <template #default="{ row }">
+            <el-button link @click="preview(row)">预览</el-button>
+            <el-button link type="primary" @click="design(row)">设计</el-button>
+            <el-button link @click="openCopy(row)">复制</el-button>
+            <el-button link type="danger" @click="remove(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </main>
 
-    <el-dialog v-model="createVisible" :title="t('printTemplate.createDialogTitle')" width="440px" append-to-body @closed="resetCreateForm">
-      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="96px">
-        <el-form-item :label="t('printTemplate.templateCode')" prop="templateCode">
-          <el-input v-model="createForm.templateCode" :placeholder="t('printTemplate.createCodePh')" />
+    <footer class="pagination-bar">
+      <span>共 {{ total }} 条</span>
+      <el-pagination v-model:current-page="query.pageNum" v-model:page-size="query.pageSize" :page-sizes="[8, 16, 32, 64]" layout="sizes, prev, pager, next, jumper" :total="total" @size-change="loadList" @current-change="loadList" />
+    </footer>
+
+    <el-dialog v-model="createVisible" title="新建打印模板" width="520px" append-to-body @closed="createFormRef?.resetFields()">
+      <el-form ref="createFormRef" :model="createForm" :rules="formRules" label-position="top">
+        <div class="dialog-grid">
+          <el-form-item label="模板编码" prop="templateCode">
+            <el-input v-model="createForm.templateCode" placeholder="例如：work_order_label" />
+          </el-form-item>
+          <el-form-item label="模板名称" prop="templateName">
+            <el-input v-model="createForm.templateName" placeholder="例如：工单流转标签" />
+          </el-form-item>
+        </div>
+        <el-form-item label="纸张">
+          <el-radio-group v-model="createForm.paperSize" class="paper-selector">
+            <el-radio-button value="A4">A4 单据</el-radio-button>
+            <el-radio-button value="LABEL_80X60">80×60 标签</el-radio-button>
+            <el-radio-button value="LABEL_60X40">60×40 标签</el-radio-button>
+            <el-radio-button value="THERMAL_80">80mm 连续纸</el-radio-button>
+          </el-radio-group>
         </el-form-item>
-        <el-form-item :label="t('printTemplate.templateName')" prop="templateName">
-          <el-input v-model="createForm.templateName" :placeholder="t('printTemplate.createNamePh')" />
+        <el-form-item label="模板说明">
+          <el-input v-model="createForm.remark" type="textarea" :rows="3" placeholder="说明模板用途，方便后续检索" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="createVisible = false">{{ t('printTemplate.cancel') }}</el-button>
-        <el-button type="primary" @click="submitCreate">{{ t('printTemplate.createAndDesign') }}</el-button>
+        <el-button @click="createVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitCreate">创建并进入设计器</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="copyVisible" :title="t('printTemplate.copyDialogTitle')" width="440px" append-to-body @closed="resetCopyForm">
-      <el-form ref="copyFormRef" :model="copyForm" :rules="copyRules" label-width="96px">
-        <el-form-item :label="t('printTemplate.templateCode')" prop="newCode">
-          <el-input v-model="copyForm.newCode" :placeholder="t('printTemplate.copyCodePh')" />
-        </el-form-item>
-        <el-form-item :label="t('printTemplate.templateName')" prop="newName">
-          <el-input v-model="copyForm.newName" :placeholder="t('printTemplate.copyNamePh')" />
-        </el-form-item>
+    <el-dialog v-model="copyVisible" title="复制打印模板" width="480px" append-to-body @closed="copyFormRef?.resetFields()">
+      <el-form ref="copyFormRef" :model="copyForm" :rules="copyRules" label-position="top">
+        <el-form-item label="新模板编码" prop="templateCode"><el-input v-model="copyForm.templateCode" /></el-form-item>
+        <el-form-item label="新模板名称" prop="templateName"><el-input v-model="copyForm.templateName" /></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="copyVisible = false">{{ t('printTemplate.cancel') }}</el-button>
-        <el-button type="primary" :loading="copyLoading" @click="submitCopy">{{ t('printTemplate.copyConfirm') }}</el-button>
+        <el-button @click="copyVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitCopy">创建副本</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="previewVisible" :title="previewRow?.templateName || previewRow?.templateCode" width="520px" append-to-body>
-      <div v-if="previewRow" class="ptm-preview-dialog">
-        <div class="ptm-preview-stage">
-          <PrintTemplateThumb :template-code="previewRow.templateCode" :row="previewRow" />
-        </div>
-        <el-descriptions :column="1" border size="small" class="mt-3">
-          <el-descriptions-item :label="t('printTemplate.templateCode')">{{ previewRow.templateCode }}</el-descriptions-item>
-          <el-descriptions-item :label="t('printTemplate.updateTime')">{{ previewRow.updateTime || '??' }}</el-descriptions-item>
-          <el-descriptions-item v-if="previewRow.remark" :label="t('printTemplate.remark')">{{ previewRow.remark }}</el-descriptions-item>
-        </el-descriptions>
+    <el-dialog v-model="previewVisible" :title="previewRow?.templateName || '打印预览'" width="min(1160px, 96vw)" top="3vh" append-to-body destroy-on-close>
+      <div class="preview-info">
+        <span>{{ previewRow?.templateCode }}</span>
+        <span>{{ previewPages }} 页</span>
+        <span>{{ previewData.length ? '后台样例数据' : '空数据预览' }}</span>
+      </div>
+      <div v-loading="previewLoading" class="preview-panel">
+        <PrintHtmlPreview v-if="previewTemplate" ref="previewRef" :template-json="previewTemplate" :print-data="previewData[0] || {}" @rendered="previewPages = $event" />
+        <el-empty v-else-if="!previewLoading" description="该模板暂无可预览内容" />
       </div>
       <template #footer>
-        <el-button @click="previewVisible = false">{{ t('printTemplate.close') }}</el-button>
-        <el-button type="primary" @click="previewRow && handleDesign(previewRow)">{{ t('printTemplate.design') }}</el-button>
+        <el-button @click="previewVisible = false">关闭</el-button>
+        <el-button :disabled="!previewTemplate" @click="previewRef?.print()"
+          ><el-icon><Printer /></el-icon>打印</el-button
+        >
+        <el-button type="primary" :disabled="!previewRow" @click="previewRow && design(previewRow)">
+          <el-icon><EditPen /></el-icon>
+          进入设计器
+        </el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts" name="PrintTemplateIndex">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
-import { Plus, Search, View, Star, StarFilled, EditPen, Delete, Printer, CopyDocument } from '@element-plus/icons-vue';
-
-/** ??????????????????????? */
-const CARD_BG_PALETTE = [
-  '#2e8b57',
-  '#3d9970',
-  '#228b22',
-  '#1e7e34',
-  '#2d6a4f',
-  '#40916c',
-  '#087f5b',
-  '#0d9488',
-  '#0e7490',
-  '#0369a1',
-  '#1d4ed8',
-  '#4338ca'
-];
-
-function cardBgColor(code?: string) {
-  const s = String(code || 'default');
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return CARD_BG_PALETTE[h % CARD_BG_PALETTE.length];
-}
-import { listPrintTemplate, delPrintTemplate, getPrintTemplate, savePrintTemplate, type PrintTemplateVo } from '@/api/wms/printTemplate';
+import { Clock, CopyDocument, Delete, EditPen, Grid, List, MoreFilled, Plus, Printer, Refresh, Search, View } from '@element-plus/icons-vue';
+import { PrintHtmlPreview, createDefaultTemplate, type TemplateData } from '@worm-vue3-print/canvas';
+import '@worm-vue3-print/canvas/style.css';
+import { delPrintTemplate, getPrintSampleData, getPrintTemplate, listPrintTemplate, savePrintTemplate, type PrintTemplateVo } from '@/api/wms/printTemplate';
 import { printTemplateAdapter } from '@/config/printTemplate';
-import {
-  localListPrintTemplates,
-  localRemovePrintTemplate,
-  localGetPrintTemplate,
-  localHasPrintTemplate,
-  localCopyPrintTemplate,
-  localSavePrintTemplate,
-  listFavoriteTemplateCodes,
-  isFavoriteTemplate,
-  toggleFavoriteTemplate
-} from '@/utils/printTemplateStorage';
 import { HttpStatus } from '@/enums/RespEnum';
+import { parseSampleRows, parseTemplateContent } from './model';
 import PrintTemplateThumb from './components/PrintTemplateThumb.vue';
 
-const { t } = useI18n();
 const router = useRouter();
-const loading = ref(false);
-const list = ref<PrintTemplateVo[]>([]);
+const rows = ref<PrintTemplateVo[]>([]);
 const total = ref(0);
-const useLocalOnly = ref(false);
-const viewMode = ref<'grid' | 'list'>('grid');
-const searchKeyword = ref('');
-const favoriteCodes = ref<string[]>([]);
-
-const queryParams = reactive({
-  pageNum: 1,
-  pageSize: 10,
-  templateCode: '',
-  templateName: ''
-});
-
+const loading = ref(false);
+const keyword = ref('');
+const viewMode = ref<'card' | 'table'>('card');
+const query = reactive({ pageNum: 1, pageSize: 8 });
 const createVisible = ref(false);
+const copyVisible = ref(false);
+const submitting = ref(false);
 const createFormRef = ref<FormInstance>();
-const createForm = reactive({ templateCode: '', templateName: '' });
-const createRules: FormRules = {
-  templateCode: [{ required: true, message: () => t('printTemplate.createCodeRequired'), trigger: 'blur' }]
+const copyFormRef = ref<FormInstance>();
+type PaperChoice = 'A4' | 'LABEL_80X60' | 'LABEL_60X40' | 'THERMAL_80';
+const createForm = reactive({
+  templateCode: '',
+  templateName: '',
+  paperSize: 'LABEL_80X60' as PaperChoice,
+  remark: ''
+});
+const copyForm = reactive({ templateCode: '', templateName: '' });
+const copySource = ref<PrintTemplateVo | null>(null);
+const formRules: FormRules = {
+  templateCode: [
+    { required: true, message: '请输入模板编码', trigger: 'blur' },
+    { pattern: /^[A-Za-z0-9_-]+$/, message: '仅支持字母、数字、下划线和短横线', trigger: 'blur' }
+  ],
+  templateName: [{ required: true, message: '请输入模板名称', trigger: 'blur' }]
 };
+const copyRules: FormRules = formRules;
 
 const previewVisible = ref(false);
+const previewLoading = ref(false);
 const previewRow = ref<PrintTemplateVo | null>(null);
+const previewTemplate = ref<Record<string, any> | null>(null);
+const previewData = ref<Record<string, unknown>[]>([]);
+const previewPages = ref(0);
+const previewRef = ref<InstanceType<typeof PrintHtmlPreview> | null>(null);
 
-const copyVisible = ref(false);
-const copyLoading = ref(false);
-const copyFormRef = ref<FormInstance>();
-const copySource = ref<PrintTemplateVo | null>(null);
-const copyForm = reactive({ newCode: '', newName: '' });
-const copyRules: FormRules = {
-  newCode: [{ required: true, message: () => t('printTemplate.copyCodeRequired'), trigger: 'blur' }]
-};
-
-function syncQueryFromSearch() {
-  const kw = searchKeyword.value.trim();
-  queryParams.templateCode = kw;
-  queryParams.templateName = kw;
-}
-
-function filterLocal(rows: PrintTemplateVo[]) {
-  const kw = searchKeyword.value.trim().toLowerCase();
-  if (!kw) return rows;
-  return rows.filter((r) => {
-    const code = String(r.templateCode || '').toLowerCase();
-    const name = String(r.templateName || '').toLowerCase();
-    return code.includes(kw) || name.includes(kw);
-  });
-}
-
-function paginate<T>(rows: T[]): T[] {
-  const start = (queryParams.pageNum - 1) * queryParams.pageSize;
-  return rows.slice(start, start + queryParams.pageSize);
-}
-
-function sortWithFavorites(rows: PrintTemplateVo[]) {
-  const favSet = new Set(favoriteCodes.value);
-  return [...rows].sort((a, b) => {
-    const af = favSet.has(a.templateCode || '') ? 1 : 0;
-    const bf = favSet.has(b.templateCode || '') ? 1 : 0;
-    if (af !== bf) return bf - af;
-    return (b.updateTime || '').localeCompare(a.updateTime || '');
-  });
-}
-
-const displayList = computed(() => sortWithFavorites(list.value));
-
-function isFav(code?: string) {
-  return code ? isFavoriteTemplate(code) : false;
-}
-
-function refreshFavorites() {
-  favoriteCodes.value = listFavoriteTemplateCodes();
-}
-
-const getList = async () => {
+async function loadList() {
   loading.value = true;
-  syncQueryFromSearch();
   try {
-    const res = await listPrintTemplate(queryParams);
-    if (res.code === HttpStatus.SUCCESS) {
-      useLocalOnly.value = false;
-      list.value = res.rows ?? [];
-      total.value = res.total ?? 0;
-    } else {
-      throw new Error('api');
-    }
-  } catch {
-    useLocalOnly.value = true;
-    const all = localListPrintTemplates().map(
-      (r): PrintTemplateVo => ({
-        id: r.id,
-        templateCode: r.templateCode,
-        templateName: r.templateName,
-        remark: r.remark,
-        updateTime: r.updateTime
-      })
-    );
-    const filtered = filterLocal(all);
-    total.value = filtered.length;
-    list.value = paginate(filtered);
-    if (all.length === 0) {
-      ElMessage.info(t('printTemplate.listLocalHint'));
-    }
+    const result = await listPrintTemplate({
+      keyword: keyword.value.trim() || undefined,
+      pageNum: query.pageNum,
+      pageSize: query.pageSize
+    });
+    if (result.code !== HttpStatus.SUCCESS) throw new Error(result.msg || '查询失败');
+    rows.value = result.rows ?? [];
+    total.value = result.total ?? 0;
+  } catch (error) {
+    rows.value = [];
+    total.value = 0;
+    ElMessage.error(error instanceof Error ? error.message : '打印模板加载失败');
   } finally {
     loading.value = false;
-    refreshFavorites();
   }
-};
+}
 
-const handleQuery = () => {
-  queryParams.pageNum = 1;
-  getList();
-};
+function handleSearch() {
+  query.pageNum = 1;
+  void loadList();
+}
 
-const openCreateDialog = () => {
+function resetSearch() {
+  keyword.value = '';
+  query.pageNum = 1;
+  void loadList();
+}
+
+function openCreate() {
   createForm.templateCode = `tpl_${Date.now()}`;
   createForm.templateName = '';
+  createForm.paperSize = 'LABEL_80X60';
+  createForm.remark = '';
   createVisible.value = true;
-};
-
-const resetCreateForm = () => {
-  createFormRef.value?.resetFields();
-};
-
-const submitCreate = async () => {
-  const valid = await createFormRef.value?.validate().catch(() => false);
-  if (!valid) return;
-  const code = createForm.templateCode.trim();
-  if (!code) return;
-  createVisible.value = false;
-  router.push({
-    path: '/wms/print-template/designer',
-    query: { code, name: createForm.templateName.trim() || undefined }
-  });
-};
-
-function goDesigner(query: { code: string; name?: string }) {
-  router.push({
-    path: '/wms/print-template/designer',
-    query: { code: query.code, name: query.name }
-  });
 }
 
-const handleDesign = (row: PrintTemplateVo) => {
+function design(row: PrintTemplateVo) {
   if (!row.templateCode) return;
-  goDesigner({
-    code: String(row.templateCode),
-    name: row.templateName ? String(row.templateName) : undefined
-  });
-};
-
-const openPreview = (row: PrintTemplateVo) => {
-  previewRow.value = row;
-  previewVisible.value = true;
-};
-
-function codeExistsInList(code: string) {
-  return list.value.some((r) => String(r.templateCode) === code);
+  router.push({ path: '/wms/print-template/designer', query: { code: row.templateCode, name: row.templateName } });
 }
 
-async function fetchTemplateVo(code: string): Promise<PrintTemplateVo | null> {
-  const local = localGetPrintTemplate(code);
-  if (local?.templateContent) return local;
-  try {
-    const res = await getPrintTemplate(code);
-    if (res.code === HttpStatus.SUCCESS && res.data != null) {
-      const flat = printTemplateAdapter.mapDetailPayload(res.data);
-      const vo = (flat ?? (typeof res.data === 'object' ? res.data : null)) as PrintTemplateVo | null;
-      if (vo?.templateContent) return vo;
-    }
-  } catch {
-    /* local fallback */
+function createTemplateByPaper(paperSize: PaperChoice): TemplateData {
+  const template = createDefaultTemplate();
+  template.paperSize = paperSize === 'A4' ? 'A4' : 'CUSTOM';
+  template.margins = paperSize === 'A4' ? { top: 10, right: 10, bottom: 10, left: 10 } : { top: 2, right: 2, bottom: 2, left: 2 };
+  template.header.height = 0;
+  template.footer.height = 0;
+  const customSizes: Record<Exclude<PaperChoice, 'A4'>, [number, number]> = {
+    LABEL_80X60: [80, 60],
+    LABEL_60X40: [60, 40],
+    THERMAL_80: [80, 160]
+  };
+  if (paperSize !== 'A4') {
+    [template.customWidth, template.customHeight] = customSizes[paperSize];
   }
-  return local;
+  return template;
 }
 
-const openCopyDialog = (row: PrintTemplateVo) => {
-  if (!row.templateCode) return;
-  copySource.value = row;
-  const src = String(row.templateCode);
-  copyForm.newCode = `${src}_copy`;
-  copyForm.newName = `${row.templateName || src}${t('printTemplate.copyNameSuffix')}`;
-  copyVisible.value = true;
-};
-
-const resetCopyForm = () => {
-  copyFormRef.value?.resetFields();
-  copySource.value = null;
-};
-
-const submitCopy = async () => {
-  const valid = await copyFormRef.value?.validate().catch(() => false);
-  if (!valid || !copySource.value?.templateCode) return;
-  const srcCode = String(copySource.value.templateCode);
-  const newCode = copyForm.newCode.trim();
-  const newName = copyForm.newName.trim() || `${copySource.value.templateName || srcCode}${t('printTemplate.copyNameSuffix')}`;
-  if (!newCode) return;
-  if (newCode === srcCode) {
-    ElMessage.warning(t('printTemplate.copySameCode'));
-    return;
-  }
-  if (localHasPrintTemplate(newCode) || codeExistsInList(newCode)) {
-    ElMessage.warning(t('printTemplate.copyCodeExists'));
-    return;
-  }
-  copyLoading.value = true;
+async function submitCreate() {
+  if (!(await createFormRef.value?.validate().catch(() => false))) return;
+  submitting.value = true;
   try {
-    let vo = localCopyPrintTemplate(srcCode, newCode, newName);
-    if (!vo) {
-      const src = await fetchTemplateVo(srcCode);
-      if (!src?.templateContent) {
-        ElMessage.warning(t('printTemplate.copyNoContent'));
-        return;
-      }
-      vo = {
-        ...src,
-        id: newCode,
-        templateCode: newCode,
-        templateName: newName,
-        templateContent:
-          typeof src.templateContent === 'string' ? src.templateContent : JSON.stringify(src.templateContent),
-        widgetOptions:
-          typeof src.widgetOptions === 'string'
-            ? src.widgetOptions
-            : src.widgetOptions
-              ? JSON.stringify(src.widgetOptions)
-              : undefined
-      };
-      localSavePrintTemplate(vo);
-    }
-    if (!useLocalOnly.value) {
-      try {
-        await savePrintTemplate(vo);
-      } catch {
-        /* keep local copy */
-      }
-    }
-    copyVisible.value = false;
-    ElMessage.success(t('printTemplate.copied'));
-    getList();
+    const vo: PrintTemplateVo = {
+      templateCode: createForm.templateCode.trim(),
+      templateName: createForm.templateName.trim(),
+      remark: createForm.remark.trim(),
+      templateContent: JSON.stringify(createTemplateByPaper(createForm.paperSize)),
+      businessFields: '[]',
+      widgetOptions: '[]',
+      sampleData: '[]'
+    };
+    const result = await savePrintTemplate(vo);
+    if (result.code !== HttpStatus.SUCCESS) throw new Error(result.msg || '创建失败');
+    createVisible.value = false;
+    await router.push({
+      path: '/wms/print-template/designer',
+      query: { code: vo.templateCode, name: vo.templateName, create: '1' }
+    });
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '模板创建失败');
   } finally {
-    copyLoading.value = false;
+    submitting.value = false;
   }
-};
+}
 
-const toggleFavorite = (row: PrintTemplateVo) => {
-  if (!row.templateCode) return;
-  const nowFav = toggleFavoriteTemplate(row.templateCode);
-  refreshFavorites();
-  ElMessage.success(nowFav ? t('printTemplate.favorited') : t('printTemplate.unfavorited'));
-};
+function openCopy(row: PrintTemplateVo) {
+  copySource.value = row;
+  copyForm.templateCode = `${row.templateCode || 'template'}_copy`;
+  copyForm.templateName = `${row.templateName || row.templateCode || '模板'} - 副本`;
+  copyVisible.value = true;
+}
 
-const handleDelete = async (row: PrintTemplateVo) => {
-  if (!row.templateCode) return;
+async function submitCopy() {
+  if (!(await copyFormRef.value?.validate().catch(() => false)) || !copySource.value?.templateCode) return;
+  submitting.value = true;
   try {
-    await ElMessageBox.confirm(
-      `${t('printTemplate.confirmDeletePrefix')}${row.templateName || row.templateCode}${t('printTemplate.confirmDeleteSuffix')}`,
-      t('printTemplate.confirmDeleteTitle'),
-      { type: 'warning' }
-    );
-  } catch {
-    return;
+    const detail = await getPrintTemplate(copySource.value.templateCode);
+    if (detail.code !== HttpStatus.SUCCESS || detail.data == null) throw new Error(detail.msg || '源模板读取失败');
+    const source = (printTemplateAdapter.mapDetailPayload(detail.data) ?? detail.data) as PrintTemplateVo;
+    const vo: PrintTemplateVo = {
+      ...source,
+      id: undefined,
+      templateCode: copyForm.templateCode.trim(),
+      templateName: copyForm.templateName.trim()
+    };
+    const result = await savePrintTemplate(vo);
+    if (result.code !== HttpStatus.SUCCESS) throw new Error(result.msg || '复制失败');
+    copyVisible.value = false;
+    ElMessage.success('模板副本已创建');
+    await loadList();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '模板复制失败');
+  } finally {
+    submitting.value = false;
   }
-  if (!useLocalOnly.value) {
-    try {
-      const res = await delPrintTemplate(row.templateCode);
-      if (res.code !== HttpStatus.SUCCESS) {
-        throw new Error('fail');
-      }
-    } catch {
-      /* fallback local */
-    }
-  }
-  localRemovePrintTemplate(row.templateCode);
-  ElMessage.success(t('printTemplate.deleted'));
-  getList();
-};
+}
 
-onMounted(() => {
-  refreshFavorites();
-  getList();
-});
+async function preview(row: PrintTemplateVo) {
+  if (!row.templateCode) return;
+  previewVisible.value = true;
+  previewLoading.value = true;
+  previewRow.value = row;
+  previewTemplate.value = null;
+  previewData.value = [];
+  previewPages.value = 0;
+  try {
+    const [detailResult, sampleResult] = await Promise.all([getPrintTemplate(row.templateCode), getPrintSampleData(row.templateCode).catch(() => null)]);
+    if (detailResult.code !== HttpStatus.SUCCESS || detailResult.data == null) throw new Error('模板详情加载失败');
+    const detail = (printTemplateAdapter.mapDetailPayload(detailResult.data) ?? detailResult.data) as PrintTemplateVo;
+    previewTemplate.value = parseTemplateContent(detail.templateContent) as Record<string, any>;
+    if (sampleResult?.code === HttpStatus.SUCCESS) previewData.value = parseSampleRows(sampleResult.data);
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '预览加载失败');
+  } finally {
+    previewLoading.value = false;
+  }
+}
+
+async function remove(row: PrintTemplateVo) {
+  try {
+    await ElMessageBox.confirm(`删除模板“${row.templateName || row.templateCode}”？删除后无法恢复。`, '删除模板', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消'
+    });
+    const result = await delPrintTemplate(row.id ?? row.templateCode ?? '');
+    if (result.code !== HttpStatus.SUCCESS) throw new Error(result.msg || '删除失败');
+    ElMessage.success('模板已删除');
+    if (rows.value.length === 1 && query.pageNum > 1) query.pageNum -= 1;
+    await loadList();
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return;
+    ElMessage.error(error instanceof Error ? error.message : '删除失败');
+  }
+}
+
+function handleCardCommand(command: string, row: PrintTemplateVo) {
+  if (command === 'copy') openCopy(row);
+  if (command === 'delete') void remove(row);
+}
+
+onMounted(() => void loadList());
 </script>
 
 <style scoped lang="scss">
-.print-template-manage {
-  display: flex;
-  flex-direction: column;
-  min-height: calc(100vh - 120px);
+.template-library {
+  min-height: calc(100vh - 84px);
+  color: #172033;
+  background: #f2f5f9;
 }
-.ptm-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 16px;
-  margin-bottom: 16px;
-  padding: 12px 16px;
-  background: var(--el-bg-color);
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-}
-.ptm-search {
-  width: min(320px, 100%);
-  flex-shrink: 0;
-}
-.ptm-toolbar-right {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
-}
-.ptm-total {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-  white-space: nowrap;
-}
-.ptm-pagination {
-  margin: 0;
-}
-.ptm-pagination :deep(.pagination-container) {
-  padding: 0;
-  background: transparent;
-}
-.ptm-view-select {
-  width: 120px;
-}
-.ptm-body {
-  flex: 1;
-  min-height: 200px;
-}
-.ptm-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 20px;
-}
-.ptm-card {
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--el-bg-color);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.2s, transform 0.15s;
-  display: flex;
-  flex-direction: column;
-  min-height: 240px;
-  &:hover {
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
-    transform: translateY(-2px);
-    .ptm-card-hover {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    .ptm-design-btn {
-      transform: translateY(0);
-      opacity: 1;
-    }
-    .ptm-card-symbol {
-      opacity: 0.35;
-    }
-  }
-  &.is-favorite {
-    box-shadow: 0 0 0 2px var(--el-color-warning);
-  }
-}
-.ptm-card--create {
-  border: 1px solid #b3d4fc;
-  box-shadow: none;
-  background: linear-gradient(180deg, #e8f2ff 0%, #f5f9ff 100%);
-  cursor: pointer;
-  &:hover {
-    border-color: var(--el-color-primary);
-    box-shadow: 0 4px 14px rgba(64, 158, 255, 0.2);
-  }
-}
-.ptm-card-create-inner {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 220px;
-  color: var(--el-color-primary);
-}
-.ptm-create-icon {
-  font-size: 48px;
-}
-.ptm-create-label {
-  font-size: 15px;
-  font-weight: 500;
-}
-.ptm-card-body {
+
+.library-header {
   position: relative;
-  flex: 1;
-  min-height: 188px;
-  background: var(--ptm-card-bg, #2e8b57);
-}
-.ptm-card-body-bg {
-  position: absolute;
-  inset: 0;
   overflow: hidden;
-}
-.ptm-card-thumb {
-  position: absolute;
-  inset: 12px;
-  opacity: 0.22;
-  filter: saturate(0.6) brightness(1.15);
-  pointer-events: none;
-  :deep(.print-template-thumb) {
-    background: transparent;
-    border-radius: 4px;
-  }
-  :deep(.thumb-stage) {
-    background: rgba(255, 255, 255, 0.12);
-    box-shadow: none;
-  }
-}
-.ptm-card-symbol {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 56px;
-  transition: opacity 0.2s;
-  pointer-events: none;
-  z-index: 1;
-}
-.ptm-card-hover {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.38);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-.ptm-design-btn {
-  min-width: 96px;
-  padding: 10px 28px;
-  font-size: 15px;
-  font-weight: 500;
-  border: none;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  transform: translateY(6px);
-  opacity: 0;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-  pointer-events: auto;
-}
-.ptm-local-tag {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 3;
-}
-.ptm-card-footer {
+  min-height: 132px;
+  padding: 26px 30px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  min-height: 44px;
-  background: rgba(30, 30, 30, 0.88);
-  color: #fff;
+  gap: 28px;
+  border: 1px solid #dce4ef;
+  border-radius: 14px;
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.07) 1px, transparent 1px), linear-gradient(rgba(37, 99, 235, 0.07) 1px, transparent 1px), #fff;
+  background-size: 24px 24px;
 }
-.ptm-card-title {
-  flex: 1;
+
+.library-header::after {
+  content: '';
+  position: absolute;
+  right: 34%;
+  bottom: -85px;
+  width: 220px;
+  height: 150px;
+  border: 20px solid rgba(37, 99, 235, 0.06);
+  border-radius: 50%;
+  transform: rotate(-12deg);
+}
+
+.header-copy,
+.header-metrics {
+  position: relative;
+  z-index: 1;
+}
+
+.section-kicker {
+  color: #2563eb;
+  font:
+    700 11px/1.2 Consolas,
+    monospace;
+  letter-spacing: 0.16em;
+}
+
+.header-copy h1 {
+  margin: 7px 0 6px;
+  font-size: 27px;
+  letter-spacing: -0.02em;
+}
+
+.header-copy p {
+  margin: 0;
+  color: #64748b;
   font-size: 13px;
-  font-weight: 500;
-  color: #fff;
+}
+
+.header-metrics {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.header-metrics > div {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+}
+
+.header-metrics strong {
+  color: #1d4ed8;
+  font:
+    700 24px/1 Consolas,
+    monospace;
+}
+
+.header-metrics span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.header-metrics i {
+  width: 1px;
+  height: 38px;
+  background: #dbe3ef;
+}
+
+.filter-bar {
+  margin-top: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #dce4ef;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.search-input {
+  width: 320px;
+}
+
+.filter-spacer {
+  flex: 1;
+}
+
+.view-switch :deep(.el-radio-button__inner) {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.library-content {
+  min-height: 420px;
+  margin-top: 14px;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+  gap: 16px;
+}
+
+.template-card {
   overflow: hidden;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(15, 35, 65, 0.04);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.template-card:hover {
+  border-color: #9db9ee;
+  box-shadow: 0 12px 26px rgba(28, 55, 95, 0.12);
+  transform: translateY(-3px);
+}
+
+.preview-cover {
+  position: relative;
+  width: 100%;
+  height: 190px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+  cursor: pointer;
+}
+
+.design-entry {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 7px 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #fff;
+  border-radius: 8px;
+  background: #1d4ed8;
+  box-shadow: 0 6px 15px rgba(29, 78, 216, 0.28);
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: 0.18s ease;
+}
+
+.template-card:hover .design-entry {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card-content {
+  padding: 15px 16px 12px;
+}
+
+.card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-heading > div {
+  min-width: 0;
+}
+
+.card-heading h2 {
+  margin: 0 0 5px;
+  overflow: hidden;
+  font-size: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ptm-card-actions {
+
+code {
+  color: #2563eb;
+  font:
+    12px Consolas,
+    monospace;
+}
+
+.card-remark {
+  height: 20px;
+  margin: 11px 0;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-meta {
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  justify-content: space-between;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.card-meta > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.format-badge {
+  padding: 2px 6px;
+  color: #64748b;
+  border: 1px solid #dbe3ef;
+  border-radius: 4px;
+  font:
+    10px Consolas,
+    monospace;
+}
+
+.card-actions {
+  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 4px;
+  border-top: 1px solid #edf1f5;
+  background: #fbfcfe;
 }
-.ptm-footer-btn {
-  color: rgba(255, 255, 255, 0.88) !important;
-  padding: 4px;
-  &:hover {
-    color: #fff !important;
-  }
-  &.is-fav {
-    color: var(--el-color-warning) !important;
-  }
-  &.is-danger:hover {
-    color: var(--el-color-danger-light-3) !important;
-  }
+
+.card-actions .el-button + .el-button {
+  margin-left: 0;
 }
-.ptm-empty {
-  margin-top: 48px;
+
+.pagination-bar {
+  padding: 18px 2px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #64748b;
+  font-size: 12px;
 }
-.ptm-list-card {
-  border-radius: 8px;
+
+.table-thumb {
+  width: 84px;
+  height: 58px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
 }
-.ptm-preview-dialog .ptm-preview-stage {
-  height: 280px;
-  border-radius: 6px;
+
+.dialog-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.paper-selector {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.paper-selector :deep(.el-radio-button__inner) {
+  width: 100%;
+}
+
+.preview-info {
+  margin-bottom: 10px;
+  display: flex;
+  gap: 18px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.preview-info span + span::before {
+  content: '·';
+  margin-right: 18px;
+}
+
+.preview-panel {
+  height: min(72vh, 760px);
   overflow: hidden;
-  background: #f5f7fa;
+  border: 1px solid #d5dce7;
+  border-radius: 10px;
+  background: #e5e7eb;
 }
-.mt-3 {
-  margin-top: 12px;
-}
-.ml-2 {
-  margin-left: 8px;
+
+@media (max-width: 820px) {
+  .library-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-metrics {
+    width: 100%;
+  }
+
+  .filter-bar {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .filter-spacer {
+    display: none;
+  }
+
+  .dialog-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

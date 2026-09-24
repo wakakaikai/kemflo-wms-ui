@@ -76,131 +76,8 @@
       </div>
     </div>
     <div v-if="activeStep === 2" class="step-body">
-      <div class="step-toolbar">
-        <span v-if="isClassified" class="hint">自动仓 {{ autoMaterialRows.length }} · 线边仓 {{ lineMaterialRows.length }} · 平面仓 {{ flatMaterialRows.length }} · 缺料 {{ shortageMaterialRows.length }}</span>
-      </div>
       <el-alert v-if="isClassified" type="info" :closable="false" show-icon class="classify-hint">确认下方分类无误后，点「生成备料需求」将自动仓、线边仓、平面仓及缺料合并为一个备料计划</el-alert>
-      <el-row v-if="isClassified" :gutter="16" class="order-sections">
-        <el-col :span="12">
-          <el-card shadow="never" class="section-card">
-            <template #header>
-              <div class="section-header">
-                <span>自动仓 · 261 扣账</span>
-                <el-tag type="success" size="small">{{ autoMaterialRows.length }} 条</el-tag>
-              </div>
-            </template>
-            <el-table v-if="autoMaterialRows.length" :data="autoMaterialRows" border size="small" max-height="280">
-              <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
-              <el-table-column prop="materialCode" label="物料编码" min-width="100" />
-              <el-table-column prop="materialDesc" label="物料描述" min-width="150" show-overflow-tooltip />
-              <el-table-column label="本次备料数量" min-width="110" align="right">
-                <template #default="{ row }">{{ formatClassifiedPrepQty(row) }}</template>
-              </el-table-column>
-              <el-table-column label="推荐仓别" width="90">
-                <template #default="{ row }">{{ row.recommendedWarehouse || '-' }}</template>
-              </el-table-column>
-              <el-table-column label="推荐库位" min-width="100">
-                <template #default="{ row }">{{ row.recommendedLocation || '-' }}</template>
-              </el-table-column>
-              <prep-demand-location-source-column show-remark :rows="autoMaterialRows" />
-              <el-table-column label="操作" width="70" fixed="right">
-                <template #default="{ row }">
-                  <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-            <el-empty v-else description="暂无自动仓需求" :image-size="64" />
-          </el-card>
-        </el-col>
-        <el-col :span="12">
-          <el-card shadow="never" class="section-card">
-            <template #header>
-              <div class="section-header">
-                <span>线边仓 · 待物料员 261 扣料</span><el-tag type="warning" size="small">{{ lineMaterialRows.length }} 条</el-tag>
-              </div>
-            </template>
-            <el-table v-if="lineMaterialRows.length" :data="lineMaterialRows" border size="small" max-height="280">
-              <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
-              <el-table-column prop="materialCode" label="物料编码" min-width="100" />
-              <el-table-column prop="materialDesc" label="物料描述" min-width="150" show-overflow-tooltip />
-              <el-table-column label="本次备料数量" min-width="110" align="right">
-                <template #default="{ row }">{{ formatClassifiedPrepQty(row) }}</template>
-              </el-table-column>
-              <el-table-column label="推荐仓别" width="90">
-                <template #default="{ row }">{{ row.recommendedWarehouse || '-' }}</template>
-              </el-table-column>
-              <el-table-column label="推荐库位" min-width="100">
-                <template #default="{ row }">{{ row.recommendedLocation || '-' }}</template>
-              </el-table-column>
-              <prep-demand-location-source-column show-remark :rows="lineMaterialRows" />
-              <el-table-column label="操作" width="70" fixed="right">
-                <template #default="{ row }">
-                  <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-            <el-empty v-else description="暂无线边仓需求" :image-size="64" />
-          </el-card>
-        </el-col>
-        <el-col :span="12" class="section-col-bottom">
-          <el-card shadow="never" class="section-card">
-            <template #header>
-              <div class="section-header">
-                <span>平面仓 · 备料需求</span><el-tag type="primary" size="small">{{ flatMaterialRows.length }} 条</el-tag>
-              </div>
-            </template>
-            <el-table v-if="flatMaterialRows.length" :data="flatMaterialRows" border size="small" max-height="280">
-              <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
-              <el-table-column prop="materialCode" label="物料编码" min-width="100" />
-              <el-table-column prop="materialDesc" label="物料描述" min-width="150" show-overflow-tooltip />
-              <el-table-column label="本次备料数量" min-width="110" align="right">
-                <template #default="{ row }">{{ formatClassifiedPrepQty(row) }}</template>
-              </el-table-column>
-              <el-table-column label="推荐仓别" width="90">
-                <template #default="{ row }">{{ row.recommendedWarehouse || '-' }}</template>
-              </el-table-column>
-              <el-table-column label="推荐库位" min-width="100"
-                ><template #default="{ row }">{{ row.recommendedLocation || '-' }}</template>
-              </el-table-column>
-              <prep-demand-location-source-column show-remark :rows="flatMaterialRows" />
-              <el-table-column label="操作" width="70" fixed="right">
-                <template #default="{ row }">
-                  <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-            <el-empty v-else description="暂无平面仓需求" :image-size="64" />
-          </el-card>
-        </el-col>
-        <el-col :span="12" class="section-col-bottom">
-          <el-card shadow="never" class="section-card">
-            <template #header>
-              <div class="section-header">
-                <span>缺料</span><el-tag type="danger" size="small">{{ shortageMaterialRows.length }} 条</el-tag>
-              </div>
-            </template>
-            <el-table v-if="shortageMaterialRows.length" :data="shortageMaterialRows" border size="small" max-height="280">
-              <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
-              <el-table-column prop="materialCode" label="物料编码" min-width="100" />
-              <el-table-column prop="materialDesc" label="物料描述" min-width="150" show-overflow-tooltip />
-              <el-table-column label="库存类型" width="100" align="center">
-                <template #default="{ row }">
-                  <dict-tag :options="wms_inventory_special_flag" :value="resolveDemandRowInventoryFlag(row)" />
-                </template>
-              </el-table-column>
-              <el-table-column label="本次备料数量" min-width="110" align="right">
-                <template #default="{ row }">{{ formatClassifiedPrepQty(row) }}</template>
-              </el-table-column>
-              <el-table-column label="操作" width="70" fixed="right">
-                <template #default="{ row }">
-                  <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-            <el-empty v-else description="暂无缺料需求" :image-size="64" />
-          </el-card>
-        </el-col>
-      </el-row>
+      <classified-material-table v-if="isClassified" :rows="classifiedMaterialRows" @adjust="openPrepBomByNo($event.workOrderNo, $event.materialCode)" />
       <el-empty v-else description="请返回上一步完成备料并分类" />
 
       <!-- 上一步 + 生成备料需求（底部居中） -->
@@ -336,7 +213,7 @@
                 <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
                 <el-table-column prop="materialCode" label="物料编码" min-width="100" />
                 <el-table-column label="本次备料数量" min-width="110" align="right"
-                  ><template #default="{ row }">{{ formatClassifiedPrepQty(row) }}</template></el-table-column
+                  ><template #default="{ row }">{{ row.prepQtyText }}</template></el-table-column
                 >
                 <el-table-column label="推荐仓别" width="90"
                   ><template #default="{ row }">{{ row.recommendedWarehouse || '-' }}</template></el-table-column
@@ -377,7 +254,7 @@
                   </template>
                 </el-table-column>
                 <el-table-column label="本次备料数量" min-width="110" align="right"
-                  ><template #default="{ row }">{{ formatClassifiedPrepQty(row) }}</template></el-table-column
+                  ><template #default="{ row }">{{ row.prepQtyText }}</template></el-table-column
                 >
                 <el-table-column label="操作" width="70" fixed="right" v-if="!taskExecutionFinished"
                   ><template #default="{ row }"><el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button></template></el-table-column
@@ -392,7 +269,7 @@
           <prep-demand-plan-view :demand="currentDemand" :location-hints="prepLocationHints" :issue-line-hints="prepIssueLineHints" @refresh="reloadDemandDetail" @go-issue="goToMaterialIssue" />
         </el-collapse-item>
       </el-collapse>
-      <el-empty v-else-if="!currentDemand" :description="请在上一步生成备料需求" />
+      <el-empty v-else-if="!currentDemand" description="请在上一步生成备料需求" />
     </div>
     <work-order-selection-dialog :key="orderSelectionRoundKey" v-model="showOrderDialog" :selected-orders="selectedOrders" :show-bom-action="false" @confirm="handleOrderSelection" />
     <work-order-prep-demand-dialog v-model="showPrepBomDialog" :work-orders="prepBomOrders" :material-issues-by-work-order="prepMaterialIssuesMap" :demand-user-no="materialDemandUserCode" :initial-material-code="prepBomFilterMaterialCode" @save="onBomSave" />
@@ -407,6 +284,7 @@ import { Plus, Check, MagicStick, Sort, Bell } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import WorkOrderSelectionDialog from '@/views/wms/workOrder/components/WorkOrderSelectionDialog.vue';
 import WorkOrderPrepDemandDialog from './WorkOrderPrepDemandDialog.vue';
+import ClassifiedMaterialTable from './ClassifiedMaterialTable.vue';
 import PrepDemandPlanView from './PrepDemandPlanView.vue';
 import PrepDemandLocationSourceColumn from './PrepDemandLocationSourceColumn.vue';
 import IssueProcessDrawer from '@/views/wms/materialIssue/components/IssueProcessDrawer.vue';
@@ -416,13 +294,17 @@ import { useUserStore } from '@/store/modules/user';
 import { getPrepDemand } from '@/api/wms/workOrderPrepDemand/index';
 import { buildPrepLocationRecIssueOutBoList, isIssuablePrepLocationRecRow, isPrepWarehouse261DisplayRow, lineStatusLabel, lineStatusTag, prepLocationRecIssueOut } from '@/api/wms/issueTask';
 import { generateAllocation, loadWarehouseRouteContext } from '@/api/wms/allocation/index';
-import type { MaterialDemandDetailRow, WorkOrderVO, WorkOrderMaterialIssueLine, WarehouseRouteContext } from '@/api/wms/allocation/types';
+import type { AllocationGenerateResult, MaterialDemandDetailRow, WorkOrderVO, WorkOrderMaterialIssueLine, WarehouseRouteContext } from '@/api/wms/allocation/types';
 import type { WorkOrderPrepDemandVO, PrepDemandLineItem } from '@/api/wms/workOrderPrepDemand/types';
-import { buildPrepDemandItems, resolveDemandRowInventoryFlag, isClassifiedShortageRow, findIssueLineForDemandDetail, formatDemandDetailPrepQty, resolvePrepDemandTargetLocationFromItems, type AllocationGenerateResult } from '@/api/wms/allocation/index';
+import { buildPrepDemandItems, resolveDemandRowInventoryFlag, isClassifiedShortageRow, findIssueLineForDemandDetail, formatDemandDetailPrepQty, resolvePrepDemandTargetLocationFromItems } from '@/api/wms/allocation/index';
 import { classifyWorkOrders, flattenClassifiedMaterials } from '@/api/wms/allocation/index';
 import { flattenPrepDemandDisplayRows, formatPrepQtyWithUnit, type PrepDemandDisplayRow } from '@/api/wms/workOrderPrepDemand/index';
 
 type DemandUserMode = 'self' | 'other';
+type ClassifiedMaterialDisplayRow = MaterialDemandDetailRow & {
+  materialDesc: string;
+  prepQtyText: string;
+};
 
 const userStore = useUserStore();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -466,19 +348,19 @@ const currentIssueId = ref<number | string | null>(null);
 const showTargetLocationDialog = ref(false);
 
 const hasPrepLines = (order: WorkOrderVO) => order.materialIssues?.some((l) => Number(l.issueQty) > 0) ?? false;
-/** 分类行物料描述：由工单 materialIssues 回填（保存时带出 componentDesc） */
-const resolveClassifiedMaterialDesc = (row: MaterialDemandDetailRow): string => {
-  const order = selectedOrders.value.find((item) => item.workOrderNo === row.workOrderNo);
-  if (!order) return '';
-  const issueLine = findIssueLineForDemandDetail(order, row);
-  return String(issueLine?.componentDesc ?? '');
-};
-const classifiedMaterialRows = computed(() =>
-  flattenClassifiedMaterials(selectedOrders.value).map((row) => ({
-    ...row,
-    materialDesc: resolveClassifiedMaterialDesc(row)
-  }))
-);
+/** 分类展示行一次性补齐描述和数量文本，表格与后续任务视图复用，避免模板重复查找。 */
+const classifiedMaterialRows = computed<ClassifiedMaterialDisplayRow[]>(() => {
+  const orderMap = new Map(selectedOrders.value.map((order) => [order.workOrderNo, order]));
+  return flattenClassifiedMaterials(selectedOrders.value).map((row) => {
+    const order = orderMap.get(row.workOrderNo);
+    const issueLine = order ? findIssueLineForDemandDetail(order, row) : undefined;
+    return {
+      ...row,
+      materialDesc: String(issueLine?.componentDesc ?? ''),
+      prepQtyText: formatDemandDetailPrepQty(row, issueLine)
+    };
+  });
+});
 const autoMaterialRows = computed(() => classifiedMaterialRows.value.filter((r) => r.warehouseRoute === 'AUTO'));
 const lineMaterialRows = computed(() => classifiedMaterialRows.value.filter((r) => r.warehouseRoute === 'LINE'));
 const prep261AutoDisplayRows = computed(() => prepDisplayRows.value.filter((r) => isPrepWarehouse261DisplayRow(r, 'AUTO')));
@@ -562,12 +444,6 @@ const applyDemandUserSelection = (): boolean => {
   materialDemandUserCode.value = code;
   materialDemandUserLabel.value = hit?.label || code;
   return true;
-};
-
-const formatClassifiedPrepQty = (row: MaterialDemandDetailRow) => {
-  const order = selectedOrders.value.find((item) => item.workOrderNo === row.workOrderNo);
-  const issueLine = order ? findIssueLineForDemandDetail(order, row) : undefined;
-  return formatDemandDetailPrepQty(row, issueLine);
 };
 
 const confirmDemandUser = () => {
@@ -738,7 +614,7 @@ const removeClassifiedByRoutes = (routes: Array<MaterialDemandDetailRow['warehou
       if (!materialDemandDetails.length) return null;
       return { ...order, materialDemandDetails, warehouseRoute: undefined, recommendedWarehouses: [] };
     })
-    .filter((o): o is WorkOrderVO => !!o);
+    .filter((order) => order !== null) as WorkOrderVO[];
   isClassified.value = hasRemainingClassified.value;
 };
 
@@ -1009,9 +885,6 @@ const goToMaterialIssue = () => {
 .hint {
   font-size: 13px;
   color: var(--el-text-color-secondary);
-}
-.order-sections {
-  margin-top: 4px;
 }
 .section-col-bottom {
   margin-top: 16px;

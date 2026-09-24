@@ -1,3 +1,5 @@
+import type { PurchaseOrderBomVO } from '@/api/wms/purchaseOrderDetail/types';
+
 export interface DeliveryOrderDetailVO {
   /**
    * 唯一ID
@@ -79,6 +81,8 @@ export interface DeliveryOrderDetailVO {
    */
   remark: string;
 
+  /** 采购订单计划行 BOM（与 purchaseOrderDetail/list 一致） */
+  purchaseOrderBomScheduleVoList?: PurchaseOrderBomVO[];
 }
 
 export interface DeliveryOrderDetailForm extends BaseEntity {

@@ -53,6 +53,19 @@ export const constantRoutes: RouteRecordRaw[] = [
     hidden: true
   },
   {
+    path: '/wms/license-manage',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: 'index',
+        component: () => import('@/views/wms/license/index.vue'),
+        name: 'WmsLicenseManage',
+        meta: { title: 'licenseManage', icon: 'lock' }
+      }
+    ]
+  },
+  {
     path: '/wms/print-template',
     component: Layout,
     hidden: true,

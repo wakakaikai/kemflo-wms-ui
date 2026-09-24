@@ -99,3 +99,6 @@ export class IndexedDBStorage {
 
 /** 全局单例：称重页面历史数据本地数据库 */
 export const weightHistoryDB = new IndexedDBStorage('kemflo-mes', 'weightHistory', 1);
+
+/** WMS 前端本地暂存（采购入库持有数据等） */
+export const kemfloWmsDB = new IndexedDBStorage('kemflo-wms', 'staging', 1);

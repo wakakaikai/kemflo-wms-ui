@@ -2,9 +2,9 @@
   <div class="mes-product-trace-page">
     <div ref="captureRef" class="p-2 mes-product-trace" :class="{ 'is-capturing': capturing }">
       <el-card shadow="hover">
-        <el-form ref="queryFormRef" :model="queryParams" :rules="queryRules" :inline="true" label-width="80px" @submit.prevent>
+        <el-form ref="queryFormRef" :model="queryParams" :rules="queryRules" :inline="true" label-width="auto" @submit.prevent>
           <el-form-item label="追溯条码" prop="sfc">
-            <HistoryInput v-model.trim="queryParams.sfc" :config="traceSfcConfig" placeholder="产品条码/关键件条码" clearable style="width: 360px" @keyup.enter="handleQuery" />
+            <HistoryInput v-model.trim="queryParams.sfc" :config="traceSfcConfig" placeholder="产品条码/关键件条码" clearable style="width: 100%" @keyup.enter="handleQuery" />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" icon="Search" :loading="loading" @click="handleQuery">查询</el-button>

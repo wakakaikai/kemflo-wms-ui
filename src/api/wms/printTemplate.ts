@@ -1,22 +1,23 @@
 import request from '@/utils/request';
-import type { PrintTemplate } from '@/components/print-designer/types';
-import type { WidgetOption } from '@/components/print-designer/types';
 import { printTemplateAdapter, printTemplateUrls } from '@/config/printTemplate';
 
 export interface PrintTemplateVo {
   id?: string | number;
   templateCode?: string;
   templateName?: string;
-  templateContent?: string | PrintTemplate;
-  widgetOptions?: string | WidgetOption[];
+  templateContent?: string | Record<string, unknown>;
+  /** 新设计器字段字典；widgetOptions 保留兼容旧接口。 */
+  businessFields?: string | Record<string, unknown>[];
+  widgetOptions?: string | Record<string, unknown>[];
+  sampleData?: string | Record<string, unknown> | Record<string, unknown>[];
   remark?: string;
   updateTime?: string;
 }
 
 const urls = printTemplateUrls;
 
-export function listPrintTemplate(params?: { templateName?: string; templateCode?: string; pageNum?: number; pageSize?: number }) {
-  return request<{ rows: PrintTemplateVo[]; total: number }>({
+export function listPrintTemplate(params?: { keyword?: string; templateName?: string; templateCode?: string; pageNum?: number; pageSize?: number }) {
+  return request<PrintTemplateVo[]>({
     url: urls().list,
     method: 'get',
     params
@@ -48,17 +49,17 @@ export function delPrintTemplate(ids: string | number | Array<string | number>) 
 }
 
 export function listPrintWidgetOptions(templateCode?: string) {
-  return request<WidgetOption[]>({
+  return request<Record<string, unknown>[]>({
     url: urls().widgetOptions,
     method: 'get',
     params: { templateCode }
   });
 }
 
-export function getPrintSampleData(templateCode?: string) {
-  return request<Record<string, unknown>[]>({
+export function getPrintSampleData(templateCode?: string, params?: Record<string, unknown>) {
+  return request<Record<string, unknown> | Record<string, unknown>[]>({
     url: urls().sampleData,
     method: 'get',
-    params: { templateCode }
+    params: { templateCode, ...params }
   });
 }

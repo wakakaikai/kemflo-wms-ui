@@ -11,6 +11,7 @@ import { getLanguage } from '@/lang';
 import { encryptBase64, encryptWithAes, generateAesKey, decryptWithAes, decryptBase64 } from '@/utils/crypto';
 import { encrypt, decrypt } from '@/utils/jsencrypt';
 import router from '@/router';
+import { formatApiErrorMessage } from '@/utils/formatApiErrorMessage';
 
 const encryptHeader = 'encrypt-key';
 let downloadLoadingInstance: LoadingInstance;
@@ -123,7 +124,8 @@ service.interceptors.response.use(
     // 未设置状态码则默认成功状态
     const code = res.data.code || HttpStatus.SUCCESS;
     // 获取错误信息
-    const msg = errorCode[code] || res.data.msg || errorCode['default'];
+    const rawMsg = errorCode[code] || res.data.msg || errorCode['default'];
+    const msg = formatApiErrorMessage(rawMsg) || errorCode['default'];
     // 二进制数据则直接返回
     if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
       return res.data;
@@ -175,7 +177,7 @@ service.interceptors.response.use(
     } else if (message.includes('Request failed with status code')) {
       message = '系统接口' + message.substr(message.length - 3) + '异常';
     }
-    ElMessage({ message: message, type: 'error', duration: 5 * 1000 });
+    ElMessage({ message: formatApiErrorMessage(message) || message, type: 'error', duration: 5 * 1000 });
     return Promise.reject(error);
   }
 );

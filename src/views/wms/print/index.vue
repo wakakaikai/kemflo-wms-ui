@@ -545,20 +545,22 @@
       <el-table v-loading="bomLoading" :data="filteredBomList" border stripe max-height="420" highlight-current-row @current-change="onBomRowChange" @row-dblclick="confirmBomSelect">
         <el-table-column width="55" align="center">
           <template #default="scope">
-            <el-radio v-model="bomDialogSelectedCode" :label="scope.row.componentMaterial" class="radio-no-label">
+            <el-radio v-model="bomDialogSelectedId" :label="scope.row.id" class="radio-no-label">
               <span class="el-radio__label"></span>
             </el-radio>
           </template>
         </el-table-column>
         <el-table-column prop="componentMaterial" label="物料编码" min-width="130" />
         <el-table-column prop="componentDesc" label="物料描述" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="reserveNo" label="预留单号" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="reserveItemNo" label="预留项次" width="90" align="center" />
         <el-table-column prop="componentQty" label="BOM数量" width="100" align="right" />
         <el-table-column prop="issuedQty" label="已发料" width="90" align="right" />
         <el-table-column prop="unit" label="单位" width="70" align="center" />
       </el-table>
       <template #footer>
         <el-button @click="bomDialogVisible = false">取消</el-button>
-        <el-button type="primary" :disabled="!bomDialogSelectedCode" @click="confirmBomSelect">确定</el-button>
+        <el-button type="primary" :disabled="bomDialogSelectedId === ''" @click="confirmBomSelect">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -603,8 +605,6 @@ interface PrintRule {
   sources: MaterialSource[];
   /** 选中工单后是否默认带出工单成品料号 */
   useWorkOrderItemAsDefault: boolean;
-  /** 「所有料号」中排除当前工单 BOM 料号 */
-  filterAllByBom?: boolean;
 }
 
 const MATERIAL_SOURCE_LABELS: Record<MaterialSource, string> = {
@@ -618,36 +618,34 @@ const DEFAULT_PRINT_RULE: PrintRule = {
   showMaterialSelect: false,
   defaultSource: 'workOrder',
   sources: ['workOrder'],
-  useWorkOrderItemAsDefault: true,
-  filterAllByBom: false
+  useWorkOrderItemAsDefault: true
 };
 
 /**
  * 按工单类型配置打印规则
- * ZP92：所有料号（排除 BOM 料号）；ZP93：工单成品料号 / BOM；ZP94：工单成品料号 / BOM / 所有料号
+ * ZP92：BOM / 所有料号；ZP93：工单成品料号 / BOM；ZP94：工单成品料号 / BOM / 所有料号
  * 特殊工单入库数量不校验最大值
  */
 const WORK_ORDER_PRINT_RULES: Record<string, PrintRule> = {
   ZP92: {
     unlimitedPrintQtyWhenNoItem: true,
     showMaterialSelect: true,
-    defaultSource: 'all',
-    sources: ['all'],
-    useWorkOrderItemAsDefault: false,
-    filterAllByBom: true
+    defaultSource: 'bom',
+    sources: ['bom','all'],
+    useWorkOrderItemAsDefault: false
   },
   ZP93: {
     unlimitedPrintQtyWhenNoItem: true,
     showMaterialSelect: true,
-    defaultSource: 'workOrder',
-    sources: ['workOrder', 'bom'],
+    defaultSource: 'bom',
+    sources: ['bom'],
     useWorkOrderItemAsDefault: true
   },
   ZP94: {
     unlimitedPrintQtyWhenNoItem: true,
     showMaterialSelect: true,
-    defaultSource: 'workOrder',
-    sources: ['workOrder', 'bom', 'all'],
+    defaultSource: 'bom',
+    sources: ['bom'],
     useWorkOrderItemAsDefault: true
   }
 };
@@ -740,16 +738,44 @@ const workOrderInfo = ref({
   intensiveProductionFlag: false,
   mantissaOrderFlag: false,
   sequence: undefined as number | undefined,
-  printTotal: undefined as number | undefined
+  printTotal: undefined as number | undefined,
+  reserveNo: '',
+  reserveItemNo: ''
 });
+
+const clearReserveFields = () => {
+  workOrderInfo.value.reserveNo = '';
+  workOrderInfo.value.reserveItemNo = '';
+};
+
+const applyReserveFromBom = (bom: WorkOrderBomVO) => {
+  workOrderInfo.value.reserveNo = String(bom.reserveNo ?? '').trim();
+  workOrderInfo.value.reserveItemNo = String(bom.reserveItemNo ?? '').trim();
+};
 
 const materialSource = ref<MaterialSource>('workOrder');
 const bomList = ref<WorkOrderBomVO[]>([]);
 const bomLoading = ref(false);
 const bomDialogVisible = ref(false);
 const bomKeyword = ref('');
-const bomDialogSelectedCode = ref('');
+const bomDialogSelectedId = ref<string | number | ''>('');
 const selectedBomDisplay = ref('');
+
+const findBomRowByCurrentMaterial = (): WorkOrderBomVO | undefined => {
+  const code = String(workOrderInfo.value.material || '').trim();
+  if (!code) return undefined;
+  const reserveNo = String(workOrderInfo.value.reserveNo || '').trim();
+  const reserveItemNo = String(workOrderInfo.value.reserveItemNo || '').trim();
+  if (reserveNo && reserveItemNo) {
+    return bomList.value.find(
+      (b) =>
+        String(b.componentMaterial || '').trim() === code &&
+        String(b.reserveNo ?? '').trim() === reserveNo &&
+        String(b.reserveItemNo ?? '').trim() === reserveItemNo
+    );
+  }
+  return bomList.value.find((b) => String(b.componentMaterial || '').trim() === code);
+};
 
 const currentPrintRule = computed(() => {
   const type = String(workOrderInfo.value.workOrderType || '')
@@ -770,15 +796,8 @@ const isUnlimitedPrintQty = computed(() => {
   return !String(workOrderInfo.value.item || '').trim();
 });
 const showMaterialSelect = computed(() => currentPrintRule.value.showMaterialSelect);
-/** ZP92 等：选「所有料号」时需排除 BOM 料号 */
-const shouldExcludeBomFromAll = computed(
-  () => !!currentPrintRule.value.filterAllByBom && materialSource.value === 'all'
-);
-
 const shouldPreloadBom = computed(
-  () =>
-    showMaterialSelect.value &&
-    (currentPrintRule.value.sources.includes('bom') || !!currentPrintRule.value.filterAllByBom)
+  () => showMaterialSelect.value && currentPrintRule.value.sources.includes('bom')
 );
 
 const materialSourceOptions = computed(() =>
@@ -828,6 +847,7 @@ const applyWorkOrderItemMaterial = () => {
   workOrderInfo.value.material = workOrderInfo.value.item || '';
   workOrderInfo.value.materialDesc = workOrderInfo.value.itemDesc || '';
   setInboundUnit(workOrderInfo.value.unit);
+  clearReserveFields();
 };
 
 const applyWorkOrderBase = (workOrderNoInfo: any) => {
@@ -846,11 +866,12 @@ const applyWorkOrderBase = (workOrderNoInfo: any) => {
   workOrderInfo.value.nextWorkCenter = workOrderNoInfo.nextWorkCenter;
   workOrderInfo.value.nextPlannedStartDate = workOrderNoInfo.nextPlannedStartDate;
   workOrderInfo.value.remark = '';
+  clearReserveFields();
 };
 
 const resetMaterialSelection = () => {
   selectedBomDisplay.value = '';
-  bomDialogSelectedCode.value = '';
+  bomDialogSelectedId.value = '';
   bomList.value = [];
   materialSource.value = currentPrintRule.value.defaultSource;
   if (currentPrintRule.value.useWorkOrderItemAsDefault && materialSource.value === 'workOrder') {
@@ -893,13 +914,14 @@ const onMaterialSourceChange = () => {
     materialSource.value = currentPrintRule.value.defaultSource;
   }
   selectedBomDisplay.value = '';
-  bomDialogSelectedCode.value = '';
+  bomDialogSelectedId.value = '';
   if (materialSource.value === 'workOrder') {
     applyWorkOrderItemMaterial();
   } else {
     workOrderInfo.value.material = '';
     workOrderInfo.value.materialDesc = '';
     setInboundUnit(workOrderInfo.value.unit);
+    clearReserveFields();
   }
 };
 
@@ -909,24 +931,24 @@ const openBomDialog = async () => {
     return;
   }
   bomKeyword.value = '';
-  bomDialogSelectedCode.value = workOrderInfo.value.material || '';
   if (!bomList.value.length) {
     await loadBomList(workOrderInfo.value.workOrderNo);
   }
+  const matched = findBomRowByCurrentMaterial();
+  bomDialogSelectedId.value = matched?.id ?? '';
   bomDialogVisible.value = true;
 };
 
 const onBomRowChange = (row: WorkOrderBomVO | null) => {
-  bomDialogSelectedCode.value = row?.componentMaterial || '';
+  bomDialogSelectedId.value = row?.id ?? '';
 };
 
 const confirmBomSelect = () => {
-  const code = bomDialogSelectedCode.value;
-  if (!code) {
+  if (bomDialogSelectedId.value === '') {
     ElMessage.warning('请选择BOM物料');
     return;
   }
-  const bom = bomList.value.find((b) => b.componentMaterial === code);
+  const bom = bomList.value.find((b) => b.id === bomDialogSelectedId.value);
   if (!bom) {
     ElMessage.warning('未找到所选BOM物料');
     return;
@@ -934,52 +956,22 @@ const confirmBomSelect = () => {
   workOrderInfo.value.material = bom.componentMaterial;
   workOrderInfo.value.materialDesc = bom.componentDesc || '';
   setInboundUnit(bom.unit);
+  applyReserveFromBom(bom);
   selectedBomDisplay.value = `${bom.componentMaterial}${bom.componentDesc ? ` - ${bom.componentDesc}` : ''}`;
   bomDialogVisible.value = false;
 };
 
-const isBomMaterialCode = (code: string) => {
-  const normalized = String(code || '')
-    .trim()
-    .toUpperCase();
-  if (!normalized) return false;
-  return bomList.value.some(
-    (row) =>
-      String(row.componentMaterial || '')
-        .trim()
-        .toUpperCase() === normalized
-  );
-};
-
-const ensureBomListLoaded = async () => {
-  if (!workOrderInfo.value.workOrderNo) {
-    ElMessage.warning('请先选择工单');
-    return false;
-  }
-  if (!bomList.value.length) {
-    await loadBomList(workOrderInfo.value.workOrderNo);
-  }
-  return true;
-};
-
 const showItemDialog = async () => {
-  if (shouldExcludeBomFromAll.value) {
-    const ready = await ensureBomListLoaded();
-    if (!ready) return;
-  }
   itemDialogRef.value?.openDialog();
   itemDialogRef.value?.handleQuery();
 };
 
 const itemSelectCallBack = (record: any) => {
   const code = record.item || '';
-  if (shouldExcludeBomFromAll.value && isBomMaterialCode(code)) {
-    ElMessage.warning(`物料 ${code} 属于当前工单 BOM，请勿在「所有料号」中选择`);
-    return;
-  }
   workOrderInfo.value.material = code;
   workOrderInfo.value.materialDesc = record.itemDesc || '';
   setInboundUnit(record.unit);
+  clearReserveFields();
 };
 
 async function resolveMaterial(code: string): Promise<ItemVO | null> {
@@ -1000,22 +992,6 @@ async function resolveMaterial(code: string): Promise<ItemVO | null> {
 const resolveManualMaterial = async () => {
   const code = (workOrderInfo.value.material || '').trim();
   if (!code) return;
-  if (shouldExcludeBomFromAll.value) {
-    const ready = await ensureBomListLoaded();
-    if (!ready) {
-      workOrderInfo.value.material = '';
-      workOrderInfo.value.materialDesc = '';
-      setInboundUnit(workOrderInfo.value.unit);
-      return;
-    }
-    if (isBomMaterialCode(code)) {
-      ElMessage.error(`物料 ${code} 属于当前工单 BOM，请勿在「所有料号」中输入`);
-      workOrderInfo.value.material = '';
-      workOrderInfo.value.materialDesc = '';
-      setInboundUnit(workOrderInfo.value.unit);
-      return;
-    }
-  }
   const item = await resolveMaterial(code);
   if (!item) {
     ElMessage.error(`物料 ${code} 不存在`);
@@ -1025,6 +1001,7 @@ const resolveManualMaterial = async () => {
   workOrderInfo.value.material = item.item;
   workOrderInfo.value.materialDesc = item.itemDesc || '';
   setInboundUnit(item.unit);
+  clearReserveFields();
 };
 
 /** 查询工单信息列表 */
@@ -1161,9 +1138,8 @@ const generateQRCode = () => {
     });
   }
 };
-// 生成序列号列表
-const generateSerialNumbers = async () => {
-  const res: any = await generateWorkOrderSn({
+const buildGenerateWorkOrderSnPayload = (): WorkOrderSnForm => {
+  const payload: WorkOrderSnForm = {
     companyName: workOrderInfo.value.companyName,
     productLine: workOrderInfo.value.productLine,
     productDate: workOrderInfo.value.productDate + ' 00:00:00',
@@ -1174,7 +1150,21 @@ const generateSerialNumbers = async () => {
     continuousQty: copies.value,
     unit: inboundUnitDisplay.value,
     remark: workOrderInfo.value.remark
-  });
+  };
+  const reserveNo = String(workOrderInfo.value.reserveNo || '').trim();
+  const reserveItemNo = String(workOrderInfo.value.reserveItemNo || '').trim();
+  if (reserveNo) {
+    payload.reserveNo = reserveNo;
+  }
+  if (reserveItemNo) {
+    payload.reserveItemNo = reserveItemNo;
+  }
+  return payload;
+};
+
+// 生成序列号列表
+const generateSerialNumbers = async () => {
+  const res: any = await generateWorkOrderSn(buildGenerateWorkOrderSnPayload());
   return res.data || [];
 };
 

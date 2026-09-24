@@ -56,7 +56,7 @@
     </el-form>
     <!--  底部  -->
     <div class="el-login-footer">
-      <span>Copyright © 2024-2026 溢泰（南京）环保科技有限公司</span>
+      <span>{{ copyrightText }}</span>
     </div>
   </div>
 </template>
@@ -69,7 +69,7 @@ import { LoginData, TenantVO } from '@/api/types';
 import { to } from 'await-to-js';
 import { HttpStatus } from '@/enums/RespEnum';
 import { setToken } from '@/utils/auth';
-
+import { buildCopyrightText, resolveTenantCompanyName } from '@/utils/copyright';
 const userStore = useUserStore();
 const router = useRouter();
 
@@ -102,6 +102,10 @@ const redirect = ref('/');
 const loginRef = ref<ElFormInstance>();
 // 租户列表
 const tenantList = ref<TenantVO[]>([]);
+
+const copyrightText = computed(() =>
+  buildCopyrightText(resolveTenantCompanyName(loginForm.value.tenantId, tenantList.value))
+);
 
 watch(
   () => router.currentRoute.value,
@@ -235,11 +239,18 @@ onMounted(() => {
 <style lang="scss" scoped>
 .login {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
+  min-height: 100vh;
   height: 100%;
-  background-image: url('../assets/images/login-background.jpg');
-  background-size: cover;
+  padding: 0 clamp(32px, 15vw, 384px);
+  box-sizing: border-box;
+  background-color: #063a6e;
+  background-image: url('../assets/images/login-background.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  /* 横向铺满，高度按比例缩放，避免变形 */
+  background-size: 100% auto;
 }
 
 .title {
@@ -287,20 +298,44 @@ onMounted(() => {
 }
 
 .el-login-footer {
-  height: 40px;
-  line-height: 40px;
   position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
   width: 100%;
+  min-height: 40px;
+  padding: 8px 16px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   color: #fff;
   font-family: Arial, serif;
   font-size: 12px;
   letter-spacing: 1px;
+
+  span {
+    width: 100%;
+    line-height: 1.5;
+    text-align: center;
+  }
 }
 
 .login-code-img {
   height: 40px;
   padding-left: 12px;
+}
+
+@media (max-width: 900px) {
+  .login {
+    justify-content: center;
+    padding: 0 16px;
+  }
+
+  .login-form {
+    width: min(400px, 100%);
+    box-sizing: border-box;
+  }
 }
 </style>

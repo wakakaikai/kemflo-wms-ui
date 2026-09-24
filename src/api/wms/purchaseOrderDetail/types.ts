@@ -1,3 +1,36 @@
+export interface PurchaseOrderBomVO {
+  id?: string | number;
+  poNumber?: string;
+  itemNumber?: string;
+  scheduleNumber?: string;
+  componentMaterial: string;
+  componentDesc?: string;
+  componentQty?: number;
+  issueUomQty?: number;
+  receivedQuantity?: number;
+  openQuantity?: number;
+  orderUnit?: string;
+  conversionRatio?: number;
+  inventoryUnit?: string;
+  /** 托外扣料移动类型，入库列表展示为 543 */
+  moveType?: string;
+  /** 本次扣料数量（发料单位），用户可改，不限制上限 */
+  consumeQuantity?: number;
+  /** 本次扣料库存单位数量 = consumeQuantity * conversionRatio，提交后台扣料用此值 */
+  inventoryQuantity?: number | string;
+  /** 543 扣料所选库存明细 */
+  inventoryDetailId?: string | number;
+  warehouseCode?: string;
+  areaCode?: string;
+  locationCode?: string;
+  batchCode?: string;
+  specialInventoryFlag?: string;
+  businessCode?: string;
+  /** 同一 BOM 拆行分组键 */
+  originBomKey?: string;
+  inventorySplitKey?: string;
+}
+
 export interface PurchaseOrderDetailVO {
   /**
    * 唯一ID
@@ -113,6 +146,9 @@ export interface PurchaseOrderDetailVO {
    * 收货类型
    */
   receiveType?: string;
+
+  /** 当前采购排程对应的 BOM */
+  purchaseOrderBomScheduleVoList?: PurchaseOrderBomVO[];
 }
 
 export interface PurchaseOrderDetailForm extends BaseEntity {

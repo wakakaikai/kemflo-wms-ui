@@ -50,7 +50,7 @@
     </el-form>
     <!--  底部  -->
     <div class="el-register-footer">
-      <span>Copyright © 2018-2024 疯狂的狮子Li All Rights Reserved.</span>
+      <span>{{ copyrightText }}</span>
     </div>
   </div>
 </template>
@@ -59,7 +59,7 @@
 import { getCodeImg, register, getTenantList } from '@/api/login';
 import { RegisterForm, TenantVO } from '@/api/types';
 import { to } from 'await-to-js';
-
+import { buildCopyrightText, resolveTenantCompanyName } from '@/utils/copyright';
 const router = useRouter();
 
 const registerForm = ref<RegisterForm>({
@@ -106,6 +106,10 @@ const captchaEnabled = ref(true);
 const registerRef = ref<ElFormInstance>();
 // 租户列表
 const tenantList = ref<TenantVO[]>([]);
+
+const copyrightText = computed(() =>
+  buildCopyrightText(resolveTenantCompanyName(registerForm.value.tenantId, tenantList.value))
+);
 
 const handleRegister = () => {
   registerRef.value?.validate(async (valid: boolean) => {
@@ -161,9 +165,13 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
+  min-height: 100vh;
   height: 100%;
-  background-image: url('../assets/images/login-background.jpg');
-  background-size: cover;
+  background-color: #063a6e;
+  background-image: url('../assets/images/login-background.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 100% auto;
 }
 
 .title {
@@ -211,16 +219,28 @@ onMounted(() => {
 }
 
 .el-register-footer {
-  height: 40px;
-  line-height: 40px;
   position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
   width: 100%;
+  min-height: 40px;
+  padding: 8px 16px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   color: #fff;
   font-family: Arial, serif;
   font-size: 12px;
   letter-spacing: 1px;
+
+  span {
+    width: 100%;
+    line-height: 1.5;
+    text-align: center;
+  }
 }
 
 .register-code-img {

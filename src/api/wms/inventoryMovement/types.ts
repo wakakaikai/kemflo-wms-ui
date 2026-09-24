@@ -8,7 +8,19 @@ export interface InventoryMovementVO {
   /** 后端按凭证年度、物料凭证号及项次生成的分组键。 */
   groupKey?: string;
 
-  /** 同一凭证项下的原始移动记录。 */
+  /** 分组主行（如 101 收货）。 */
+  mainMovement?: InventoryMovementVO;
+
+  /** 分组子行（如 543 扣料，不含主行）。 */
+  childMovements?: InventoryMovementVO[];
+
+  /** 后端分页：parent_move_id 挂接的子行（展开明细数据源）。 */
+  childMovementList?: InventoryMovementVO[];
+
+  /** 后端分页：主行 + 全部子行。 */
+  allMovementList?: InventoryMovementVO[];
+
+  /** 分组内全部移动记录（含主行与子行）。 */
   movements?: InventoryMovementVO[];
 
   /** 同一凭证项下的出库记录。 */
@@ -20,6 +32,7 @@ export interface InventoryMovementVO {
   /** 是否同时存在出库和入库记录。 */
   hasPair?: boolean;
 
+  /** 过账展示分组ID（主移动记录ID；101 主行=自身 id，543 子行=主行 id） */
   /**
    * 冲销标识：0-正常 1-已冲销 2-冲销记录
    */
@@ -72,6 +85,8 @@ export interface InventoryMovementForm extends BaseEntity {
    * 关联的移动ID
    */
   relatedMoveId?: string | number;
+  /** 父级移动记录 ID（如 101 下的 543） */
+  parentMoveId?: string | number;
 
   /**
    * 数量
@@ -271,6 +286,8 @@ export interface InventoryMovementQuery extends PageQuery {
    * 关联的移动ID
    */
   relatedMoveId?: string | number;
+  /** 父级移动记录 ID（如 101 下的 543） */
+  parentMoveId?: string | number;
 
   /**
    * 数量
@@ -433,8 +450,6 @@ export interface InventoryMovementQuery extends PageQuery {
   sapMaterialOrderNoEmpty?: boolean;
 
   /** 是否由后端按凭证年度、物料凭证号及项次合并。 */
-  groupBySapDocumentItem?: boolean;
-
     /**
      * 日期范围参数
      */

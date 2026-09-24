@@ -16,16 +16,10 @@
       <div v-show="historyExpanded" class="history-card-body">
         <el-form v-show="showSearch" ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
           <!-- 默认显示的搜索项 -->
-<!--          <el-form-item label="移动类型" prop="moveType">
-            <HistoryInput v-model="queryParams.moveType" :config="moveTypeConfig" placeholder="请输入移动类型" @keyup.enter="handleQuery" />
-          </el-form-item>-->
           <el-form-item label="物料凭证号" prop="sapMaterialOrderNo">
-            <!--                <el-input v-model="queryParams.sapMaterialOrderNo" placeholder="请输入物料凭证号" clearable @keyup.enter="handleQuery" />-->
             <HistoryInput v-model="queryParams.sapMaterialOrderNo" :config="sapMaterialOrderNoConfig" placeholder="请输入物料凭证号" @keyup.enter="handleQuery" />
           </el-form-item>
-
           <el-form-item label="采购单号" prop="sourceDocCode">
-            <!--              <el-input v-model="queryParams.sourceDocCode" placeholder="请输入采购单号" clearable @keyup.enter="handleQuery" />-->
             <HistoryInput v-model="queryParams.sourceDocCode" :config="sourceDocCodeConfig" placeholder="请输入采购单号" @keyup.enter="handleQuery" />
           </el-form-item>
           <el-form-item>
@@ -36,35 +30,7 @@
 
         <!-- 搜索结果列表 -->
         <div class="search-result">
-          <el-table ref="inventoryTableRef" :data="inventoryDetailList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
-            <el-table-column type="selection" width="55" align="center" />
-            <el-table-column v-if="columns[0].visible" label="移动类型" align="center" prop="moveType" width="90" />
-            <el-table-column v-if="columns[1].visible" label="物料凭证号" align="left" prop="sapMaterialOrderNo" />
-            <el-table-column v-if="columns[2].visible" label="凭证项次" align="left" prop="sapMaterialItem" />
-            <el-table-column v-if="columns[16].visible" label="凭证年度" align="left" prop="sapMaterialDocYear" />
-            <el-table-column v-if="columns[3].visible" label="采购单号" align="left" prop="sourceDocCode" />
-            <el-table-column v-if="columns[4].visible" label="采购项次" align="left" prop="sourceDocItem" />
-            <el-table-column v-if="columns[5].visible" label="物料编码" align="left" prop="itemCode" />
-            <el-table-column v-if="columns[6].visible" label="物料名称" align="left" prop="itemName" show-overflow-tooltip />
-            <el-table-column v-if="columns[7].visible" label="批次号" align="center" prop="batchCode" />
-            <el-table-column v-if="columns[8].visible" label="数量" align="center" prop="orderQuantity">
-              <template #default="scope">
-                {{ formatQty(scope.row.orderQuantity) }}
-              </template>
-            </el-table-column>
-            <el-table-column v-if="columns[9].visible" label="单位" align="center" prop="orderUnit" />
-            <el-table-column v-if="columns[10].visible" label="特殊库存" align="center" prop="specialInventoryFlag">
-              <template #default="scope">
-                <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
-              </template>
-            </el-table-column>
-            <el-table-column v-if="columns[11].visible" label="业务伙伴" align="center" prop="businessCode" />
-            <el-table-column v-if="columns[12].visible" label="伙伴名称" align="center" prop="businessName" show-overflow-tooltip />
-            <el-table-column v-if="columns[13].visible" label="仓库编码" align="center" prop="warehouseCode" />
-            <el-table-column v-if="columns[14].visible" label="库区编码" align="center" prop="areaCode" />
-            <el-table-column v-if="columns[15].visible" label="库位编码" align="center" prop="locationCode" fixed="right" />
-          </el-table>
-
+          <ReverseMovementTreeTable ref="inventoryTableRef" :groups="groupedRows" layout="purchase" :columns="columns" height="300" :loading="loading" :show-reversal="true" :default-expand-all="false" @selection-change="handleSelectionChange" />
           <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
         </div>
       </div>
@@ -110,7 +76,7 @@
                   </HistoryInput>
                 </el-form-item>
               </el-col>
-<!--              <el-col :sm="24" :md="6" :lg="6">
+              <!--              <el-col :sm="24" :md="6" :lg="6">
                 <el-form-item label="交货单">
                   <HistoryInput v-model="fixedTransferForm.lfsnr" :config="lfsnrConfig" placeholder="请输入交货单" />
                 </el-form-item>
@@ -136,23 +102,43 @@
           </el-alert>
         </div>
 
-        <el-table :data="transferList" border style="width: 100%" v-loading="tableLoading" max-height="400">
-          <el-table-column type="index" width="50" align="center" />
+        <el-table
+          ref="transferTableRef"
+          :data="transferTreeData"
+          row-key="rowKey"
+          border
+          style="width: 100%"
+          v-loading="tableLoading"
+          max-height="400"
+          default-expand-all
+          :tree-props="{ children: 'children' }"
+          :row-class-name="resolveTransferRowClassName"
+        >
+<!--          <el-table-column width="50" align="center">
+            <template #default="scope">
+              <span v-if="isTreeParentRow(scope.row)">{{ transferList.findIndex((item) => item.transferRowKey === scope.row.transferRowKey) + 1 || '' }}</span>
+            </template>
+          </el-table-column>-->
           <!--            <el-table-column label="物料凭证号" prop="sapMaterialOrderNo" />
             <el-table-column label="凭证项次" prop="sapMaterialItem" />-->
-          <el-table-column v-if="transferColumns[0].visible" label="采购单号" prop="sourceDocCode" />
-          <el-table-column v-if="transferColumns[1].visible" label="采购项次" prop="poItemNo" />
-          <el-table-column v-if="transferColumns[2].visible" label="物料编码" prop="itemCode" />
-          <el-table-column v-if="transferColumns[3].visible" label="物料名称" prop="itemName" show-overflow-tooltip />
+<!--          <el-table-column label="移动类型" prop="moveType" width="88" align="center" />-->
+          <el-table-column v-if="transferColumns[0].visible" label="采购单号" prop="sourceDocCode" min-width="120" />
+          <el-table-column v-if="transferColumns[1].visible" label="采购项次" prop="poItemNo" width="88" align="center">
+            <template #default="scope">
+              <span>{{ scope.row.poItemNo ?? scope.row.sourceDocItem ?? '' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="transferColumns[2].visible" label="物料编码" prop="itemCode" min-width="130" />
+          <el-table-column v-if="transferColumns[3].visible" label="物料名称" prop="itemName" min-width="160" show-overflow-tooltip />
           <el-table-column v-if="transferColumns[5].visible" label="源库位信息" min-width="200">
             <template #default="scope">
               <div class="source-location-cell">
                 <div>
-                  <div>仓库: {{ scope.row.sourceWarehouseCode || '-' }}</div>
-                  <div>库位: {{ scope.row.sourceLocationCode || '-' }}</div>
+                  <div>仓库: {{ scope.row.sourceWarehouseCode || scope.row.warehouseCode || '-' }}</div>
+                  <div>库位: {{ scope.row.sourceLocationCode || scope.row.locationCode || '-' }}</div>
                   <div>批次: {{ scope.row.batchCode || '-' }}</div>
                 </div>
-                <el-button link type="primary" icon="Search" @click="openInventoryDialog(scope.$index, scope.row)"></el-button>
+                <el-button v-if="isTreeParentRow(scope.row)" link type="primary" icon="Search" @click="openInventoryDialog(scope.row)"></el-button>
               </div>
             </template>
           </el-table-column>
@@ -161,7 +147,7 @@
               <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
             </template>
           </el-table-column>
-          <el-table-column v-if="transferColumns[7].visible" label="业务伙伴" align="center">
+          <el-table-column v-if="transferColumns[7].visible" label="业务伙伴" align="center" min-width="120">
             <template #default="scope">
               <el-input v-model="scope.row.supplierCode" placeholder="供应商寄售编码" v-if="scope.row.specialInventoryFlag == 'K'" />
               <el-input v-model="scope.row.customerCode" placeholder="客户寄售编码" v-else-if="scope.row.specialInventoryFlag == 'W'" />
@@ -171,18 +157,17 @@
 
           <el-table-column v-if="transferColumns[8].visible" label="库存类型" prop="inventoryType" align="center" min-width="130">
             <template #default="scope">
-              <el-select v-model="scope.row.inventoryType" placeholder="请选择库存类型" style="width: 100%" @change="handleInventoryTypeChange(scope.$index, scope.row)">
+              <el-select v-model="scope.row.inventoryType" placeholder="请选择库存类型" style="width: 100%" @change="handleInventoryTypeChange(scope.row)">
                 <el-option v-for="dict in wms_inventory_type" :key="dict.value" :label="dict.label" :value="dict.value" />
               </el-select>
             </template>
           </el-table-column>
 
-          <!-- 多库位模式下显示独立的当前库位设置 -->
           <el-table-column v-if="transferColumns[9].visible && transferMode === 'multiple'" label="当前库位" width="220">
             <template #default="scope">
-              <TableHistoryInput v-model="scope.row.targetLocationCode" :config="locationCodeConfig" placeholder="请输入当前库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)">
+              <TableHistoryInput v-if="isTreeParentRow(scope.row)" v-model="scope.row.targetLocationCode" :config="locationCodeConfig" placeholder="请输入当前库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.targetLocationCode)">
                 <template #append>
-                  <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
+                  <el-button icon="Search" @click="showStorageLocationDialog(resolveTransferParentIndex(scope.row))"></el-button>
                 </template>
               </TableHistoryInput>
             </template>
@@ -190,18 +175,24 @@
 
           <el-table-column v-if="transferColumns[10].visible" label="退货数量" width="200" align="center">
             <template #default="scope">
-              <el-input-number v-model="scope.row.returnQuantity" :min="0" :max="parseFloat(scope.row.originQuantity || scope.row.orderQuantity || scope.row.poQuantity || 0)" :precision="3" size="small" controls-position="right" @change="handleReturnPoQuantityChange(scope.row)" />
-              <span class="issue-qty-unit">{{ scope.row.poUnit || scope.row.orderUnit || '' }}</span>
+              <template v-if="isTreeParentRow(scope.row)">
+                <el-input-number v-model="scope.row.returnQuantity" :min="0" :max="parseFloat(scope.row.originQuantity || scope.row.orderQuantity || scope.row.poQuantity || scope.row.quantity || 0)" :precision="3" size="small" controls-position="right" @change="handleParentReturnQuantityChange(scope.row)" />
+                <span class="issue-qty-unit">{{ scope.row.poUnit || scope.row.orderUnit || scope.row.unit || '' }}</span>
+              </template>
+              <template v-else>
+                <el-input-number v-model="scope.row.returnQuantity" :min="0" :max="parseFloat(scope.row.originQuantity || scope.row.orderQuantity || scope.row.poQuantity || scope.row.quantity || 0)" :precision="3" size="small" controls-position="right" @change="handleChildReturnQuantityChange(scope.row)" />
+                <span class="issue-qty-unit">{{ scope.row.poUnit || scope.row.orderUnit || scope.row.unit || '' }}</span>
+              </template>
             </template>
           </el-table-column>
-          <el-table-column v-if="transferColumns[11].visible" label="库存数量" min-width="100" align="center">
+          <el-table-column v-if="transferColumns[11].visible" label="库存单位数量" min-width="100" align="center">
             <template #default="scope">
-              {{ formatQtyWithUnit(scope.row.inventoryQuantity, scope.row.inventoryUnit) }}
+              {{ formatQtyWithUnit(scope.row.inventoryQuantity, scope.row.inventoryUnit || scope.row.unit) }}
             </template>
           </el-table-column>
           <el-table-column label="操作" width="80" align="center">
             <template #default="scope">
-              <el-button type="danger" link icon="Delete" @click="removeFromTransferList(scope.$index)"></el-button>
+              <el-button v-if="isTreeParentRow(scope.row)" type="danger" link icon="Delete" @click.stop="removeFromTransferList(scope.row.transferRowKey)"></el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -224,21 +215,25 @@
     </el-card>
     <!-- 库位选择对话框 -->
     <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
-    <InventorySelectionDialog
-      v-model="inventoryDialog.visible"
-      :material-code="inventoryDialog.row?.itemCode || inventoryDialog.row?.materialCode || ''"
-      :material-desc="inventoryDialog.row?.itemName || inventoryDialog.row?.materialName || ''"
-      :issue-qty="inventoryDialog.issueQty"
-      :unit="inventoryDialog.row?.inventoryUnit || inventoryDialog.row?.unit || inventoryDialog.row?.poUnit || inventoryDialog.row?.orderUnit || ''"
-      :general-only="false"
-      @confirm="applyInventorySelection"
-    />
+    <InventorySelectionDialog v-model="inventoryDialog.visible" :material-code="inventoryDialog.row?.itemCode || inventoryDialog.row?.materialCode || ''" :material-desc="inventoryDialog.row?.itemName || inventoryDialog.row?.materialName || ''" :issue-qty="inventoryDialog.issueQty" :unit="inventoryDialog.row?.inventoryUnit || inventoryDialog.row?.unit || inventoryDialog.row?.poUnit || inventoryDialog.row?.orderUnit || ''" :general-only="false" @confirm="applyInventorySelection" />
   </div>
 </template>
 
 <script setup name="PurchaseReturn" lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { computed, ref, reactive, onMounted } from 'vue';
 import { listInventoryMovement } from '@/api/wms/inventoryMovement';
+import ReverseMovementTreeTable from '@/views/wms/inventoryReverse/components/ReverseMovementTreeTable.vue';
+import {
+  buildMovementDisplayGroups,
+  buildPrimaryReceiptGroupKey,
+  buildReverseTreeTableData,
+  enrichPrimaryReceiptGroupWithSubcontractChildren,
+  isTreeParentRow,
+  MovementExpandRow,
+  resolvePurchaseReturnSubmitMoveType,
+  ReverseTreeRow
+} from '@/views/wms/inventoryReverse/utils/reverseMovement';
+import { createReverseColumnOptions } from '@/views/wms/inventoryReverse/utils/reverseTableLayout';
 import { syncSapMaterialOrderNoEmptyFilter } from '@/api/wms/inventoryMovement/query';
 import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } from '@/api/wms/inventoryMovement/types';
 // 导入图标组件
@@ -266,8 +261,9 @@ const loading = ref(false);
 const tableLoading = ref(false);
 const buttonLoading1 = ref(false);
 const buttonLoading2 = ref(false);
-const inventoryDetailList = ref<InventoryMovementVO[]>([]);
-const selectedSearchItems = ref<InventoryMovementVO[]>([]);
+const inventoryDetailList = ref<MovementExpandRow[]>([]);
+const groupedRows = computed(() => inventoryDetailList.value);
+const selectedSearchItems = ref<ReverseTreeRow[]>([]);
 const transferList = ref<any[]>([]);
 const showAdvancedSearch = ref(false); // 控制高级搜索显示状态
 const total = ref(0);
@@ -292,6 +288,93 @@ const queryFormRef = ref<any>(null);
 const fixedTransferFormRef = ref<any>(null);
 
 const inventoryTableRef = ref(null);
+const transferTableRef = ref(null);
+
+const transferTreeData = computed(() => buildReverseTreeTableData(transferList.value as MovementExpandRow[]));
+
+const resolveTransferRowClassName = ({ row }: { row: ReverseTreeRow }) => (row.children?.length ? 'return-tree-parent-row' : '');
+
+const flattenTransferList = (list: any[]) => {
+  const rows: any[] = [];
+  list.forEach((group) => {
+    rows.push(group);
+    (group.childMovementList || []).forEach((child: any) => rows.push(child));
+  });
+  return rows;
+};
+
+const resolveTransferParentIndex = (row: ReverseTreeRow | any) => {
+  if (isTreeParentRow(row)) {
+    return transferList.value.findIndex((item) => item.transferRowKey === row.transferRowKey || item.groupKey === row.groupKey);
+  }
+  const groupKey = row.groupKey;
+  return transferList.value.findIndex((item) => item.groupKey === groupKey || item.transferRowKey === groupKey);
+};
+
+/** 树表为 computed 浅拷贝，数量等编辑需写回 transferList 中的源对象 */
+const resolveTransferRowRef = (displayRow: ReverseTreeRow | any) => {
+  if (isTreeParentRow(displayRow)) {
+    const index = resolveTransferParentIndex(displayRow);
+    return index >= 0 ? transferList.value[index] : displayRow;
+  }
+  const parentIndex = resolveTransferParentIndex(displayRow);
+  if (parentIndex < 0) {
+    return displayRow;
+  }
+  const parent = transferList.value[parentIndex];
+  const originId = displayRow.originId ?? displayRow.id;
+  const child = (parent.childMovementList || []).find(
+    (item: any) => item === displayRow || item.originId === originId || item.id === originId
+  );
+  return child || displayRow;
+};
+
+const syncParentReturnQuantityFields = (parent: any, returnQuantity: unknown) => {
+  parent.returnQuantity = returnQuantity;
+  if (parent.mainMovement && parent.mainMovement !== parent) {
+    parent.mainMovement.returnQuantity = returnQuantity;
+  }
+};
+
+const syncParentInventoryQuantityFields = (parent: any) => {
+  calculateInventoryQuantity(parent);
+  if (parent.mainMovement && parent.mainMovement !== parent) {
+    parent.mainMovement.inventoryQuantity = parent.inventoryQuantity;
+  }
+};
+
+const buildReturnRowFromMovement = (movement: any, extra: Record<string, any> = {}) => {
+  const orderQuantity = movement.orderQuantity ?? movement.poQuantity ?? movement.quantity;
+  const orderUnit = movement.orderUnit ?? movement.poUnit ?? movement.unit;
+  const poItemNo = movement.sourceDocItem ?? movement.poItemNo;
+  const conversionRatio = Number(movement.conversionRatio || 1) || 1;
+  return {
+    ...movement,
+    originId: movement.id,
+    originQuantity: orderQuantity,
+    poItemNo,
+    poUnit: orderUnit,
+    orderQuantity,
+    currentQuantity: movement.availableQuantity || 0,
+    availableQuantity: movement.availableQuantity,
+    inspectionQuantity: movement.inspectionQuantity,
+    blockedQuantity: movement.blockedQuantity,
+    unit: movement.unit,
+    sourceWarehouseCode: movement.warehouseCode,
+    sourceAreaCode: movement.areaCode,
+    sourceLocationCode: movement.locationCode,
+    targetWarehouseCode: movement.warehouseCode,
+    targetAreaCode: movement.areaCode,
+    targetLocationCode: movement.locationCode,
+    specialInventoryFlag: movement.specialInventoryFlag,
+    inventoryType: movement.inventoryType,
+    returnQuantity: orderQuantity,
+    conversionRatio,
+    inventoryQuantity: (Number(orderQuantity || 0) * conversionRatio).toFixed(3),
+    inventoryUnit: movement.unit,
+    ...extra
+  };
+};
 
 const inventoryDialog = reactive<{
   visible: boolean;
@@ -498,26 +581,7 @@ const bktxtConfig: HistoryConfig = {
   }
 };
 
-// 列显隐信息
-const columns = ref<FieldOption[]>([
-  { key: 0, label: `移动类型`, visible: true, children: [] },
-  { key: 1, label: `物料凭证号`, visible: true, children: [] },
-  { key: 2, label: `凭证项次`, visible: true, children: [] },
-  { key: 3, label: `采购单号`, visible: true, children: [] },
-  { key: 4, label: `项次`, visible: true, children: [] },
-  { key: 5, label: `物料编码`, visible: true, children: [] },
-  { key: 6, label: `物料名称`, visible: true, children: [] },
-  { key: 7, label: `批次号`, visible: true, children: [] },
-  { key: 8, label: `数量`, visible: true, children: [] },
-  { key: 9, label: `单位`, visible: true, children: [] },
-  { key: 10, label: `特殊库存`, visible: false, children: [] },
-  { key: 11, label: `业务伙伴`, visible: false, children: [] },
-  { key: 12, label: `伙伴名称`, visible: false, children: [] },
-  { key: 13, label: `仓库编码`, visible: false, children: [] },
-  { key: 14, label: `库区编码`, visible: false, children: [] },
-  { key: 15, label: `库位编码`, visible: true, children: [] },
-  { key: 16, label: `凭证年度`, visible: false, children: [] }
-]);
+const columns = ref<FieldOption[]>(createReverseColumnOptions('purchase'));
 
 const transferColumns = ref<FieldOption[]>([
   { key: 0, label: `采购单号`, visible: true, children: [] },
@@ -531,7 +595,7 @@ const transferColumns = ref<FieldOption[]>([
   { key: 8, label: `库存类型`, visible: true, children: [] },
   { key: 9, label: `当前库位`, visible: true, children: [] },
   { key: 10, label: `退货数量`, visible: true, children: [] },
-  { key: 11, label: `库存数量`, visible: true, children: [] }
+  { key: 11, label: `库存单位数量`, visible: true, children: [] }
 ]);
 
 // 禁用未来的时间
@@ -553,18 +617,68 @@ function formatPostingDate(postingDate?: string | null): string | undefined {
   return postingDate.includes(' ') ? postingDate : `${postingDate} 00:00:00`;
 }
 
-// 添加一个方法用于计算库存数量
+// 添加一个方法用于计算库存单位数量
 const calculateInventoryQuantity = (row) => {
   row.inventoryQuantity = ((row.returnQuantity || 0) * (row.conversionRatio || 1)).toFixed(3);
 };
 
-// 监听收货数量变化的处理方法
-const handleReturnPoQuantityChange = (row) => {
-  // 如果输入为空，则库存数量也设为0
-  if (row.returnQuantity === null || row.returnQuantity === undefined || row.returnQuantity === '') {
+const getChildReturnQuantityByParentRatio = (parent: any, child: any) => {
+  const parentOpen = resolveOrderOpenQuantity(parent);
+  const parentReturn = toNumber(parent.returnQuantity);
+  const childOpen = resolveOrderOpenQuantity(child);
+  const ratio = parentOpen > 0 ? parentReturn / parentOpen : 1;
+  return roundQty(childOpen * ratio);
+};
+
+/** 主行退货数量变化时，按原入库比例同步 543 子行（已选手工库存拆行则跳过） */
+const syncChildReturnQuantity = (parent: any) => {
+  (parent.childMovementList || []).forEach((child: any) => {
+    if (child.inventoryDetailId || child.inventorySplitKey) {
+      return;
+    }
+    child.returnQuantity = getChildReturnQuantityByParentRatio(parent, child);
+    calculateInventoryQuantity(child);
+  });
+  parent.childMovements = parent.childMovementList;
+};
+
+const clearReturnRowInventorySelection = (row: any) => {
+  row.inventoryDetailId = undefined;
+  row.inventorySplitKey = undefined;
+};
+
+const applyReturnQuantityChange = (displayRow: any, returnQuantity: unknown) => {
+  const row = resolveTransferRowRef(displayRow);
+  if (returnQuantity === null || returnQuantity === undefined || returnQuantity === '') {
+    row.returnQuantity = 0;
     row.inventoryQuantity = 0;
   } else {
+    row.returnQuantity = returnQuantity;
     calculateInventoryQuantity(row);
+  }
+  return row;
+};
+
+const handleParentReturnQuantityChange = (displayRow: any) => {
+  const parent = resolveTransferRowRef(displayRow);
+  syncParentReturnQuantityFields(parent, displayRow.returnQuantity);
+  if (displayRow.returnQuantity === null || displayRow.returnQuantity === undefined || displayRow.returnQuantity === '') {
+    parent.returnQuantity = 0;
+    parent.inventoryQuantity = 0;
+    if (parent.mainMovement && parent.mainMovement !== parent) {
+      parent.mainMovement.returnQuantity = 0;
+      parent.mainMovement.inventoryQuantity = 0;
+    }
+  } else {
+    syncParentInventoryQuantityFields(parent);
+  }
+  syncChildReturnQuantity(parent);
+};
+
+const handleChildReturnQuantityChange = (displayRow: any) => {
+  const row = applyReturnQuantityChange(displayRow, displayRow.returnQuantity);
+  if (row.inventoryDetailId || row.inventorySplitKey) {
+    clearReturnRowInventorySelection(row);
   }
 };
 
@@ -577,10 +691,13 @@ const toggleAdvancedSearch = () => {
 const getList = async () => {
   syncSapMaterialOrderNoEmptyFilter(queryParams.value);
   loading.value = true;
-  const res = await listInventoryMovement(queryParams.value);
-  inventoryDetailList.value = res.rows;
-  total.value = res.total;
-  loading.value = false;
+  try {
+    const res = await listInventoryMovement(queryParams.value);
+    inventoryDetailList.value = buildMovementDisplayGroups((res.rows || []) as InventoryMovementVO[]);
+    total.value = res.total;
+  } finally {
+    loading.value = false;
+  }
 };
 
 /** 搜索按钮操作 */
@@ -598,66 +715,55 @@ const resetQuery = () => {
   handleQuery();
 };
 
-/** 搜索结果选择变化 */
-const handleSelectionChange = (selection: InventoryMovementVO[]) => {
-  selectedSearchItems.value = selection;
+/** 仅可选主行（101 等），543 子行由 parent_move_id 挂在树下展示 */
+const handleSelectionChange = (selection: ReverseTreeRow[]) => {
+  selectedSearchItems.value = selection.filter(isTreeParentRow);
 };
 
-/** 添加选中项到移转列表 */
-const addSelectedToTransferList = () => {
+/** 添加选中项到移转列表（101 主行 + 接口 childMovementList 的 543 子行） */
+const addSelectedToTransferList = async () => {
   if (selectedSearchItems.value.length === 0) {
     proxy.$modal.msgWarning('请先选择要退货的记录');
     return;
   }
 
-  const newItems = selectedSearchItems.value.map((item: any) => {
-    const orderQuantity = item.orderQuantity ?? item.poQuantity;
-    const orderUnit = item.orderUnit ?? item.poUnit;
-    const poItemNo = item.sourceDocItem ?? item.poItemNo;
-    const conversionRatio = Number(item.conversionRatio || 1) || 1;
-    return {
-      ...item,
-      originId: item.id,
-      originQuantity: orderQuantity,
-      poItemNo,
-      poUnit: orderUnit,
-      orderQuantity,
-      currentQuantity: item.availableQuantity || 0,
-      availableQuantity: item.availableQuantity,
-      inspectionQuantity: item.inspectionQuantity,
-      blockedQuantity: item.blockedQuantity,
-      unit: item.unit,
-      sourceWarehouseCode: item.warehouseCode,
-      sourceAreaCode: item.areaCode,
-      sourceLocationCode: item.locationCode,
-      targetWarehouseCode: item.warehouseCode,
-      targetAreaCode: item.areaCode,
-      targetLocationCode: item.locationCode,
-      specialInventoryFlag: item.specialInventoryFlag,
-      inventoryType: item.inventoryType,
-      returnQuantity: orderQuantity,
-      conversionRatio,
-      inventoryQuantity: (Number(orderQuantity || 0) * conversionRatio).toFixed(3),
-      inventoryUnit: item.unit
-    };
-  });
-
-  // 避免重复添加
   let addedCount = 0;
-  newItems.forEach((newItem) => {
-    const exists = transferList.value.some((item) => (item.originId || item.id) === (newItem.originId || newItem.id));
-    if (!exists) {
-      transferList.value.push(newItem);
-      addedCount++;
+  for (const item of selectedSearchItems.value) {
+    const group =
+      inventoryDetailList.value.find((g) => g.groupKey && g.groupKey === item.groupKey) ||
+      inventoryDetailList.value.find((g) => String(g.mainMovement?.id ?? g.id) === String(item.mainMovement?.id ?? item.id));
+    const enriched = group ? await enrichPrimaryReceiptGroupWithSubcontractChildren(group) : item;
+    const mainMovement = (enriched.mainMovement ?? enriched) as InventoryMovementVO;
+    const transferRowKey = enriched.groupKey || buildPrimaryReceiptGroupKey(mainMovement.id!);
+    const exists = transferList.value.some((row) => row.transferRowKey === transferRowKey || (row.originId || row.id) === mainMovement.id);
+    if (exists) {
+      continue;
     }
-  });
+    const parentRow = buildReturnRowFromMovement(mainMovement, { transferRowKey, groupKey: transferRowKey });
+    const childMovementList = (enriched.childMovementList || []).map((child) => buildReturnRowFromMovement(child, { groupKey: transferRowKey }));
+    transferList.value.push({
+      ...parentRow,
+      mainMovement: parentRow,
+      childMovementList,
+      childMovements: childMovementList
+    });
+    addedCount++;
+  }
 
+  inventoryTableRef.value?.clearSelection?.();
+  selectedSearchItems.value = [];
   proxy.$modal.msgSuccess(`成功添加${addedCount}条记录到移转列表`);
 };
 
-/** 从移转列表中移除 */
-const removeFromTransferList = (index: number) => {
-  transferList.value.splice(index, 1);
+/** 从移转列表中移除整组（101 + 543 子行） */
+const removeFromTransferList = (transferRowKey?: string) => {
+  if (!transferRowKey) {
+    return;
+  }
+  const index = transferList.value.findIndex((row) => row.transferRowKey === transferRowKey);
+  if (index >= 0) {
+    transferList.value.splice(index, 1);
+  }
 };
 
 /** 清空移转列表 */
@@ -726,8 +832,8 @@ const storageLocationSelectCallBack = (record: any) => {
   }
 };
 
-const handleInventoryTypeChange = (index: number, value: any) => {
-  const item = transferList.value[index];
+const handleInventoryTypeChange = (row: any) => {
+  const item = row;
   if (item.inventoryType === 'N') {
     item.currentQuantity = item.availableQuantity || 0;
   } else if (item.inventoryType === 'X') {
@@ -744,8 +850,7 @@ const toNumber = (value: unknown, fallback = 0) => {
 
 const roundQty = (value: number) => Number(value.toFixed(3));
 
-const resolveDemandKey = (row: any) =>
-  String(row.originId || row.id || `${row.sourceDocCode || ''}_${row.poItemNo || row.sourceDocItem || ''}_${row.itemCode || ''}`);
+const resolveDemandKey = (row: any) => String(row.originId || row.id || `${row.sourceDocCode || ''}_${row.poItemNo || row.sourceDocItem || ''}_${row.itemCode || ''}`);
 
 const resolveOrderOpenQuantity = (row: any) => toNumber(row.originQuantity ?? row.orderQuantity ?? row.poQuantity);
 
@@ -754,11 +859,11 @@ const resolveInventoryOpenQuantity = (row: any) => {
   return roundQty(resolveOrderOpenQuantity(row) * ratio);
 };
 
-const resolveAllocatedReturnQuantity = (row: any, excludeIndex?: number) => {
+const resolveAllocatedReturnQuantity = (row: any, excludeRow?: any) => {
   const key = resolveDemandKey(row);
   return roundQty(
-    transferList.value.reduce((sum, item, index) => {
-      if (excludeIndex != null && index === excludeIndex) {
+    flattenTransferList(transferList.value).reduce((sum, item) => {
+      if (excludeRow && item === excludeRow) {
         return sum;
       }
       if (resolveDemandKey(item) !== key) {
@@ -769,26 +874,28 @@ const resolveAllocatedReturnQuantity = (row: any, excludeIndex?: number) => {
   );
 };
 
-const resolveRemainingReturnQuantity = (row: any, excludeIndex?: number) => {
-  return Math.max(0, roundQty(resolveOrderOpenQuantity(row) - resolveAllocatedReturnQuantity(row, excludeIndex)));
+const resolveRemainingReturnQuantity = (row: any, excludeRow?: any) => {
+  return Math.max(0, roundQty(resolveOrderOpenQuantity(row) - resolveAllocatedReturnQuantity(row, excludeRow)));
 };
 
-const openInventoryDialog = (index: number, row: any) => {
+const openInventoryDialog = (row: any) => {
+  if (!isTreeParentRow(row)) {
+    return;
+  }
   if (!String(row.itemCode || row.materialCode || '').trim()) {
     proxy.$modal.msgWarning('请先选择物料');
     return;
   }
-  const remainingOrderQty = resolveRemainingReturnQuantity(row, index);
+  const remainingOrderQty = resolveRemainingReturnQuantity(row, row);
   const ratio = toNumber(row.conversionRatio, 1) || 1;
-  inventoryDialog.index = index;
+  inventoryDialog.index = resolveTransferParentIndex(row);
   inventoryDialog.row = row;
   inventoryDialog.issueQty = remainingOrderQty > 0 ? roundQty(remainingOrderQty * ratio) : resolveInventoryOpenQuantity(row);
   inventoryDialog.visible = true;
 };
 
 const applyInventorySelection = (payload: { locations: any[] }) => {
-  const index = inventoryDialog.index;
-  const source = transferList.value[index];
+  const source = inventoryDialog.row;
   const locations = payload.locations || [];
   if (!source || !locations.length) {
     return;
@@ -797,7 +904,7 @@ const applyInventorySelection = (payload: { locations: any[] }) => {
   const originId = source.originId || source.id;
   const originQuantity = resolveOrderOpenQuantity(source);
   const ratio = toNumber(source.conversionRatio, 1) || 1;
-  let remainDemandInv = roundQty(resolveRemainingReturnQuantity(source, index) * ratio) || resolveInventoryOpenQuantity(source);
+  let remainDemandInv = roundQty(resolveRemainingReturnQuantity(source, source) * ratio) || resolveInventoryOpenQuantity(source);
 
   const splitRows = locations
     .map((location, locationIndex) => {
@@ -845,7 +952,37 @@ const applyInventorySelection = (payload: { locations: any[] }) => {
     return;
   }
 
-  transferList.value.splice(index, 1, ...splitRows);
+  if (isTreeParentRow(source)) {
+    const parentIndex = resolveTransferParentIndex(source);
+    if (parentIndex < 0) {
+      return;
+    }
+    transferList.value.splice(
+      parentIndex,
+      1,
+      ...splitRows.map((splitRow) => ({
+        ...splitRow,
+        transferRowKey: splitRow.inventorySplitKey || `${splitRow.originId}_${splitRow.batchCode || ''}`,
+        groupKey: splitRow.inventorySplitKey || `${splitRow.originId}_${splitRow.batchCode || ''}`,
+        mainMovement: splitRow,
+        childMovementList: [],
+        childMovements: []
+      }))
+    );
+  } else {
+    const parentIndex = resolveTransferParentIndex(source);
+    const parent = transferList.value[parentIndex];
+    if (!parent?.childMovementList) {
+      return;
+    }
+    const childIndex = parent.childMovementList.findIndex((child: any) => child === source || child.originId === source.originId);
+    if (childIndex < 0) {
+      return;
+    }
+    parent.childMovementList.splice(childIndex, 1, ...splitRows);
+    parent.childMovements = parent.childMovementList;
+  }
+
   inventoryDialog.visible = false;
   inventoryDialog.index = -1;
   inventoryDialog.row = null;
@@ -854,7 +991,7 @@ const applyInventorySelection = (payload: { locations: any[] }) => {
 
 /** 提交移转 */
 const submitTransfer = async (moveType: any) => {
-  const validTransfers = transferList.value.filter((item) => item.returnQuantity > 0);
+  const validTransfers = flattenTransferList(transferList.value).filter((item) => toNumber(item.returnQuantity) > 0);
   resultStatus.value = true;
   resultMessage.value = '';
   if (validTransfers.length === 0) {
@@ -926,7 +1063,7 @@ const submitTransfer = async (moveType: any) => {
     // 构造移转请求参数
     const transferRequests: PurchaseOrderReturnBo[] = validTransfers.map((item) => ({
       id: item.id,
-      moveType: moveType,
+      moveType: resolvePurchaseReturnSubmitMoveType(item, moveType),
       batchCode: item.batchCode,
       businessCode: item.businessCode,
       businessName: item.businessName,
@@ -1104,6 +1241,10 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+:deep(.return-tree-parent-row) {
+  font-weight: 500;
 }
 
 @media (max-width: 768px) {

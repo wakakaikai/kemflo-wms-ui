@@ -37,39 +37,21 @@
           </el-form>
 
           <div class="search-result">
-            <el-table ref="purchaseTableRef" :data="purchaseOrderDetailList" height="300" border v-loading="loading" @selection-change="handleSelectionChange">
-              <el-table-column type="selection" width="55" align="center" />
-              <el-table-column v-if="columns[0].visible" label="采购单" align="left" prop="poNumber" fixed="left" min-width="130" />
-              <el-table-column v-if="columns[1].visible" label="项次" align="left" prop="itemNumber" fixed="left" min-width="65" />
-              <el-table-column v-if="columns[17].visible" label="采购类别" align="center" prop="poCategory" min-width="100">
-                <template #default="scope">
-                  <dict-tag :options="wms_purchase_category" :value="scope.row.poCategory" />
-                </template>
-              </el-table-column>
-              <el-table-column label="交货状态" align="center" width="100" fixed="left">
-                <template #default="scope">
-                  <el-tooltip :content="getEarlyDeliveryTooltip(scope.row)" placement="top">
-                    <el-tag :type="getEarlyDeliveryTagType(scope.row)">
-                      {{ getEarlyDeliveryText(scope.row) }}
-                    </el-tag>
-                  </el-tooltip>
-                </template>
-              </el-table-column>
-              <el-table-column v-if="columns[2].visible" label="排程" align="left" prop="scheduleNumber" min-width="60" />
-              <el-table-column v-if="columns[3].visible" label="交货日期" align="center" prop="deliveryDate" min-width="100" />
-              <el-table-column v-if="columns[4].visible" label="料号" align="left" prop="materialCode" min-width="135" />
-              <el-table-column v-if="columns[5].visible" label="旧料号" align="left" prop="oldMaterialCode" />
-              <el-table-column v-if="columns[6].visible" label="物料描述" align="left" prop="materialDesc" show-overflow-tooltip />
-              <el-table-column v-if="columns[7].visible" label="订单数量" align="left" prop="orderQuantity" min-width="100" />
-              <el-table-column v-if="columns[8].visible" label="已收数量" align="left" prop="receivedQuantity" min-width="100" />
-              <el-table-column v-if="columns[9].visible" label="未清数量" align="left" prop="openQuantity" min-width="100" />
-              <el-table-column v-if="columns[10].visible" label="订单单位" align="center" prop="orderUnit" />
-              <el-table-column v-if="columns[11].visible" label="需质检" align="center" prop="inspectionFlag" />
-              <el-table-column v-if="columns[13].visible" label="库存单位" align="center" prop="inventoryUnit" />
-              <el-table-column v-if="columns[14].visible" label="换算比例" align="center" prop="conversionRatio" />
-              <el-table-column v-if="columns[15].visible" label="供应商代码" align="center" prop="supplierCode" min-width="120" />
-              <el-table-column v-if="columns[16].visible" label="供应商名称" align="center" prop="supplierName" show-overflow-tooltip min-width="100" />
-            </el-table>
+            <PurchaseOrderDetailTreeTable ref="purchaseTableRef" :rows="purchaseOrderDetailList" mode="history" :columns="columns" :loading="loading" height="300" show-move-type :wms_purchase_category="wms_purchase_category" @selection-change="handleSelectionChange">
+              <template #after-category>
+                <el-table-column label="交货状态" align="center" width="100">
+                  <template #default="scope">
+                    <template v-if="isPoDetailParentRow(scope.row)">
+                      <el-tooltip :content="getEarlyDeliveryTooltip(scope.row)" placement="top">
+                        <el-tag :type="getEarlyDeliveryTagType(scope.row)">
+                          {{ getEarlyDeliveryText(scope.row) }}
+                        </el-tag>
+                      </el-tooltip>
+                    </template>
+                  </template>
+                </el-table-column>
+              </template>
+            </PurchaseOrderDetailTreeTable>
             <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
           </div>
         </div>
@@ -97,6 +79,7 @@
                 <el-radio-button label="fixed">固定库位</el-radio-button>
                 <el-radio-button label="multiple">多库位</el-radio-button>
               </el-radio-group>
+              <el-button @click="openStagingDialog">持有数据{{ stagingSummaries.length ? `(${stagingSummaries.length})` : '' }}</el-button>
               <el-button type="danger" @click="clearInboundList" :disabled="inboundList.length === 0">清空列表</el-button>
             </div>
           </div>
@@ -141,57 +124,92 @@
           </el-form>
 
           <div v-if="resultMessage" class="m-y-2">
-            <el-alert show-icon center :title="resultMessage" :type="resultStatus ? 'success' : 'error'">
+            <el-alert show-icon center :type="resultStatus ? 'success' : 'error'" class="submit-result-alert">
               <template #icon>
                 <Bell />
               </template>
+              <div class="submit-result-text">{{ resultMessage }}</div>
             </el-alert>
           </div>
 
-          <el-table :data="inboundList" border style="width: 100%" v-loading="tableLoading" max-height="400">
-            <el-table-column type="index" width="50" align="center" />
-            <el-table-column label="采购单" prop="poNumber" />
-            <el-table-column label="项次" prop="itemNumber" />
-            <el-table-column label="采购类别" prop="poCategory" align="center">
-              <template #default="scope">
-                <dict-tag :options="wms_purchase_category" :value="scope.row.poCategory" />
-              </template>
-            </el-table-column>
-            <el-table-column label="料号" prop="materialCode" />
-            <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip />
-            <el-table-column label="未清数量" prop="openQuantity" align="center">
-              <template #default="scope">
-                {{ formatQtyWithUnit(scope.row.openQuantity, scope.row.orderUnit) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="目标库位" width="220" v-if="inboundMode === 'multiple'">
-              <template #default="scope">
-                <TableHistoryInput v-model="scope.row.locationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.locationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.locationCode)">
-                  <template #append>
-                    <el-button icon="Search" @click="showStorageLocationDialog(scope.$index)"></el-button>
+          <PurchaseOrderDetailTreeTable :rows="inboundList" mode="operation" :selectable="false" :default-expand-all="true" max-height="400" :loading="tableLoading">
+            <template #columns>
+              <el-table-column label="序号" width="80" align="center">
+                <template #default="scope">
+                  {{ inboundList.findIndex((item) => item.inboundRowKey === (isPoDetailParentRow(scope.row) ? scope.row.inboundRowKey : scope.row.parentInboundRowKey)) + 1 || '' }}
+                </template>
+              </el-table-column>
+              <el-table-column label="移动类型" prop="moveType" width="88" align="center" />
+              <el-table-column label="采购单" prop="poNumber" min-width="120" />
+              <el-table-column label="项次" prop="itemNumber" width="70">
+                <template #default="scope">
+                  <span>{{ scope.row.itemNumber ?? '' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="采购类别" prop="poCategory" align="center" width="100">
+                <template #default="scope">
+                  <dict-tag v-if="isPoDetailParentRow(scope.row)" :options="wms_purchase_category" :value="scope.row.poCategory" />
+                </template>
+              </el-table-column>
+              <el-table-column label="料号" prop="materialCode" min-width="135" />
+              <el-table-column label="物料描述" prop="materialDesc" min-width="160" show-overflow-tooltip />
+              <el-table-column label="未清/未发数量" min-width="150" align="center">
+                <template #default="scope">
+                  <template v-if="isPoDetailParentRow(scope.row)">
+                    {{ formatQtyWithUnit(scope.row.openQuantity, scope.row.orderUnit) }}
                   </template>
-                </TableHistoryInput>
-              </template>
-            </el-table-column>
-            <el-table-column label="收货数量" align="center" width="200">
-              <template #default="scope">
-                <el-input-number v-model="scope.row.receivePoQuantity" :min="0" :max="parseFloat(scope.row.openQuantity || 0)" :precision="3" size="small" controls-position="right" @change="handleReceivePoQuantityChange(scope.row)" />
-                <span class="issue-qty-unit">{{ scope.row.orderUnit || '' }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="库存数量" min-width="100" align="center">
-              <template #default="scope">
-                {{ formatQtyWithUnit(scope.row.inventoryQuantity, scope.row.inventoryUnit) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="80" align="center">
-              <template #default="scope">
-                <el-button type="danger" link icon="Delete" @click="removeFromInboundList(scope.$index)"></el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+                  <template v-else>
+                    {{ formatQtyWithUnit(scope.row.openQuantity, scope.row.inventoryUnit) }}
+                  </template>
+                </template>
+              </el-table-column>
+              <el-table-column label="批次" min-width="160">
+                <template #default="scope">
+                  <div v-if="!isPoDetailParentRow(scope.row)" class="inventory-source-cell">
+                    <span v-if="scope.row.batchCode" class="batch-code-text">{{ scope.row.batchCode }}</span>
+                    <el-tag v-else type="warning" size="small">未选择批次</el-tag>
+                    <el-button type="primary" link icon="Search" @click="openBomInventoryDialog(findOperationParentRow(inboundList, scope.row), scope.row)" />
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="目标库位" width="220" v-if="inboundMode === 'multiple'">
+                <template #default="scope">
+                  <TableHistoryInput v-if="isPoDetailParentRow(scope.row)" v-model="scope.row.locationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(scope.row.locationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(scope.row.locationCode)">
+                    <template #append>
+                      <el-button icon="Search" @click="showStorageLocationDialog(inboundList.findIndex((item) => item.inboundRowKey === scope.row.inboundRowKey))"></el-button>
+                    </template>
+                  </TableHistoryInput>
+                </template>
+              </el-table-column>
+              <el-table-column label="收货/扣料数量" align="center" width="200">
+                <template #default="scope">
+                  <template v-if="isPoDetailParentRow(scope.row)">
+                    <el-input-number v-model="scope.row.receivePoQuantity" :min="0" :max="parseFloat(scope.row.openQuantity || 0)" :precision="3" size="small" controls-position="right" @change="handleReceivePoQuantityChange(scope.row)" />
+                    <span class="issue-qty-unit">{{ scope.row.orderUnit || '' }}</span>
+                  </template>
+                  <template v-else>
+                    <div class="qty-convert-cell">
+                      <el-input-number v-model="scope.row.consumeQuantity" :min="0" :precision="3" size="small" controls-position="right" @change="handleBomConsumeQuantityChange(scope.row)" />
+                      <span class="qty-convert-unit">{{ scope.row.orderUnit || '' }}</span>
+                    </div>
+                  </template>
+                </template>
+              </el-table-column>
+              <el-table-column label="库存数量" min-width="100" align="center">
+                <template #default="scope">
+                  {{ formatQtyWithUnit(scope.row.inventoryQuantity, scope.row.inventoryUnit) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="80" align="center">
+                <template #default="scope">
+                  <el-button v-if="isPoDetailParentRow(scope.row)" type="danger" link icon="Delete" @click="removeFromInboundList(inboundList.findIndex((item) => item.inboundRowKey === scope.row.inboundRowKey))"></el-button>
+                </template>
+              </el-table-column>
+            </template>
+          </PurchaseOrderDetailTreeTable>
 
-          <div style="margin-top: 20px; text-align: center">
+          <div style="margin-top: 20px; text-align: center" class="inbound-submit-bar">
+            <el-button :loading="stagingLoading" :disabled="inboundList.length === 0" @click="handleSaveStaging">暂存</el-button>
             <el-button :loading="buttonLoading" type="primary" @click="submitForm" :disabled="inboundList.length === 0">采购收货</el-button>
           </div>
         </div>
@@ -201,20 +219,44 @@
 
   <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
   <UserCollectionsDialog ref="userCollectionsDialogRef" @user-collections-call-back="userCollectionsSelectCallBack" />
+  <InventorySelectionDialog v-model="bomInventoryDialog.visible" :material-code="bomInventoryDialog.materialCode" :material-desc="bomInventoryDialog.materialDesc" :issue-qty="bomInventoryDialog.issueQty" :unit="bomInventoryDialog.unit" :general-only="false" special-inventory-flag="O" :business-code="bomInventoryDialog.supplierCode" @confirm="applyBomInventorySelection" />
+
+  <el-dialog v-model="stagingDialogVisible" title="持有数据（供应商编码 + 过账日期）" width="80%" append-to-body destroy-on-close>
+    <el-table :data="stagingSummaries" border max-height="360" empty-text="暂无暂存数据">
+      <el-table-column label="供应商编码" prop="supplierCode" min-width="120" />
+      <el-table-column label="供应商名称" prop="supplierName" min-width="160" show-overflow-tooltip />
+      <el-table-column label="过账日期" prop="postingDate" width="110" align="center" />
+      <el-table-column label="行数" prop="lineCount" width="70" align="center" />
+      <el-table-column label="暂存时间" min-width="160" align="center">
+        <template #default="scope">{{ parseTime(scope.row.savedAt) }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="140" align="center" fixed="right">
+        <template #default="scope">
+          <el-button type="primary" link @click="handleLoadStaging(scope.row)">加载</el-button>
+          <el-button type="danger" link @click="handleDeleteStaging(scope.row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+  </el-dialog>
 </template>
 
 <script setup name="PurchaseReceive" lang="ts">
 import { addPurchaseInbound, listPurchaseOrderDetail } from '@/api/wms/purchaseOrderDetail';
-import { PurchaseOrderDetailVO, PurchaseOrderDetailQuery, PurchaseOrderDetailForm } from '@/api/wms/purchaseOrderDetail/types';
+import { PurchaseOrderBomVO, PurchaseOrderDetailVO, PurchaseOrderDetailQuery, PurchaseOrderDetailForm } from '@/api/wms/purchaseOrderDetail/types';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
+import InventorySelectionDialog from '@/views/wms/inventoryDetail/components/InventorySelectionDialog.vue';
 import { ArrowDown, ArrowRight, ArrowUp, Bell, Switch } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
-import { formatQtyWithUnit } from '@/utils/ruoyi';
+import { formatQty, formatQtyWithUnit, parseTime } from '@/utils/ruoyi';
+import { buildPurchaseInboundStagingKey, listPurchaseInboundStagings, loadPurchaseInboundStaging, normalizeStagingPostingDate, PurchaseInboundStagingSummary, removePurchaseInboundStaging, resolveInboundStagingSupplier, savePurchaseInboundStaging } from '@/views/wms/purchaseInbound/utils/purchaseInboundStaging';
+import { formatApiErrorMessage } from '@/utils/formatApiErrorMessage';
+import PurchaseOrderDetailTreeTable from '@/views/wms/purchaseOrderDetail/components/PurchaseOrderDetailTreeTable.vue';
+import { cloneInboundListForPersist, findOperationParentRow, inheritPoItemNumberOnBom, isOutsourcingCategory, isPoDetailParentRow, normalizeInboundListAfterLoad, PoDetailTreeRow } from '@/views/wms/purchaseOrderDetail/utils/purchaseOrderDetailTree';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_purchase_category } = toRefs<any>(proxy?.useDict('wms_purchase_category'));
@@ -235,9 +277,13 @@ const currenIndex = ref(0);
 const resultMessage = ref('');
 const resultStatus = ref(false);
 const buttonLoading = ref(false);
+const stagingLoading = ref(false);
+const stagingDialogVisible = ref(false);
+const stagingSummaries = ref<PurchaseInboundStagingSummary[]>([]);
 const tableLoading = ref(false);
 const selectedSearchItems = ref<PurchaseOrderDetailVO[]>([]);
 const inboundList = ref<any[]>([]);
+let inboundRowKeySeq = 0;
 const inboundMode = ref<'fixed' | 'multiple'>('fixed');
 const fixedInboundForm = ref({
   locationCode: '',
@@ -246,7 +292,25 @@ const fixedInboundForm = ref({
   postingDate: null
 });
 const queryFormRef = ref<ElFormInstance>();
-const purchaseTableRef = ref<ElTableInstance>();
+const purchaseTableRef = ref<InstanceType<typeof PurchaseOrderDetailTreeTable>>();
+
+const bomInventoryDialog = reactive({
+  visible: false,
+  inboundIndex: -1,
+  bomIndex: -1,
+  materialCode: '',
+  materialDesc: '',
+  issueQty: 0,
+  unit: '',
+  supplierCode: ''
+});
+
+const toNumber = (value: unknown, fallback = 0) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+const roundQty = (value: number) => Number(value.toFixed(3));
 
 const initFormData: PurchaseOrderDetailForm = {
   id: undefined,
@@ -348,7 +412,7 @@ const columns = ref<FieldOption[]>([
   { key: 9, label: `未清数量`, visible: true, children: [] },
   { key: 10, label: `订单单位`, visible: true, children: [] },
   { key: 11, label: `需质检`, visible: false, children: [] },
-  { key: 12, label: `库存数量`, visible: false, children: [] },
+  { key: 12, label: `库存单位数量`, visible: false, children: [] },
   { key: 13, label: `库存单位`, visible: false, children: [] },
   { key: 14, label: `换算比例`, visible: false, children: [] },
   { key: 15, label: `供应商代码`, visible: true, children: [] },
@@ -432,12 +496,150 @@ const calculateInventoryQuantity = (row) => {
   row.inventoryQuantity = ((row.receivePoQuantity || 0) * (row.conversionRatio || 1)).toFixed(3);
 };
 
+const createInboundRowKey = () => `inbound-${Date.now()}-${++inboundRowKeySeq}`;
+
+const getBomConversionRatio = (bom: PurchaseOrderBomVO) => {
+  const ratio = Number(bom.conversionRatio || 1);
+  return ratio > 0 ? ratio : 1;
+};
+
+/** 本次扣料按发料单位默认值：未发库存数量按收货比例换算后再除以换算比例。 */
+const getBomConsumptionQuantity = (row: any, bom: PurchaseOrderBomVO) => {
+  const parentOpenQuantity = Number(row.openQuantity || 0);
+  const receiveQuantity = Number(row.receivePoQuantity || 0);
+  const bomOpenInventoryQuantity = Number(bom.openQuantity ?? bom.componentQty ?? 0);
+  const ratio = parentOpenQuantity > 0 ? receiveQuantity / parentOpenQuantity : 1;
+  const inventoryQuantity = bomOpenInventoryQuantity * ratio;
+  return Number((inventoryQuantity / getBomConversionRatio(bom)).toFixed(3));
+};
+
+const calculateBomInventoryQuantity = (bom: PurchaseOrderBomVO) => {
+  bom.inventoryQuantity = (Number(bom.consumeQuantity || 0) * getBomConversionRatio(bom)).toFixed(3);
+};
+
+const clearBomInventorySelection = (bom: PurchaseOrderBomVO) => {
+  bom.inventoryDetailId = undefined;
+  bom.warehouseCode = undefined;
+  bom.areaCode = undefined;
+  bom.locationCode = undefined;
+  bom.batchCode = undefined;
+  bom.specialInventoryFlag = undefined;
+  bom.businessCode = undefined;
+  bom.inventorySplitKey = undefined;
+};
+
+const syncBomConsumeQuantity = (row: any) => {
+  (row.purchaseOrderBomScheduleVoList || []).forEach((bom: PurchaseOrderBomVO) => {
+    if (bom.inventoryDetailId || bom.batchCode) {
+      return;
+    }
+    bom.consumeQuantity = getBomConsumptionQuantity(row, bom);
+    calculateBomInventoryQuantity(bom);
+  });
+};
+
+const openBomInventoryDialog = (parentRow: any, bomRow: PurchaseOrderBomVO) => {
+  if (!parentRow || !bomRow) {
+    return;
+  }
+  const inboundIndex = inboundList.value.findIndex((item) => item.inboundRowKey === parentRow.inboundRowKey);
+  const bomIndex = parentRow.purchaseOrderBomScheduleVoList?.indexOf(bomRow) ?? -1;
+  if (inboundIndex < 0 || bomIndex < 0) {
+    return;
+  }
+  if (!String(bomRow.componentMaterial || '').trim()) {
+    proxy?.$modal.msgWarning('请先确认组件料号');
+    return;
+  }
+  if (!String(parentRow.supplierCode || '').trim()) {
+    proxy?.$modal.msgWarning('缺少供应商代码，无法选择转包库存');
+    return;
+  }
+  bomInventoryDialog.inboundIndex = inboundIndex;
+  bomInventoryDialog.bomIndex = bomIndex;
+  bomInventoryDialog.materialCode = bomRow.componentMaterial || '';
+  bomInventoryDialog.materialDesc = bomRow.componentDesc || '';
+  bomInventoryDialog.unit = bomRow.inventoryUnit || '';
+  bomInventoryDialog.supplierCode = parentRow.supplierCode || '';
+  const demand = roundQty(toNumber(bomRow.inventoryQuantity));
+  bomInventoryDialog.issueQty = demand > 0 ? demand : roundQty(toNumber(bomRow.openQuantity));
+  bomInventoryDialog.visible = true;
+};
+
+const applyBomInventorySelection = ({ locations }: { locations: any[] }) => {
+  const inboundIndex = bomInventoryDialog.inboundIndex;
+  const bomIndex = bomInventoryDialog.bomIndex;
+  const parent = inboundList.value[inboundIndex];
+  const source = parent?.purchaseOrderBomScheduleVoList?.[bomIndex];
+  if (!parent || !source || !locations?.length) {
+    return;
+  }
+
+  const ratio = getBomConversionRatio(source);
+  let remainDemandInv = roundQty(toNumber(source.inventoryQuantity));
+  if (remainDemandInv <= 0) {
+    remainDemandInv = roundQty(toNumber(source.openQuantity));
+  }
+  const originBomKey = source.originBomKey || `${source.scheduleNumber || ''}_${source.componentMaterial || ''}_${source.id ?? bomIndex}`;
+
+  const splitRows = locations
+    .map((location, locationIndex) => {
+      const available = toNumber(location.availableQuantity);
+      const requested = toNumber(location.pickQty);
+      const inventoryQuantity = roundQty(Math.max(0, Math.min(requested, available, remainDemandInv)));
+      remainDemandInv = Math.max(0, roundQty(remainDemandInv - inventoryQuantity));
+      const consumeQuantity = ratio > 0 ? roundQty(inventoryQuantity / ratio) : 0;
+      const batchCode = location.batchCode || '';
+      return inheritPoItemNumberOnBom(
+        {
+        ...source,
+        originBomKey,
+        moveType: '543',
+        inventoryDetailId: location.id,
+        warehouseCode: location.warehouseCode,
+        areaCode: location.areaCode,
+        locationCode: location.locationCode,
+        batchCode,
+        specialInventoryFlag: location.specialInventoryFlag || 'O',
+        businessCode: location.businessCode || parent.supplierCode || '',
+        consumeQuantity,
+        inventoryQuantity: inventoryQuantity.toFixed(3),
+        inventorySplitKey: `${originBomKey}_${batchCode || 'batch'}_${location.rowKey || location.id || locationIndex}`
+      } as PurchaseOrderBomVO,
+        parent
+      );
+    })
+    .filter((row) => toNumber(row.inventoryQuantity) > 0);
+
+  if (!splitRows.length) {
+    proxy?.$modal.msgWarning('扣料数量必须大于 0');
+    return;
+  }
+
+  parent.purchaseOrderBomScheduleVoList.splice(bomIndex, 1, ...splitRows);
+  bomInventoryDialog.visible = false;
+  bomInventoryDialog.inboundIndex = -1;
+  bomInventoryDialog.bomIndex = -1;
+  bomInventoryDialog.issueQty = 0;
+};
+
+const handleBomConsumeQuantityChange = (bom: PurchaseOrderBomVO) => {
+  if (bom.consumeQuantity === null || bom.consumeQuantity === undefined) {
+    bom.consumeQuantity = 0;
+  }
+  calculateBomInventoryQuantity(bom);
+  if (bom.inventoryDetailId || bom.batchCode) {
+    clearBomInventorySelection(bom);
+  }
+};
+
 const handleReceivePoQuantityChange = (row) => {
   if (row.receivePoQuantity === null || row.receivePoQuantity === undefined || row.receivePoQuantity === '') {
     row.inventoryQuantity = 0;
   } else {
     calculateInventoryQuantity(row);
   }
+  syncBomConsumeQuantity(row);
 };
 
 const handleQuery = () => {
@@ -451,11 +653,12 @@ const resetQuery = () => {
   handleQuery();
 };
 
-const handleSelectionChange = (selection: PurchaseOrderDetailVO[]) => {
-  selectedSearchItems.value = selection;
-  ids.value = selection.map((item) => item.id);
-  single.value = selection.length != 1;
-  multiple.value = !selection.length;
+const handleSelectionChange = (selection: PoDetailTreeRow[]) => {
+  const parents = selection.filter(isPoDetailParentRow) as PurchaseOrderDetailVO[];
+  selectedSearchItems.value = parents;
+  ids.value = parents.map((item) => item.id);
+  single.value = parents.length != 1;
+  multiple.value = !parents.length;
 };
 
 const addSelectedToInboundList = () => {
@@ -463,13 +666,38 @@ const addSelectedToInboundList = () => {
     proxy?.$modal.msgWarning('请先选择要添加的采购订单明细');
     return;
   }
-  const newItems = selectedSearchItems.value.map((item) => ({
-    ...item,
-    receivePoQuantity: item.openQuantity,
-    storageLocation: '',
-    conversionRatio: item.conversionRatio || 1,
-    inventoryQuantity: (item.openQuantity * (item.conversionRatio || 1)).toFixed(3)
-  }));
+  const newItems = selectedSearchItems.value.map((item) => {
+    const outsourcing = isOutsourcingCategory(item.poCategory);
+    const bomList = outsourcing
+      ? (item.purchaseOrderBomScheduleVoList || []).map((bom) => {
+          const consumeQuantity = getBomConsumptionQuantity({ ...item, receivePoQuantity: item.openQuantity }, bom);
+          const conversionRatio = getBomConversionRatio(bom);
+          const originBomKey = `${bom.scheduleNumber || ''}_${bom.componentMaterial || ''}_${bom.id ?? ''}`;
+          return inheritPoItemNumberOnBom(
+            {
+              ...bom,
+              moveType: '543',
+              conversionRatio,
+              originBomKey,
+              consumeQuantity,
+              inventoryQuantity: (consumeQuantity * conversionRatio).toFixed(3)
+            },
+            item
+          );
+        })
+      : [];
+    return {
+      ...item,
+      inboundRowKey: createInboundRowKey(),
+      // 外层收货行默认 101；托外加工才保留下方 543 BOM。
+      moveType: '101',
+      purchaseOrderBomScheduleVoList: bomList,
+      receivePoQuantity: item.openQuantity,
+      storageLocation: '',
+      conversionRatio: item.conversionRatio || 1,
+      inventoryQuantity: (item.openQuantity * (item.conversionRatio || 1)).toFixed(3)
+    };
+  });
   inboundList.value.push(...newItems);
   proxy?.$modal.msgSuccess(`成功添加${newItems.length}条记录到入库列表`);
   purchaseTableRef.value?.clearSelection();
@@ -520,6 +748,121 @@ const userCollectionsSelectCallBack = (record: any) => {
   }
 };
 
+const buildMissingBatchBomMessage = (items: any[]) => {
+  const detailLines: string[] = [];
+  items.forEach((item) => {
+    const rowNo = inboundList.value.findIndex((row) => row === item) + 1;
+    (item.purchaseOrderBomScheduleVoList || []).forEach((bom: PurchaseOrderBomVO, bomIndex: number) => {
+      const needBatch = (toNumber(bom.consumeQuantity) > 0 || toNumber(bom.inventoryQuantity) > 0) && !String(bom.batchCode || '').trim();
+      if (!needBatch) {
+        return;
+      }
+      detailLines.push(`序号${rowNo || '-'} 料号 ${item.materialCode || '-'}\n  组件 ${bom.componentMaterial || '-'}（BOM第${bomIndex + 1}行）`);
+    });
+  });
+  if (!detailLines.length) {
+    return '';
+  }
+  return `请先为以下543扣料明细选择批次：\n${detailLines.join('\n')}`;
+};
+
+const refreshStagingSummaries = async () => {
+  stagingSummaries.value = await listPurchaseInboundStagings();
+};
+
+const openStagingDialog = async () => {
+  await refreshStagingSummaries();
+  stagingDialogVisible.value = true;
+};
+
+const applyStagingPayload = (payload: ReturnType<typeof loadPurchaseInboundStaging>) => {
+  if (!payload) {
+    return false;
+  }
+  inboundMode.value = payload.inboundMode;
+  fixedInboundForm.value = { ...payload.fixedInboundForm };
+  inboundList.value = normalizeInboundListAfterLoad(JSON.parse(JSON.stringify(payload.inboundList)));
+  resultMessage.value = '';
+  resultStatus.value = false;
+  return true;
+};
+
+const handleSaveStaging = async () => {
+  if (inboundList.value.length === 0) {
+    proxy?.$modal.msgWarning('入库列表为空，无法暂存');
+    return;
+  }
+  const supplier = resolveInboundStagingSupplier(inboundList.value);
+  if (!supplier) {
+    proxy?.$modal.msgWarning('暂存要求同一供应商：请确保入库列表中的供应商编码一致');
+    return;
+  }
+  const postingDate = normalizeStagingPostingDate(fixedInboundForm.value.postingDate);
+  if (!fixedInboundForm.value.postingDate) {
+    fixedInboundForm.value.postingDate = postingDate;
+  }
+  stagingLoading.value = true;
+  try {
+    const summary = await savePurchaseInboundStaging(
+      {
+        receiveType: '1',
+        inboundMode: inboundMode.value,
+        fixedInboundForm: { ...fixedInboundForm.value, postingDate },
+        inboundList: cloneInboundListForPersist(inboundList.value)
+      },
+      supplier.supplierCode,
+      supplier.supplierName
+    );
+    await refreshStagingSummaries();
+    resultStatus.value = true;
+    resultMessage.value = `已暂存：${summary.supplierCode} / ${summary.postingDate}（${summary.lineCount} 行）`;
+    proxy?.$modal.msgSuccess('暂存成功');
+  } finally {
+    stagingLoading.value = false;
+  }
+};
+
+const handleLoadStaging = async (row: PurchaseInboundStagingSummary) => {
+  const payload = await loadPurchaseInboundStaging(row.storageKey);
+  if (!payload) {
+    proxy?.$modal.msgWarning('暂存数据不存在或已损坏');
+    await refreshStagingSummaries();
+    return;
+  }
+  if (inboundList.value.length > 0) {
+    try {
+      await proxy?.$modal.confirm(`将加载暂存 ${row.supplierCode} / ${row.postingDate}，是否覆盖当前入库列表？`);
+    } catch {
+      return;
+    }
+  }
+  applyStagingPayload(payload);
+  stagingDialogVisible.value = false;
+  transferExpanded.value = true;
+  proxy?.$modal.msgSuccess('已加载暂存数据');
+};
+
+const handleDeleteStaging = async (row: PurchaseInboundStagingSummary) => {
+  try {
+    await proxy?.$modal.confirm(`确认删除暂存 ${row.supplierCode} / ${row.postingDate}？`);
+  } catch {
+    return;
+  }
+  await removePurchaseInboundStaging(row.storageKey);
+  await refreshStagingSummaries();
+  proxy?.$modal.msgSuccess('已删除暂存');
+};
+
+const clearCurrentStagingIfPosted = async () => {
+  const supplier = resolveInboundStagingSupplier(inboundList.value);
+  if (!supplier) {
+    return;
+  }
+  const postingDate = normalizeStagingPostingDate(fixedInboundForm.value.postingDate);
+  await removePurchaseInboundStaging(buildPurchaseInboundStagingKey(supplier.supplierCode, postingDate));
+  await refreshStagingSummaries();
+};
+
 const submitForm = async () => {
   const validPurchaseInboundList = inboundList.value.filter((item) => item.receivePoQuantity > 0);
   resultStatus.value = true;
@@ -564,15 +907,35 @@ const submitForm = async () => {
     return;
   }
 
+  if (hasOutsourcing) {
+    const missingBatchMessage = buildMissingBatchBomMessage(validPurchaseInboundList);
+    if (missingBatchMessage) {
+      resultMessage.value = missingBatchMessage;
+      resultStatus.value = false;
+      return;
+    }
+  }
+
   buttonLoading.value = true;
   try {
-    const purchaseInboundRequests = validPurchaseInboundList.map((item) => ({
-      ...item,
-      receivePoQuantity: item.receivePoQuantity,
-      receivePoUnit: item.orderUnit,
-      receiveQuantity: item.inventoryQuantity,
-      receiveUnit: item.inventoryUnit
-    }));
+    const purchaseInboundRequests = validPurchaseInboundList.map((item) => {
+      const { children, isPoDetailHead, rowKey, ...itemRest } = item;
+      return {
+        ...itemRest,
+        purchaseOrderBomScheduleVoList: (item.purchaseOrderBomScheduleVoList || []).map((bom) => {
+          const { children: bomChildren, isPoDetailHead: bomHead, rowKey: bomRowKey, parentInboundRowKey, ...bomRest } = bom as Record<string, any>;
+          const withItem = inheritPoItemNumberOnBom({ ...bomRest } as PurchaseOrderBomVO, item);
+          return {
+            ...withItem,
+            inventoryQuantity: bom.inventoryQuantity ?? (Number(bom.consumeQuantity || 0) * getBomConversionRatio(bom)).toFixed(3)
+          };
+        }),
+        receivePoQuantity: item.receivePoQuantity,
+        receivePoUnit: item.orderUnit,
+        receiveQuantity: item.inventoryQuantity,
+        receiveUnit: item.inventoryUnit
+      };
+    });
     const res: any = await addPurchaseInbound({
       receiveType: '1',
       lfsnr: fixedInboundForm.value.lfsnr || '',
@@ -581,20 +944,22 @@ const submitForm = async () => {
       purchaseOrderInboundBoList: purchaseInboundRequests
     });
     if (res.code !== HttpStatus.SUCCESS) {
-      resultMessage.value = res.msg;
+      resultMessage.value = formatApiErrorMessage(res.msg) || '入库失败';
       resultStatus.value = false;
       return;
     }
     resultMessage.value = res.msg || `采购入库成功${purchaseInboundRequests.length}条记录`;
     resultStatus.value = true;
+    await clearCurrentStagingIfPosted();
     inboundList.value = [];
     fixedInboundForm.value.locationCode = '';
     fixedInboundForm.value.lfsnr = '';
     fixedInboundForm.value.bktxt = '';
     fixedInboundForm.value.postingDate = null;
     handleQuery();
-  } catch (error) {
-    resultMessage.value = error.message || '入库失败';
+  } catch (error: any) {
+    const raw = typeof error === 'string' ? error : error?.message;
+    resultMessage.value = formatApiErrorMessage(raw) || '入库失败';
     resultStatus.value = false;
   } finally {
     buttonLoading.value = false;
@@ -602,6 +967,7 @@ const submitForm = async () => {
 };
 
 onMounted(() => {
+  void refreshStagingSummaries();
   getList();
 });
 </script>
@@ -686,6 +1052,13 @@ onMounted(() => {
   cursor: pointer;
   font-size: 16px;
 }
+.inbound-submit-bar {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .rotate-button {
   transform: rotate(90deg);
   margin: 0 auto;
@@ -695,5 +1068,74 @@ onMounted(() => {
   color: var(--el-text-color-regular);
   white-space: nowrap;
   margin-left: 2px;
+}
+
+.qty-convert-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.qty-convert-cell :deep(.el-input-number) {
+  width: 132px;
+}
+
+.qty-convert-unit {
+  flex-shrink: 0;
+  min-width: 24px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+  text-align: left;
+}
+
+.qty-convert-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+  flex-shrink: 0;
+}
+
+.qty-convert-result {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 88px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--el-fill-color);
+  line-height: 22px;
+}
+
+.qty-convert-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.inventory-source-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.batch-code-text {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  word-break: break-all;
+}
+
+.submit-result-text {
+  white-space: pre-line;
+  text-align: left;
+  line-height: 1.6;
+  word-break: break-word;
 }
 </style>

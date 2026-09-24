@@ -36,7 +36,7 @@ export const printTemplateAdapter = {
     return o;
   },
 
-  /** GET sampleData -> preview rows */
+  /** GET sampleData -> preview data (single object or batch array) */
   mapSampleDataPayload(payload: unknown): Record<string, unknown>[] | null {
     if (Array.isArray(payload)) return payload as Record<string, unknown>[];
     if (!payload || typeof payload !== 'object') return null;
@@ -45,20 +45,45 @@ export const printTemplateAdapter = {
     for (const k of candidates) {
       const v = o[k];
       if (Array.isArray(v)) return v as Record<string, unknown>[];
+      if (v && typeof v === 'object') return [v as Record<string, unknown>];
     }
-    return null;
+    return [o];
   },
 
-  /** GET widgetOptions -> palette array */
+  /** GET widgetOptions/businessFields -> self-hosted designer palette fields */
   mapWidgetOptionsPayload(payload: unknown): WidgetOption[] | null {
-    if (Array.isArray(payload)) return payload as WidgetOption[];
+    let rows: unknown[] | null = Array.isArray(payload) ? payload : null;
     if (!payload || typeof payload !== 'object') return null;
-    const o = payload as Record<string, unknown>;
-    for (const k of ['rows', 'list', 'data'] as const) {
-      const v = o[k];
-      if (Array.isArray(v)) return v as WidgetOption[];
+    if (!rows) {
+      const o = payload as Record<string, unknown>;
+      for (const k of ['rows', 'list', 'records', 'data'] as const) {
+        const v = o[k];
+        if (Array.isArray(v)) {
+          rows = v;
+          break;
+        }
+      }
     }
-    return null;
+    if (!rows) return null;
+    return rows
+      .map((item): WidgetOption | null => {
+        if (!item || typeof item !== 'object') return null;
+        const row = item as Record<string, unknown>;
+        if (row.type && row.title && row.value) return row as unknown as WidgetOption;
+        const fieldKey = String(row.fieldKey ?? row.key ?? row.value ?? row.prop ?? '').trim();
+        if (!fieldKey) return null;
+        return {
+          type: 'braid-txt',
+          title: String(row.fieldLabel ?? row.label ?? row.name ?? fieldKey),
+          value: `{${fieldKey}}`,
+          name: fieldKey,
+          category: 'common',
+          width: 150,
+          height: 30,
+          isEdit: false
+        };
+      })
+      .filter((item): item is WidgetOption => item !== null);
   },
 
   /** POST save body wrapper */

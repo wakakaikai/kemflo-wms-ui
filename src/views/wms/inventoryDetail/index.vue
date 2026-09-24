@@ -156,17 +156,17 @@
         <el-form-item label="单位" prop="unit">
           <el-input v-model="form.unit" placeholder="请输入单位" />
         </el-form-item>
-        <el-form-item label="库位编码" prop="locationCode">
+        <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
+          <el-select v-model="form.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable @change="handleSpecialInventoryFlagChange">
+            <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="!isSubcontractSpecialInventory(form.specialInventoryFlag)" label="库位编码" prop="locationCode">
           <el-input v-model="form.locationCode" placeholder="请输入库位编码" clearable>
             <template #append>
               <el-button icon="Search" @click="showStorageLocationDialog()"></el-button>
             </template>
           </el-input>
-        </el-form-item>
-        <el-form-item label="特殊库存标识" prop="specialInventoryFlag">
-          <el-select v-model="form.specialInventoryFlag" placeholder="请选择特殊库存标识" filterable clearable>
-            <el-option v-for="dict in wms_inventory_special_flag" :key="dict.value" :label="dict.label" :value="dict.value" />
-          </el-select>
         </el-form-item>
         <el-form-item label="批次码" prop="batchCode">
           <el-input v-model="form.batchCode" placeholder="请输入批次码" />
@@ -401,6 +401,9 @@ const initFormData: InventoryDetailForm = {
   sapMaterialItem: undefined,
   remark: undefined
 };
+
+const isSubcontractSpecialInventory = (flag?: string) => String(flag ?? '').toUpperCase() === 'O';
+
 const data = reactive<PageData<InventoryDetailForm, InventoryDetailQuery>>({
   form: { ...initFormData },
   queryParams: {
@@ -436,7 +439,34 @@ const data = reactive<PageData<InventoryDetailForm, InventoryDetailQuery>>({
     id: [{ required: true, message: '唯一ID不能为空', trigger: 'blur' }],
     itemCode: [{ required: true, message: '物料编码/设备编号不能为空' }],
     itemName: [{ required: true, message: '物料名称/设备名称不能为空', trigger: 'blur' }],
-    locationCode: [{ required: true, message: '请输入库位编码' }],
+    locationCode: [
+      {
+        validator: (_rule, value, callback) => {
+          if (isSubcontractSpecialInventory(data.form.specialInventoryFlag)) {
+            callback();
+            return;
+          }
+          if (!value) {
+            callback(new Error('请输入库位编码'));
+            return;
+          }
+          callback();
+        },
+        trigger: 'blur'
+      }
+    ],
+    businessCode: [
+      {
+        validator: (_rule, value, callback) => {
+          if (isSubcontractSpecialInventory(data.form.specialInventoryFlag) && !value) {
+            callback(new Error('转包库存请输入业务伙伴'));
+            return;
+          }
+          callback();
+        },
+        trigger: 'blur'
+      }
+    ],
     inventoryType: [{ required: true, message: '请选择库存类型', trigger: 'blur' }],
     quantity: [{ required: true, message: '请输出库数量存数量', trigger: 'blur' }]
   }
@@ -457,6 +487,16 @@ const upload = reactive<ImportOption>({
   url: import.meta.env.VITE_APP_BASE_API + '/wms/inventoryDetail/importData'
 });
 const { queryParams, form, rules } = toRefs(data);
+
+const handleSpecialInventoryFlagChange = () => {
+  if (!isSubcontractSpecialInventory(form.value.specialInventoryFlag)) {
+    return;
+  }
+  form.value.locationCode = undefined;
+  form.value.warehouseCode = undefined;
+  form.value.areaCode = undefined;
+  inventoryDetailFormRef.value?.clearValidate('locationCode');
+};
 
 const uploadRef = ref<ElUploadInstance>();
 

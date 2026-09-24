@@ -1,663 +1,605 @@
 <template>
-  <div class="app-container print-template-page">
-    <header class="designer-header">
-      <div class="designer-header__top">
-        <el-button class="designer-back" text @click="goBack">
+  <div class="print-studio">
+    <header class="studio-header">
+      <div class="studio-identity">
+        <el-button text class="back-button" @click="goBack">
           <el-icon><ArrowLeft /></el-icon>
-          {{ t('printDesigner.back') }}
+          模板库
         </el-button>
-        <div class="designer-header__title-wrap">
-          <h1 class="designer-header__title">{{ t('printDesigner.designerTitle') }}</h1>
-          <el-tag v-if="activeCode" size="small" effect="plain" type="info">{{ activeCode }}</el-tag>
+        <span class="header-divider" />
+        <div class="title-block">
+          <div class="title-line">
+            <h1>{{ templateName || '未命名模板' }}</h1>
+            <span class="template-code">{{ templateCode || 'NO CODE' }}</span>
+            <span v-if="migratedLegacy" class="migration-badge">旧版已迁移</span>
+          </div>
+          <p>{{ saveStateText }}</p>
         </div>
-        <el-tooltip placement="bottom-end" :show-after="200">
-          <template #content>
-            <span>{{ t('printDesigner.alertLodop') }}</span>
-          </template>
-          <el-button class="designer-tip-btn" text circle>
-            <el-icon><InfoFilled /></el-icon>
+      </div>
+
+      <div class="studio-actions">
+        <el-tooltip content="刷新业务字段与样例数据" placement="bottom">
+          <el-button :loading="dataLoading" @click="reloadBackendData">
+            <el-icon><Refresh /></el-icon>
+            刷新数据
           </el-button>
         </el-tooltip>
+        <el-button @click="dataDrawerVisible = true">
+          <el-icon><DataAnalysis /></el-icon>
+          数据源
+          <span class="count-badge">{{ businessFields.length }}</span>
+        </el-button>
+        <el-button @click="exportTemplate">
+          <el-icon><Download /></el-icon>
+          导出
+        </el-button>
+        <el-button @click="importInputRef?.click()">
+          <el-icon><Upload /></el-icon>
+          导入
+        </el-button>
+        <el-button type="primary" :loading="saving" @click="saveCurrent">
+          <el-icon><DocumentChecked /></el-icon>
+          保存模板
+        </el-button>
       </div>
-
-      <div class="designer-toolbar">
-        <div class="designer-toolbar__search">
-          <span class="designer-toolbar__label">{{ t('printDesigner.toolbarLoad') }}</span>
-          <el-input
-            v-model="templateCode"
-            class="designer-field designer-field--code"
-            :placeholder="t('printDesigner.codePlaceholder')"
-            clearable
-            @keyup.enter="loadFromApi"
-            @clear="onSearchFieldChange"
-            @change="onCodeChange"
-          >
-            <template #prefix>
-              <el-icon><Tickets /></el-icon>
-            </template>
-          </el-input>
-          <el-input
-            v-model="templateName"
-            class="designer-field designer-field--name"
-            :placeholder="t('printDesigner.namePlaceholder')"
-            clearable
-            @keyup.enter="loadFromApi"
-            @clear="onTemplateNameChange"
-            @change="onTemplateNameChange"
-          >
-            <template #prefix>
-              <el-icon><Document /></el-icon>
-            </template>
-          </el-input>
-          <el-button type="primary" :loading="loading" @click="loadFromApi">
-            <el-icon class="el-icon--left"><Search /></el-icon>
-            {{ t('printDesigner.searchAndLoad') }}
-          </el-button>
-        </div>
-
-        <div class="designer-toolbar__divider" />
-
-        <div class="designer-toolbar__data">
-          <el-button class="designer-link-btn" text type="primary" @click="routesDialogVisible = true">
-            <el-icon><Link /></el-icon>
-            {{ t('printDesigner.openRoutesDialog') }}
-          </el-button>
-          <el-dropdown trigger="click" @command="onDatasetMenuCommand">
-            <el-button type="primary" plain>
-              <el-icon class="el-icon--left"><Plus /></el-icon>
-              {{ t('printDesigner.datasetMenu.trigger') }}
-              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="api">{{ t('printDesigner.datasetMenu.api') }}</el-dropdown-item>
-                <el-dropdown-item disabled>{{ t('printDesigner.datasetMenu.sqlPlaceholder') }}</el-dropdown-item>
-                <el-dropdown-item disabled>{{ t('printDesigner.datasetMenu.javaPlaceholder') }}</el-dropdown-item>
-                <el-dropdown-item disabled>{{ t('printDesigner.datasetMenu.jsonPlaceholder') }}</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-      </div>
+      <input ref="importInputRef" class="file-input" type="file" accept="application/json,.json" @change="importTemplate" />
     </header>
 
-    <el-dialog v-model="routesDialogVisible" :title="t('printDesigner.apiConfig.title')" width="min(640px, 94vw)" append-to-body>
-      <el-descriptions :column="1" border size="small">
-        <el-descriptions-item :label="t('printDesigner.apiConfig.prefixLabel')">{{ apiEndpoints.prefix }}</el-descriptions-item>
-        <el-descriptions-item :label="`${t('printDesigner.apiConfig.list')} (${t('printDesigner.apiConfig.methodGet')})`">{{ apiEndpoints.list }}</el-descriptions-item>
-        <el-descriptions-item :label="`${t('printDesigner.apiConfig.detail')} (${t('printDesigner.apiConfig.methodGet')})`">{{ apiEndpoints.detail }}</el-descriptions-item>
-        <el-descriptions-item :label="`${t('printDesigner.apiConfig.save')} (${t('printDesigner.apiConfig.methodPost')})`">{{ apiEndpoints.save }}</el-descriptions-item>
-        <el-descriptions-item :label="`${t('printDesigner.apiConfig.widgetOptions')} (${t('printDesigner.apiConfig.methodGet')})`">{{ apiEndpoints.widgetOptions }}</el-descriptions-item>
-        <el-descriptions-item :label="`${t('printDesigner.apiConfig.sampleData')} (${t('printDesigner.apiConfig.methodGet')})`">{{ apiEndpoints.sampleData }}</el-descriptions-item>
-      </el-descriptions>
-      <p class="api-config-note">{{ t('printDesigner.apiConfig.baseNote') }}</p>
-      <p class="api-config-note">{{ t('printDesigner.apiConfig.adapterNote') }}</p>
-      <p class="api-config-note muted">{{ t('printDesigner.apiConfig.envHint') }}</p>
+    <div v-if="loadError" class="load-alert">
+      <el-alert :title="loadError" type="warning" show-icon :closable="false" />
+    </div>
+
+    <main v-loading="loading" class="studio-workbench">
+      <PrintDesigner v-if="designerReady" ref="designerRef" :initial-template="templateData" :fields="businessFields" :is-edit="true" :show-help="true" :upload-image="uploadImage" @preview="openPreview" @save="saveTemplateJson" />
+    </main>
+
+    <el-drawer v-model="dataDrawerVisible" title="打印数据源" size="min(640px, 94vw)" append-to-body>
+      <div class="drawer-summary">
+        <div class="summary-card">
+          <span>业务字段</span>
+          <strong>{{ businessFields.length }}</strong>
+        </div>
+        <div class="summary-card">
+          <span>样例记录</span>
+          <strong>{{ sampleRows.length }}</strong>
+        </div>
+      </div>
+
+      <el-tabs>
+        <el-tab-pane label="字段字典">
+          <el-table :data="businessFields" border size="small" max-height="calc(100vh - 260px)">
+            <el-table-column prop="fieldLabel" label="显示名称" min-width="140" />
+            <el-table-column prop="fieldKey" label="字段路径" min-width="210" show-overflow-tooltip>
+              <template #default="{ row }"
+                ><code>{{ row.fieldKey }}</code></template
+              >
+            </el-table-column>
+            <el-table-column prop="fieldType" label="类型" width="92" align="center" />
+          </el-table>
+          <el-empty v-if="!businessFields.length" description="暂无字段，请在后台配置业务字段或样例数据" />
+        </el-tab-pane>
+        <el-tab-pane label="样例数据">
+          <pre class="json-viewer">{{ formattedSampleData }}</pre>
+        </el-tab-pane>
+      </el-tabs>
+    </el-drawer>
+
+    <el-dialog v-model="previewVisible" title="打印预览" width="min(1180px, 96vw)" top="3vh" append-to-body destroy-on-close class="worm-preview-dialog">
+      <div class="preview-meta">
+        <span>{{ templateName }}</span>
+        <span>{{ previewPages }} 页</span>
+        <span>{{ sampleRows.length ? '使用后台样例数据' : '暂无样例数据' }}</span>
+      </div>
+      <div class="preview-stage">
+        <PrintHtmlPreview v-if="previewTemplate" ref="previewRef" :template-json="previewTemplate" :print-data="activeSampleData" @rendered="previewPages = $event" />
+      </div>
       <template #footer>
-        <el-button type="primary" @click="routesDialogVisible = false">{{ t('printDesigner.dialogDone') }}</el-button>
+        <el-button @click="previewVisible = false">关闭</el-button>
+        <el-button type="primary" @click="previewRef?.print()">
+          <el-icon><Printer /></el-icon>
+          浏览器打印
+        </el-button>
       </template>
     </el-dialog>
-
-    <el-dialog v-model="pickVisible" :title="t('printDesigner.pickTemplateTitle')" width="560px" append-to-body>
-      <p class="pick-hint">{{ t('printDesigner.pickTemplateHint') }}</p>
-      <el-table :data="pickCandidates" border stripe size="small" highlight-current-row @row-click="onPickRow">
-        <el-table-column :label="t('printTemplate.templateCode')" prop="templateCode" min-width="140" />
-        <el-table-column :label="t('printTemplate.templateName')" prop="templateName" min-width="160" show-overflow-tooltip />
-        <el-table-column :label="t('printTemplate.updateTime')" prop="updateTime" width="160" />
-        <el-table-column :label="t('printTemplate.operations')" width="88" align="center">
-          <template #default="{ row }">
-            <el-button link type="primary" @click.stop="confirmPick(row)">{{ t('printDesigner.loadPick') }}</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-dialog>
-
-    <PrintApiDatasetDialog v-model="apiDatasetDialogVisible" :print-template="template" @apply-preview-rows="onApplyDatasetPreview" />
-
-    <PrintDesigner v-model="template" :widget-options="widgetOptions" :print-data="printData" :lodop-license="lodopLicense" @save="onSave" />
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, watch, onActivated, computed } from 'vue';
+<script setup lang="ts" name="PrintTemplateDesigner">
+import { computed, nextTick, onActivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useI18n } from 'vue-i18n';
 import { ElMessage } from 'element-plus';
-import { ArrowDown, ArrowLeft, Plus, Search, InfoFilled, Tickets, Document, Link } from '@element-plus/icons-vue';
-import { PrintDesigner } from '@/components/print-designer';
-import { createBlankTemplate, defaultWidgetOptions, ensureShapePaletteWidgets } from '@/components/print-designer';
-import type { LodopLicenseInfo, PrintTemplate, WidgetOption } from '@/components/print-designer';
-import { normalizeLineTemplateItem } from '@/components/print-designer/utils/lineItems';
-import { getPrintTemplate, getPrintSampleData, listPrintWidgetOptions, listPrintTemplate, savePrintTemplate, type PrintTemplateVo } from '@/api/wms/printTemplate';
-import { getPrintTemplateApiPrefix, printTemplateAdapter, printTemplateUrls } from '@/config/printTemplate';
-import { localGetPrintTemplate, localSavePrintTemplate, localListPrintTemplates } from '@/utils/printTemplateStorage';
-import PrintApiDatasetDialog from '@/components/print-designer/components/PrintApiDatasetDialog.vue';
+import { ArrowLeft, DataAnalysis, DocumentChecked, Download, Printer, Refresh, Upload } from '@element-plus/icons-vue';
+import { PrintDesigner, PrintHtmlPreview, createDefaultTemplate, type PrintBusinessField } from '@worm-vue3-print/canvas';
+import '@worm-vue3-print/canvas/style.css';
+import { getPrintSampleData, getPrintTemplate, listPrintWidgetOptions, savePrintTemplate, type PrintTemplateVo } from '@/api/wms/printTemplate';
+import { printTemplateAdapter } from '@/config/printTemplate';
+import { HttpStatus } from '@/enums/RespEnum';
+import { inferBusinessFields, isWormTemplate, mapBusinessFields, parseSampleRows, parseTemplateContent, type WormTemplate } from './model';
 
-const { t } = useI18n();
+type DesignerExpose = InstanceType<typeof PrintDesigner> & {
+  getTemplateJson: () => WormTemplate;
+  validateTemplate?: () => Array<{ message: string }>;
+};
+
 const route = useRoute();
 const router = useRouter();
-
-const DESIGNER_ROUTE_NAME = 'PrintTemplateDesigner';
-
-function isDesignerRoute(): boolean {
-  return route.name === DESIGNER_ROUTE_NAME;
-}
-
-const template = ref<PrintTemplate>(createBlankTemplate());
-const widgetOptions = ref<WidgetOption[]>([...defaultWidgetOptions]);
-const printData = ref<Record<string, unknown>[]>([]);
+const designerRef = ref<DesignerExpose | null>(null);
+const previewRef = ref<InstanceType<typeof PrintHtmlPreview> | null>(null);
+const importInputRef = ref<HTMLInputElement | null>(null);
+const templateData = ref<WormTemplate>(createDefaultTemplate());
+const businessFields = ref<PrintBusinessField[]>([]);
+const sampleRows = ref<Record<string, unknown>[]>([]);
+const currentVo = ref<PrintTemplateVo>({});
 const templateCode = ref('');
 const templateName = ref('');
 const loading = ref(false);
-const activeCode = ref('');
+const dataLoading = ref(false);
+const saving = ref(false);
+const designerReady = ref(false);
+const loadError = ref('');
+const dataDrawerVisible = ref(false);
+const previewVisible = ref(false);
+const previewTemplate = ref<Record<string, any> | null>(null);
+const previewPages = ref(0);
+const migratedLegacy = ref(false);
+const lastSavedAt = ref('');
 
-const routesDialogVisible = ref(false);
-const apiDatasetDialogVisible = ref(false);
-const pickVisible = ref(false);
-const pickCandidates = ref<PrintTemplateVo[]>([]);
-
-function onDatasetMenuCommand(cmd: string) {
-  if (cmd === 'api') {
-    apiDatasetDialogVisible.value = true;
-  }
-}
-
-const apiEndpoints = computed(() => {
-  const u = printTemplateUrls();
-  const code = templateCode.value.trim() || activeCode.value || '{code}';
-  return {
-    prefix: getPrintTemplateApiPrefix(),
-    list: u.list,
-    detail: u.detail(code),
-    save: u.save,
-    widgetOptions: u.widgetOptions,
-    sampleData: u.sampleData
-  };
+const formattedSampleData = computed(() => JSON.stringify(sampleRows.value, null, 2));
+const activeSampleData = computed(() => sampleRows.value[0] || {});
+const saveStateText = computed(() => {
+  if (saving.value) return '正在保存模板…';
+  if (lastSavedAt.value) return `已保存 · ${lastSavedAt.value}`;
+  return '毫米级画布 · 字段绑定 · 同构打印预览';
 });
 
-const lodopLicense = ref<LodopLicenseInfo | undefined>(import.meta.env.VITE_LODOP_LICENSE ? (JSON.parse(import.meta.env.VITE_LODOP_LICENSE) as LodopLicenseInfo) : undefined);
+function routeValue(value: unknown) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw == null ? '' : String(raw).trim();
+}
 
 function goBack() {
-  router.push({ path: '/wms/print-template/index' });
+  router.push('/wms/print-template/index');
 }
 
-function onApplyDatasetPreview(rows: Record<string, unknown>[]) {
-  printData.value = rows;
-  ElMessage.success(t('printDesigner.apiDataset.appliedPreview'));
+function parseStoredFields(raw: PrintTemplateVo['businessFields'] | PrintTemplateVo['widgetOptions']) {
+  return mapBusinessFields(raw, sampleRows.value);
 }
 
-function parseTemplateContent(raw: PrintTemplateVo['templateContent']): PrintTemplate {
-  const decoded = printTemplateAdapter.decodeTemplateContent(raw as unknown);
-  if (decoded && typeof decoded === 'object') return decoded as PrintTemplate;
-  if (!raw) return createBlankTemplate();
-  if (typeof raw === 'string') {
-    try {
-      return JSON.parse(raw) as PrintTemplate;
-    } catch {
-      return createBlankTemplate();
-    }
-  }
-  return raw as PrintTemplate;
+async function remountDesigner() {
+  designerReady.value = false;
+  await nextTick();
+  designerReady.value = true;
 }
 
-function normalizeLoadedTemplate(temp: PrintTemplate): PrintTemplate {
-  return {
-    ...temp,
-    tempItems: (temp.tempItems || []).map((i) => normalizeLineTemplateItem({ ...i }))
-  };
+function applyDetail(vo: PrintTemplateVo) {
+  currentVo.value = vo;
+  templateCode.value = String(vo.templateCode || templateCode.value).trim();
+  templateName.value = String(vo.templateName || templateName.value || templateCode.value).trim();
+  const raw =
+    typeof vo.templateContent === 'string'
+      ? (() => {
+          try {
+            return JSON.parse(vo.templateContent);
+          } catch {
+            return undefined;
+          }
+        })()
+      : vo.templateContent;
+  migratedLegacy.value = !!raw && !isWormTemplate(raw);
+  templateData.value = parseTemplateContent(vo.templateContent);
+  const stored = parseStoredFields(vo.businessFields ?? vo.widgetOptions);
+  if (stored.length) businessFields.value = stored;
 }
 
-function resolveDisplayName(vo: PrintTemplateVo, parsed: PrintTemplate): string {
-  const fromVo = String(vo.templateName ?? '').trim();
-  if (fromVo) return fromVo;
-  const fromContent = String(parsed.title ?? '').trim();
-  if (fromContent) return fromContent;
-  const fromRoute = String((Array.isArray(route.query.name) ? route.query.name[0] : route.query.name) ?? '').trim();
-  return fromRoute;
-}
-
-function applyVoToDesigner(vo: PrintTemplateVo) {
-  const parsed = normalizeLoadedTemplate(parseTemplateContent(vo.templateContent));
-  template.value = parsed;
-  const displayName = resolveDisplayName(vo, parsed);
-  if (displayName) {
-    templateName.value = displayName;
-    template.value.title = displayName;
-  }
-  if (vo.templateCode) {
-    templateCode.value = vo.templateCode;
-    activeCode.value = vo.templateCode;
-  }
-  if (typeof vo.widgetOptions === 'string') {
-    try {
-      widgetOptions.value = ensureShapePaletteWidgets(JSON.parse(vo.widgetOptions) as WidgetOption[]);
-    } catch {
-      /* keep */
-    }
-  } else if (Array.isArray(vo.widgetOptions)) {
-    widgetOptions.value = ensureShapePaletteWidgets(vo.widgetOptions);
-  }
-}
-
-function matchKeyword(row: PrintTemplateVo, kw: string): boolean {
-  const code = String(row.templateCode || '').toLowerCase();
-  const name = String(row.templateName || '').toLowerCase();
-  return code === kw || name === kw || code.includes(kw) || name.includes(kw);
-}
-
-function rankMatch(row: PrintTemplateVo, codeKw: string, nameKw: string): number {
-  const code = String(row.templateCode || '').toLowerCase();
-  const name = String(row.templateName || '').toLowerCase();
-  if (codeKw && code === codeKw) return 0;
-  if (nameKw && name === nameKw) return 1;
-  if (codeKw && code.includes(codeKw)) return 2;
-  if (nameKw && name.includes(nameKw)) return 3;
-  return 9;
-}
-
-async function findTemplateCandidates(): Promise<PrintTemplateVo[]> {
-  const codeKw = templateCode.value.trim().toLowerCase();
-  const nameKw = templateName.value.trim().toLowerCase();
-  if (!codeKw && !nameKw) return [];
-
-  const map = new Map<string, PrintTemplateVo>();
-  const add = (rows: PrintTemplateVo[]) => {
-    for (const r of rows) {
-      if (!r.templateCode) continue;
-      if (!codeKw && !nameKw) continue;
-      const kw = codeKw || nameKw;
-      if (matchKeyword(r, kw) || (codeKw && matchKeyword(r, codeKw)) || (nameKw && matchKeyword(r, nameKw))) {
-        map.set(String(r.templateCode), r);
-      }
-    }
-  };
-
-  add(
-    localListPrintTemplates().map((r) => ({
-      id: r.id,
-      templateCode: r.templateCode,
-      templateName: r.templateName,
-      remark: r.remark,
-      updateTime: r.updateTime
-    }))
-  );
-
+async function loadBackendData(showMessage = false) {
+  if (!templateCode.value) return;
+  dataLoading.value = true;
   try {
-    const res = await listPrintTemplate({
-      templateCode: templateCode.value.trim() || undefined,
-      templateName: templateName.value.trim() || undefined,
-      pageNum: 1,
-      pageSize: 50
-    });
-    if (res.code === HttpStatus.SUCCESS && res.rows?.length) {
-      add(res.rows);
+    const [fieldResult, sampleResult] = await Promise.allSettled([listPrintWidgetOptions(templateCode.value), getPrintSampleData(templateCode.value)]);
+    if (sampleResult.status === 'fulfilled' && sampleResult.value.code === HttpStatus.SUCCESS) {
+      sampleRows.value = parseSampleRows(sampleResult.value.data);
     }
-  } catch {
-    /* local only */
+    let fields: PrintBusinessField[] = [];
+    if (fieldResult.status === 'fulfilled' && fieldResult.value.code === HttpStatus.SUCCESS) {
+      fields = mapBusinessFields(fieldResult.value.data, sampleRows.value);
+    }
+    if (!fields.length) fields = inferBusinessFields(sampleRows.value);
+    if (fields.length) businessFields.value = fields;
+    if (showMessage) ElMessage.success(`已加载 ${businessFields.value.length} 个字段、${sampleRows.value.length} 条样例数据`);
+  } finally {
+    dataLoading.value = false;
   }
-
-  return [...map.values()].sort((a, b) => {
-    const ra = rankMatch(a, codeKw, nameKw);
-    const rb = rankMatch(b, codeKw, nameKw);
-    if (ra !== rb) return ra - rb;
-    return (b.updateTime || '').localeCompare(a.updateTime || '');
-  });
 }
 
-async function loadTemplateByCode(code: string, resolvedFromName = false) {
+async function loadPage() {
+  const code = routeValue(route.query.code);
+  const name = routeValue(route.query.name);
+  const creating = routeValue(route.query.create) === '1';
   templateCode.value = code;
-  activeCode.value = code;
-  onCodeChange();
+  templateName.value = name;
+  templateData.value = createDefaultTemplate();
+  businessFields.value = [];
+  sampleRows.value = [];
+  currentVo.value = { templateCode: code, templateName: name };
+  loadError.value = '';
+  migratedLegacy.value = false;
+  lastSavedAt.value = '';
+
+  if (!code) {
+    loadError.value = '缺少模板编码，请从模板库进入设计器。';
+    await remountDesigner();
+    return;
+  }
+
   loading.value = true;
   try {
-    try {
-      await Promise.all([loadWidgets(), loadSampleData()]);
-      const res = await getPrintTemplate(code);
-      if (res.code === HttpStatus.SUCCESS && res.data != null) {
-        const flat = printTemplateAdapter.mapDetailPayload(res.data);
-        const voSource = flat ?? (typeof res.data === 'object' ? res.data : null);
-        if (voSource && typeof voSource === 'object') {
-          applyVoToDesigner(voSource as PrintTemplateVo);
-          ElMessage.success(resolvedFromName ? t('printDesigner.resolvedByName', { code }) : t('printDesigner.loadedApi'));
-          return;
-        }
-      }
-    } catch {
-      /* fallback */
+    if (!creating) {
+      const result = await getPrintTemplate(code);
+      if (result.code !== HttpStatus.SUCCESS || result.data == null) throw new Error(result.msg || '模板详情加载失败');
+      const mapped = printTemplateAdapter.mapDetailPayload(result.data);
+      if (!mapped) throw new Error('模板详情格式不正确');
+      applyDetail(mapped as PrintTemplateVo);
     }
-    const localVo = localGetPrintTemplate(code);
-    if (localVo) {
-      applyVoToDesigner(localVo);
-      ElMessage.success(t('printDesigner.loadedLocal'));
-    } else {
-      ElMessage.warning(t('printDesigner.notFoundTemplate'));
-      template.value = createBlankTemplate();
-      template.value.title = templateName.value.trim() || t('printDesigner.blankTemplateTitle');
-    }
+    await loadBackendData();
+  } catch (error) {
+    loadError.value = error instanceof Error ? `${error.message}，当前显示空白模板。` : '模板加载失败，当前显示空白模板。';
   } finally {
+    await remountDesigner();
     loading.value = false;
   }
 }
 
-async function loadWidgets() {
-  const code = activeCode.value || templateCode.value.trim();
-  if (!code) return;
+async function reloadBackendData() {
+  await loadBackendData(true);
+}
+
+function validateCurrent() {
+  const issues = designerRef.value?.validateTemplate?.() || [];
+  if (!issues.length) return true;
+  ElMessage.warning(issues[0]?.message || '模板配置不合法');
+  return false;
+}
+
+async function persist(content: WormTemplate) {
+  if (!templateCode.value) {
+    ElMessage.warning('模板编码不能为空');
+    return;
+  }
+  saving.value = true;
   try {
-    const res = await listPrintWidgetOptions(code);
-    if (res.code === HttpStatus.SUCCESS && res.data != null) {
-      const opts = printTemplateAdapter.mapWidgetOptionsPayload(res.data);
-      if (opts != null && opts.length > 0) {
-        widgetOptions.value = ensureShapePaletteWidgets(opts);
-      }
-    }
-  } catch {
-    widgetOptions.value = ensureShapePaletteWidgets([...defaultWidgetOptions]);
+    const fieldJson = JSON.stringify(businessFields.value);
+    const vo: PrintTemplateVo = {
+      ...currentVo.value,
+      templateCode: templateCode.value,
+      templateName: templateName.value || templateCode.value,
+      templateContent: JSON.stringify(content),
+      businessFields: fieldJson,
+      widgetOptions: fieldJson,
+      sampleData: currentVo.value.sampleData
+    };
+    const result = await savePrintTemplate(vo);
+    if (result.code !== HttpStatus.SUCCESS) throw new Error(result.msg || '保存失败');
+    currentVo.value = vo;
+    templateData.value = content;
+    migratedLegacy.value = false;
+    lastSavedAt.value = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    await router.replace({ query: { code: templateCode.value, name: vo.templateName } });
+    ElMessage.success('模板已保存');
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '模板保存失败');
+  } finally {
+    saving.value = false;
   }
 }
 
-async function loadSampleData() {
-  const code = activeCode.value || templateCode.value.trim();
-  if (!code) return;
+function saveTemplateJson(json: string) {
+  if (!validateCurrent()) return;
   try {
-    const res = await getPrintSampleData(code);
-    if (res.code === HttpStatus.SUCCESS && res.data != null) {
-      const rows = printTemplateAdapter.mapSampleDataPayload(res.data);
-      if (rows !== null) {
-        printData.value = rows;
-      }
-    }
+    void persist(parseTemplateContent(json));
   } catch {
-    printData.value = [];
+    ElMessage.error('设计器输出的模板 JSON 无效');
   }
 }
 
-async function loadFromApi() {
-  const codeKw = templateCode.value.trim();
-  const nameKw = templateName.value.trim();
-  if (!codeKw && !nameKw) {
-    ElMessage.warning(t('printDesigner.fillCodeOrName'));
+function saveCurrent() {
+  if (!validateCurrent()) return;
+  const content = designerRef.value?.getTemplateJson();
+  if (!content) {
+    ElMessage.warning('设计器尚未初始化');
     return;
   }
+  void persist(content);
+}
 
-  if (codeKw) {
-    await loadTemplateByCode(codeKw);
-    return;
-  }
+function openPreview() {
+  if (!validateCurrent()) return;
+  const content = designerRef.value?.getTemplateJson();
+  if (!content) return;
+  previewTemplate.value = content as Record<string, any>;
+  previewPages.value = 0;
+  previewVisible.value = true;
+}
 
-  const candidates = await findTemplateCandidates();
-  if (candidates.length === 0) {
-    if (codeKw) {
-      await loadTemplateByCode(codeKw);
-      return;
+function exportTemplate() {
+  if (!validateCurrent()) return;
+  const content = designerRef.value?.getTemplateJson();
+  if (!content) return;
+  const blob = new Blob([JSON.stringify(content, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${templateCode.value || 'print-template'}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function importTemplate(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const parsed = JSON.parse(String(reader.result));
+      if (!isWormTemplate(parsed) && !Array.isArray(parsed?.tempItems)) {
+        throw new Error('不支持的模板格式');
+      }
+      templateData.value = parseTemplateContent(parsed);
+      migratedLegacy.value = !isWormTemplate(parsed);
+      await remountDesigner();
+      ElMessage.success('模板已导入，保存后写入后台');
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '模板文件读取失败');
     }
-    ElMessage.warning(t('printDesigner.notFoundTemplate'));
-    return;
-  }
-  if (candidates.length === 1) {
-    const only = candidates[0];
-    const resolvedFromName = !codeKw || only.templateCode !== codeKw;
-    await loadTemplateByCode(String(only.templateCode), resolvedFromName && !!nameKw);
-    return;
-  }
-
-  pickCandidates.value = candidates;
-  pickVisible.value = true;
+  };
+  reader.onerror = () => ElMessage.error('模板文件读取失败');
+  reader.readAsText(file);
 }
 
-function onPickRow(row: PrintTemplateVo) {
-  confirmPick(row);
-}
-
-async function confirmPick(row: PrintTemplateVo) {
-  if (!row.templateCode) return;
-  pickVisible.value = false;
-  await loadTemplateByCode(String(row.templateCode), true);
-}
-
-function syncRouteQuery() {
-  router.replace({
-    query: {
-      ...route.query,
-      code: templateCode.value.trim() || undefined,
-      name: templateName.value.trim() || undefined
-    }
+function uploadImage(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('图片读取失败'));
+    reader.readAsDataURL(file);
   });
 }
 
-function onCodeChange() {
-  syncRouteQuery();
-}
-
-function onTemplateNameChange() {
-  const name = templateName.value.trim();
-  if (name) template.value.title = name;
-  syncRouteQuery();
-}
-
-async function onSave(payload: PrintTemplate) {
-  const code = templateCode.value.trim();
-  if (!code) {
-    ElMessage.warning(t('printDesigner.saveNeedCode'));
-    return;
-  }
-  const displayName = templateName.value.trim() || String(payload.title ?? '').trim() || t('printDesigner.blankTemplateTitle');
-  templateName.value = displayName;
-  template.value.title = displayName;
-  const payloadToSave: PrintTemplate = { ...payload, title: displayName };
-  const vo: PrintTemplateVo = {
-    templateCode: code,
-    templateName: displayName,
-    templateContent: JSON.stringify(payloadToSave),
-    widgetOptions: JSON.stringify(widgetOptions.value)
-  };
-  localSavePrintTemplate(vo);
-  activeCode.value = code;
-  syncRouteQuery();
-  try {
-    const res = await savePrintTemplate(vo);
-    if (res.code === HttpStatus.SUCCESS) {
-      ElMessage.success(t('printDesigner.savedServer'));
-    } else {
-      ElMessage.success(t('printDesigner.savedLocalOk'));
-    }
-  } catch {
-    ElMessage.success(t('printDesigner.savedLocalLater'));
-  }
-}
-
-function syncFromRoute() {
-  const qCode = route.query.code;
-  const qName = route.query.name;
-  const codeRaw = Array.isArray(qCode) ? qCode[0] : qCode;
-  templateCode.value = codeRaw != null && String(codeRaw).trim() ? String(codeRaw).trim() : '';
-  const nameFromRoute = (Array.isArray(qName) ? qName[0] : qName) || '';
-  templateName.value = nameFromRoute ? String(nameFromRoute) : '';
-}
-
-const routeBootstrappedCode = ref('');
-
-watch(templateName, (name) => {
-  const n = String(name ?? '').trim();
-  if (n && template.value.title !== n) template.value.title = n;
-});
-
 watch(
-  () => template.value.title,
-  (title) => {
-    const n = String(title ?? '').trim();
-    if (n && templateName.value.trim() !== n) templateName.value = n;
-  }
+  () => [route.query.code, route.query.name, route.query.create],
+  () => void loadPage()
 );
-
-watch(
-  () => [route.name, route.query.code] as const,
-  ([name, code]) => {
-    if (name !== DESIGNER_ROUTE_NAME) return;
-    syncFromRoute();
-    const c = templateCode.value.trim();
-    if (!c) return;
-    const codeKey = String(Array.isArray(code) ? code[0] : code ?? '').trim();
-    if (codeKey && codeKey === routeBootstrappedCode.value) return;
-    routeBootstrappedCode.value = codeKey;
-    void loadTemplateByCode(c);
-  },
-  { immediate: true }
-);
-
+onMounted(() => void loadPage());
 onActivated(() => {
-  if (!isDesignerRoute()) return;
-  syncFromRoute();
-  const code = templateCode.value.trim();
-  if (code && code !== activeCode.value) void loadTemplateByCode(code);
+  if (route.name === 'PrintTemplateDesigner' && routeValue(route.query.code) !== templateCode.value) void loadPage();
 });
 </script>
 
 <style scoped lang="scss">
-.print-template-page {
-  height: calc(100vh - 120px);
+.print-studio {
+  --studio-ink: #14213d;
+  --studio-blue: #2563eb;
+  --studio-line: #dbe3ef;
+  height: calc(100vh - 84px);
+  min-height: 720px;
   display: flex;
   flex-direction: column;
-  gap: 0;
-}
-.print-template-page :deep(.print-designer) {
-  flex: 1;
-  min-height: 0;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+  background: #edf1f7;
 }
 
-.designer-header {
+.studio-header {
+  position: relative;
+  z-index: 3;
+  min-height: 68px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  color: var(--studio-ink);
+  border-bottom: 1px solid var(--studio-line);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 18px rgba(15, 35, 65, 0.06);
+}
+
+.studio-identity,
+.studio-actions,
+.title-line {
+  display: flex;
+  align-items: center;
+}
+
+.studio-identity {
+  min-width: 0;
+  gap: 14px;
+}
+
+.studio-actions {
   flex-shrink: 0;
-  margin-bottom: 10px;
-  padding: 12px 16px 14px;
-  background: linear-gradient(180deg, #fafbfd 0%, #fff 100%);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
-}
-
-.designer-header__top {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
 }
 
-.designer-back {
-  padding-left: 4px;
-  padding-right: 8px;
-  color: var(--el-text-color-regular);
-  &:hover {
-    color: var(--el-color-primary);
-  }
+.back-button {
+  padding: 0 4px;
+  color: #475569;
 }
 
-.designer-header__title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
+.header-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--studio-line);
+}
+
+.title-block {
   min-width: 0;
 }
 
-.designer-header__title {
+.title-line {
+  gap: 9px;
+}
+
+.title-line h1 {
+  max-width: 360px;
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--el-text-color-primary);
-}
-
-.designer-tip-btn {
-  color: var(--el-text-color-secondary);
-}
-
-.designer-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 16px;
-  padding: 10px 12px;
-  background: var(--el-fill-color-light);
-  border-radius: 8px;
-  border: 1px solid var(--el-border-color-extra-light);
-}
-
-.designer-toolbar__search {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 280px;
-}
-
-.designer-toolbar__label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--el-text-color-secondary);
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 700;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: 4px;
 }
 
-.designer-field {
-  width: 168px;
-}
-.designer-field--code {
-  max-width: 200px;
-}
-.designer-field--name {
-  max-width: 220px;
+.title-block p {
+  margin: 4px 0 0;
+  color: #7b8799;
+  font-size: 12px;
 }
 
-.designer-toolbar__divider {
-  width: 1px;
-  height: 28px;
-  background: var(--el-border-color);
-  flex-shrink: 0;
-}
-
-.designer-toolbar__data {
-  display: flex;
-  flex-wrap: wrap;
+.template-code,
+.migration-badge,
+.count-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  border-radius: 999px;
+  font:
+    11px/1.4 Consolas,
+    monospace;
 }
 
-.designer-link-btn {
-  font-weight: 500;
+.template-code {
+  padding: 2px 8px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
 }
 
-.pick-hint {
-  margin: 0 0 12px;
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
+.migration-badge {
+  padding: 2px 7px;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
 }
 
-.api-config-note {
-  margin: 10px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--el-text-color-regular);
-}
-.api-config-note.muted {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-:deep(.designer-lodop-link) {
+.count-badge {
+  min-width: 20px;
+  justify-content: center;
   margin-left: 4px;
+  padding: 1px 5px;
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.load-alert {
+  padding: 10px 14px 0;
+  background: #edf1f7;
+}
+
+.studio-workbench {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.studio-workbench :deep(.print-designer) {
+  height: 100%;
+}
+
+.file-input {
+  display: none;
+}
+
+.drawer-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.summary-card {
+  padding: 14px 16px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.summary-card span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.summary-card strong {
+  color: #1d4ed8;
+  font:
+    700 24px/1 Consolas,
+    monospace;
+}
+
+code {
+  color: #1d4ed8;
+  font:
+    12px Consolas,
+    monospace;
+}
+
+.json-viewer {
+  min-height: 420px;
+  max-height: calc(100vh - 220px);
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  border-radius: 10px;
+  color: #dbeafe;
+  background: #111827;
+  font:
+    12px/1.65 Consolas,
+    monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.preview-meta {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 10px;
+  color: #64748b;
   font-size: 12px;
 }
 
-@media (max-width: 768px) {
-  .designer-toolbar__divider {
-    display: none;
+.preview-meta span + span::before {
+  content: '·';
+  margin-right: 18px;
+}
+
+.preview-stage {
+  height: min(72vh, 760px);
+  overflow: hidden;
+  border: 1px solid #d5dce7;
+  border-radius: 10px;
+  background: #e5e7eb;
+}
+
+@media (max-width: 980px) {
+  .print-studio {
+    height: auto;
+    min-height: calc(100vh - 84px);
   }
-  .designer-field {
+
+  .studio-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .studio-actions {
     width: 100%;
-    max-width: none;
+    flex-wrap: wrap;
+  }
+
+  .studio-workbench {
+    height: 820px;
+    flex: none;
   }
 }
 </style>

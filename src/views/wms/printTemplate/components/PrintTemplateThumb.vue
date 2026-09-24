@@ -1,166 +1,189 @@
 <template>
-  <div class="print-template-thumb" :class="{ 'is-empty': !hasItems }">
-    <div v-if="hasItems" ref="stageRef" class="thumb-stage">
-      <div
-        v-for="item in previewItems"
-        :key="item.id"
-        class="thumb-item"
-        :class="`thumb-item--${item.type}`"
-        :style="itemStyle(item)"
-      />
+  <div class="template-thumb">
+    <div v-if="elements.length" class="paper" :style="paperStyle">
+      <div v-for="item in elements" :key="item.id" class="element" :class="`is-${item.printElementType?.type || item.type || 'text'}`" :style="elementStyle(item)">
+        <span v-if="isText(item)">{{ elementText(item) }}</span>
+        <span v-else-if="isTable(item)" class="table-grid">
+          <i v-for="n in 8" :key="n" />
+        </span>
+      </div>
     </div>
-    <div v-else class="thumb-placeholder">
-      <el-icon :size="36"><Printer /></el-icon>
+    <div v-else class="empty-thumb">
+      <el-icon><Document /></el-icon>
+      <span>空白模板</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, nextTick } from 'vue';
-import { Printer } from '@element-plus/icons-vue';
-import type { PrintTemplate, PrintTemplateItem } from '@/components/print-designer';
-import { createBlankTemplate } from '@/components/print-designer';
-import { getLineOrientation } from '@/components/print-designer/utils/lineItems';
-import { localGetPrintTemplate } from '@/utils/printTemplateStorage';
-import { printTemplateAdapter } from '@/config/printTemplate';
+import { computed } from 'vue';
+import { Document } from '@element-plus/icons-vue';
 import type { PrintTemplateVo } from '@/api/wms/printTemplate';
+import { parseTemplateContent, type WormTemplate } from '../model';
 
-const props = defineProps<{
-  templateCode?: string;
-  row?: PrintTemplateVo | null;
-}>();
+const props = defineProps<{ row?: PrintTemplateVo | null }>();
 
-const stageRef = ref<HTMLElement | null>(null);
-const scale = ref(0.35);
-
-const template = computed<PrintTemplate>(() => {
-  if (props.row?.templateContent) {
-    const raw = props.row.templateContent;
-    const decoded = printTemplateAdapter.decodeTemplateContent(raw as unknown);
-    if (decoded && typeof decoded === 'object') return decoded as PrintTemplate;
-    if (typeof raw === 'string') {
-      try {
-        return JSON.parse(raw) as PrintTemplate;
-      } catch {
-        /* fall through */
-      }
-    }
-    if (typeof raw === 'object') return raw as PrintTemplate;
-  }
-  const code = props.templateCode?.trim();
-  if (code) {
-    const vo = localGetPrintTemplate(code);
-    if (vo?.templateContent) {
-      const raw = vo.templateContent;
-      if (typeof raw === 'string') {
-        try {
-          return JSON.parse(raw) as PrintTemplate;
-        } catch {
-          /* fall through */
-        }
-      } else if (typeof raw === 'object') {
-        return raw as PrintTemplate;
-      }
-    }
-  }
-  return createBlankTemplate();
+const template = computed<WormTemplate>(() => parseTemplateContent(props.row?.templateContent));
+const page = computed<any>(() => {
+  const data = template.value as any;
+  return Array.isArray(data.pages) ? data.pages[0] : data;
 });
 
-const previewItems = computed(() => (template.value.tempItems || []).slice(0, 24));
-
-const hasItems = computed(() => previewItems.value.length > 0);
-
-function itemStyle(item: PrintTemplateItem) {
-  const s = scale.value;
-  const stroke = item.style?.BorderColor || '#303133';
-  const orient = getLineOrientation(item);
-  const base: Record<string, string> = {
-    left: `${item.left * s}px`,
-    top: `${item.top * s}px`,
-    width: `${Math.max(item.width * s, 4)}px`,
-    height: `${Math.max(item.height * s, 3)}px`
+const paperSize = computed(() => {
+  const p = page.value;
+  if (p.paperSize === 'CUSTOM') return { width: Number(p.customWidth || 210), height: Number(p.customHeight || 297) };
+  const presets: Record<string, [number, number]> = {
+    A3: [297, 420],
+    A4: [210, 297],
+    A5: [148, 210],
+    Letter: [215.9, 279.4],
+    Legal: [215.9, 355.6],
+    LABEL_80X60: [80, 60],
+    LABEL_60X40: [60, 40],
+    LABEL_40X30: [40, 30],
+    THERMAL_57: [57, 120],
+    THERMAL_80: [80, 160],
+    THERMAL_110: [110, 180],
+    CONTINUOUS: [Number(p.customWidth || 80), Number(p.customHeight || 160)]
   };
-  if (orient === 'h') {
-    const h = Math.max(item.style?.LineWidth ?? 1, 1) * s;
-    return {
-      ...base,
-      height: `${Math.max(h, 1)}px`,
-      background: stroke,
-      border: 'none'
-    };
-  }
-  if (orient === 'v') {
-    const w = Math.max(item.style?.LineWidth ?? 1, 1) * s;
-    return {
-      ...base,
-      width: `${Math.max(w, 1)}px`,
-      background: stroke,
-      border: 'none'
-    };
-  }
-  return base;
-}
-
-function updateScale() {
-  const el = stageRef.value;
-  if (!el) return;
-  const tw = template.value.width || 380;
-  const th = template.value.height || 228;
-  const pad = 8;
-  const sw = (el.clientWidth - pad * 2) / tw;
-  const sh = (el.clientHeight - pad * 2) / th;
-  scale.value = Math.min(sw, sh, 0.5);
-}
-
-watch([() => props.templateCode, () => props.row, previewItems], () => {
-  void nextTick(updateScale);
+  const size = presets[p.paperSize] || presets.A4;
+  const [width, height] = size;
+  return p.orientation === 'landscape' ? { width: height, height: width } : { width, height };
 });
 
-onMounted(() => {
-  void nextTick(updateScale);
+const elements = computed<any[]>(() => {
+  const p = page.value;
+  return [...(p.header?.elements || []), ...(p.elements || []), ...(p.footer?.elements || [])].slice(0, 48);
 });
+
+const paperStyle = computed(() => {
+  const { width, height } = paperSize.value;
+  return { aspectRatio: `${width} / ${height}` };
+});
+
+function itemType(item: any) {
+  return item.printElementType?.type || item.type || 'text';
+}
+
+function isText(item: any) {
+  return ['text', 'longText', 'html', 'pageNumber'].includes(itemType(item));
+}
+
+function isTable(item: any) {
+  return itemType(item) === 'table';
+}
+
+function elementText(item: any) {
+  return String(item.options?.testData || item.options?.formatter || item.printElementType?.title || '').replace(/[{}]/g, '');
+}
+
+function elementStyle(item: any) {
+  const options = item.options || {};
+  const { width, height } = paperSize.value;
+  return {
+    left: `${(Number(options.left || 0) / width) * 100}%`,
+    top: `${(Number(options.top || 0) / height) * 100}%`,
+    width: `${Math.max((Number(options.width || 1) / width) * 100, 1)}%`,
+    height: `${Math.max((Number(options.height || 1) / height) * 100, 0.6)}%`,
+    color: options.color || '#334155',
+    backgroundColor: options.backgroundColor || undefined,
+    borderColor: options.borderColor || '#64748b',
+    zIndex: options.zIndex || 1
+  };
+}
 </script>
 
 <style scoped lang="scss">
-.print-template-thumb {
+.template-thumb {
   width: 100%;
   height: 100%;
-  background: #f5f7fa;
-  border-radius: 4px;
+  display: grid;
+  place-items: center;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px), #eef2f7;
+  background-size: 16px 16px;
 }
-.thumb-stage {
+
+.paper {
   position: relative;
+  max-width: 76%;
+  max-height: 84%;
+  width: 64%;
+  overflow: hidden;
+  background: #fff;
+  box-shadow:
+    0 14px 28px rgba(15, 23, 42, 0.16),
+    0 0 0 1px rgba(100, 116, 139, 0.15);
+}
+
+.element {
+  position: absolute;
+  overflow: hidden;
+  border: 1px solid transparent;
+  font-size: 3px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.is-rect,
+.is-oval {
+  border-color: currentColor;
+}
+
+.is-oval {
+  border-radius: 50%;
+}
+
+.is-hline {
+  height: 1px !important;
+  border-top-color: currentColor;
+}
+
+.is-vline {
+  width: 1px !important;
+  border-left-color: currentColor;
+}
+
+.is-barcode {
+  background: repeating-linear-gradient(90deg, #111827 0 1px, transparent 1px 2px);
+}
+
+.is-qrcode {
+  background: linear-gradient(90deg, #111827 50%, transparent 50%), linear-gradient(#111827 50%, transparent 50%);
+  background-size: 4px 4px;
+}
+
+.is-image {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.is-table {
+  border-color: #64748b;
+}
+
+.table-grid {
   width: 100%;
   height: 100%;
-  background: #fff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
 }
-.thumb-item {
-  position: absolute;
-  border-radius: 1px;
-  background: rgba(64, 158, 255, 0.35);
-  pointer-events: none;
+
+.table-grid i {
+  border-right: 1px solid #94a3b8;
+  border-bottom: 1px solid #94a3b8;
 }
-.thumb-item--braid-table {
-  background: rgba(103, 194, 58, 0.4);
+
+.empty-thumb {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 12px;
 }
-.thumb-item--bar-code {
-  background: repeating-linear-gradient(90deg, #303133 0 2px, transparent 2px 4px);
-}
-.thumb-item--braid-image {
-  background: rgba(144, 147, 153, 0.45);
-}
-.thumb-placeholder {
-  color: var(--el-text-color-placeholder);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.is-empty .thumb-placeholder {
-  opacity: 0.85;
+
+.empty-thumb .el-icon {
+  font-size: 34px;
 }
 </style>

@@ -4,7 +4,8 @@ export default {
     dashboard: '首页',
     document: '项目文档',
     printTemplateManage: '打印模板管理',
-    printTemplateDesign: '打印模板设计'
+    printTemplateDesign: '打印模板设计',
+    licenseManage: 'License管理'
   },
   // 登录页面国际化
   login: {

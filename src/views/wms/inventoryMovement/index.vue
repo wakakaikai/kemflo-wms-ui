@@ -96,7 +96,17 @@
         </el-row>
       </template>
 
-      <el-table v-loading="loading" :data="inventoryMovementList" @selection-change="handleSelectionChange">
+      <el-table
+        ref="inventoryMovementTableRef"
+        v-loading="loading"
+        :data="movementTreeData"
+        row-key="rowKey"
+        border
+        default-expand-all
+        :tree-props="{ children: 'children' }"
+        :row-class-name="resolveMovementTreeRowClass"
+        @selection-change="handleSelectionChange"
+      >
         <el-table-column type="selection" width="55" align="center" />
         <!--        <el-table-column label="移动记录ID" align="center" prop="id" v-if="true" />-->
         <el-table-column v-if="columns[0].visible" label="移动类型" align="center" prop="moveType" />
@@ -253,17 +263,23 @@
 </template>
 
 <script setup name="InventoryMovement" lang="ts">
+import { computed, ref } from 'vue';
 import { listInventoryMovement, getInventoryMovement, delInventoryMovement, addInventoryMovement, updateInventoryMovement } from '@/api/wms/inventoryMovement';
 import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } from '@/api/wms/inventoryMovement/types';
-import { ArrowDown, ArrowUp } from '@element-plus/icons-vue';
-import { ref } from 'vue';
 import { formatQty, formatQtyWithUnit } from '@/utils/ruoyi';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import { HistoryConfig } from '@/types/history';
+import { buildMovementDisplayGroups, buildReverseTreeTableData, ReverseTreeRow } from '@/views/wms/inventoryReverse/utils/reverseMovement';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_special_flag, wms_inventory_type, wms_inventory_direction } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag', 'wms_inventory_type', 'wms_inventory_direction'));
 const inventoryMovementList = ref<InventoryMovementVO[]>([]);
+const inventoryMovementTableRef = ref();
+
+const movementTreeData = computed(() => buildReverseTreeTableData(buildMovementDisplayGroups(inventoryMovementList.value)));
+
+const resolveMovementTreeRowClass = ({ row }: { row: ReverseTreeRow }) => (row.children?.length ? 'movement-tree-parent-row' : '');
+
 const buttonLoading = ref(false);
 const loading = ref(true);
 const showSearch = ref(true);
@@ -597,9 +613,9 @@ const toggleAdvancedSearch = () => {
   showAdvancedSearch.value = !showAdvancedSearch.value;
 };
 
-/** 多选框选中数据 */
-const handleSelectionChange = (selection: InventoryMovementVO[]) => {
-  ids.value = selection.map((item) => item.id);
+/** 多选框选中数据（树表含 101 主行与 543 子行，均按移动记录 id 处理） */
+const handleSelectionChange = (selection: ReverseTreeRow[]) => {
+  ids.value = selection.map((item) => item.id).filter((id) => id != null) as Array<string | number>;
   single.value = selection.length != 1;
   multiple.value = !selection.length;
 };
@@ -685,5 +701,9 @@ onMounted(() => {
 .inventory-search-form .search-actions :deep(.el-form-item__content) {
   flex-wrap: wrap;
   gap: 0;
+}
+
+:deep(.movement-tree-parent-row) {
+  font-weight: 500;
 }
 </style>

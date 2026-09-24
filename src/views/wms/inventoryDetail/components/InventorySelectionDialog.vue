@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="visible" :title="dialogTitle" width="1000px" append-to-body top="5vh" @close="handleClose">
+  <el-dialog v-model="visible" :title="dialogTitle" width="80%" append-to-body top="5vh" @close="handleClose">
     <div v-loading="loading" class="inventory-selection-dialog">
       <!-- 物料信息 -->
       <div class="material-info">
@@ -31,33 +31,36 @@
       <!-- 库存表格 -->
       <el-table ref="tableRef" :data="inventoryRows" row-key="rowKey" border stripe size="small" max-height="420" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="46" :selectable="isRowSelectable" />
-        <el-table-column prop="warehouseCode" label="仓库" width="110" show-overflow-tooltip />
-        <el-table-column prop="locationCode" label="库位" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="batchCode" label="批次号" width="120" show-overflow-tooltip>
+        <el-table-column prop="warehouseCode" label="仓库" min-width="100" show-overflow-tooltip />
+        <el-table-column prop="locationCode" label="库位" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="batchCode" label="批次号" min-width="110" show-overflow-tooltip>
           <template #default="{ row }">{{ row.batchCode || '-' }}</template>
         </el-table-column>
-        <el-table-column label="非限制数量" width="110" align="right">
+        <el-table-column label="非限制数量" min-width="110" align="right">
           <template #default="{ row }">{{ formatQty(row.availableQuantity) }}</template>
         </el-table-column>
-        <el-table-column label="质检数量" width="90" align="right">
+        <el-table-column label="质检数量" min-width="110" align="right">
           <template #default="{ row }">{{ formatQty(row.inspectionQty) }}</template>
         </el-table-column>
-        <el-table-column label="冻结数量" width="90" align="right">
+        <el-table-column label="冻结数量" min-width="110" align="right">
           <template #default="{ row }">{{ formatQty(row.blockedQty) }}</template>
         </el-table-column>
-        <el-table-column label="本次数量" width="150" align="right" fixed="right">
+        <el-table-column label="本次数量" min-width="150" align="right">
           <template #default="{ row }">
             <el-input-number v-if="isRowSelected(row)" :model-value="row.pickQty" :min="0" :max="getPickQtyMax(row)" :precision="3" :step="1" controls-position="right" size="small" class="pick-qty-input" :disabled="!isRowSelected(row)" @click.stop @change="(val: number | undefined) => onPickQtyChange(row, val)" />
             <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="特殊库存" width="90" align="center" fixed="right">
+        <el-table-column label="特殊库存" min-width="90" align="center">
           <template #default="scope">
             <dict-tag :options="wms_inventory_special_flag" :value="scope.row.specialInventoryFlag" />
           </template>
         </el-table-column>
-        <el-table-column v-if="!generalOnly" prop="businessCode" label="业务伙伴" width="120" fixed="right">
+        <el-table-column v-if="!generalOnly" prop="businessCode" label="业务伙伴" min-width="120">
           <template #default="{ row }">{{ row.businessCode || '-' }}</template>
+        </el-table-column>
+        <el-table-column v-if="!generalOnly" prop="businessName" label="业务伙伴名称" min-width="150">
+          <template #default="{ row }">{{ row.businessName || '-' }}</template>
         </el-table-column>
       </el-table>
     </div>
@@ -109,12 +112,18 @@ interface Props {
   issueQty: number;
   unit?: string;
   generalOnly?: boolean;
+  /** 可选：仅展示指定特殊库存标识 */
+  specialInventoryFlag?: string;
+  /** 可选：仅展示指定业务伙伴编码 */
+  businessCode?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   materialDesc: '',
   unit: '',
-  generalOnly: true
+  generalOnly: true,
+  specialInventoryFlag: '',
+  businessCode: ''
 });
 
 const emit = defineEmits<{
@@ -163,8 +172,7 @@ const demandQty = computed(() => Number(props.issueQty ?? 0));
 
 const hasDemandCap = computed(() => demandQty.value > 0);
 
-const getOtherPickedQty = (row: InventoryPickRow) =>
-  selectedRows.value.reduce((sum, item) => (item.rowKey === row.rowKey ? sum : sum + item.pickQty), 0);
+const getOtherPickedQty = (row: InventoryPickRow) => selectedRows.value.reduce((sum, item) => (item.rowKey === row.rowKey ? sum : sum + item.pickQty), 0);
 
 const getPickQtyMax = (row: InventoryPickRow) => {
   if (!hasDemandCap.value) {
@@ -205,20 +213,48 @@ const onPickQtyChange = (row: InventoryPickRow, val: number | undefined) => {
   }
 };
 
+const resolveQuerySpecialInventoryFlag = () => {
+  const explicit = String(props.specialInventoryFlag ?? '').trim();
+  if (explicit) {
+    return explicit;
+  }
+  return props.generalOnly ? 'N' : undefined;
+};
+
+const matchesSpecialInventoryFlag = (itemFlag?: string, expected?: string) => {
+  if (!expected) {
+    return true;
+  }
+  return (
+    String(itemFlag ?? '')
+      .trim()
+      .toUpperCase() === expected.trim().toUpperCase()
+  );
+};
+
 const loadData = async () => {
   if (!props.materialCode) return;
   loading.value = true;
   try {
     const res = await listInventoryDetail({
       itemCode: props.materialCode,
-      specialInventoryFlag: props.generalOnly ? 'N' : undefined,
+      specialInventoryFlag: resolveQuerySpecialInventoryFlag(),
+      businessCode: props.businessCode || undefined,
       pageNum: 1,
       pageSize: 99999,
       params: {}
     });
     const list = (res as any).rows ?? res ?? [];
     inventoryRows.value = list
-      .filter((item: InventoryDetailVO) => (!props.generalOnly || isGeneralInventory(item.specialInventoryFlag)) && Number(item.availableQuantity ?? 0) > 0)
+      .filter((item: InventoryDetailVO) => {
+        if (!matchesSpecialInventoryFlag(item.specialInventoryFlag, props.specialInventoryFlag)) {
+          return false;
+        }
+        if (props.businessCode && item.businessCode !== props.businessCode) {
+          return false;
+        }
+        return (!props.generalOnly || isGeneralInventory(item.specialInventoryFlag)) && Number(item.availableQuantity ?? 0) > 0;
+      })
       .map((item: InventoryDetailVO, index: number) => ({
         rowKey: `inv_${item.id ?? index}`,
         id: item.id,
