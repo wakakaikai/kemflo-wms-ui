@@ -36,16 +36,7 @@
 
             <el-collapse-item :title="t('printDesigner.collapse.layers')" name="layers">
               <div v-if="sortedItems.length" class="layer-tags">
-                <el-tag
-                  v-for="item in sortedItems"
-                  :key="item.id"
-                  :type="selectedId === item.id ? 'primary' : 'info'"
-                  :effect="selectedId === item.id ? 'dark' : 'plain'"
-                  closable
-                  class="layer-tag"
-                  @click="selectedId = item.id"
-                  @close.stop="removeItemById(item.id)"
-                >
+                <el-tag v-for="item in sortedItems" :key="item.id" :type="selectedId === item.id ? 'primary' : 'info'" :effect="selectedId === item.id ? 'dark' : 'plain'" closable class="layer-tag" @click="selectedId = item.id" @close.stop="removeItemById(item.id)">
                   {{ itemTitle(item) }}
                 </el-tag>
               </div>
@@ -68,22 +59,12 @@
             </button>
           </el-tooltip>
           <el-tooltip :content="t('printDesigner.canvas.undo')" placement="bottom" :show-after="300">
-            <button
-              type="button"
-              class="pd-tool-btn"
-              :disabled="!canUndo"
-              @click="performUndo"
-            >
+            <button type="button" class="pd-tool-btn" :disabled="!canUndo" @click="performUndo">
               <el-icon><RefreshLeft /></el-icon>
             </button>
           </el-tooltip>
           <el-tooltip :content="t('printDesigner.canvas.redo')" placement="bottom" :show-after="300">
-            <button
-              type="button"
-              class="pd-tool-btn"
-              :disabled="!canRedo"
-              @click="performRedo"
-            >
+            <button type="button" class="pd-tool-btn" :disabled="!canRedo" @click="performRedo">
               <el-icon><RefreshRight /></el-icon>
             </button>
           </el-tooltip>
@@ -92,12 +73,7 @@
               <el-icon><Printer /></el-icon>
             </button>
           </el-tooltip>
-          <el-tooltip
-            v-if="selected"
-            :content="t('printDesigner.canvas.deleteSelected')"
-            placement="bottom"
-            :show-after="300"
-          >
+          <el-tooltip v-if="selected" :content="t('printDesigner.canvas.deleteSelected')" placement="bottom" :show-after="300">
             <button type="button" class="pd-tool-btn pd-tool-btn--danger" @click="removeSelected">
               <el-icon><Delete /></el-icon>
             </button>
@@ -106,81 +82,29 @@
           <template v-if="supportsTextFontStyle">
             <span class="pd-toolbar-sep" />
             <div class="pd-text-format-bar">
-              <el-select
-                v-model="fontNameProxy"
-                class="pd-font-select pd-font-select--toolbar"
-                filterable
-                allow-create
-                default-first-option
-                clearable
-                size="small"
-                :placeholder="t('printDesigner.canvas.fontFamilyPh')"
-              >
-                <el-option
-                  v-for="opt in mergedFontOptions"
-                  :key="fontOptionKey(opt)"
-                  :label="opt.label"
-                  :value="opt.value"
-                />
+              <el-select v-model="fontNameProxy" class="pd-font-select pd-font-select--toolbar" filterable allow-create default-first-option clearable size="small" :placeholder="t('printDesigner.canvas.fontFamilyPh')">
+                <el-option v-for="opt in mergedFontOptions" :key="fontOptionKey(opt)" :label="opt.label" :value="opt.value" />
               </el-select>
               <el-tooltip :content="t('printDesigner.canvas.loadLocalFonts')" placement="bottom" :show-after="300">
-                <button
-                  type="button"
-                  class="pd-fmt-btn"
-                  :disabled="loadingLocalFonts"
-                  @click="loadInstalledFonts"
-                >
+                <button type="button" class="pd-fmt-btn" :disabled="loadingLocalFonts" @click="loadInstalledFonts">
                   <el-icon class="pd-fmt-icon"><Refresh /></el-icon>
                 </button>
               </el-tooltip>
-              <el-select
-                v-model="fontSizeProxy"
-                class="pd-font-size-select"
-                filterable
-                allow-create
-                default-first-option
-                size="small"
-                :placeholder="t('printDesigner.canvas.fontPt')"
-              >
-                <el-option
-                  v-for="sz in fontSizePresets"
-                  :key="sz"
-                  :label="String(sz)"
-                  :value="sz"
-                />
+              <el-select v-model="fontSizeProxy" class="pd-font-size-select" filterable allow-create default-first-option size="small" :placeholder="t('printDesigner.canvas.fontPt')">
+                <el-option v-for="sz in fontSizePresets" :key="sz" :label="String(sz)" :value="sz" />
               </el-select>
               <span class="pd-fmt-divider" />
               <el-tooltip :content="t('printDesigner.canvas.bold')" placement="bottom" :show-after="300">
-                <button
-                  type="button"
-                  class="pd-fmt-btn pd-fmt-btn--bold"
-                  :class="{ active: boldProxy }"
-                  @click="boldProxy = !boldProxy"
-                >B</button>
+                <button type="button" class="pd-fmt-btn pd-fmt-btn--bold" :class="{ active: boldProxy }" @click="boldProxy = !boldProxy">B</button>
               </el-tooltip>
               <el-tooltip :content="t('printDesigner.canvas.italic')" placement="bottom" :show-after="300">
-                <button
-                  type="button"
-                  class="pd-fmt-btn pd-fmt-btn--italic"
-                  :class="{ active: italicProxy }"
-                  @click="italicProxy = !italicProxy"
-                >I</button>
+                <button type="button" class="pd-fmt-btn pd-fmt-btn--italic" :class="{ active: italicProxy }" @click="italicProxy = !italicProxy">I</button>
               </el-tooltip>
               <el-tooltip :content="t('printDesigner.canvas.underline')" placement="bottom" :show-after="300">
-                <button
-                  type="button"
-                  class="pd-fmt-btn pd-fmt-btn--underline"
-                  :class="{ active: underlineProxy }"
-                  @click="underlineProxy = !underlineProxy"
-                >U</button>
+                <button type="button" class="pd-fmt-btn pd-fmt-btn--underline" :class="{ active: underlineProxy }" @click="underlineProxy = !underlineProxy">U</button>
               </el-tooltip>
               <el-tooltip :content="t('printDesigner.canvas.strikethrough')" placement="bottom" :show-after="300">
-                <button
-                  type="button"
-                  class="pd-fmt-btn pd-fmt-btn--strike"
-                  :class="{ active: strikeoutProxy }"
-                  @click="strikeoutProxy = !strikeoutProxy"
-                >S</button>
+                <button type="button" class="pd-fmt-btn pd-fmt-btn--strike" :class="{ active: strikeoutProxy }" @click="strikeoutProxy = !strikeoutProxy">S</button>
               </el-tooltip>
               <el-tooltip :content="t('printDesigner.canvas.fontColor')" placement="bottom" :show-after="300">
                 <span class="pd-fmt-color">
@@ -189,11 +113,7 @@
               </el-tooltip>
               <el-tooltip :content="t('printDesigner.canvas.highlightColor')" placement="bottom" :show-after="300">
                 <span class="pd-fmt-color">
-                  <PrintColorPicker
-                    v-model="highlightColorProxy"
-                    compact-icon="highlight"
-                    show-transparent
-                  />
+                  <PrintColorPicker v-model="highlightColorProxy" compact-icon="highlight" show-transparent />
                 </span>
               </el-tooltip>
             </div>
@@ -207,33 +127,17 @@
                   <PrintColorPicker v-model="borderColorProxy" compact-icon="pencil" />
                 </span>
               </el-tooltip>
-              <el-dropdown
-                trigger="click"
-                placement="bottom"
-                :teleported="false"
-                popper-class="pd-line-style-dropdown"
-                @command="lineStyleProxy = $event"
-              >
+              <el-dropdown trigger="click" placement="bottom" :teleported="false" popper-class="pd-line-style-dropdown" @command="lineStyleProxy = $event">
                 <el-tooltip :content="t('printDesigner.canvas.lineStyle')" placement="bottom" :show-after="300">
                   <button type="button" class="pd-fmt-btn pd-fmt-line-btn">
                     <span class="pd-fmt-line-btn__preview">
-                      <span
-                        v-for="(_, i) in 3"
-                        :key="i"
-                        class="pd-line-style-preview"
-                        :class="`pd-line-style-preview--${currentLineStyleKey}`"
-                      />
+                      <span v-for="(_, i) in 3" :key="i" class="pd-line-style-preview" :class="`pd-line-style-preview--${currentLineStyleKey}`" />
                     </span>
                   </button>
                 </el-tooltip>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item
-                      v-for="opt in lineStyleSelectOptions"
-                      :key="opt.value"
-                      :command="opt.value"
-                      :class="{ 'is-active': lineStyleProxy === opt.value }"
-                    >
+                    <el-dropdown-item v-for="opt in lineStyleSelectOptions" :key="opt.value" :command="opt.value" :class="{ 'is-active': lineStyleProxy === opt.value }">
                       <span class="pd-line-style-item">
                         <span class="pd-line-style-preview" :class="`pd-line-style-preview--${opt.key}`" />
                         <span class="pd-line-style-label">{{ opt.label }}</span>
@@ -257,16 +161,8 @@
             @drop="onCanvasDrop"
           >
             <template v-for="(g, gi) in alignGuides" :key="`g-${gi}`">
-              <div
-                v-if="g.orientation === 'v'"
-                class="pd-align-guide pd-align-guide--v"
-                :style="{ left: `${g.position}px` }"
-              />
-              <div
-                v-else
-                class="pd-align-guide pd-align-guide--h"
-                :style="{ top: `${g.position}px` }"
-              />
+              <div v-if="g.orientation === 'v'" class="pd-align-guide pd-align-guide--v" :style="{ left: `${g.position}px` }" />
+              <div v-else class="pd-align-guide pd-align-guide--h" :style="{ top: `${g.position}px` }" />
             </template>
             <template v-for="item in sortedItems" :key="item.id">
               <div
@@ -282,34 +178,14 @@
               >
                 <span class="pd-item-label">{{ itemTitle(item) }}</span>
                 <div class="pd-shape-preview" :style="shapePreviewStyle(item)" />
-                <span
-                  v-if="item.resizable !== false && selectedId === item.id"
-                  class="resize-handle"
-                  @mousedown.stop="(e) => onResizeDown(e, item)"
-                />
+                <span v-if="item.resizable !== false && selectedId === item.id" class="resize-handle" @mousedown.stop="(e) => onResizeDown(e, item)" />
               </div>
-              <div
-                v-else-if="isLineItem(item)"
-                class="pd-item pd-item-line"
-                :class="{ active: selectedId === item.id, 'pd-item-line--v': getLineOrientation(item) === 'v' }"
-                :style="itemStyle(item)"
-                @mousedown.stop="(e) => onItemDown(e, item)"
-              >
+              <div v-else-if="isLineItem(item)" class="pd-item pd-item-line" :class="{ active: selectedId === item.id, 'pd-item-line--v': getLineOrientation(item) === 'v' }" :style="itemStyle(item)" @mousedown.stop="(e) => onItemDown(e, item)">
                 <span class="pd-item-label">{{ itemTitle(item) }}</span>
                 <div class="pd-line-preview" :style="linePreviewStyle(item)" />
-                <span
-                  v-if="item.resizable !== false && selectedId === item.id"
-                  class="resize-handle"
-                  @mousedown.stop="(e) => onResizeDown(e, item)"
-                />
+                <span v-if="item.resizable !== false && selectedId === item.id" class="resize-handle" @mousedown.stop="(e) => onResizeDown(e, item)" />
               </div>
-              <div
-                v-else-if="item.type !== 'braid-table'"
-                class="pd-item"
-                :class="{ active: selectedId === item.id }"
-                :style="itemStyle(item)"
-                @mousedown.stop="(e) => onItemDown(e, item)"
-              >
+              <div v-else-if="item.type !== 'braid-table'" class="pd-item" :class="{ active: selectedId === item.id }" :style="itemStyle(item)" @mousedown.stop="(e) => onItemDown(e, item)">
                 <span v-if="!isTextItem(item)" class="pd-item-label">{{ itemTitle(item) }}</span>
                 <div
                   class="pd-item-body"
@@ -318,59 +194,31 @@
                     'pd-item-body--text': isTextItem(item)
                   }"
                 >
-                  <BarcodeCanvasPreview
-                    v-if="item.type === 'bar-code'"
-                    :item="item"
-                    :data-row="demoData[0] || {}"
-                  />
-                  <span v-else-if="isTextItem(item)" class="pd-text-preview" :style="previewTextStyle(item)">{{
-                    previewText(item)
-                  }}</span>
+                  <BarcodeCanvasPreview v-if="item.type === 'bar-code'" :item="item" :data-row="demoData[0] || {}" />
+                  <span v-else-if="isTextItem(item)" class="pd-text-preview" :style="previewTextStyle(item)">{{ previewText(item) }}</span>
                   <template v-else>{{ previewText(item) }}</template>
                 </div>
-                <span
-                  v-if="item.resizable !== false && selectedId === item.id"
-                  class="resize-handle"
-                  @mousedown.stop="(e) => onResizeDown(e, item)"
-                />
+                <span v-if="item.resizable !== false && selectedId === item.id" class="resize-handle" @mousedown.stop="(e) => onResizeDown(e, item)" />
               </div>
-              <div
-                v-else
-                class="pd-item pd-item-table"
-                :class="{ active: selectedId === item.id }"
-                :style="itemStyle(item)"
-                @mousedown.stop="(e) => onItemDown(e, item)"
-              >
+              <div v-else class="pd-item pd-item-table" :class="{ active: selectedId === item.id }" :style="itemStyle(item)" @mousedown.stop="(e) => onItemDown(e, item)">
                 <span class="pd-item-label">{{ itemTitle(item) }}</span>
                 <table class="mini-table">
                   <thead>
                     <tr>
-                      <th
-                        v-for="(c, ci) in item.columnsAttr || []"
-                        :key="ci"
-                        :style="tableCellBorderStyle(item, 0, ci)"
-                      >
+                      <th v-for="(c, ci) in item.columnsAttr || []" :key="ci" :style="tableCellBorderStyle(item, 0, ci)">
                         {{ columnTitle(c) }}
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="(r, ri) in tablePreviewRows(item)" :key="ri">
-                      <td
-                        v-for="(c, ci) in item.columnsAttr || []"
-                        :key="ci"
-                        :style="tableCellBorderStyle(item, ri + 1, ci)"
-                      >
+                      <td v-for="(c, ci) in item.columnsAttr || []" :key="ci" :style="tableCellBorderStyle(item, ri + 1, ci)">
                         {{ r[c.name || ''] ?? '' }}
                       </td>
                     </tr>
                   </tbody>
                 </table>
-                <span
-                  v-if="item.resizable !== false && selectedId === item.id"
-                  class="resize-handle"
-                  @mousedown.stop="(e) => onResizeDown(e, item)"
-                />
+                <span v-if="item.resizable !== false && selectedId === item.id" class="resize-handle" @mousedown.stop="(e) => onResizeDown(e, item)" />
               </div>
             </template>
           </div>
@@ -390,14 +238,7 @@
                   <el-form-item :label="t('printDesigner.canvas.dataField')">
                     <el-input v-model="selected.name" :placeholder="t('printDesigner.canvas.dataFieldPh')" clearable />
                   </el-form-item>
-                  <el-form-item
-                    v-if="
-                      selected.type === 'braid-txt' ||
-                      selected.type === 'bar-code' ||
-                      (selected.type === 'braid-html' && !isLineItem(selected))
-                    "
-                    :label="t('printDesigner.canvas.value')"
-                  >
+                  <el-form-item v-if="selected.type === 'braid-txt' || selected.type === 'bar-code' || (selected.type === 'braid-html' && !isLineItem(selected))" :label="t('printDesigner.canvas.value')">
                     <el-input v-model="selected.value" type="textarea" :rows="3" />
                     <div v-if="selected.type === 'bar-code'" class="pd-form-hint">{{ t('printDesigner.canvas.barcodeValueHint') }}</div>
                   </el-form-item>
@@ -405,9 +246,7 @@
                     <el-input v-model="selected.value" type="textarea" :rows="2" />
                   </el-form-item>
 
-                  <template
-                    v-if="selected.type === 'braid-ellipse' || isBorderFrameItem(selected)"
-                  >
+                  <template v-if="selected.type === 'braid-ellipse' || isBorderFrameItem(selected)">
                     <el-divider content-position="left">{{ t('printDesigner.canvas.sectionShape') }}</el-divider>
                     <el-form-item :label="t('printDesigner.canvas.shapeFill')">
                       <PrintColorPicker v-model="fillColorProxy" show-transparent />
@@ -440,13 +279,7 @@
 
                   <template v-if="selected.type === 'braid-table'">
                     <el-form-item label-width="0" class="pd-border-form-item">
-                      <PrintBorderPanel
-                        v-model:border-preset="borderPresetProxy"
-                        v-model:border-color="borderColorProxy"
-                        v-model:line-style="lineStyleProxy"
-                        v-model:line-width="lineWidthProxy"
-                        table-mode
-                      />
+                      <PrintBorderPanel v-model:border-preset="borderPresetProxy" v-model:border-color="borderColorProxy" v-model:line-style="lineStyleProxy" v-model:line-width="lineWidthProxy" table-mode />
                     </el-form-item>
                     <el-divider content-position="left">{{ t('printDesigner.canvas.sectionPagination') }}</el-divider>
                     <el-form-item :label="t('printDesigner.canvas.paginateAuto')">
@@ -454,31 +287,15 @@
                       <span class="pd-form-hint pd-form-hint--inline">{{ t('printDesigner.canvas.paginateAutoHint') }}</span>
                     </el-form-item>
                     <el-form-item v-if="paginateProxy" :label="t('printDesigner.canvas.pageRows')">
-                      <el-input-number
-                        v-model="pageRowsProxy"
-                        :min="1"
-                        :max="500"
-                        :step="1"
-                        controls-position="right"
-                        class="w100"
-                      />
+                      <el-input-number v-model="pageRowsProxy" :min="1" :max="500" :step="1" controls-position="right" class="w100" />
                       <div class="pd-form-hint">{{ t('printDesigner.canvas.pageRowsHint') }}</div>
                     </el-form-item>
                   </template>
                   <template v-if="selected.type === 'bar-code'">
                     <el-divider content-position="left">{{ selectedBarcodeSectionTitle }}</el-divider>
                     <el-form-item :label="t('printDesigner.canvas.barcodeType')">
-                      <el-select
-                        v-model="codeTypeProxy"
-                        class="w100"
-                        filterable
-                        :placeholder="t('printDesigner.canvas.selectPlaceholder')"
-                      >
-                        <el-option-group
-                          v-for="group in activeBarcodeTypeGroups"
-                          :key="group.groupKey"
-                          :label="t(`printDesigner.barcodeTypes.${group.groupKey}`)"
-                        >
+                      <el-select v-model="codeTypeProxy" class="w100" filterable :placeholder="t('printDesigner.canvas.selectPlaceholder')">
+                        <el-option-group v-for="group in activeBarcodeTypeGroups" :key="group.groupKey" :label="t(`printDesigner.barcodeTypes.${group.groupKey}`)">
                           <el-option v-for="opt in group.options" :key="opt.value" :label="opt.value" :value="opt.value" />
                         </el-option-group>
                       </el-select>
@@ -502,13 +319,7 @@
                       </div>
                     </el-form-item>
                     <el-form-item :label="t('printDesigner.canvas.dataCharset')">
-                      <el-select
-                        v-model="dataCharsetProxy"
-                        class="w100"
-                        filterable
-                        clearable
-                        :placeholder="t('printDesigner.canvas.selectPlaceholder')"
-                      >
+                      <el-select v-model="dataCharsetProxy" class="w100" filterable clearable :placeholder="t('printDesigner.canvas.selectPlaceholder')">
                         <el-option v-for="cs in LODOP_DATA_CHARSETS" :key="cs" :label="cs" :value="cs" />
                       </el-select>
                     </el-form-item>
@@ -601,14 +412,7 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ElMessage } from 'element-plus';
-import {
-  Delete,
-  Document,
-  Printer,
-  RefreshLeft,
-  RefreshRight,
-  View
-} from '@element-plus/icons-vue';
+import { Delete, Document, Printer, RefreshLeft, RefreshRight, View } from '@element-plus/icons-vue';
 import WidgetPanel from './components/panel/WidgetPanel.vue';
 import BarcodeCanvasPreview from './components/BarcodeCanvasPreview.vue';
 import PrintColorPicker from './components/PrintColorPicker.vue';
@@ -617,34 +421,16 @@ import { lodopPrint, waitForLodopReady } from './libs/lodop';
 import { defaultWidgetOptions, ensureShapePaletteWidgets } from './const/defaultWidgets';
 import { mergePrintFontSelectOptions, normalizeFontFamilyName } from './const/printFonts';
 import { PAPER_QUICK_PRESETS, canvasPxFromPaper, findMatchingPaperPreset } from './const/paperPresets';
-import {
-  LODOP_BARCODE_1D_GROUPS,
-  LODOP_BARCODE_2D_GROUPS,
-  is1dBarcodeType,
-  is2dBarcodeType
-} from './const/lodopBarcodeTypes';
+import { LODOP_BARCODE_1D_GROUPS, LODOP_BARCODE_2D_GROUPS, is1dBarcodeType, is2dBarcodeType } from './const/lodopBarcodeTypes';
 import { LODOP_DATA_CHARSETS } from './const/lodopDataCharsets';
 import { queryInstalledFontFamilies, supportsLocalFontsQuery } from './utils/localFonts';
 import { tryGetLodopFontFamilies } from './utils/lodopFonts';
-import {
-  PRINT_WIDGET_DRAG_MIME,
-  type BorderPreset,
-  type LodopLicenseInfo,
-  type PrintTemplate,
-  type PrintTemplateItem,
-  type TableColumnAttr,
-  type WidgetOption
-} from './types';
+import { PRINT_WIDGET_DRAG_MIME, type BorderPreset, type LodopLicenseInfo, type PrintTemplate, type PrintTemplateItem, type TableColumnAttr, type WidgetOption } from './types';
 import { defaultBorderPresetForItem, previewTableCellBorderStyle } from './utils/itemBorderStyle';
 import { resolveTextItemValue } from './utils/resolvePlaceholders';
 import { resolveBarcodeItemValue } from './utils/lodopBarcodeValue';
 import { isBorderFrameItem, isShapeItem, shapePreviewStyle } from './utils/shapeItems';
-import {
-  getLineOrientation,
-  isLineItem,
-  linePreviewStyle,
-  normalizeLineTemplateItem
-} from './utils/lineItems';
+import { getLineOrientation, isLineItem, linePreviewStyle, normalizeLineTemplateItem } from './utils/lineItems';
 
 const { t, locale } = useI18n();
 
@@ -659,10 +445,7 @@ const rightCollapse = ref(['style']);
 const template = defineModel<PrintTemplate>({ required: true });
 
 function syncCanvasPxFromPaper() {
-  const px = canvasPxFromPaper(
-    Math.max(Number(template.value.pageWidth) || 210, 10),
-    Math.max(Number(template.value.pageHeight) || 297, 10)
-  );
+  const px = canvasPxFromPaper(Math.max(Number(template.value.pageWidth) || 210, 10), Math.max(Number(template.value.pageHeight) || 297, 10));
   template.value.width = px.width;
   template.value.height = px.height;
 }
@@ -673,9 +456,7 @@ function syncPaperPresetIdFromMm() {
 }
 
 /** User-selected preset id; stays `custom` until mm matches a preset again. */
-const paperPresetId = ref(
-  findMatchingPaperPreset(template.value.pageWidth, template.value.pageHeight) ?? 'custom'
-);
+const paperPresetId = ref(findMatchingPaperPreset(template.value.pageWidth, template.value.pageHeight) ?? 'custom');
 
 const paperPresetSelection = computed({
   get(): string {
@@ -712,6 +493,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   save: [PrintTemplate];
+  preview: [PrintTemplate];
 }>();
 
 const palette = computed(() => ensureShapePaletteWidgets(props.widgetOptions));
@@ -818,18 +600,14 @@ watch(
   { deep: true }
 );
 
-const sortedItems = computed(() =>
-  [...template.value.tempItems].sort((a, b) => (a.style?.zIndex ?? 0) - (b.style?.zIndex ?? 0))
-);
+const sortedItems = computed(() => [...template.value.tempItems].sort((a, b) => (a.style?.zIndex ?? 0) - (b.style?.zIndex ?? 0)));
 
 const selected = computed(() => template.value.tempItems.find((i) => i.id === selectedId.value) ?? null);
 
 const loadedLocalFamilies = ref<string[]>([]);
 const loadingLocalFonts = ref(false);
 
-const mergedFontOptions = computed(() =>
-  mergePrintFontSelectOptions(loadedLocalFamilies.value, locale.value, t)
-);
+const mergedFontOptions = computed(() => mergePrintFontSelectOptions(loadedLocalFamilies.value, locale.value, t));
 
 function fontOptionKey(opt: { label: string; value: string }) {
   return `${opt.value}\u0000${opt.label}`;
@@ -848,13 +626,7 @@ async function loadInstalledFonts() {
       }
     }
 
-    const merged = [
-      ...new Set(
-        [...fromLodop, ...fromBrowser]
-          .map((f) => normalizeFontFamilyName(f))
-          .filter((f): f is string => !!f)
-      )
-    ].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    const merged = [...new Set([...fromLodop, ...fromBrowser].map((f) => normalizeFontFamilyName(f)).filter((f): f is string => !!f))].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
     loadedLocalFamilies.value = merged;
 
     if (!merged.length) {
@@ -958,13 +730,9 @@ watch(
   }
 );
 
-const selectedBarcodeSectionTitle = computed(() =>
-  isSelectedBarcode2d.value ? t('printDesigner.canvas.sectionBarcode2d') : t('printDesigner.canvas.sectionBarcode1d')
-);
+const selectedBarcodeSectionTitle = computed(() => (isSelectedBarcode2d.value ? t('printDesigner.canvas.sectionBarcode2d') : t('printDesigner.canvas.sectionBarcode1d')));
 
-const activeBarcodeTypeGroups = computed(() =>
-  isSelectedBarcode2d.value ? LODOP_BARCODE_2D_GROUPS : LODOP_BARCODE_1D_GROUPS
-);
+const activeBarcodeTypeGroups = computed(() => (isSelectedBarcode2d.value ? LODOP_BARCODE_2D_GROUPS : LODOP_BARCODE_1D_GROUPS));
 
 const codeTypeProxy = computed({
   get: () => {
@@ -1218,9 +986,7 @@ const lineStyleSelectOptions = computed(() => [
   { value: 2, key: 'dot', label: t('printDesigner.canvas.lineStyleDot') }
 ]);
 
-const currentLineStyleKey = computed(
-  () => lineStyleSelectOptions.value.find((o) => o.value === lineStyleProxy.value)?.key ?? 'solid'
-);
+const currentLineStyleKey = computed(() => lineStyleSelectOptions.value.find((o) => o.value === lineStyleProxy.value)?.key ?? 'solid');
 
 const paginateProxy = computed({
   get: () => !!selected.value?.style?.paginate,
@@ -1260,10 +1026,7 @@ const bottomMarginProxy = computed({
 
 /** Lodop ItemType: '' = omit; '0' = normal item */
 const itemTypeSelectProxy = computed({
-  get: () =>
-    selected.value?.style?.ItemType === undefined || selected.value?.style?.ItemType === null
-      ? ''
-      : String(selected.value.style.ItemType),
+  get: () => (selected.value?.style?.ItemType === undefined || selected.value?.style?.ItemType === null ? '' : String(selected.value.style.ItemType)),
   set: (v: string) => {
     if (!selected.value) return;
     if (!selected.value.style) selected.value.style = {};
@@ -1299,8 +1062,7 @@ function itemStyle(item: PrintTemplateItem): Record<string, string | number> {
     base.border = 'none';
   }
   const fn = item.style?.FontName?.trim();
-  const is2dBar =
-    item.type === 'bar-code' && is2dBarcodeType(item.style?.codeType);
+  const is2dBar = item.type === 'bar-code' && is2dBarcodeType(item.style?.codeType);
   if (fn && item.type !== 'braid-image' && !isShapeItem(item) && !is2dBar) {
     base.fontFamily = fn;
   }
@@ -1314,12 +1076,7 @@ function normalizeDemoPlaceholders(row: Record<string, unknown>): Record<string,
     ...row,
     details: details.map((r: Record<string, unknown>) => ({
       ...r,
-      productName:
-        r.productName === '__demoA__'
-          ? t('printDesigner.demoProductA')
-          : r.productName === '__demoB__'
-            ? t('printDesigner.demoProductB')
-            : r.productName
+      productName: r.productName === '__demoA__' ? t('printDesigner.demoProductA') : r.productName === '__demoB__' ? t('printDesigner.demoProductB') : r.productName
     }))
   };
 }
@@ -1522,7 +1279,10 @@ function initTemp(temp: PrintTemplate) {
   });
 }
 
-defineExpose({ initTemp });
+defineExpose({
+  initTemp,
+  getTemplate: () => JSON.parse(JSON.stringify(template.value)) as PrintTemplate
+});
 
 type DragCtx = {
   kind: 'move' | 'resize';
@@ -1603,11 +1363,7 @@ function findSnap(values: number[], targets: number[]) {
   return { snapped: bestDiff <= ALIGN_SNAP_THRESHOLD, snapDelta };
 }
 
-function collectMatchedGuides(
-  values: number[],
-  targets: number[],
-  orientation: 'h' | 'v'
-): AlignGuide[] {
+function collectMatchedGuides(values: number[], targets: number[], orientation: 'h' | 'v'): AlignGuide[] {
   const out: AlignGuide[] = [];
   const seen = new Set<number>();
   for (const v of values) {
@@ -1633,10 +1389,7 @@ function updateAlignGuidesForMove(item: PrintTemplateItem, rawLeft: number, rawT
   const snappedTop = rawTop + (hSnap.snapped ? hSnap.snapDelta : 0);
   const finalV = [snappedLeft, snappedLeft + w / 2, snappedLeft + w];
   const finalH = [snappedTop, snappedTop + h / 2, snappedTop + h];
-  alignGuides.value = [
-    ...collectMatchedGuides(finalV, vTargets, 'v'),
-    ...collectMatchedGuides(finalH, hTargets, 'h')
-  ];
+  alignGuides.value = [...collectMatchedGuides(finalV, vTargets, 'v'), ...collectMatchedGuides(finalH, hTargets, 'h')];
   return { left: snappedLeft, top: snappedTop };
 }
 
@@ -1648,10 +1401,7 @@ function updateAlignGuidesForResize(item: PrintTemplateItem, rawW: number, rawH:
   const hSnap = findSnap([top + rawH], hTargets);
   const snappedW = rawW + (vSnap.snapped ? vSnap.snapDelta : 0);
   const snappedH = rawH + (hSnap.snapped ? hSnap.snapDelta : 0);
-  alignGuides.value = [
-    ...collectMatchedGuides([left + snappedW], vTargets, 'v'),
-    ...collectMatchedGuides([top + snappedH], hTargets, 'h')
-  ];
+  alignGuides.value = [...collectMatchedGuides([left + snappedW], vTargets, 'v'), ...collectMatchedGuides([top + snappedH], hTargets, 'h')];
   return { width: snappedW, height: snappedH };
 }
 
@@ -1705,19 +1455,8 @@ onUnmounted(() => {
   document.removeEventListener('keydown', onDesignerKeyDown);
 });
 
-async function handlePreview() {
-  try {
-    const ready = await waitForLodopReady();
-    if (!ready) {
-      ElMessage.error(t('printDesigner.lodopMissing'));
-      return;
-    }
-    lodopPrint.preview(template.value, demoData.value);
-  } catch (err) {
-    console.error(err);
-    const msg = (err as Error).message || '';
-    ElMessage.error(msg.includes('C-Lodop') ? t('printDesigner.lodopMissing') : msg || t('printDesigner.lodopMissing'));
-  }
+function handlePreview() {
+  emit('preview', JSON.parse(JSON.stringify(template.value)) as PrintTemplate);
 }
 
 async function handlePrint() {
@@ -1870,7 +1609,9 @@ async function handlePrint() {
   font-size: 14px;
   font-family: 'Times New Roman', Georgia, serif;
   line-height: 1;
-  transition: background-color 0.15s, color 0.15s;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
 }
 .pd-fmt-btn:hover {
   background: var(--el-fill-color-light);
@@ -2018,7 +1759,9 @@ async function handlePrint() {
   color: var(--el-text-color-regular);
   cursor: pointer;
   font-size: 16px;
-  transition: background-color 0.15s, color 0.15s;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
 }
 .pd-tool-btn:hover:not(:disabled) {
   background: var(--el-fill-color-light);
@@ -2051,9 +1794,7 @@ async function handlePrint() {
   overflow: auto;
   padding: 16px;
   background-color: #fff;
-  background-image:
-    linear-gradient(45deg, #f5f5f5 25%, transparent 0, transparent 75%, #f5f5f5 0),
-    linear-gradient(45deg, #f5f5f5 25%, transparent 0, transparent 75%, #f5f5f5 0);
+  background-image: linear-gradient(45deg, #f5f5f5 25%, transparent 0, transparent 75%, #f5f5f5 0), linear-gradient(45deg, #f5f5f5 25%, transparent 0, transparent 75%, #f5f5f5 0);
   background-size:
     26px 26px,
     26px 26px;

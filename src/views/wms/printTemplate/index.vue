@@ -174,7 +174,7 @@
         <span>{{ previewData.length ? '后台样例数据' : '空数据预览' }}</span>
       </div>
       <div v-loading="previewLoading" class="preview-panel">
-        <PrintHtmlPreview v-if="previewTemplate" ref="previewRef" :template-json="previewTemplate" :print-data="previewData[0] || {}" @rendered="previewPages = $event" />
+        <PrintTemplatePreview v-if="previewTemplate" ref="previewRef" :template="previewTemplate" :print-data="previewData" @rendered="previewPages = $event" />
         <el-empty v-else-if="!previewLoading" description="该模板暂无可预览内容" />
       </div>
       <template #footer>
@@ -196,13 +196,14 @@ import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { Clock, CopyDocument, Delete, EditPen, Grid, List, MoreFilled, Plus, Printer, Refresh, Search, View } from '@element-plus/icons-vue';
-import { PrintHtmlPreview, createDefaultTemplate, type TemplateData } from '@worm-vue3-print/canvas';
-import '@worm-vue3-print/canvas/style.css';
+import { createBlankTemplate, type PrintTemplate } from '@/components/print-designer';
+import { canvasPxFromPaper } from '@/components/print-designer/const/paperPresets';
 import { delPrintTemplate, getPrintSampleData, getPrintTemplate, listPrintTemplate, savePrintTemplate, type PrintTemplateVo } from '@/api/wms/printTemplate';
 import { printTemplateAdapter } from '@/config/printTemplate';
 import { HttpStatus } from '@/enums/RespEnum';
 import { parseSampleRows, parseTemplateContent } from './model';
 import PrintTemplateThumb from './components/PrintTemplateThumb.vue';
+import PrintTemplatePreview from './components/PrintTemplatePreview.vue';
 
 const router = useRouter();
 const rows = ref<PrintTemplateVo[]>([]);
@@ -237,10 +238,10 @@ const copyRules: FormRules = formRules;
 const previewVisible = ref(false);
 const previewLoading = ref(false);
 const previewRow = ref<PrintTemplateVo | null>(null);
-const previewTemplate = ref<Record<string, any> | null>(null);
+const previewTemplate = ref<PrintTemplate | null>(null);
 const previewData = ref<Record<string, unknown>[]>([]);
 const previewPages = ref(0);
-const previewRef = ref<InstanceType<typeof PrintHtmlPreview> | null>(null);
+const previewRef = ref<InstanceType<typeof PrintTemplatePreview> | null>(null);
 
 async function loadList() {
   loading.value = true;
@@ -286,20 +287,18 @@ function design(row: PrintTemplateVo) {
   router.push({ path: '/wms/print-template/designer', query: { code: row.templateCode, name: row.templateName } });
 }
 
-function createTemplateByPaper(paperSize: PaperChoice): TemplateData {
-  const template = createDefaultTemplate();
-  template.paperSize = paperSize === 'A4' ? 'A4' : 'CUSTOM';
-  template.margins = paperSize === 'A4' ? { top: 10, right: 10, bottom: 10, left: 10 } : { top: 2, right: 2, bottom: 2, left: 2 };
-  template.header.height = 0;
-  template.footer.height = 0;
-  const customSizes: Record<Exclude<PaperChoice, 'A4'>, [number, number]> = {
+function createTemplateByPaper(paperSize: PaperChoice): PrintTemplate {
+  const sizes: Record<PaperChoice, [number, number]> = {
+    A4: [210, 297],
     LABEL_80X60: [80, 60],
     LABEL_60X40: [60, 40],
     THERMAL_80: [80, 160]
   };
-  if (paperSize !== 'A4') {
-    [template.customWidth, template.customHeight] = customSizes[paperSize];
-  }
+  const template = createBlankTemplate();
+  [template.pageWidth, template.pageHeight] = sizes[paperSize];
+  const canvas = canvasPxFromPaper(template.pageWidth, template.pageHeight);
+  template.width = canvas.width;
+  template.height = canvas.height;
   return template;
 }
 
@@ -374,7 +373,7 @@ async function preview(row: PrintTemplateVo) {
     const [detailResult, sampleResult] = await Promise.all([getPrintTemplate(row.templateCode), getPrintSampleData(row.templateCode).catch(() => null)]);
     if (detailResult.code !== HttpStatus.SUCCESS || detailResult.data == null) throw new Error('模板详情加载失败');
     const detail = (printTemplateAdapter.mapDetailPayload(detailResult.data) ?? detailResult.data) as PrintTemplateVo;
-    previewTemplate.value = parseTemplateContent(detail.templateContent) as Record<string, any>;
+    previewTemplate.value = parseTemplateContent(detail.templateContent);
     if (sampleResult?.code === HttpStatus.SUCCESS) previewData.value = parseSampleRows(sampleResult.data);
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '预览加载失败');

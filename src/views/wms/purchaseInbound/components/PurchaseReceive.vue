@@ -919,10 +919,10 @@ const submitForm = async () => {
   buttonLoading.value = true;
   try {
     const purchaseInboundRequests = validPurchaseInboundList.map((item) => {
-      const { children, isPoDetailHead, rowKey, ...itemRest } = item;
+      const { children, isPoDetailHead, rowKey, purchaseOrderBomScheduleVoList, ...itemRest } = item;
       return {
         ...itemRest,
-        purchaseOrderBomScheduleVoList: (item.purchaseOrderBomScheduleVoList || []).map((bom) => {
+        purchaseOrderBomScheduleBoList: (purchaseOrderBomScheduleVoList || []).map((bom) => {
           const { children: bomChildren, isPoDetailHead: bomHead, rowKey: bomRowKey, parentInboundRowKey, ...bomRest } = bom as Record<string, any>;
           const withItem = inheritPoItemNumberOnBom({ ...bomRest } as PurchaseOrderBomVO, item);
           return {

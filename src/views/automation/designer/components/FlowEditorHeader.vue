@@ -5,6 +5,8 @@
         <el-icon><Share /></el-icon>
       </span>
       <h1 class="flow-title" :title="title">{{ title }}</h1>
+      <span v-if="dirty" class="dirty-dot" title="有未保存的修改" />
+      <el-tag v-if="statusLabel" :type="statusType" size="small" effect="light">{{ statusLabel }}</el-tag>
       <button class="icon-action" title="修改流程名称" @click="$emit('rename')">
         <el-icon><EditPen /></el-icon>
       </button>
@@ -21,6 +23,10 @@
         <el-icon><VideoPlay /></el-icon>
         调试
       </el-button>
+      <el-button class="publish-btn" :loading="publishing" @click="$emit('publish')">
+        <el-icon><Upload /></el-icon>
+        发布
+      </el-button>
       <el-button type="primary" class="save-btn" :loading="saving" @click="$emit('save')">
         <el-icon><DocumentChecked /></el-icon>
         保存
@@ -33,18 +39,42 @@
 </template>
 
 <script setup lang="ts">
-import { Close, DocumentChecked, EditPen, List, Share, VideoPlay } from '@element-plus/icons-vue';
+import { computed } from 'vue';
+import { Close, DocumentChecked, EditPen, List, Share, Upload, VideoPlay } from '@element-plus/icons-vue';
 
-defineProps<{
+const props = defineProps<{
   title: string;
   issueCount?: number;
   saving?: boolean;
+  publishing?: boolean;
+  status?: string;
+  dirty?: boolean;
 }>();
+
+const statusLabel = computed(
+  () =>
+    ({
+      DRAFT: '草稿',
+      PUBLISHED: '已发布',
+      DISABLED: '已停用',
+      ARCHIVED: '已归档'
+    })[props.status || ''] || ''
+);
+
+const statusType = computed(
+  () =>
+    (({
+      PUBLISHED: 'success',
+      DISABLED: 'warning',
+      ARCHIVED: 'danger'
+    })[props.status || ''] || 'info') as 'success' | 'warning' | 'danger' | 'info'
+);
 
 defineEmits<{
   rename: [];
   validate: [];
   debug: [];
+  publish: [];
   save: [];
   close: [];
 }>();
@@ -90,6 +120,14 @@ defineEmits<{
   font-weight: 700;
   line-height: 22px;
 }
+.dirty-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #fa8c16;
+  box-shadow: 0 0 0 3px #fff7e6;
+}
 .icon-action,
 .close-action {
   display: inline-flex;
@@ -127,6 +165,20 @@ defineEmits<{
   color: #1677ff;
   border-color: #b3d4ff;
   background: #f5f9ff;
+}
+.header-actions :deep(.publish-btn) {
+  height: 32px;
+  border-radius: 4px;
+  padding: 0 14px;
+  border-color: #cbd5e1;
+  color: #334155;
+  background: #fff;
+}
+.header-actions :deep(.publish-btn:hover),
+.header-actions :deep(.publish-btn:focus) {
+  color: #1677ff;
+  border-color: #91caff;
+  background: #f0f7ff;
 }
 .header-actions :deep(.save-btn) {
   height: 32px;

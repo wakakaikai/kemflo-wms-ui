@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { PurchaseOrderVO, PurchaseOrderForm, PurchaseOrderQuery, PurchaseOrderReturnBatchForm } from '@/api/wms/purchaseOrder/types';
+import { PurchaseOrderVO, PurchaseOrderForm, PurchaseOrderQuery, PurchaseOrderReturnBatchForm, PurchaseOrderInboundBatchForm } from '@/api/wms/purchaseOrder/types';
 
 /**
  * 查询采购订单列表
@@ -63,7 +63,7 @@ export const delPurchaseOrder = (id: string | number | Array<string | number>) =
 };
 
 /** 采购入库 */
-export function addPurchaseInbound(data: any) {
+export function addPurchaseInbound(data: PurchaseOrderInboundBatchForm) {
   return request({
     url: '/wms/purchaseOrder/inbound',
     method: 'post',

@@ -1,8 +1,15 @@
-import { createDefaultTemplate, type PrintBusinessField, type TemplateData } from '@worm-vue3-print/canvas';
-
-export type WormTemplate = TemplateData;
+import { createBlankTemplate, type PrintTemplate, type PrintTemplateItem, type WidgetOption } from '@/components/print-designer';
+import { canvasPxFromPaper } from '@/components/print-designer/const/paperPresets';
 
 type JsonObject = Record<string, any>;
+
+export interface PrintBusinessField {
+  id?: string;
+  fieldKey: string;
+  fieldLabel: string;
+  fieldType: string;
+  sortOrder?: number;
+}
 
 function parseJson(raw: unknown): unknown {
   if (typeof raw !== 'string') return raw;
@@ -15,184 +22,172 @@ function parseJson(raw: unknown): unknown {
 }
 
 function uid(prefix: string) {
-  const suffix = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  return `${prefix}-${suffix}`;
+  const suffix = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(16).slice(2);
+  return prefix + '-' + suffix;
 }
 
-export function isWormTemplate(value: unknown): value is WormTemplate {
+export function isLocalTemplate(value: unknown): value is PrintTemplate {
+  if (!value || typeof value !== 'object') return false;
+  const row = value as JsonObject;
+  return Number.isFinite(Number(row.pageWidth)) && Number.isFinite(Number(row.pageHeight)) && Array.isArray(row.tempItems);
+}
+
+export function isWormTemplate(value: unknown) {
   if (!value || typeof value !== 'object') return false;
   const row = value as JsonObject;
   return typeof row.paperSize === 'string' && !!row.margins && Array.isArray(row.elements);
 }
 
-function numberValue(value: unknown, fallback: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function legacyType(item: JsonObject) {
-  if (item.type === 'braid-txt') return 'text';
-  if (item.type === 'braid-html') return 'html';
-  if (item.type === 'braid-image') return 'image';
-  if (item.type === 'braid-table') return 'table';
-  if (item.type === 'braid-rect' || item.type === 'braid-border') return 'rect';
-  if (item.type === 'braid-ellipse') return 'oval';
-  if (item.type === 'braid-hline') return 'hline';
-  if (item.type === 'braid-vline') return 'vline';
-  if (item.type === 'bar-code') {
-    return String(item.style?.codeType || '')
-      .toUpperCase()
-      .includes('QR')
-      ? 'qrcode'
-      : 'barcode';
-  }
-  return 'text';
-}
-
-function legacyFormatter(item: JsonObject) {
-  const value = typeof item.value === 'string' ? item.value : '';
-  if (value) return value;
-  if (item.name) return `{${item.name}}`;
-  return item.title || '';
-}
-
-function migrateLegacyTable(item: JsonObject, width: number) {
-  const columns = Array.isArray(item.columnsAttr) && item.columnsAttr.length ? item.columnsAttr : [{ title: '内容', value: item.value || '' }];
-  const colWidth = width / columns.length;
-  return {
-    dataSource: item.name || '',
-    tableColWidths: columns.map(() => colWidth),
-    tableRows: [
-      {
-        id: uid('row'),
-        type: 'header',
-        height: 8,
-        repeatOnPage: true,
-        cells: columns.map((column: JsonObject) => ({
-          id: uid('cell'),
-          formatter: column.title || column.titleKey || column.name || '字段',
-          align: 'center',
-          fontWeight: '600'
-        }))
-      },
-      {
-        id: uid('row'),
-        type: 'data',
-        height: 8,
-        cells: columns.map((column: JsonObject) => ({
-          id: uid('cell'),
-          formatter: column.value || (column.name ? `{${column.name}}` : ''),
-          align: 'left'
-        }))
-      }
-    ],
-    tablePagination: { enabled: item.style?.paginate !== false }
+function paperDimensions(raw: JsonObject) {
+  const presets: Record<string, [number, number]> = {
+    A3: [297, 420],
+    A4: [210, 297],
+    A5: [148, 210],
+    Letter: [215.9, 279.4],
+    Legal: [215.9, 355.6],
+    LABEL_80X60: [80, 60],
+    LABEL_60X40: [60, 40],
+    LABEL_40X30: [40, 30],
+    THERMAL_57: [57, 120],
+    THERMAL_80: [80, 160],
+    THERMAL_110: [110, 180]
   };
+  let [width, height] = raw.paperSize === 'CUSTOM' || raw.paperSize === 'CONTINUOUS' ? [Number(raw.customWidth || 210), Number(raw.customHeight || 297)] : presets[raw.paperSize] || presets.A4;
+  if (raw.orientation === 'landscape') [width, height] = [height, width];
+  return { width, height };
 }
 
-function migrateLegacyElement(item: JsonObject, scaleX: number, scaleY: number) {
-  const type = legacyType(item);
-  const width = Math.max(1, numberValue(item.width, 100) * scaleX);
-  const height = Math.max(1, numberValue(item.height, 30) * scaleY);
-  const options: JsonObject = {
-    left: Math.max(0, Number(item.left || 0) * scaleX),
-    top: Math.max(0, Number(item.top || 0) * scaleY),
-    width,
-    height,
-    zIndex: Number(item.style?.zIndex || 1),
-    fontSize: Number(item.style?.FontSize || 10),
-    fontFamily: item.style?.FontName || undefined,
-    fontWeight: item.style?.Bold ? '700' : '400',
-    color: item.style?.FontColor || '#111827',
-    backgroundColor: item.style?.HighlightColor || undefined,
-    textAlign: item.style?.Alignment || 'left',
-    formatter: legacyFormatter(item),
-    testData: typeof item.defaultValue === 'string' ? item.defaultValue : undefined,
-    borderWidth: Number(item.style?.LineWidth || 0),
-    borderStyle: Number(item.style?.LineStyle || 0) === 1 ? 'dashed' : 'solid',
-    borderColor: item.style?.BorderColor || '#111827'
+function localType(type: string): PrintTemplateItem['type'] {
+  const types: Record<string, PrintTemplateItem['type']> = {
+    text: 'braid-txt',
+    longText: 'braid-txt',
+    html: 'braid-html',
+    pageNumber: 'braid-html',
+    image: 'braid-image',
+    table: 'braid-table',
+    barcode: 'bar-code',
+    qrcode: 'bar-code',
+    rect: 'braid-border',
+    oval: 'braid-ellipse',
+    hline: 'braid-hline',
+    vline: 'braid-vline'
   };
+  return types[type] || 'braid-txt';
+}
 
-  if (type === 'image') {
-    options.src = legacyFormatter(item);
-    options.fit = 'contain';
-  }
-  if (type === 'barcode') {
-    options.barcodeType = item.style?.codeType || 'CODE128';
-  }
-  if (type === 'qrcode') {
-    options.qrCodeLevel = item.style?.QRCodeErrorLevel || 'M';
-  }
-  if (type === 'table') Object.assign(options, migrateLegacyTable(item, width));
+function migrateTableRows(options: JsonObject) {
+  const rows = Array.isArray(options.tableRows) ? options.tableRows : [];
+  const header = rows.find((row: JsonObject) => row.type === 'header') || rows[0];
+  const data = rows.find((row: JsonObject) => row.type === 'data') || rows[1];
+  const cells = Array.isArray(header?.cells) ? header.cells : [];
+  return cells.map((cell: JsonObject, index: number) => {
+    const dataCell = data?.cells?.[index] || {};
+    const value = String(dataCell.formatter || '');
+    return {
+      title: String(cell.formatter || '字段' + (index + 1)),
+      value,
+      name: value.replace(/^\{|\}$/g, '')
+    };
+  });
+}
 
+function migrateWormElement(element: JsonObject, scaleX: number, scaleY: number, zoneOffset = 0): PrintTemplateItem {
+  const type = String(element.printElementType?.type || element.type || 'text');
+  const options = element.options || {};
+  const itemType = localType(type);
+  const formatter = String(options.formatter || options.src || '');
   return {
-    id: item.id || uid('element'),
-    type,
-    options,
-    printElementType: {
-      type,
-      title: item.title || '元素',
-      editable: item.isEdit !== false
+    id: String(element.id || uid('item')),
+    type: itemType,
+    title: String(element.printElementType?.title || options.title || type),
+    value: formatter,
+    defaultValue: options.testData,
+    name: formatter.match(/^\{(.+)\}$/)?.[1],
+    isEdit: element.printElementType?.editable !== false,
+    dragable: options.locked !== true,
+    resizable: options.locked !== true,
+    left: Math.max(0, Number(options.left || 0) * scaleX),
+    top: Math.max(0, (Number(options.top || 0) + zoneOffset) * scaleY),
+    width: Math.max(2, Number(options.width || 20) * scaleX),
+    height: Math.max(2, Number(options.height || 8) * scaleY),
+    columnsAttr: itemType === 'braid-table' ? migrateTableRows(options) : undefined,
+    style: {
+      zIndex: Number(options.zIndex || 1),
+      FontSize: Number(options.fontSize || 9),
+      FontName: options.fontFamily,
+      FontColor: options.color,
+      Bold: String(options.fontWeight || '') === '700' || options.fontWeight === 'bold',
+      Italic: options.fontStyle === 'italic',
+      Underline: String(options.textDecoration || '').includes('underline'),
+      StrikeOut: String(options.textDecoration || '').includes('line-through'),
+      HighlightColor: options.backgroundColor,
+      Alignment: options.textAlign || 'left',
+      codeType: type === 'qrcode' ? 'QRCode' : options.barcodeType || '128Auto',
+      QRCodeErrorLevel: options.qrCodeLevel || 'M',
+      ShowBarText: options.showText !== false,
+      BorderColor: options.borderColor,
+      LineWidth: Number(options.borderWidth || 1),
+      LineStyle: options.borderStyle === 'dashed' ? 1 : options.borderStyle === 'dotted' ? 2 : 0,
+      FillColor: options.backgroundColor,
+      paginate: options.tablePagination?.enabled === true,
+      pageRows: Number(options.tablePagination?.pageRows || 10)
     }
   };
 }
 
-function migrateLegacyTemplate(raw: JsonObject): TemplateData {
-  const pageWidth = numberValue(raw.pageWidth, 210);
-  const pageHeight = numberValue(raw.pageHeight, 297);
-  const canvasWidth = numberValue(raw.width, pageWidth * 3.78);
-  const canvasHeight = numberValue(raw.height, pageHeight * 3.78);
-  const items = Array.isArray(raw.tempItems) ? raw.tempItems : [];
-  const template = createDefaultTemplate();
+function migrateWormTemplate(raw: JsonObject): PrintTemplate {
+  const first = Array.isArray(raw.pages) ? raw.pages[0] || {} : raw;
+  const { width: pageWidth, height: pageHeight } = paperDimensions(first);
+  const canvas = canvasPxFromPaper(pageWidth, pageHeight);
+  const scaleX = canvas.width / pageWidth;
+  const scaleY = canvas.height / pageHeight;
+  const headerHeight = Number(first.header?.height || 0);
+  const body = Array.isArray(first.elements) ? first.elements : [];
+  const header = Array.isArray(first.header?.elements) ? first.header.elements : [];
+  const footer = Array.isArray(first.footer?.elements) ? first.footer.elements : [];
   return {
-    ...template,
-    paperSize: 'CUSTOM',
-    customWidth: pageWidth,
-    customHeight: pageHeight,
-    orientation: pageWidth > pageHeight ? 'landscape' : 'portrait',
-    margins: { top: 0, right: 0, bottom: 0, left: 0 },
-    header: { height: 0, elements: [] },
-    footer: { height: 0, elements: [] },
-    firstPageOverlay: { height: 0, elements: [] },
-    elements: items.map((item: JsonObject) => migrateLegacyElement(item, pageWidth / canvasWidth, pageHeight / canvasHeight)) as TemplateData['elements']
+    title: String(first.title || raw.title || ''),
+    width: canvas.width,
+    height: canvas.height,
+    pageWidth,
+    pageHeight,
+    tempItems: [...header.map((item: JsonObject) => migrateWormElement(item, scaleX, scaleY)), ...body.map((item: JsonObject) => migrateWormElement(item, scaleX, scaleY, headerHeight)), ...footer.map((item: JsonObject) => migrateWormElement(item, scaleX, scaleY, Math.max(0, pageHeight - Number(first.footer?.height || 0))))]
   };
 }
 
-export function parseTemplateContent(raw: unknown): WormTemplate {
+export function parseTemplateContent(raw: unknown): PrintTemplate {
   const parsed = parseJson(raw);
-  if (isWormTemplate(parsed)) return parsed;
-  if (parsed && typeof parsed === 'object' && Array.isArray((parsed as JsonObject).tempItems)) {
-    return migrateLegacyTemplate(parsed as JsonObject);
+  if (isLocalTemplate(parsed)) {
+    return {
+      ...createBlankTemplate(),
+      ...parsed,
+      tempItems: parsed.tempItems.map((item) => ({ ...item, id: item.id || uid('item') }))
+    };
   }
-  return createDefaultTemplate();
+  if (isWormTemplate(parsed) || (parsed && typeof parsed === 'object' && Array.isArray((parsed as JsonObject).pages))) {
+    return migrateWormTemplate(parsed as JsonObject);
+  }
+  return createBlankTemplate();
 }
 
 function fieldType(value: unknown) {
   if (Array.isArray(value)) return 'list';
   if (typeof value === 'number') return 'number';
   if (typeof value === 'boolean') return 'boolean';
-  if (value instanceof Date) return 'date';
   return 'string';
 }
 
 export function inferBusinessFields(rows: Record<string, unknown>[]): PrintBusinessField[] {
   const result: PrintBusinessField[] = [];
   const seen = new Set<string>();
-  let order = 0;
-  const append = (key: string, label: string, type: string) => {
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-    result.push({ fieldKey: key, fieldLabel: label, fieldType: type, sortOrder: ++order });
-  };
   const walk = (value: Record<string, unknown>, prefix = '') => {
     Object.entries(value).forEach(([key, child]) => {
-      const path = prefix ? `${prefix}.${key}` : key;
-      append(path, key, fieldType(child));
-      if (child && typeof child === 'object' && !Array.isArray(child)) {
-        walk(child as Record<string, unknown>, path);
-      } else if (Array.isArray(child) && child[0] && typeof child[0] === 'object') {
-        walk(child[0] as Record<string, unknown>, path);
+      const path = prefix ? prefix + '.' + key : key;
+      if (!seen.has(path)) {
+        seen.add(path);
+        result.push({ fieldKey: path, fieldLabel: key, fieldType: fieldType(child), sortOrder: result.length + 1 });
       }
+      if (child && typeof child === 'object' && !Array.isArray(child)) walk(child as Record<string, unknown>, path);
     });
   };
   if (rows[0]) walk(rows[0]);
@@ -202,25 +197,35 @@ export function inferBusinessFields(rows: Record<string, unknown>[]): PrintBusin
 export function mapBusinessFields(raw: unknown, sampleRows: Record<string, unknown>[] = []): PrintBusinessField[] {
   const parsed = parseJson(raw);
   const source = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object' ? (parsed as JsonObject).rows || (parsed as JsonObject).list || (parsed as JsonObject).data || [] : [];
-  const rows = Array.isArray(source) ? source : [];
-  const mapped = rows
+  const mapped = (Array.isArray(source) ? source : [])
     .map((item: JsonObject, index: number): PrintBusinessField | null => {
-      if (!item || typeof item !== 'object') return null;
-      const key = String(item.fieldKey ?? item.name ?? item.key ?? item.prop ?? item.value ?? '')
+      const key = String(item?.fieldKey ?? item?.name ?? item?.key ?? item?.prop ?? item?.value ?? '')
         .replace(/^\{|\}$/g, '')
         .trim();
       if (!key) return null;
-      const rawType = item.fieldType ?? item.dataType ?? item.type;
       return {
         id: item.id == null ? undefined : String(item.id),
         fieldKey: key,
         fieldLabel: String(item.fieldLabel ?? item.title ?? item.label ?? key),
-        fieldType: rawType === 'braid-table' ? 'list' : String(rawType || 'string'),
+        fieldType: String(item.fieldType ?? item.dataType ?? (item.type === 'braid-table' ? 'list' : 'string')),
         sortOrder: Number(item.sortOrder ?? index + 1)
       };
     })
     .filter((item: PrintBusinessField | null): item is PrintBusinessField => item !== null);
   return mapped.length ? mapped : inferBusinessFields(sampleRows);
+}
+
+export function fieldsToWidgetOptions(fields: PrintBusinessField[]): WidgetOption[] {
+  return fields.map((field) => ({
+    type: field.fieldType === 'list' ? 'braid-table' : 'braid-txt',
+    title: field.fieldLabel,
+    value: '{' + field.fieldKey + '}',
+    name: field.fieldKey,
+    category: 'common',
+    width: field.fieldType === 'list' ? 480 : 150,
+    height: field.fieldType === 'list' ? 120 : 30,
+    isEdit: false
+  }));
 }
 
 export function parseSampleRows(raw: unknown): Record<string, unknown>[] {

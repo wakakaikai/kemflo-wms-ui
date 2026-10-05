@@ -119,6 +119,23 @@ export interface PurchaseOrderQuery extends PageQuery {
   params?: any;
 }
 
+/** 采购入库 BOM 扣料参数 */
+export interface PurchaseOrderInboundBomBo extends Record<string, unknown> {}
+
+/** 采购入库行参数 */
+export interface PurchaseOrderInboundBo extends Record<string, unknown> {
+  purchaseOrderBomScheduleBoList?: PurchaseOrderInboundBomBo[];
+}
+
+/** 采购入库提交参数 */
+export interface PurchaseOrderInboundBatchForm {
+  receiveType?: string;
+  lfsnr?: string;
+  bktxt?: string;
+  postingDate?: string;
+  purchaseOrderInboundBoList: PurchaseOrderInboundBo[];
+}
+
 /** 采购件退货行 */
 export interface PurchaseOrderReturnBo {
   /** 移动记录ID */

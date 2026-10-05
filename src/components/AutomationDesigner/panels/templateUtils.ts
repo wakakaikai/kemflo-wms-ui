@@ -1,4 +1,4 @@
-/** UI Ê¹ÓÃ Jeecg ·ç¸ñ {{var}}£¬³Ö¾Ã»¯Ê¹ÓÃÁ÷³ÌÒıÇæ ${var} */
+/** UI ä½¿ç”¨æ˜“è¯»çš„ {{var}} å ä½ç¬¦ï¼ŒæŒä¹…åŒ–æ—¶è½¬æ¢ä¸ºè¿è¡Œæ—¶ä½¿ç”¨çš„ ${var}ã€‚ */
 
 export function toDisplayTemplate(value: unknown) {
   return String(value ?? '').replace(/\$\{([^}]+)\}/g, '{{$1}}');

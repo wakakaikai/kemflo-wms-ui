@@ -75,8 +75,10 @@ const filteredGroups = computed(() => {
 });
 
 function handleDragStart(event: DragEvent, type: string) {
-  event.dataTransfer?.setData('application/x6-node-type', type);
-  event.dataTransfer!.effectAllowed = 'copy';
+  if (!event.dataTransfer) return;
+  event.dataTransfer.setData('application/x6-node-type', type);
+  event.dataTransfer.setData('text/plain', type);
+  event.dataTransfer.effectAllowed = 'copy';
 }
 
 function handleClick(type: string) {

@@ -2,6 +2,7 @@ import { onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type AutomationDesigner from '@/components/AutomationDesigner/index.vue';
+import type { FlowDesignIssue } from '@/components/AutomationDesigner/types/validation';
 import { getDefinition, updateDefinition } from '@/api/automation/definition';
 import type { AutoDefinitionForm } from '@/api/automation/definition/types';
 import { listVersion } from '@/api/automation/version';
@@ -10,12 +11,14 @@ import type { AutoVersionVo } from '@/api/automation/version/types';
 export function useFlowDesignerPage() {
   const route = useRoute();
   const router = useRouter();
-  const definitionId = ref<string | undefined>(
-    route.params.definitionId ? String(route.params.definitionId) : undefined,
-  );
+  const definitionId = ref<string | undefined>(route.params.definitionId ? String(route.params.definitionId) : undefined);
   const designerRef = ref<InstanceType<typeof AutomationDesigner>>();
   const saving = ref(false);
+  const publishing = ref(false);
   const issueCount = ref(0);
+  const issues = ref<FlowDesignIssue[]>([]);
+  const issuesVisible = ref(false);
+  const dirty = ref(false);
   const historyVisible = ref(false);
   const historyLoading = ref(false);
   const historyTotal = ref(0);
@@ -26,7 +29,7 @@ export function useFlowDesignerPage() {
     automationCode: undefined,
     automationName: undefined,
     triggerType: undefined,
-    description: undefined,
+    description: undefined
   });
 
   function syncDefinitionIdFromRoute() {
@@ -51,7 +54,7 @@ export function useFlowDesignerPage() {
         inputValue: form.automationName || '',
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        inputValidator: (value) => (value?.trim() ? true : '名称不能为空'),
+        inputValidator: (value) => (value?.trim() ? true : '名称不能为空')
       });
       const name = value?.trim();
       if (!name) return;
@@ -75,12 +78,23 @@ export function useFlowDesignerPage() {
   }
 
   async function handleValidate() {
-    issueCount.value = 0;
-    await designerRef.value?.validate();
+    const result = await designerRef.value?.validate();
+    if (result) handleIssues(result);
+    issuesVisible.value = true;
   }
 
   function handleRun() {
     designerRef.value?.run();
+  }
+
+  async function handlePublish() {
+    if (publishing.value) return;
+    publishing.value = true;
+    try {
+      await designerRef.value?.publish();
+    } finally {
+      publishing.value = false;
+    }
   }
 
   async function loadHistory() {
@@ -90,7 +104,7 @@ export function useFlowDesignerPage() {
       const res = await listVersion({
         definitionId: definitionId.value,
         pageNum: historyQuery.pageNum,
-        pageSize: historyQuery.pageSize,
+        pageSize: historyQuery.pageSize
       } as any);
       historyList.value = (res as any).rows ?? [];
       historyTotal.value = (res as any).total ?? 0;
@@ -100,11 +114,36 @@ export function useFlowDesignerPage() {
   }
 
   function handleSaved() {
-    ElMessage.success('设计已保存');
+    dirty.value = false;
   }
 
-  function goBack() {
-    router.push({ path: '/automation/definition' });
+  function handlePublished() {
+    form.status = 'PUBLISHED';
+    dirty.value = false;
+  }
+
+  function handleIssues(value: FlowDesignIssue[]) {
+    issues.value = value;
+    issueCount.value = value.length;
+  }
+
+  function handleDirtyChange(value: boolean) {
+    dirty.value = value;
+  }
+
+  async function goBack() {
+    if (dirty.value) {
+      try {
+        await ElMessageBox.confirm('流程有尚未保存的修改，确定要关闭吗？', '尚未保存', {
+          confirmButtonText: '放弃修改',
+          cancelButtonText: '继续编辑',
+          type: 'warning'
+        });
+      } catch {
+        return;
+      }
+    }
+    await router.push({ path: '/automation/definition' });
   }
 
   onMounted(() => {
@@ -117,14 +156,18 @@ export function useFlowDesignerPage() {
     () => {
       syncDefinitionIdFromRoute();
       loadDefinition();
-    },
+    }
   );
 
   return {
     definitionId,
     designerRef,
     saving,
+    publishing,
     issueCount,
+    issues,
+    issuesVisible,
+    dirty,
     historyVisible,
     historyLoading,
     historyTotal,
@@ -135,8 +178,12 @@ export function useFlowDesignerPage() {
     handleSave,
     handleValidate,
     handleRun,
+    handlePublish,
     loadHistory,
     handleSaved,
-    goBack,
+    handlePublished,
+    handleIssues,
+    handleDirtyChange,
+    goBack
   };
 }

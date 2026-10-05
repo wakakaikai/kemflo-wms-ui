@@ -11,7 +11,7 @@
           <div class="title-line">
             <h1>{{ templateName || '未命名模板' }}</h1>
             <span class="template-code">{{ templateCode || 'NO CODE' }}</span>
-            <span v-if="migratedLegacy" class="migration-badge">旧版已迁移</span>
+            <span v-if="migratedLegacy" class="migration-badge">外部格式已转换</span>
           </div>
           <p>{{ saveStateText }}</p>
         </div>
@@ -50,7 +50,7 @@
     </div>
 
     <main v-loading="loading" class="studio-workbench">
-      <PrintDesigner v-if="designerReady" ref="designerRef" :initial-template="templateData" :fields="businessFields" :is-edit="true" :show-help="true" :upload-image="uploadImage" @preview="openPreview" @save="saveTemplateJson" />
+      <PrintDesigner v-if="designerReady" ref="designerRef" v-model="templateData" :widget-options="widgetOptions" :print-data="sampleRows" @preview="openPreview" @save="persist" />
     </main>
 
     <el-drawer v-model="dataDrawerVisible" title="打印数据源" size="min(640px, 94vw)" append-to-body>
@@ -91,7 +91,7 @@
         <span>{{ sampleRows.length ? '使用后台样例数据' : '暂无样例数据' }}</span>
       </div>
       <div class="preview-stage">
-        <PrintHtmlPreview v-if="previewTemplate" ref="previewRef" :template-json="previewTemplate" :print-data="activeSampleData" @rendered="previewPages = $event" />
+        <PrintTemplatePreview v-if="previewTemplate" ref="previewRef" :template="previewTemplate" :print-data="sampleRows" @rendered="previewPages = $event" />
       </div>
       <template #footer>
         <el-button @click="previewVisible = false">关闭</el-button>
@@ -109,24 +109,24 @@ import { computed, nextTick, onActivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { ArrowLeft, DataAnalysis, DocumentChecked, Download, Printer, Refresh, Upload } from '@element-plus/icons-vue';
-import { PrintDesigner, PrintHtmlPreview, createDefaultTemplate, type PrintBusinessField } from '@worm-vue3-print/canvas';
-import '@worm-vue3-print/canvas/style.css';
+import { PrintDesigner, createBlankTemplate, defaultWidgetOptions, ensureShapePaletteWidgets, type PrintTemplate, type WidgetOption } from '@/components/print-designer';
 import { getPrintSampleData, getPrintTemplate, listPrintWidgetOptions, savePrintTemplate, type PrintTemplateVo } from '@/api/wms/printTemplate';
 import { printTemplateAdapter } from '@/config/printTemplate';
 import { HttpStatus } from '@/enums/RespEnum';
-import { inferBusinessFields, isWormTemplate, mapBusinessFields, parseSampleRows, parseTemplateContent, type WormTemplate } from './model';
+import { fieldsToWidgetOptions, inferBusinessFields, isLocalTemplate, isWormTemplate, mapBusinessFields, parseSampleRows, parseTemplateContent, type PrintBusinessField } from './model';
+import PrintTemplatePreview from './components/PrintTemplatePreview.vue';
 
 type DesignerExpose = InstanceType<typeof PrintDesigner> & {
-  getTemplateJson: () => WormTemplate;
-  validateTemplate?: () => Array<{ message: string }>;
+  getTemplate: () => PrintTemplate;
 };
 
 const route = useRoute();
 const router = useRouter();
 const designerRef = ref<DesignerExpose | null>(null);
-const previewRef = ref<InstanceType<typeof PrintHtmlPreview> | null>(null);
+const previewRef = ref<InstanceType<typeof PrintTemplatePreview> | null>(null);
 const importInputRef = ref<HTMLInputElement | null>(null);
-const templateData = ref<WormTemplate>(createDefaultTemplate());
+const templateData = ref<PrintTemplate>(createBlankTemplate());
+const widgetOptions = ref<WidgetOption[]>(ensureShapePaletteWidgets([...defaultWidgetOptions]));
 const businessFields = ref<PrintBusinessField[]>([]);
 const sampleRows = ref<Record<string, unknown>[]>([]);
 const currentVo = ref<PrintTemplateVo>({});
@@ -139,13 +139,12 @@ const designerReady = ref(false);
 const loadError = ref('');
 const dataDrawerVisible = ref(false);
 const previewVisible = ref(false);
-const previewTemplate = ref<Record<string, any> | null>(null);
+const previewTemplate = ref<PrintTemplate | null>(null);
 const previewPages = ref(0);
 const migratedLegacy = ref(false);
 const lastSavedAt = ref('');
 
 const formattedSampleData = computed(() => JSON.stringify(sampleRows.value, null, 2));
-const activeSampleData = computed(() => sampleRows.value[0] || {});
 const saveStateText = computed(() => {
   if (saving.value) return '正在保存模板…';
   if (lastSavedAt.value) return `已保存 · ${lastSavedAt.value}`;
@@ -185,7 +184,7 @@ function applyDetail(vo: PrintTemplateVo) {
           }
         })()
       : vo.templateContent;
-  migratedLegacy.value = !!raw && !isWormTemplate(raw);
+  migratedLegacy.value = !!raw && isWormTemplate(raw);
   templateData.value = parseTemplateContent(vo.templateContent);
   const stored = parseStoredFields(vo.businessFields ?? vo.widgetOptions);
   if (stored.length) businessFields.value = stored;
@@ -200,11 +199,16 @@ async function loadBackendData(showMessage = false) {
       sampleRows.value = parseSampleRows(sampleResult.value.data);
     }
     let fields: PrintBusinessField[] = [];
+    let mappedOptions: WidgetOption[] = [];
     if (fieldResult.status === 'fulfilled' && fieldResult.value.code === HttpStatus.SUCCESS) {
       fields = mapBusinessFields(fieldResult.value.data, sampleRows.value);
+      mappedOptions = printTemplateAdapter.mapWidgetOptionsPayload(fieldResult.value.data) || [];
     }
     if (!fields.length) fields = inferBusinessFields(sampleRows.value);
-    if (fields.length) businessFields.value = fields;
+    if (fields.length) {
+      businessFields.value = fields;
+      widgetOptions.value = ensureShapePaletteWidgets([...defaultWidgetOptions, ...(mappedOptions.length ? mappedOptions : fieldsToWidgetOptions(fields))]);
+    }
     if (showMessage) ElMessage.success(`已加载 ${businessFields.value.length} 个字段、${sampleRows.value.length} 条样例数据`);
   } finally {
     dataLoading.value = false;
@@ -217,7 +221,8 @@ async function loadPage() {
   const creating = routeValue(route.query.create) === '1';
   templateCode.value = code;
   templateName.value = name;
-  templateData.value = createDefaultTemplate();
+  templateData.value = createBlankTemplate();
+  widgetOptions.value = ensureShapePaletteWidgets([...defaultWidgetOptions]);
   businessFields.value = [];
   sampleRows.value = [];
   currentVo.value = { templateCode: code, templateName: name };
@@ -254,13 +259,14 @@ async function reloadBackendData() {
 }
 
 function validateCurrent() {
-  const issues = designerRef.value?.validateTemplate?.() || [];
-  if (!issues.length) return true;
-  ElMessage.warning(issues[0]?.message || '模板配置不合法');
-  return false;
+  if (templateData.value.pageWidth <= 0 || templateData.value.pageHeight <= 0) {
+    ElMessage.warning('纸张尺寸必须大于 0');
+    return false;
+  }
+  return true;
 }
 
-async function persist(content: WormTemplate) {
+async function persist(content: PrintTemplate) {
   if (!templateCode.value) {
     ElMessage.warning('模板编码不能为空');
     return;
@@ -274,7 +280,7 @@ async function persist(content: WormTemplate) {
       templateName: templateName.value || templateCode.value,
       templateContent: JSON.stringify(content),
       businessFields: fieldJson,
-      widgetOptions: fieldJson,
+      widgetOptions: JSON.stringify(widgetOptions.value),
       sampleData: currentVo.value.sampleData
     };
     const result = await savePrintTemplate(vo);
@@ -292,18 +298,9 @@ async function persist(content: WormTemplate) {
   }
 }
 
-function saveTemplateJson(json: string) {
-  if (!validateCurrent()) return;
-  try {
-    void persist(parseTemplateContent(json));
-  } catch {
-    ElMessage.error('设计器输出的模板 JSON 无效');
-  }
-}
-
 function saveCurrent() {
   if (!validateCurrent()) return;
-  const content = designerRef.value?.getTemplateJson();
+  const content = designerRef.value?.getTemplate() || templateData.value;
   if (!content) {
     ElMessage.warning('设计器尚未初始化');
     return;
@@ -311,18 +308,16 @@ function saveCurrent() {
   void persist(content);
 }
 
-function openPreview() {
+function openPreview(content?: PrintTemplate) {
   if (!validateCurrent()) return;
-  const content = designerRef.value?.getTemplateJson();
-  if (!content) return;
-  previewTemplate.value = content as Record<string, any>;
+  previewTemplate.value = content || designerRef.value?.getTemplate() || templateData.value;
   previewPages.value = 0;
   previewVisible.value = true;
 }
 
 function exportTemplate() {
   if (!validateCurrent()) return;
-  const content = designerRef.value?.getTemplateJson();
+  const content = designerRef.value?.getTemplate() || templateData.value;
   if (!content) return;
   const blob = new Blob([JSON.stringify(content, null, 2)], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -342,11 +337,11 @@ function importTemplate(event: Event) {
   reader.onload = async () => {
     try {
       const parsed = JSON.parse(String(reader.result));
-      if (!isWormTemplate(parsed) && !Array.isArray(parsed?.tempItems)) {
+      if (!isWormTemplate(parsed) && !isLocalTemplate(parsed)) {
         throw new Error('不支持的模板格式');
       }
       templateData.value = parseTemplateContent(parsed);
-      migratedLegacy.value = !isWormTemplate(parsed);
+      migratedLegacy.value = isWormTemplate(parsed);
       await remountDesigner();
       ElMessage.success('模板已导入，保存后写入后台');
     } catch (error) {
@@ -355,15 +350,6 @@ function importTemplate(event: Event) {
   };
   reader.onerror = () => ElMessage.error('模板文件读取失败');
   reader.readAsText(file);
-}
-
-function uploadImage(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error('图片读取失败'));
-    reader.readAsDataURL(file);
-  });
 }
 
 watch(

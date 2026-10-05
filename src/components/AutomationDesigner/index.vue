@@ -14,6 +14,16 @@
 
       <!-- 画布区域 -->
       <main class="canvas-panel">
+        <button
+          v-if="!readonly && externalToolbar"
+          type="button"
+          class="stencil-toggle"
+          :class="{ active: showStencilPanel }"
+          @click="showStencilPanel = !showStencilPanel"
+        >
+          <el-icon><Grid /></el-icon>
+          节点
+        </button>
         <div v-if="!externalToolbar" class="toolbar">
           <div v-if="!readonly" class="toolbar-group">
             <el-button size="small" type="primary" plain @click="aiComposeDialogVisible = true">
@@ -69,7 +79,8 @@
           ref="canvasAreaRef"
           class="canvas-area"
           @drop.prevent="onDrop"
-          @dragover.prevent
+          @dragenter.prevent
+          @dragover.prevent="onDragOver"
           @contextmenu.prevent="onCanvasContextMenu"
         >
           <div ref="canvasRef" class="canvas-container" />
@@ -214,6 +225,7 @@ import {
 import { useGraph, resizeGraph, addNodeToGraph, exportDesignJson, importDesignJson, applyNodeRuntimeStatus, clearNodeRuntimeStatus, applyFlowEdgeStyle, alignNodeRight, CARD_WIDTH, CARD_HEIGHT, syncBranchPorts } from './graph/useGraph';
 import { getDefaultSourcePort, getDefaultTargetPort } from './nodes/registerNodes';
 import { getNodeConfig } from './types';
+import { collectFlowIssues, type FlowDesignIssue } from './types/validation';
 import BottomPanel from './panels/bottomPanel.vue';
 import NodePicker from './panels/NodePicker.vue';
 import NodeSettingsDrawer from './panels/NodeSettingsDrawer.vue';
@@ -235,6 +247,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   saved: [data: any];
   published: [];
+  issues: [issues: FlowDesignIssue[]];
+  'dirty-change': [dirty: boolean];
 }>();
 
 const readonly = computed(() => !!props.readonly);
@@ -251,6 +265,7 @@ const showEmptyHint = ref(true);
 const showLogs = ref(false);
 const showStencilPanel = ref(false);
 const zoomPercent = ref(100);
+const dirty = ref(false);
 
 const pickerVisible = ref(false);
 interface PickerSource {
@@ -287,6 +302,9 @@ const aiComposeTemplates = [
   },
 ];
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let issueRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+let hydrating = false;
+const eventDisposers: Array<() => void> = [];
 
 let graph: Graph | null = null;
 let resizeObserver: ResizeObserver | null = null;
@@ -303,6 +321,21 @@ function addLog(level: string, message: string) {
   const time = new Date().toLocaleTimeString();
   logs.value.push({ level, message, time });
   if (logs.value.length > 200) logs.value.shift();
+}
+
+function setDirty(value: boolean) {
+  if (readonly.value || dirty.value === value) return;
+  dirty.value = value;
+  emit('dirty-change', value);
+}
+
+function markDirty() {
+  if (hydrating) return;
+  setDirty(true);
+  if (issueRefreshTimer) clearTimeout(issueRefreshTimer);
+  issueRefreshTimer = setTimeout(() => {
+    if (graph) emit('issues', collectFlowIssues(graph));
+  }, 120);
 }
 
 function openSettingsDrawer(node: Node) {
@@ -366,6 +399,7 @@ onMounted(async () => {
       if (graph) {
         canUndo.value = graph.canUndo();
         canRedo.value = graph.canRedo();
+        markDirty();
       }
     });
   }
@@ -373,11 +407,13 @@ onMounted(async () => {
   graph.on('scale', () => updateZoomLabel());
 
   graph.on('cell:added', ({ cell }) => {
+    markDirty();
     showEmptyHint.value = false;
     if (cell.isNode()) addLog('info', `添加节点: ${(cell.getData() as any)?.label || cell.id}`);
     else if (cell.isEdge()) addLog('info', '添加连线');
   });
   graph.on('cell:removed', () => {
+    markDirty();
     if (graph && graph.getCells().length === 0) showEmptyHint.value = true;
   });
 
@@ -390,18 +426,18 @@ onMounted(async () => {
       }
     });
 
-    eventOn('node:plus-click', (data: PickerSource) => {
+    eventDisposers.push(eventOn('node:plus-click', (data: PickerSource) => {
       pickerSource.value = data;
       pickerVisible.value = true;
-    });
+    }));
 
-    eventOn('node:settings', (data: { node: Node }) => {
+    eventDisposers.push(eventOn('node:settings', (data: { node: Node }) => {
       if (!graph || !data.node) return;
       graph.select(data.node);
       openSettingsDrawer(data.node);
-    });
+    }));
 
-    eventOn('node:rename', async (data: { node: Node }) => {
+    eventDisposers.push(eventOn('node:rename', async (data: { node: Node }) => {
       if (!graph || !data.node) return;
       const nd = data.node.getData() || {};
       const current = nd.label || '';
@@ -414,25 +450,26 @@ onMounted(async () => {
         });
         if (!value?.trim()) return;
         data.node.setData({ ...nd, label: value.trim() });
+        markDirty();
         addLog('info', `已重命名: ${value.trim()}`);
       } catch {
         /* cancelled */
       }
-    });
+    }));
 
-    eventOn('node:edit-meta', (data: { node: Node; focus?: string }) => {
+    eventDisposers.push(eventOn('node:edit-meta', (data: { node: Node; focus?: string }) => {
       if (!graph || !data.node) return;
       graph.select(data.node);
       openSettingsDrawer(data.node);
       addLog('info', `编辑节点: ${(data.node.getData() as any)?.label || data.node.id}`);
-    });
+    }));
 
-    eventOn('node:delete', (data: { node: Node }) => {
+    eventDisposers.push(eventOn('node:delete', (data: { node: Node }) => {
       data.node?.remove();
       addLog('info', '删除节点');
-    });
+    }));
 
-    eventOn('node:copy', (data: { node: Node }) => {
+    eventDisposers.push(eventOn('node:copy', (data: { node: Node }) => {
       if (!graph || !data.node) return;
       const pos = data.node.getPosition();
       const nodeData = data.node.getData() || {};
@@ -440,7 +477,7 @@ onMounted(async () => {
       if (!type) return;
       addNodeToGraph(graph, type, pos.x + 40, pos.y + 40);
       addLog('info', '复制节点');
-    });
+    }));
   }
 
   // 端口悬停显隐（参考 agentFlow）
@@ -462,6 +499,7 @@ onMounted(async () => {
   });
 
   graph.on('edge:added', ({ edge }: { edge: Edge }) => {
+    markDirty();
     applyFlowEdgeStyle(edge);
     [edge.getSourceCellId(), edge.getTargetCellId()].forEach((cid, i) => {
       const portId = i === 0 ? edge.getSourcePortId() : edge.getTargetPortId();
@@ -475,6 +513,7 @@ onMounted(async () => {
     });
   });
   graph.on('edge:removed', ({ edge }: { edge: Edge }) => {
+    markDirty();
     [edge.getSourceCellId(), edge.getTargetCellId()].forEach((cid, i) => {
       const portId = i === 0 ? edge.getSourcePortId() : edge.getTargetPortId();
       if (!cid || !portId) return;
@@ -524,7 +563,9 @@ watch(
 
 onUnmounted(() => {
   stopPoll();
+  if (issueRefreshTimer) clearTimeout(issueRefreshTimer);
   resizeObserver?.disconnect();
+  eventDisposers.splice(0).forEach((dispose) => dispose());
   graph?.dispose();
   graph = null;
   designLoadedForId = undefined;
@@ -538,8 +579,19 @@ function resolveVersionId() {
 }
 
 function applyDesignJson(designJson?: string | null) {
+  hydrating = true;
   if (!designJson) {
     addLog('info', '暂无已保存的流程设计');
+    if (graph && !readonly.value) {
+      const canvasHeight = canvasAreaRef.value?.clientHeight || 600;
+      addNodeToGraph(graph, 'MANUAL_TRIGGER', 120, Math.max(120, canvasHeight / 2 - CARD_HEIGHT / 2));
+      showEmptyHint.value = false;
+      addLog('success', '已创建开始节点，请点击节点右侧 + 继续编排');
+    }
+    graph?.cleanHistory();
+    hydrating = false;
+    setDirty(!readonly.value);
+    if (graph) emit('issues', collectFlowIssues(graph));
     return;
   }
   const data = typeof designJson === 'string' ? JSON.parse(designJson) : designJson;
@@ -548,7 +600,11 @@ function applyDesignJson(designJson?: string | null) {
     showEmptyHint.value = false;
     nextTick(() => {
       graph?.zoomToFit({ maxScale: 1, padding: 40 });
+      graph?.cleanHistory();
       updateZoomLabel();
+      hydrating = false;
+      setDirty(false);
+      if (graph) emit('issues', collectFlowIssues(graph));
     });
   }
   addLog('success', '已加载流程设计');
@@ -579,6 +635,11 @@ function onDrop(e: DragEvent) {
   handleDrop(e);
 }
 
+function onDragOver(e: DragEvent) {
+  if (readonly.value || !e.dataTransfer) return;
+  e.dataTransfer.dropEffect = 'copy';
+}
+
 function onCanvasContextMenu(e: MouseEvent) {
   if (readonly.value) return;
   handleCanvasContextMenu(e);
@@ -600,11 +661,17 @@ function handleToolboxAdd(type: string, x: number, y: number) {
 
 function handleDrop(e: DragEvent) {
   if (!graph) return;
-  const type = e.dataTransfer?.getData('application/x6-node-type');
+  const type = e.dataTransfer?.getData('application/x6-node-type') || e.dataTransfer?.getData('text/plain');
   if (!type) return;
-  // 落点对齐卡片中心
+  if (!getNodeConfig(type)) {
+    addLog('error', `不支持的节点类型: ${type}`);
+    return;
+  }
+  // clientToLocal 会同时处理画布平移和缩放；限制坐标避免节点落在可视区域之外。
   const local = graph.clientToLocal(e.clientX, e.clientY);
-  handleAddNode(type, local.x - CARD_WIDTH / 2, local.y - CARD_HEIGHT / 2);
+  const x = Math.max(16, local.x - CARD_WIDTH / 2);
+  const y = Math.max(16, local.y - CARD_HEIGHT / 2);
+  handleAddNode(type, x, y);
 }
 
 function handlePickerSelect(type: string) {
@@ -688,6 +755,8 @@ async function handleSave() {
   try {
     await saveDefinitionDesign(id, JSON.stringify(designData));
     designLoadedForId = id;
+    graph.cleanHistory();
+    setDirty(false);
     emit('saved', designData);
     addLog('success', '设计已保存');
     ElMessage.success('设计已保存');
@@ -696,39 +765,42 @@ async function handleSave() {
   }
 }
 
-async function handleValidate() {
-  if (!graph) return;
+async function handleValidate(): Promise<FlowDesignIssue[]> {
+  if (!graph) return [];
   const id = resolveDefinitionId();
   const designData = exportDesignJson(graph);
-  // 前端快速检查
-  const nodes = graph.getNodes();
-  const triggerNodes = nodes.filter(c => c.getData()?.nodeType?.includes('TRIGGER'));
-  const endNodes = nodes.filter(c => c.getData()?.nodeType === 'END');
-  if (triggerNodes.length === 0) {
-    ElMessage.warning('流程必须包含至少一个触发节点');
-    addLog('error', '流程必须包含至少一个触发节点');
-    return;
-  }
-  if (endNodes.length === 0) {
-    ElMessage.warning('流程必须包含结束节点');
-    addLog('error', '流程必须包含结束节点');
-    return;
+  const issues = collectFlowIssues(graph);
+  emit('issues', issues);
+  const blockingIssues = issues.filter((issue) => issue.level === 'error');
+  if (blockingIssues.length > 0) {
+    showLogs.value = true;
+    blockingIssues.forEach((issue) => addLog('error', issue.title));
+    ElMessage.warning(`发现 ${issues.length} 个流程问题`);
+    return issues;
   }
   if (!id) {
     addLog('success', '前端校验通过（未绑定定义，跳过后端校验）');
     ElMessage.success('校验通过');
-    return;
+    return issues;
   }
   try {
     await validateDefinitionDesign(id, JSON.stringify(designData));
     addLog('success', '后端校验通过');
-    ElMessage.success('校验通过');
+    ElMessage.success(issues.length ? `校验通过，存在 ${issues.length} 条提示` : '校验通过');
   } catch (e: any) {
     showLogs.value = true;
     const msg = e?.message || e?.msg || '校验失败';
     addLog('error', msg);
+    issues.push({
+      id: 'server-validation',
+      level: 'error',
+      title: '服务端编译校验未通过',
+      description: msg,
+    });
+    emit('issues', issues);
     ElMessage.warning('校验失败，请查看日志');
   }
+  return issues;
 }
 
 async function handlePublish() {
@@ -739,14 +811,24 @@ async function handlePublish() {
   }
   if (!graph) return;
   try {
+    const issues = await handleValidate();
+    if (issues.some((issue) => issue.level === 'error')) return;
+    await ElMessageBox.confirm('发布后将生成可执行版本，确定继续吗？', '发布流程', {
+      confirmButtonText: '发布',
+      cancelButtonText: '取消',
+      type: 'warning',
+    });
     const designData = exportDesignJson(graph);
     await saveDefinitionDesign(id, JSON.stringify(designData));
     await publishDefinition(id);
     designLoadedForId = id;
+    graph.cleanHistory();
+    setDirty(false);
     addLog('success', '流程已发布（已生成 LiteFlow EL）');
     ElMessage.success('发布成功');
     emit('published');
   } catch (e: any) {
+    if (e === 'cancel' || e === 'close') return;
     addLog('error', e?.message || e?.msg || '发布失败');
   }
 }
@@ -1079,7 +1161,18 @@ function handleUpdateConfig(config: Record<string, any>) {
   if (config.name) data.label = config.name;
   node.setData(data);
   syncBranchPorts(node);
+  markDirty();
   addLog('info', `更新节点配置: ${data.label || node.id}`);
+}
+
+function focusNode(nodeId: string) {
+  if (!graph) return;
+  const cell = graph.getCellById(nodeId);
+  if (!cell?.isNode()) return;
+  graph.cleanSelection();
+  graph.select(cell);
+  graph.centerCell(cell);
+  openSettingsDrawer(cell as Node);
 }
 
 defineExpose({
@@ -1090,6 +1183,8 @@ defineExpose({
   exportJson: handleExport,
   zoomToFit: handleZoomToFit,
   zoomReset: handleZoomReset,
+  focusNode,
+  isDirty: () => dirty.value,
 });
 </script>
 
@@ -1160,6 +1255,30 @@ defineExpose({
   position: relative;
   min-width: 0;
   background: #f5f6f7;
+}
+.stencil-toggle {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  background: #fff;
+  color: #4e5969;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+.stencil-toggle:hover,
+.stencil-toggle.active {
+  color: #1677ff;
+  border-color: #91caff;
+  background: #f0f7ff;
 }
 .toolbar {
   position: absolute;

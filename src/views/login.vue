@@ -103,9 +103,7 @@ const loginRef = ref<ElFormInstance>();
 // 租户列表
 const tenantList = ref<TenantVO[]>([]);
 
-const copyrightText = computed(() =>
-  buildCopyrightText(resolveTenantCompanyName(loginForm.value.tenantId, tenantList.value))
-);
+const copyrightText = computed(() => buildCopyrightText(resolveTenantCompanyName(loginForm.value.tenantId, tenantList.value)));
 
 watch(
   () => router.currentRoute.value,
@@ -243,7 +241,7 @@ onMounted(() => {
   align-items: center;
   min-height: 100vh;
   height: 100%;
-  padding: 0 clamp(32px, 15vw, 384px);
+  padding: 0 clamp(48px, 8vw, 160px);
   box-sizing: border-box;
   background-color: #063a6e;
   background-image: url('../assets/images/login-background.png');
@@ -256,12 +254,21 @@ onMounted(() => {
 .title {
   margin: 0px auto 30px auto;
   text-align: center;
-  color: #707070;
+  color: #f3f9ff;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 12px rgba(45, 156, 255, 0.35);
 }
 
 .login-form {
-  border-radius: 6px;
-  background: #ffffff;
+  border: 1px solid rgba(118, 198, 255, 0.42);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(8, 37, 82, 0.9) 0%, rgba(10, 66, 124, 0.78) 100%);
+  box-shadow:
+    0 24px 60px rgba(0, 21, 58, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
   width: 400px;
   padding: 25px 25px 5px 25px;
 
@@ -277,6 +284,45 @@ onMounted(() => {
     height: 39px;
     width: 14px;
     margin-left: 0px;
+    color: #6f8eac;
+  }
+
+  :deep(.el-input__wrapper),
+  :deep(.el-select__wrapper) {
+    background-color: rgba(245, 250, 255, 0.95);
+    box-shadow: 0 0 0 1px rgba(145, 198, 239, 0.4) inset;
+    transition:
+      box-shadow 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  :deep(.el-input__wrapper:hover),
+  :deep(.el-select__wrapper:hover) {
+    background-color: #ffffff;
+    box-shadow: 0 0 0 1px rgba(80, 166, 239, 0.72) inset;
+  }
+
+  :deep(.el-input__wrapper.is-focus),
+  :deep(.el-select__wrapper.is-focused) {
+    background-color: #ffffff;
+    box-shadow:
+      0 0 0 1px #4aa8f5 inset,
+      0 0 0 3px rgba(74, 168, 245, 0.16);
+  }
+
+  :deep(.el-checkbox__label) {
+    color: #dbeeff;
+  }
+
+  :deep(.el-button--primary) {
+    border-color: transparent;
+    background: linear-gradient(90deg, #2d8bf0 0%, #4ca9ff 100%);
+    box-shadow: 0 8px 20px rgba(14, 104, 198, 0.34);
+    letter-spacing: 4px;
+  }
+
+  :deep(.el-button--primary:hover) {
+    background: linear-gradient(90deg, #3b98f6 0%, #65b7ff 100%);
   }
 }
 

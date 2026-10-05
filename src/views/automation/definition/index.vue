@@ -264,12 +264,20 @@ const submitForm = () => {
     if (valid) {
       if (form.value.id) {
         await updateDefinition(form.value);
+        proxy?.$modal.msgSuccess('操作成功');
+        dialog.visible = false;
+        await getList();
       } else {
-        await addDefinition(form.value);
+        const res = await addDefinition(form.value);
+        proxy?.$modal.msgSuccess('流程已创建，请继续编排');
+        dialog.visible = false;
+        const id = res.data?.id;
+        if (id) {
+          await router.push({ path: `/automation/designer/index/${id}` });
+          return;
+        }
+        await getList();
       }
-      proxy?.$modal.msgSuccess('操作成功');
-      dialog.visible = false;
-      await getList();
     }
   });
 };

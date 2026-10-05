@@ -1,7 +1,7 @@
 <template>
   <div class="template-thumb">
     <div v-if="elements.length" class="paper" :style="paperStyle">
-      <div v-for="item in elements" :key="item.id" class="element" :class="`is-${item.printElementType?.type || item.type || 'text'}`" :style="elementStyle(item)">
+      <div v-for="item in elements" :key="item.id" class="element" :class="itemClass(item)" :style="elementStyle(item)">
         <span v-if="isText(item)">{{ elementText(item) }}</span>
         <span v-else-if="isTable(item)" class="table-grid">
           <i v-for="n in 8" :key="n" />
@@ -19,76 +19,68 @@
 import { computed } from 'vue';
 import { Document } from '@element-plus/icons-vue';
 import type { PrintTemplateVo } from '@/api/wms/printTemplate';
-import { parseTemplateContent, type WormTemplate } from '../model';
+import type { PrintTemplateItem } from '@/components/print-designer';
+import { parseTemplateContent } from '../model';
 
 const props = defineProps<{ row?: PrintTemplateVo | null }>();
 
-const template = computed<WormTemplate>(() => parseTemplateContent(props.row?.templateContent));
-const page = computed<any>(() => {
-  const data = template.value as any;
-  return Array.isArray(data.pages) ? data.pages[0] : data;
-});
+const template = computed(() => parseTemplateContent(props.row?.templateContent));
 
 const paperSize = computed(() => {
-  const p = page.value;
-  if (p.paperSize === 'CUSTOM') return { width: Number(p.customWidth || 210), height: Number(p.customHeight || 297) };
-  const presets: Record<string, [number, number]> = {
-    A3: [297, 420],
-    A4: [210, 297],
-    A5: [148, 210],
-    Letter: [215.9, 279.4],
-    Legal: [215.9, 355.6],
-    LABEL_80X60: [80, 60],
-    LABEL_60X40: [60, 40],
-    LABEL_40X30: [40, 30],
-    THERMAL_57: [57, 120],
-    THERMAL_80: [80, 160],
-    THERMAL_110: [110, 180],
-    CONTINUOUS: [Number(p.customWidth || 80), Number(p.customHeight || 160)]
-  };
-  const size = presets[p.paperSize] || presets.A4;
-  const [width, height] = size;
-  return p.orientation === 'landscape' ? { width: height, height: width } : { width, height };
+  return { width: template.value.pageWidth || 210, height: template.value.pageHeight || 297 };
 });
 
-const elements = computed<any[]>(() => {
-  const p = page.value;
-  return [...(p.header?.elements || []), ...(p.elements || []), ...(p.footer?.elements || [])].slice(0, 48);
-});
+const elements = computed(() => (template.value.tempItems || []).slice(0, 48));
 
 const paperStyle = computed(() => {
   const { width, height } = paperSize.value;
   return { aspectRatio: `${width} / ${height}` };
 });
 
-function itemType(item: any) {
-  return item.printElementType?.type || item.type || 'text';
+function isText(item: PrintTemplateItem) {
+  return ['braid-txt', 'braid-html'].includes(item.type);
 }
 
-function isText(item: any) {
-  return ['text', 'longText', 'html', 'pageNumber'].includes(itemType(item));
+function isTable(item: PrintTemplateItem) {
+  return item.type === 'braid-table';
 }
 
-function isTable(item: any) {
-  return itemType(item) === 'table';
+function elementText(item: PrintTemplateItem) {
+  return String(item.defaultValue || item.value || item.title || '').replace(/[{}]/g, '');
 }
 
-function elementText(item: any) {
-  return String(item.options?.testData || item.options?.formatter || item.printElementType?.title || '').replace(/[{}]/g, '');
+function itemClass(item: PrintTemplateItem) {
+  const names: Partial<Record<PrintTemplateItem['type'], string>> = {
+    'braid-txt': 'is-text',
+    'braid-html': 'is-html',
+    'braid-image': 'is-image',
+    'braid-table': 'is-table',
+    'bar-code': String(item.style?.codeType || '')
+      .toUpperCase()
+      .includes('QR')
+      ? 'is-qrcode'
+      : 'is-barcode',
+    'braid-rect': 'is-rect',
+    'braid-border': 'is-rect',
+    'braid-ellipse': 'is-oval',
+    'braid-hline': 'is-hline',
+    'braid-vline': 'is-vline'
+  };
+  return names[item.type] || 'is-text';
 }
 
-function elementStyle(item: any) {
-  const options = item.options || {};
-  const { width, height } = paperSize.value;
+function elementStyle(item: PrintTemplateItem) {
+  const width = template.value.width || 1;
+  const height = template.value.height || 1;
   return {
-    left: `${(Number(options.left || 0) / width) * 100}%`,
-    top: `${(Number(options.top || 0) / height) * 100}%`,
-    width: `${Math.max((Number(options.width || 1) / width) * 100, 1)}%`,
-    height: `${Math.max((Number(options.height || 1) / height) * 100, 0.6)}%`,
-    color: options.color || '#334155',
-    backgroundColor: options.backgroundColor || undefined,
-    borderColor: options.borderColor || '#64748b',
-    zIndex: options.zIndex || 1
+    left: `${(Number(item.left || 0) / width) * 100}%`,
+    top: `${(Number(item.top || 0) / height) * 100}%`,
+    width: `${Math.max((Number(item.width || 1) / width) * 100, 1)}%`,
+    height: `${Math.max((Number(item.height || 1) / height) * 100, 0.6)}%`,
+    color: item.style?.FontColor || item.style?.BorderColor || '#334155',
+    backgroundColor: item.style?.HighlightColor || item.style?.FillColor || undefined,
+    borderColor: item.style?.BorderColor || '#64748b',
+    zIndex: item.style?.zIndex || 1
   };
 }
 </script>

@@ -84,6 +84,8 @@ const readonly = ref(false);
 const hasOutgoing = ref(false);
 const liveData = ref<Record<string, any>>(node?.getData() || {});
 let resizeObserver: ResizeObserver | null = null;
+let suppressClickAfterDrag = false;
+let dragClickTimer: ReturnType<typeof setTimeout> | null = null;
 
 function syncData() {
   liveData.value = { ...(node?.getData() || {}) };
@@ -122,8 +124,17 @@ function syncNodeSize() {
   }
 }
 
+function handleNodeMoved() {
+  suppressClickAfterDrag = true;
+  if (dragClickTimer) clearTimeout(dragClickTimer);
+  dragClickTimer = setTimeout(() => {
+    suppressClickAfterDrag = false;
+  }, 160);
+}
+
 onMounted(() => {
   node?.on('change:data', syncData);
+  node?.on('change:position', handleNodeMoved);
   const graph = node?.model?.graph;
   readonly.value = !!(graph as any)?.__automationReadonly;
   if (graph) {
@@ -154,7 +165,9 @@ onMounted(() => {
 onUnmounted(() => {
   resizeObserver?.disconnect();
   resizeObserver = null;
+  if (dragClickTimer) clearTimeout(dragClickTimer);
   node?.off('change:data', syncData);
+  node?.off('change:position', handleNodeMoved);
 });
 
 watch(liveData, () => nextTick(syncNodeSize), { deep: true });
@@ -409,6 +422,7 @@ const iconSvg = computed(() => {
 
 function handleCardClick(e: MouseEvent) {
   if (readonly.value) return;
+  if (suppressClickAfterDrag) return;
   const el = e.target as HTMLElement;
   if (el.closest('.tail-plus, .node-menu-btn, .el-dropdown-menu')) return;
   if (node) emit('node:edit-meta', { node });

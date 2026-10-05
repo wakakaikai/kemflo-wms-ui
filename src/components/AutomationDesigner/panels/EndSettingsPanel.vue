@@ -1,28 +1,21 @@
 <template>
   <div class="node-settings-panel end-settings">
     <section class="settings-section">
-      <div class="section-title">Êä³ö¸ñÊ½</div>
+      <div class="section-title">è¾“å‡ºæ ¼å¼</div>
       <el-select v-model="form.outputType" class="full-width" @change="emitChange">
         <el-option label="JSON" value="default" />
-        <el-option label="ÎÄ±¾" value="text" />
+        <el-option label="æ–‡æœ¬" value="text" />
       </el-select>
     </section>
 
     <section v-if="form.outputType === 'text'" class="settings-section">
-      <div class="section-title">ÎÄ±¾ÄÚÈİ</div>
-      <VariableAwareInput
-        v-model="form.outputContent"
-        type="textarea"
-        :rows="6"
-        placeholder="ÇëÊäÈë½áÊø½ÚµãÊä³öÎÄ±¾¡£°´ÏÂ ¡°/¡± ¿ÉÒÔÑ¡Ôñ±äÁ¿"
-        :options="upstreamOptions"
-        @change="emitChange"
-      />
+      <div class="section-title">æ–‡æœ¬å†…å®¹</div>
+      <VariableAwareInput v-model="form.outputContent" type="textarea" :rows="6" placeholder="è¯·è¾“å…¥ç»“æŸèŠ‚ç‚¹çš„è¾“å‡ºæ–‡æœ¬ï¼Œè¾“å…¥ / å¯é€‰æ‹©ä¸Šæ¸¸å˜é‡" :options="upstreamOptions" @change="emitChange" />
     </section>
 
     <section v-else class="settings-section">
-      <div class="section-title">Êä³ö±äÁ¿</div>
-      <p class="section-desc">½«ÉÏÓÎ½ÚµãµÄÊä³ö×÷ÎªÁ÷³Ì½áÊø½á¹û·µ»Ø¡£</p>
+      <div class="section-title">é»˜è®¤è¾“å‡º</div>
+      <p class="section-desc">ç»“æŸèŠ‚ç‚¹å°†æŠŠæµç¨‹æ‰§è¡Œç»“æœæŒ‰ JSON æ ¼å¼è¿”å›ã€‚</p>
     </section>
   </div>
 </template>
@@ -41,7 +34,7 @@ const emit = defineEmits<{ updateConfig: [config: Record<string, any>] }>();
 
 const form = reactive({
   outputType: 'text',
-  outputContent: '',
+  outputContent: ''
 });
 
 const upstreamOptions = computed(() => collectUpstreamVariables(props.node));
@@ -54,7 +47,7 @@ watch(
     form.outputType = cfg.outputType || (cfg.text || cfg.outputContent ? 'text' : 'default');
     form.outputContent = toDisplayTemplate(cfg.outputContent || cfg.text || cfg.responseTemplate || '');
   },
-  { immediate: true },
+  { immediate: true }
 );
 
 function buildConfig() {
@@ -63,7 +56,7 @@ function buildConfig() {
     outputType: form.outputType,
     outputContent,
     text: outputContent,
-    responseTemplate: outputContent,
+    responseTemplate: outputContent
   };
 }
 
