@@ -1,4 +1,5 @@
 import type { Graph } from '@antv/x6';
+import type { AutoDesignValidationVo } from '@/api/automation/definition/types';
 
 export type FlowIssueLevel = 'error' | 'warning';
 
@@ -9,6 +10,24 @@ export interface FlowDesignIssue {
   description: string;
   nodeId?: string;
   nodeLabel?: string;
+  edgeId?: string;
+  source?: 'editor' | 'server';
+}
+
+export function mapServerValidationIssues(report: AutoDesignValidationVo): FlowDesignIssue[] {
+  const convert = (level: FlowIssueLevel, item: AutoDesignValidationVo['errors'][number], index: number): FlowDesignIssue => ({
+    id: `server:${level}:${item.code}:${item.nodeId || item.edgeId || index}`,
+    level,
+    title: item.message,
+    description: `服务端规则 ${item.code}`,
+    nodeId: item.nodeId,
+    edgeId: item.edgeId,
+    source: 'server'
+  });
+  return [
+    ...(report.errors || []).map((item, index) => convert('error', item, index)),
+    ...(report.warnings || []).map((item, index) => convert('warning', item, index))
+  ];
 }
 
 function nodeName(data: Record<string, any>, fallback: string) {
@@ -31,7 +50,8 @@ export function collectFlowIssues(graph: Graph): FlowDesignIssue[] {
         id: 'empty-flow',
         level: 'error',
         title: '流程为空',
-        description: '请先添加开始节点、执行节点和结束节点。'
+        description: '请先添加开始节点、执行节点和结束节点。',
+        source: 'editor'
       }
     ];
   }
@@ -44,14 +64,16 @@ export function collectFlowIssues(graph: Graph): FlowDesignIssue[] {
       id: 'missing-trigger',
       level: 'error',
       title: '缺少开始节点',
-      description: '流程必须包含一个触发节点作为入口。'
+      description: '流程必须包含一个触发节点作为入口。',
+      source: 'editor'
     });
   } else if (triggers.length > 1) {
     issues.push({
       id: 'multiple-triggers',
-      level: 'warning',
+      level: 'error',
       title: '存在多个开始节点',
-      description: '独立流程建议只保留一个触发入口，避免运行入口不明确。'
+      description: '独立流程建议只保留一个触发入口，避免运行入口不明确。',
+      source: 'editor'
     });
   }
 
@@ -60,7 +82,8 @@ export function collectFlowIssues(graph: Graph): FlowDesignIssue[] {
       id: 'missing-end',
       level: 'error',
       title: '缺少结束节点',
-      description: '请添加结束节点并连接到流程出口。'
+      description: '请添加结束节点并连接到流程出口。',
+      source: 'editor'
     });
   }
 
@@ -78,7 +101,8 @@ export function collectFlowIssues(graph: Graph): FlowDesignIssue[] {
         title: `${label} 未连接上游节点`,
         description: '该节点不会被执行，请将它连接到流程入口。',
         nodeId: node.id,
-        nodeLabel: label
+        nodeLabel: label,
+        source: 'editor'
       });
     }
 
@@ -89,18 +113,20 @@ export function collectFlowIssues(graph: Graph): FlowDesignIssue[] {
         title: `${label} 未连接下一个节点`,
         description: '请继续连接后续节点或连接到结束节点。',
         nodeId: node.id,
-        nodeLabel: label
+        nodeLabel: label,
+        source: 'editor'
       });
     }
 
     if ((type === 'SWITCH' || type === 'CONDITION') && outgoing.length < 2) {
       issues.push({
         id: `branch-count:${node.id}`,
-        level: 'warning',
+        level: 'error',
         title: `${label} 的分支不足`,
         description: '分支节点至少应连接两个出口。',
         nodeId: node.id,
-        nodeLabel: label
+        nodeLabel: label,
+        source: 'editor'
       });
     }
   });
@@ -111,7 +137,8 @@ export function collectFlowIssues(graph: Graph): FlowDesignIssue[] {
         id: `dangling-edge:${edge.id}`,
         level: 'error',
         title: '存在未完成的连线',
-        description: '请删除悬空连线，或将它连接到有效节点。'
+        description: '请删除悬空连线，或将它连接到有效节点。',
+        source: 'editor'
       });
     }
   });

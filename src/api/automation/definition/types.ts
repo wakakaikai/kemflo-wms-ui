@@ -26,5 +26,19 @@ export interface AutoDefinitionForm {
   description?: string;
   triggerType?: string;
   status?: string;
+  currentVersion?: number;
   enabled?: number;
+}
+
+export interface AutoDesignCompileMessage {
+  code: string;
+  nodeId?: string;
+  edgeId?: string;
+  message: string;
+}
+
+export interface AutoDesignValidationVo {
+  valid: boolean;
+  errors: AutoDesignCompileMessage[];
+  warnings: AutoDesignCompileMessage[];
 }

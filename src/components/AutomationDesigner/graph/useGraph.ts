@@ -1,5 +1,5 @@
 import { getNodeConfig } from '../types';
-import { Graph, Shape, Node, Selection, Snapline, Keyboard, Clipboard, History } from '@antv/x6';
+import { Graph, Shape, Node, Edge, Selection, Snapline, Keyboard, Clipboard, History } from '@antv/x6';
 import {
   registerVueNodes,
   CARD_WIDTH,
@@ -10,13 +10,14 @@ import {
   BRANCH_CARD_HEIGHT,
   getNodePorts,
   normalizePortId,
+  getDefaultSourcePort,
   syncBranchPorts,
 } from '../nodes/registerNodes';
 
 export { CARD_WIDTH, CARD_HEIGHT, END_CARD_WIDTH, END_CARD_HEIGHT, BRANCH_CARD_WIDTH, BRANCH_CARD_HEIGHT, syncBranchPorts };
 
 const COLOR_PORT_BLUE = '#5F95FF';
-const COLOR_EDGE = '#b7bdc7';
+const COLOR_EDGE = '#c2c8d5';
 
 function isBranchType(type: string) {
   return type === 'CONDITION' || type === 'SWITCH';
@@ -28,7 +29,7 @@ function getNodeSize(type: string) {
   return { w: CARD_WIDTH, h: CARD_HEIGHT };
 }
 
-/** Jeecg 风格横向流程连线：平滑贝塞尔曲线 */
+/** 横向主链使用平滑曲线，回连与上下排列使用避障圆角路径。 */
 export const FLOW_EDGE_ATTRS = {
   line: {
     stroke: COLOR_EDGE,
@@ -48,15 +49,63 @@ export const FLOW_EDGE_CONNECTOR = {
   },
 };
 
-export function applyFlowEdgeStyle(edge: any) {
+const FLOW_AVOIDANCE_ROUTER = {
+  name: 'manhattan',
+  args: {
+    startDirections: ['right'],
+    endDirections: ['left'],
+    padding: 24,
+    step: 8,
+    perpendicular: false,
+  },
+};
+
+const FLOW_AVOIDANCE_CONNECTOR = {
+  name: 'rounded',
+  args: { radius: 16 },
+};
+
+/** 清除旧的节点边界锚点，始终将连线接到真实端口的中心。 */
+function resolveFlowTerminal(terminal: any, type: 'source' | 'target', ports: string[] = [], nodeType = '') {
+  const endpoint = typeof terminal === 'string' ? { cell: terminal } : terminal;
+  if (endpoint?.cell == null) return endpoint;
+  const fallbackPort = type === 'source' ? getDefaultSourcePort(nodeType) : 'left';
+  const normalizedPort = normalizePortId(endpoint.port);
+  const port = type === 'target'
+    ? 'left'
+    : ports.includes(normalizedPort) && normalizedPort !== 'left'
+      ? normalizedPort
+      : fallbackPort;
+  return {
+    cell: endpoint.cell,
+    port,
+    anchor: { name: 'center' },
+    connectionPoint: { name: 'anchor' },
+  };
+}
+
+export function applyFlowEdgeStyle(edge: Edge) {
   if (!edge) return;
   try {
     edge.removeTools?.();
   } catch {
     // ignore
   }
-  edge.setRouter(FLOW_EDGE_ROUTER);
-  edge.setConnector(FLOW_EDGE_CONNECTOR);
+  const sourceNode = edge.getSourceNode();
+  const targetNode = edge.getTargetNode();
+  if (sourceNode) {
+    edge.setSource(resolveFlowTerminal(
+      edge.getSource(), 'source', sourceNode.getPorts().map(port => port.id!).filter(Boolean), sourceNode.getData()?.nodeType,
+    ));
+  }
+  if (targetNode) {
+    edge.setTarget(resolveFlowTerminal(edge.getTarget(), 'target'));
+  }
+  // smooth(H) 在目标位于出口左边时会先向卡片内部弯曲，必须改用避障路径。
+  const needsAvoidance = sourceNode && targetNode
+    && targetNode.getBBox().left - sourceNode.getBBox().right < 24;
+  edge.setRouter(needsAvoidance ? FLOW_AVOIDANCE_ROUTER : FLOW_EDGE_ROUTER);
+  edge.setConnector(needsAvoidance ? FLOW_AVOIDANCE_CONNECTOR : FLOW_EDGE_CONNECTOR);
   edge.setAttrs(FLOW_EDGE_ATTRS);
   edge.setZIndex(0);
 }
@@ -98,12 +147,12 @@ export function useGraph(container: HTMLDivElement, options?: { readonly?: boole
     width,
     height,
     autoResize: false,
-    background: { color: '#f5f6f7' },
+    background: { color: '#ffffff' },
     grid: {
       size: 10,
       visible: true,
       type: 'dot',
-      args: { color: '#dfe3e8', thickness: 1 },
+      args: { color: '#e6eaf0', thickness: 1 },
     },
     panning: {
       enabled: true,
@@ -138,11 +187,11 @@ export function useGraph(container: HTMLDivElement, options?: { readonly?: boole
       router: FLOW_EDGE_ROUTER,
       connectionPoint: 'anchor',
       anchor: 'center',
-      snap: { radius: 24 },
+      snap: { radius: 20 },
       allowBlank: false,
       allowLoop: false,
       allowEdge: false,
-      allowMulti: true,
+      allowMulti: false,
       highlight: !readonly,
       createEdge() {
         return new Shape.Edge({
@@ -151,8 +200,15 @@ export function useGraph(container: HTMLDivElement, options?: { readonly?: boole
           zIndex: 0,
         });
       },
-      validateConnection({ targetMagnet }) {
-        return !readonly && !!targetMagnet;
+      validateMagnet({ magnet }) {
+        // 只能从输出端口开始拖线。
+        return !readonly && magnet.getAttribute('port')?.startsWith('right') === true;
+      },
+      validateConnection({ sourceCell, targetCell, sourceMagnet, targetMagnet }) {
+        return !readonly
+          && sourceCell !== targetCell
+          && sourceMagnet?.getAttribute('port')?.startsWith('right') === true
+          && targetMagnet?.getAttribute('port') === 'left';
       },
     },
   });
@@ -175,10 +231,13 @@ export function useGraph(container: HTMLDivElement, options?: { readonly?: boole
     graph.use(new History({ enabled: true }));
   }
 
-  // 节点移动后重算连线路径，使线条绕开卡片
-  graph.on('node:change:position', () => {
+  // 自动测量卡片高度或拖动节点后，重新选择直连 / 避障路径。
+  const refreshEdgePaths = () => {
     graph.getEdges().forEach((edge) => applyFlowEdgeStyle(edge));
-  });
+  };
+  graph.on('node:change:position', refreshEdgePaths);
+  graph.on('node:change:size', refreshEdgePaths);
+  graph.on('edge:connected', ({ edge }) => applyFlowEdgeStyle(edge));
 
   return graph;
 }
@@ -248,35 +307,33 @@ export function exportDesignJson(graph: Graph): any {
   return json;
 }
 
-function resolveLegacyPort(port?: string) {
-  return normalizePortId(port);
-}
-
 export function importDesignJson(graph: Graph, data: any) {
   graph.clearCells();
   if (!data) return;
 
   if (Array.isArray(data.cells) && data.cells.length > 0) {
-    graph.fromJSON(data);
-    graph.getNodes().forEach((node) => {
-      node.setZIndex(2);
-      const nodeType = node.getData()?.nodeType;
-      if (nodeType) {
-        node.setProp('ports', getNodePorts(nodeType));
-        syncBranchPorts(node);
-      }
+    // 必须在 fromJSON 之前迁移端口；加载后删除 top/bottom 端口会被 X6 同时删除关联边。
+    const nodeMetadata = new Map<string, any>();
+    const cells = data.cells.map((cell: any) => {
+      const nodeType = cell.data?.nodeType;
+      if (!nodeType) return { ...cell };
+      const node = { ...cell, zIndex: 2, ports: getNodePorts(nodeType, cell.data?.config) };
+      nodeMetadata.set(String(cell.id), node);
+      return node;
     });
-    graph.getEdges().forEach((edge) => {
-      const source = edge.getSource() as any;
-      const target = edge.getTarget() as any;
-      if (source?.port) {
-        edge.setSource({ ...source, port: resolveLegacyPort(source.port) });
-      }
-      if (target?.port) {
-        edge.setTarget({ ...target, port: resolveLegacyPort(target.port) });
-      }
-      applyFlowEdgeStyle(edge);
+    cells.forEach((cell: any) => {
+      if (!cell.source || !cell.target) return;
+      const sourceId = typeof cell.source === 'string' ? cell.source : cell.source.cell;
+      const sourceNode = nodeMetadata.get(String(sourceId));
+      const ports = sourceNode?.ports.items.map((port: any) => port.id) || [];
+      cell.source = resolveFlowTerminal(cell.source, 'source', ports, sourceNode?.data.nodeType);
+      cell.target = resolveFlowTerminal(cell.target, 'target');
+      cell.shape = 'automation-edge';
+      // 旧路径顶点属于旧的竖向布线，新的路由器按当前卡片位置计算。
+      cell.vertices = [];
     });
+    graph.fromJSON({ ...data, cells });
+    graph.getEdges().forEach((edge) => applyFlowEdgeStyle(edge));
     return;
   }
 
@@ -286,7 +343,7 @@ export function importDesignJson(graph: Graph, data: any) {
       if (!nodeConfig) return;
       const type = n.type || n.nodeType || n.data?.nodeType;
       const { w, h } = getNodeSize(type);
-      graph.addNode({
+      const node = graph.addNode({
         id: n.id,
         shape: type + '-vue',
         x: n.x ?? n.position?.x ?? 0,
@@ -294,7 +351,7 @@ export function importDesignJson(graph: Graph, data: any) {
         width: w,
         height: h,
         zIndex: 2,
-        ports: getNodePorts(type),
+        ports: getNodePorts(type, n.config || n.data?.config),
         data: {
           nodeType: type,
           label: n.label || n.data?.label || nodeConfig.label,
@@ -302,19 +359,23 @@ export function importDesignJson(graph: Graph, data: any) {
           config: n.config || n.data?.config || {},
         },
       });
+      syncBranchPorts(node);
     });
     data.edges?.forEach((e: any) => {
-      const source = typeof e.source === 'object' ? e.source.cell || e.source : e.source;
-      const target = typeof e.target === 'object' ? e.target.cell || e.target : e.target;
-      graph.addEdge({
+      const source = typeof e.source === 'object' ? e.source?.cell : e.source;
+      const target = typeof e.target === 'object' ? e.target?.cell : e.target;
+      const sourceNode = graph.getCellById(source);
+      const sourceType = sourceNode?.getData()?.nodeType;
+      const sourcePorts = sourceNode?.isNode() ? sourceNode.getPorts().map(port => port.id!).filter(Boolean) : [];
+      const edge = graph.addEdge({
         id: e.id,
         shape: 'automation-edge',
-        source: { cell: source, port: resolveLegacyPort(e.sourcePort || e.source?.port || 'right') },
-        target: { cell: target, port: resolveLegacyPort(e.targetPort || e.target?.port || 'left') },
+        source: resolveFlowTerminal({ cell: source, port: e.sourcePort || e.source?.port }, 'source', sourcePorts, sourceType),
+        target: resolveFlowTerminal({ cell: target, port: e.targetPort || e.target?.port }, 'target'),
         labels: e.label ? [{ attrs: { label: { text: e.label } } }] : [],
         data: e.data || {},
       });
-      applyFlowEdgeStyle(graph.getCellById(e.id));
+      applyFlowEdgeStyle(edge);
     });
     return;
   }

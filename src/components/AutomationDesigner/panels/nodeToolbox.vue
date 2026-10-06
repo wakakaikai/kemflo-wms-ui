@@ -31,7 +31,10 @@
               class="stencil-icon"
               :style="{ background: getCategoryColor(node.category, node.color) }"
             >{{ getNodeIconChar(node.type, node.label) }}</span>
-            <span class="stencil-label">{{ node.label }}</span>
+            <span class="stencil-content">
+              <strong class="stencil-label">{{ node.label }}</strong>
+              <small>{{ getNodeDescription(node.type, node.category) }}</small>
+            </span>
           </div>
         </div>
       </div>
@@ -83,6 +86,32 @@ function handleDragStart(event: DragEvent, type: string) {
 
 function handleClick(type: string) {
   emit('addNode', type, 180 + Math.random() * 120, 220 + Math.random() * 80);
+}
+
+function getNodeDescription(type: string, category: NodeCategory) {
+  const descriptions: Record<string, string> = {
+    MANUAL_TRIGGER: '手动输入参数后启动流程',
+    CRON_TRIGGER: '按计划周期自动触发流程',
+    WEBHOOK_TRIGGER: '接收外部 HTTP 请求触发',
+    CONDITION: '根据表达式执行条件分支',
+    SWITCH: '按多组规则选择执行路径',
+    LOOP: '迭代处理集合或重复执行',
+    END: '汇总并输出流程执行结果',
+    HTTP_CALL: '调用外部 HTTP API 服务',
+    JDBC_CALL: '执行受控 SQL 数据操作',
+    CHAT_VAR_GET: '读取流程上下文变量',
+    CHAT_VAR_SET: '写入流程上下文变量'
+  };
+  const categoryDescriptions: Record<NodeCategory, string> = {
+    [NodeCategory.TRIGGER]: '接收事件并启动流程',
+    [NodeCategory.CONTROL]: '控制流程的执行路径',
+    [NodeCategory.AI]: '处理提示词与智能任务',
+    [NodeCategory.DATA]: '读取或写入业务数据',
+    [NodeCategory.INTEGRATION]: '连接外部系统与服务',
+    [NodeCategory.DEVICE]: '读取或控制现场设备',
+    [NodeCategory.APPROVAL]: '衔接人工审批环节'
+  };
+  return descriptions[type] || categoryDescriptions[category];
 }
 </script>
 
@@ -139,32 +168,36 @@ function handleClick(type: string) {
   transform: rotate(-90deg);
 }
 .group-nodes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 4px 10px 10px;
 }
 
 .stencil-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 6px;
-  border-radius: 6px;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #dfe5ed;
+  border-radius: 8px;
+  background: #fff;
   cursor: grab;
   transition: background 0.12s;
   user-select: none;
 }
 .stencil-item:hover {
-  background: #f5f5f5;
+  border-color: #91b7ff;
+  background: #f8fbff;
+  box-shadow: 0 3px 10px rgb(22 119 255 / 8%);
 }
 .stencil-item:active {
   cursor: grabbing;
 }
 .stencil-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -175,10 +208,23 @@ function handleClick(type: string) {
   line-height: 1;
 }
 .stencil-label {
-  font-size: 12px;
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
   color: #262626;
   line-height: 1.3;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stencil-content { flex: 1; min-width: 0; }
+.stencil-content small {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #8c98a8;
+  font-size: 11px;
+  line-height: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

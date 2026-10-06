@@ -458,9 +458,9 @@ function handlePlusClick() {
   min-height: 72px;
   box-sizing: border-box;
   position: relative;
-  padding: 12px 14px 10px;
-  border: 1px solid #e8eaed;
-  border-radius: 10px;
+  padding: 11px 12px 9px;
+  border: 1px solid #dfe5ed;
+  border-radius: 8px;
   background: #fff;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   cursor: move;
@@ -512,14 +512,14 @@ function handlePlusClick() {
   text-overflow: ellipsis;
 }
 .node-body {
-  margin-top: 10px;
+  margin-top: 7px;
 }
 .node-line {
   display: flex;
   align-items: baseline;
   gap: 8px;
   min-width: 0;
-  margin-top: 5px;
+  margin-top: 3px;
   font-size: 12px;
   line-height: 18px;
 }

@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { AutoDefinitionQuery, AutoDefinitionVo, AutoDefinitionForm } from '@/api/automation/definition/types';
+import { AutoDefinitionQuery, AutoDefinitionVo, AutoDefinitionForm, AutoDesignValidationVo } from '@/api/automation/definition/types';
 
 export const listDefinition = (query: AutoDefinitionQuery): AxiosPromise<AutoDefinitionVo[]> => {
   return request({ url: '/automation/definition/list', method: 'get', params: query });
@@ -34,7 +34,7 @@ export const publishDefinition = (id: number | string) => {
   return request({ url: `/automation/definition/${id}/publish`, method: 'post' });
 };
 
-export const validateDefinitionDesign = (id: number | string, designJson: string) => {
+export const validateDefinitionDesign = (id: number | string, designJson: string): AxiosPromise<AutoDesignValidationVo> => {
   return request({ url: `/automation/definition/${id}/validate`, method: 'post', data: { designJson } });
 };
 

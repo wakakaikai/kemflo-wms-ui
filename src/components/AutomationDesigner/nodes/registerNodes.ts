@@ -62,12 +62,13 @@ export const HORIZONTAL_PORTS = {
 export const VERTICAL_PORTS = HORIZONTAL_PORTS;
 export const AGENT_PORTS = HORIZONTAL_PORTS;
 
-export const CARD_WIDTH = 360;
-export const CARD_HEIGHT = 132;
-export const BRANCH_CARD_WIDTH = 360;
-export const BRANCH_CARD_HEIGHT = 108;
-export const END_CARD_WIDTH = 360;
-export const END_CARD_HEIGHT = 120;
+// 与 X6 AgentFlow 示例保持一致：紧凑横向卡片，主链一屏可容纳更多步骤。
+export const CARD_WIDTH = 260;
+export const CARD_HEIGHT = 96;
+export const BRANCH_CARD_WIDTH = 260;
+export const BRANCH_CARD_HEIGHT = 96;
+export const END_CARD_WIDTH = 260;
+export const END_CARD_HEIGHT = 96;
 
 function isBranchType(type: string) {
   return type === 'CONDITION' || type === 'SWITCH';
@@ -109,17 +110,10 @@ export function getBranchPorts(branchCount = 2) {
 export function syncBranchPorts(node: any) {
   const type = node?.getData?.()?.nodeType;
   if (type !== 'SWITCH' && type !== 'CONDITION') return;
-  const cfg = node.getData()?.config || {};
-  const branches = Array.isArray(cfg.branches) && cfg.branches.length
-    ? cfg.branches
-    : Array.isArray(cfg.cases) && cfg.cases.length
-      ? cfg.cases
-      : [{}, {}];
-  const count = type === 'CONDITION' ? 2 : Math.max(2, branches.length);
-  node.setProp('ports', getBranchPorts(count));
+  node.setProp('ports', getNodePorts(type, node.getData()?.config));
 }
 
-export function getNodePorts(type: string): any {
+export function getNodePorts(type: string, config?: Record<string, any> | null): any {
   if (type === 'END') {
     return { groups: HORIZONTAL_PORTS.groups, items: [{ id: 'left', group: 'left' }] };
   }
@@ -127,7 +121,13 @@ export function getNodePorts(type: string): any {
     return { groups: HORIZONTAL_PORTS.groups, items: [{ id: 'right', group: 'right' }] };
   }
   if (type === 'CONDITION' || type === 'SWITCH') {
-    return getBranchPorts(2);
+    const cfg = config || {};
+    const branches = Array.isArray(cfg.branches) && cfg.branches.length
+      ? cfg.branches
+      : Array.isArray(cfg.cases) && cfg.cases.length
+        ? cfg.cases
+        : [{}, {}];
+    return getBranchPorts(type === 'CONDITION' ? 2 : branches.length);
   }
   return HORIZONTAL_PORTS;
 }

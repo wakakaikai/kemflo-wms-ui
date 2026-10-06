@@ -1,11 +1,11 @@
-import { onMounted, reactive, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type AutomationDesigner from '@/components/AutomationDesigner/index.vue';
 import type { FlowDesignIssue } from '@/components/AutomationDesigner/types/validation';
 import { getDefinition, updateDefinition } from '@/api/automation/definition';
 import type { AutoDefinitionForm } from '@/api/automation/definition/types';
-import { listVersion } from '@/api/automation/version';
+import { listVersion, restoreVersion } from '@/api/automation/version';
 import type { AutoVersionVo } from '@/api/automation/version/types';
 
 export function useFlowDesignerPage() {
@@ -19,11 +19,14 @@ export function useFlowDesignerPage() {
   const issues = ref<FlowDesignIssue[]>([]);
   const issuesVisible = ref(false);
   const dirty = ref(false);
+  const lastSavedAt = ref<Date>();
   const historyVisible = ref(false);
   const historyLoading = ref(false);
   const historyTotal = ref(0);
   const historyList = ref<AutoVersionVo[]>([]);
   const historyQuery = reactive({ pageNum: 1, pageSize: 10, definitionId: definitionId.value });
+  const previewVisible = ref(false);
+  const previewVersion = ref<AutoVersionVo>();
 
   const form = reactive<AutoDefinitionForm>({
     automationCode: undefined,
@@ -113,13 +116,52 @@ export function useFlowDesignerPage() {
     }
   }
 
+  async function openHistory() {
+    historyVisible.value = true;
+    historyQuery.pageNum = 1;
+    await loadHistory();
+  }
+
+  async function changeHistoryPage(page: number) {
+    historyQuery.pageNum = page;
+    await loadHistory();
+  }
+
+  function previewHistoryVersion(version: AutoVersionVo) {
+    previewVersion.value = version;
+    previewVisible.value = true;
+  }
+
+  async function restoreHistoryVersion(version: AutoVersionVo) {
+    try {
+      await ElMessageBox.confirm(
+        `将 v${version.version} 的设计恢复为当前草稿？现有草稿内容会被替换，历史发布版本不会改变。`,
+        '恢复历史版本',
+        { confirmButtonText: '恢复为草稿', cancelButtonText: '取消', type: 'warning' }
+      );
+      await restoreVersion(version.id);
+      await designerRef.value?.reload();
+      dirty.value = false;
+      lastSavedAt.value = new Date();
+      await Promise.all([loadDefinition(), loadHistory()]);
+      ElMessage.success(`已将 v${version.version} 恢复为草稿`);
+    } catch (error) {
+      if (error === 'cancel' || error === 'close') return;
+    }
+  }
+
   function handleSaved() {
     dirty.value = false;
+    lastSavedAt.value = new Date();
+    if (historyVisible.value) loadHistory();
   }
 
   function handlePublished() {
     form.status = 'PUBLISHED';
     dirty.value = false;
+    lastSavedAt.value = new Date();
+    loadDefinition();
+    if (historyVisible.value) loadHistory();
   }
 
   function handleIssues(value: FlowDesignIssue[]) {
@@ -146,9 +188,30 @@ export function useFlowDesignerPage() {
     await router.push({ path: '/automation/definition' });
   }
 
+  function handleShortcut(event: KeyboardEvent) {
+    if (!(event.ctrlKey || event.metaKey)) return;
+    if (event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      handleSave();
+    }
+  }
+
+  function handleBeforeUnload(event: BeforeUnloadEvent) {
+    if (!dirty.value) return;
+    event.preventDefault();
+    event.returnValue = '';
+  }
+
   onMounted(() => {
     syncDefinitionIdFromRoute();
     loadDefinition();
+    window.addEventListener('keydown', handleShortcut);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+  });
+
+  onBeforeUnmount(() => {
+    window.removeEventListener('keydown', handleShortcut);
+    window.removeEventListener('beforeunload', handleBeforeUnload);
   });
 
   watch(
@@ -168,11 +231,14 @@ export function useFlowDesignerPage() {
     issues,
     issuesVisible,
     dirty,
+    lastSavedAt,
     historyVisible,
     historyLoading,
     historyTotal,
     historyList,
     historyQuery,
+    previewVisible,
+    previewVersion,
     form,
     renameFlow,
     handleSave,
@@ -180,6 +246,10 @@ export function useFlowDesignerPage() {
     handleRun,
     handlePublish,
     loadHistory,
+    openHistory,
+    changeHistoryPage,
+    previewHistoryVersion,
+    restoreHistoryVersion,
     handleSaved,
     handlePublished,
     handleIssues,

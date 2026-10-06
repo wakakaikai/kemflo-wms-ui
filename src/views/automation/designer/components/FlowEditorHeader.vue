@@ -7,12 +7,21 @@
       <h1 class="flow-title" :title="title">{{ title }}</h1>
       <span v-if="dirty" class="dirty-dot" title="有未保存的修改" />
       <el-tag v-if="statusLabel" :type="statusType" size="small" effect="light">{{ statusLabel }}</el-tag>
+      <span v-if="currentVersion" class="version-label">v{{ currentVersion }}</span>
       <button class="icon-action" title="修改流程名称" @click="$emit('rename')">
         <el-icon><EditPen /></el-icon>
       </button>
     </div>
 
     <div class="header-actions">
+      <span class="save-state" :class="{ dirty }">
+        <el-icon><CircleCheck v-if="!dirty" /><Clock v-else /></el-icon>
+        {{ saveStateText }}
+      </span>
+      <el-button class="action-btn" @click="$emit('history')">
+        <el-icon><Clock /></el-icon>
+        版本
+      </el-button>
       <el-badge :value="issueCount" :hidden="issueCount === 0" type="danger">
         <el-button class="action-btn" @click="$emit('validate')">
           <el-icon><List /></el-icon>
@@ -40,7 +49,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Close, DocumentChecked, EditPen, List, Share, Upload, VideoPlay } from '@element-plus/icons-vue';
+import { CircleCheck, Clock, Close, DocumentChecked, EditPen, List, Share, Upload, VideoPlay } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   title: string;
@@ -49,7 +58,15 @@ const props = defineProps<{
   publishing?: boolean;
   status?: string;
   dirty?: boolean;
+  currentVersion?: number;
+  lastSavedAt?: Date;
 }>();
+
+const saveStateText = computed(() => {
+  if (props.dirty) return '有未保存修改';
+  if (!props.lastSavedAt) return '已同步';
+  return `${props.lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 已保存`;
+});
 
 const statusLabel = computed(
   () =>
@@ -72,6 +89,7 @@ const statusType = computed(
 
 defineEmits<{
   rename: [];
+  history: [];
   validate: [];
   debug: [];
   publish: [];
@@ -128,6 +146,11 @@ defineEmits<{
   background: #fa8c16;
   box-shadow: 0 0 0 3px #fff7e6;
 }
+.version-label {
+  color: #64748b;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 .icon-action,
 .close-action {
   display: inline-flex;
@@ -152,6 +175,17 @@ defineEmits<{
   align-items: center;
   gap: 8px;
   flex: 0 0 auto;
+}
+.save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #78909c;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.save-state.dirty {
+  color: #d97706;
 }
 .header-actions :deep(.action-btn) {
   height: 32px;
@@ -191,5 +225,14 @@ defineEmits<{
 .header-actions :deep(.save-btn:focus) {
   background: #00a07c;
   border-color: #00a07c;
+}
+@media (max-width: 980px) {
+  .save-state,
+  .version-label {
+    display: none;
+  }
+  .flow-title {
+    max-width: 260px;
+  }
 }
 </style>

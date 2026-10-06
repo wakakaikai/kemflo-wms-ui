@@ -21,3 +21,7 @@ export const getDesignJson = (id: number | string): AxiosPromise<{ designJson?: 
 export const publishVersion = (id: number | string) => {
   return request({ url: `/automation/version/${id}/publish`, method: 'post' });
 };
+
+export const restoreVersion = (id: number | string): AxiosPromise<number | string> => {
+  return request({ url: `/automation/version/${id}/restore`, method: 'post' });
+};

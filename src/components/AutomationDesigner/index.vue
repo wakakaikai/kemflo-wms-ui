@@ -225,7 +225,7 @@ import {
 import { useGraph, resizeGraph, addNodeToGraph, exportDesignJson, importDesignJson, applyNodeRuntimeStatus, clearNodeRuntimeStatus, applyFlowEdgeStyle, alignNodeRight, CARD_WIDTH, CARD_HEIGHT, syncBranchPorts } from './graph/useGraph';
 import { getDefaultSourcePort, getDefaultTargetPort } from './nodes/registerNodes';
 import { getNodeConfig } from './types';
-import { collectFlowIssues, type FlowDesignIssue } from './types/validation';
+import { collectFlowIssues, mapServerValidationIssues, type FlowDesignIssue } from './types/validation';
 import BottomPanel from './panels/bottomPanel.vue';
 import NodePicker from './panels/NodePicker.vue';
 import NodeSettingsDrawer from './panels/NodeSettingsDrawer.vue';
@@ -263,7 +263,7 @@ const canUndo = ref(false);
 const canRedo = ref(false);
 const showEmptyHint = ref(true);
 const showLogs = ref(false);
-const showStencilPanel = ref(false);
+const showStencilPanel = ref(!props.readonly);
 const zoomPercent = ref(100);
 const dirty = ref(false);
 
@@ -784,9 +784,20 @@ async function handleValidate(): Promise<FlowDesignIssue[]> {
     return issues;
   }
   try {
-    await validateDefinitionDesign(id, JSON.stringify(designData));
-    addLog('success', '后端校验通过');
-    ElMessage.success(issues.length ? `校验通过，存在 ${issues.length} 条提示` : '校验通过');
+    const response = await validateDefinitionDesign(id, JSON.stringify(designData));
+    const serverIssues = mapServerValidationIssues(response.data);
+    const mergedIssues = [...issues, ...serverIssues];
+    emit('issues', mergedIssues);
+    if (!response.data.valid) {
+      showLogs.value = true;
+      serverIssues.filter((issue) => issue.level === 'error').forEach((issue) => addLog('error', issue.title));
+      ElMessage.warning(`服务端发现 ${response.data.errors.length} 个错误`);
+      return mergedIssues;
+    }
+    serverIssues.filter((issue) => issue.level === 'warning').forEach((issue) => addLog('info', issue.title));
+    addLog('success', '服务端编译校验通过');
+    ElMessage.success(mergedIssues.length ? `校验通过，存在 ${mergedIssues.length} 条提示` : '校验通过');
+    return mergedIssues;
   } catch (e: any) {
     showLogs.value = true;
     const msg = e?.message || e?.msg || '校验失败';
@@ -801,6 +812,13 @@ async function handleValidate(): Promise<FlowDesignIssue[]> {
     ElMessage.warning('校验失败，请查看日志');
   }
   return issues;
+}
+
+async function reloadDesign() {
+  const id = resolveDefinitionId();
+  if (!id) return;
+  designLoadedForId = undefined;
+  await loadDefinition(id);
 }
 
 async function handlePublish() {
@@ -1184,6 +1202,7 @@ defineExpose({
   zoomToFit: handleZoomToFit,
   zoomReset: handleZoomReset,
   focusNode,
+  reload: reloadDesign,
   isDirty: () => dirty.value,
 });
 </script>
