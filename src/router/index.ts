@@ -242,20 +242,6 @@ export const dynamicRoutes: RouteRecordRaw[] = [
     ]
   },
   {
-    path: '/system/dict-data',
-    component: Layout,
-    hidden: true,
-    permissions: ['system:dict:list'],
-    children: [
-      {
-        path: 'index/:dictId(\\d+)',
-        component: () => import('@/views/system/dict/data.vue'),
-        name: 'Data',
-        meta: { title: '字典数据', activeMenu: '/system/dict', icon: '' }
-      }
-    ]
-  },
-  {
     path: '/system/oss-config',
     component: Layout,
     hidden: true,

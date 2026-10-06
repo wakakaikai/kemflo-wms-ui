@@ -13,7 +13,7 @@
         @contextmenu.prevent="openMenu(tag, $event)"
       >
         <svg-icon v-if="tagsIcon && tag.meta && tag.meta.icon && tag.meta.icon !== '#'" :icon-class="tag.meta.icon"/>
-        {{ tag.title ? translateRouteTitle(String(tag.title)) : '' }}
+        <span class="tags-view-item-title">{{ tag.title ? translateRouteTitle(String(tag.title)) : '' }}</span>
         <span v-if="!isAffix(tag)" @click.prevent.stop="closeSelectedTag(tag)">
           <close class="el-icon-close" style="width: 1em; height: 1em; vertical-align: middle" />
         </span>
@@ -243,17 +243,16 @@ onMounted(() => {
   height: 34px;
   width: 100%;
   background-color: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-light);
-  box-shadow:
-    0 1px 3px 0 rgba(0, 0, 0, 0.12),
-    0 0 3px 0 rgba(0, 0, 0, 0.04);
+  border-top: none;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  box-shadow: none;
   .tags-view-wrapper {
     .tags-view-item {
       display: inline-block;
       position: relative;
       cursor: pointer;
       height: 26px;
-      line-height: 23px;
+      line-height: 25px;
       background-color: var(--el-bg-color);
       border: 1px solid var(--el-border-color-light);
       color: #495060;
@@ -261,8 +260,13 @@ onMounted(() => {
       font-size: 12px;
       margin-left: 5px;
       margin-top: 4px;
+      border-radius: var(--app-radius-md);
+      transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease, color 0.2s ease;
       &:hover {
         color: var(--el-color-primary);
+        border-color: var(--el-color-primary-light-5);
+        box-shadow: var(--app-shadow-sm);
+        transform: translateY(-1px);
       }
       &:first-of-type {
         margin-left: 15px;
@@ -271,12 +275,12 @@ onMounted(() => {
         margin-right: 15px;
       }
       &.active {
-        background-color: #42b983;
+        background-color: var(--tags-view-active-bg);
         color: #fff;
-        border-color: #42b983;
+        border-color: var(--tags-view-active-border-color);
         &::before {
           content: '';
-          background: #fff;
+          background: rgba(255, 255, 255, 0.7);
           display: inline-block;
           width: 8px;
           height: 8px;
@@ -290,6 +294,10 @@ onMounted(() => {
   .tags-view-item.active.has-icon::before {
     content: none !important;
   }
+  .tags-view-item-title {
+    margin-left: 4px;
+    margin-right: 3px;
+  }
   .contextmenu {
     margin: 0;
     background: var(--el-bg-color);
@@ -297,16 +305,16 @@ onMounted(() => {
     position: absolute;
     list-style-type: none;
     padding: 5px 0;
-    border-radius: 4px;
+    border-radius: var(--app-radius-md);
     font-size: 12px;
     font-weight: 400;
-    box-shadow: 2px 2px 3px 0 rgba(0, 0, 0, 0.3);
+    box-shadow: var(--app-shadow-md);
     li {
       margin: 0;
       padding: 7px 16px;
       cursor: pointer;
       &:hover {
-        background: #eee;
+        background: var(--el-fill-color-light);
       }
     }
   }

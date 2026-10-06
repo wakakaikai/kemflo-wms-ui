@@ -13,7 +13,7 @@ import type { lodopPrint } from '@/components/print-designer/libs/lodop';
 
 export {};
 
-declare module '@vue/runtime-core' {
+declare module 'vue' {
   interface ComponentCustomProperties {
     // 全局方法声明
     $modal: typeof modal;

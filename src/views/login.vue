@@ -63,7 +63,7 @@
 
 <script setup lang="ts">
 import { getCodeImg, getTenantList } from '@/api/login';
-import { authBinding } from '@/api/system/social/auth';
+import { authRouterUrl } from '@/api/system/social/auth';
 import { useUserStore } from '@/store/modules/user';
 import { LoginData, TenantVO } from '@/api/types';
 import { to } from 'await-to-js';
@@ -157,6 +157,8 @@ const getCode = async () => {
   const { data } = res;
   captchaEnabled.value = data.captchaEnabled === undefined ? true : data.captchaEnabled;
   if (captchaEnabled.value) {
+    // 刷新验证码时清空输入框
+    loginForm.value.code = '';
     codeUrl.value = 'data:image/gif;base64,' + data.img;
     loginForm.value.uuid = data.uuid;
   }
@@ -194,7 +196,7 @@ const initTenantList = async () => {
  * @param type
  */
 const doSocialLogin = (type: string) => {
-  authBinding(type, loginForm.value.tenantId).then((res: any) => {
+  authRouterUrl(type, loginForm.value.tenantId).then((res: any) => {
     if (res.code === HttpStatus.SUCCESS) {
       // 获取授权地址跳转
       window.location.href = res.data;
@@ -332,14 +334,48 @@ onMounted(() => {
   color: #bfbfbf;
 }
 
+.login-form :deep(.el-input__wrapper) {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.login-form :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.login-form :deep(.el-button--primary) {
+  border-radius: var(--app-radius-md);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.25);
+}
+
+.login-form :deep(.el-button.is-circle) {
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  color: var(--el-text-color-regular);
+}
+
+.login-form :deep(.el-button.is-circle:hover) {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
 .login-code {
-  width: 33%;
+  width: calc(37% - 10px);
   height: 40px;
   float: right;
+  margin-left: 10px;
+  box-sizing: border-box;
+  border-radius: var(--app-radius-sm);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--el-border-color-light);
 
   img {
     cursor: pointer;
     vertical-align: middle;
+    display: block;
+    width: 100%;
+    height: 40px;
+    object-fit: cover;
   }
 }
 
@@ -356,7 +392,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   text-align: center;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.75);
   font-family: Arial, serif;
   font-size: 12px;
   letter-spacing: 1px;
@@ -370,7 +406,28 @@ onMounted(() => {
 
 .login-code-img {
   height: 40px;
-  padding-left: 12px;
+  padding-left: 0;
+}
+
+:global(html.dark) {
+  .login-form {
+    background: rgba(17, 24, 39, 0.9);
+    border-color: rgba(148, 163, 184, 0.2);
+  }
+
+  .login-form :deep(.el-input__wrapper) {
+    background-color: rgba(17, 24, 39, 0.7);
+  }
+
+  .login-form :deep(.el-button.is-circle) {
+    background: rgba(148, 163, 184, 0.12);
+    border-color: rgba(148, 163, 184, 0.25);
+    color: #e5e7eb;
+  }
+
+  .el-login-footer {
+    color: rgba(226, 232, 240, 0.65);
+  }
 }
 
 @media (max-width: 900px) {
