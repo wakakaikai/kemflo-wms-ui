@@ -470,6 +470,20 @@ export const dynamicRoutes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/mes/shopOrder/change-router',
+    component: Layout,
+    hidden: true,
+    permissions: ['mes:shopOrder:edit'],
+    children: [
+      {
+        path: ':id',
+        component: () => import('@/views/mes/shopOrder/changeRouter.vue'),
+        name: 'MesShopOrderChangeRouter',
+        meta: { title: '修改工艺路线', activeMenu: '/mes/shopOrder', noCache: true }
+      }
+    ]
+  },
+  {
     path: '/mes/router/create',
     component: Layout,
     hidden: true,
@@ -536,6 +550,34 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/mes/hiddenCode/edit.vue'),
         name: 'MesHiddenCodeCreate',
         meta: { title: '新增隐码变量', activeMenu: '/mes/hiddenCode', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/mes/ncGroup/edit',
+    component: Layout,
+    hidden: true,
+    permissions: ['mes:group:edit'],
+    children: [
+      {
+        path: ':id',
+        component: () => import('@/views/mes/ncGroup/edit.vue'),
+        name: 'MesNcGroupEdit',
+        meta: { title: '不合格组编辑', activeMenu: '/mes/ncGroup', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/mes/ncGroup/create',
+    component: Layout,
+    hidden: true,
+    permissions: ['mes:group:add'],
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mes/ncGroup/edit.vue'),
+        name: 'MesNcGroupCreate',
+        meta: { title: '新增不合格组', activeMenu: '/mes/ncGroup', noCache: true }
       }
     ]
   },

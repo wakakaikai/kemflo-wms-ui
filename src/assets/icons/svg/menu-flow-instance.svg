@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- Phosphor Icons (MIT). License: /licenses/phosphor-icons.txt -->
+  <g transform="scale(0.09375 0.09375)">
+    <g fill="var(--menu-icon-workflow-primary, #8b46ed)">
+    <path fill="var(--menu-icon-workflow-accent, #d16af0)" d="M128 32a96 96 0 1 0 96 96a96 96 0 0 0-96-96m-20 136V88l64 40Z" opacity="0.32"/>
+    <path d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24m0 192a88 88 0 1 1 88-88a88.1 88.1 0 0 1-88 88m48.24-94.78l-64-40A8 8 0 0 0 100 88v80a8 8 0 0 0 12.24 6.78l64-40a8 8 0 0 0 0-13.56M116 153.57v-51.14L156.91 128Z"/>
+    </g>
+  </g>
+</svg>

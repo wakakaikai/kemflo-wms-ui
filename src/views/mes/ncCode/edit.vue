@@ -2,7 +2,7 @@
   <div v-loading="loading" class="nc-code-editor">
     <div class="action-bar">
       <el-button icon="ArrowLeft" @click="goBack">返回</el-button>
-      <el-button type="primary" icon="Check" :loading="saving" @click="handleSave">保存</el-button>
+      <el-button type="primary" icon="Check" :loading="saving" :disabled="loading || groupsLoading" @click="handleSave">保存</el-button>
     </div>
 
     <el-card shadow="never" class="info-card">
@@ -78,21 +78,16 @@
       </el-tab-pane>
 
       <el-tab-pane label="不合格组" name="groups">
-        <div class="relation-panel">
-          <div class="relation-box">
-            <div class="relation-box__title">可用不合格组</div>
-            <el-input placeholder="请输入搜索内容" disabled prefix-icon="Search" />
-            <el-empty description="当前系统暂无不合格组关联接口" :image-size="72" />
-          </div>
-          <div class="relation-buttons">
-            <el-button type="primary" icon="ArrowRight" disabled />
-            <el-button type="primary" icon="ArrowLeft" disabled />
-          </div>
-          <div class="relation-box">
-            <div class="relation-box__title">已分配不合格组</div>
-            <el-input placeholder="请输入搜索内容" disabled prefix-icon="Search" />
-            <el-empty description="暂无数据" :image-size="72" />
-          </div>
+        <div v-loading="groupsLoading" class="relation-panel">
+          <el-alert v-if="groupsLoadError" type="error" show-icon :closable="false">
+            <template #title>不合格组加载失败，不会修改已有组关联</template>
+            <el-button type="primary" link :disabled="groupsLoading || saving" @click="loadGroups">重新加载</el-button>
+          </el-alert>
+          <el-transfer v-else v-model="selectedGroupHandles" class="group-transfer" :data="groupTransferData" :titles="['可用不合格组', '已分配不合格组']" filterable filter-placeholder="搜索不合格组或描述" target-order="push">
+            <template #default="{ option }"
+              ><span :title="option.label">{{ option.label }}</span></template
+            >
+          </el-transfer>
         </div>
       </el-tab-pane>
 
@@ -112,7 +107,10 @@
       <el-tab-pane label="扩展字段数据" name="extFields">
         <el-table :data="extFields" border min-height="240">
           <el-table-column label="扩展字段" prop="attributeDesc" min-width="220">
-            <template #default="scope"><span class="required-mark">{{ scope.row.required === 'true' ? '*' : '' }}</span>{{ scope.row.attributeDesc || scope.row.attribute }}</template>
+            <template #default="scope"
+              ><span class="required-mark">{{ scope.row.required === 'true' ? '*' : '' }}</span
+              >{{ scope.row.attributeDesc || scope.row.attribute }}</template
+            >
           </el-table-column>
           <el-table-column label="字段类型" prop="fieldTypeDesc" min-width="220" />
           <el-table-column label="值" min-width="500">
@@ -129,6 +127,8 @@ import { addExtFields, delExtFields, listExtFields, updateExtFields } from '@/ap
 import { listExtFieldDef } from '@/api/mes/extFieldDef';
 import { addNcCode, getNcCode, listNcCode, updateNcCode } from '@/api/mes/ncCode';
 import type { NcCodeForm } from '@/api/mes/ncCode/types';
+import { addNcGroupMember, delNcGroupMember, listNcGroup, listNcGroupMember } from '@/api/mes/ncGroup';
+import type { NcGroupMemberVO } from '@/api/mes/ncGroup/types';
 
 interface ExtFieldRow {
   id?: string | number;
@@ -152,6 +152,13 @@ const saving = ref(false);
 const activeTab = ref('main');
 const extFields = ref<ExtFieldRow[]>([]);
 const isEdit = computed(() => Boolean(route.params.id));
+const groupsLoading = ref(false);
+const groupsLoaded = ref(false);
+const groupsLoadError = ref(false);
+const groupOptions = ref<Array<{ key: string; label: string }>>([]);
+const selectedGroupHandles = ref<string[]>([]);
+const originalGroupHandles = ref<string[]>([]);
+const groupTransferData = computed(() => groupOptions.value.map((group) => ({ ...group, disabled: saving.value || groupsLoading.value })));
 
 const form = reactive<NcCodeForm>({
   id: undefined,
@@ -178,10 +185,7 @@ const rules: ElFormRules = {
 };
 
 const loadExtFields = async (handle?: string) => {
-  const [defRes, valueRes] = await Promise.all([
-    listExtFieldDef({ tableName: 'NC_CODE', pageNum: 1, pageSize: 999 }),
-    handle ? listExtFields({ handle, pageNum: 1, pageSize: 999 }) : Promise.resolve({ rows: [] } as any)
-  ]);
+  const [defRes, valueRes] = await Promise.all([listExtFieldDef({ tableName: 'NC_CODE', pageNum: 1, pageSize: 999 }), handle ? listExtFields({ handle, pageNum: 1, pageSize: 999 }) : Promise.resolve({ rows: [] } as any)]);
   const valueMap = new Map((valueRes.rows || []).map((item: any) => [item.attribute, item]));
   extFields.value = (defRes.rows || [])
     .map((item: any) => {
@@ -200,6 +204,40 @@ const loadExtFields = async (handle?: string) => {
     .sort((a: ExtFieldRow, b: ExtFieldRow) => Number(a.sequence || 0) - Number(b.sequence || 0));
 };
 
+const loadGroups = async () => {
+  groupsLoading.value = true;
+  groupsLoaded.value = false;
+  groupsLoadError.value = false;
+  try {
+    // 组成员通过 NC_CODE.handle 关联，不能使用不合格代码的数字 id。
+    if (isEdit.value && !form.handle) throw new Error('不合格代码缺少关联行号');
+    const [groupsRes, membersRes] = await Promise.all([listNcGroup(), form.handle ? listNcGroupMember({ ncCodeBo: form.handle }) : Promise.resolve({ rows: [] as NcGroupMemberVO[] })]);
+    const members = membersRes.rows || [];
+    const options = new Map<string, { key: string; label: string }>();
+    (groupsRes.rows || []).forEach((group) => {
+      if (!group.handle) return;
+      options.set(group.handle, {
+        key: group.handle,
+        label: [group.ncGroup || group.handle, group.description].filter(Boolean).join(' — ')
+      });
+    });
+    // 主数据已删除或缺失时，仍回显已有成员，避免保存时无意丢失关联。
+    members.forEach((member) => {
+      if (member.ncGroupBo && !options.has(member.ncGroupBo)) {
+        options.set(member.ncGroupBo, { key: member.ncGroupBo, label: `${member.ncGroupBo}（组信息缺失）` });
+      }
+    });
+    groupOptions.value = [...options.values()];
+    originalGroupHandles.value = [...new Set(members.map((member) => member.ncGroupBo).filter(Boolean))];
+    selectedGroupHandles.value = [...originalGroupHandles.value];
+    groupsLoaded.value = true;
+  } catch {
+    groupsLoadError.value = true;
+  } finally {
+    groupsLoading.value = false;
+  }
+};
+
 const loadData = async () => {
   loading.value = true;
   try {
@@ -207,7 +245,7 @@ const loadData = async () => {
       const res = await getNcCode(route.params.id as string);
       Object.assign(form, res.data);
     }
-    await loadExtFields(form.handle);
+    await Promise.all([loadExtFields(form.handle), loadGroups()]);
   } finally {
     loading.value = false;
   }
@@ -250,17 +288,45 @@ const saveExtFields = async () => {
   );
 };
 
+const saveGroups = async () => {
+  // 加载失败时不触碰组关系；其余主信息仍可正常保存。
+  if (!groupsLoaded.value) return;
+  if (!form.handle) throw new Error('未获取到不合格代码关联行号');
+  const originalHandles = new Set(originalGroupHandles.value);
+  const selectedHandles = new Set(selectedGroupHandles.value);
+  const removedHandles = new Set([...originalHandles].filter((handle) => !selectedHandles.has(handle)));
+  const addedHandles = [...selectedHandles].filter((handle) => !originalHandles.has(handle));
+  if (!removedHandles.size && !addedHandles.length) return;
+
+  // 重新读取当前关系，使部分保存失败后的重试不会重复新增，也不删除其他用户新增的关系。
+  const res = await listNcGroupMember({ ncCodeBo: form.handle });
+  const currentMembers = res.rows || [];
+  const currentHandles = new Set(currentMembers.map((member) => member.ncGroupBo));
+  for (const handle of addedHandles) {
+    if (!currentHandles.has(handle)) {
+      await addNcGroupMember({ ncGroupBo: handle, ncCodeBo: form.handle });
+    }
+    // 逐次更新已保存基线，后续请求失败后仍可继续调整、重试。
+    originalGroupHandles.value = [...new Set([...originalGroupHandles.value, handle])];
+  }
+  const removedIds = currentMembers.filter((member) => removedHandles.has(member.ncGroupBo)).map((member) => member.id);
+  if (removedIds.length) await delNcGroupMember(removedIds);
+  originalGroupHandles.value = originalGroupHandles.value.filter((handle) => !removedHandles.has(handle));
+};
+
 const handleSave = async () => {
+  if (loading.value || groupsLoading.value || saving.value) return;
   const valid = await formRef.value?.validate().catch(() => false);
   if (!valid || !validateMainInfo() || !validateExtFields()) return;
   saving.value = true;
   try {
-    if (isEdit.value) {
+    if (form.id) {
       await updateNcCode(form);
     } else {
       await addNcCode(form);
       await resolveCreatedCode();
     }
+    await saveGroups();
     await saveExtFields();
     proxy?.$modal.msgSuccess('保存成功');
     goBack();
@@ -308,26 +374,37 @@ onMounted(loadData);
   padding: 20px 40px;
 }
 .relation-panel {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   max-width: 1180px;
+  min-height: 340px;
   padding: 10px 0;
 }
-.relation-box {
-  width: 48%;
-  height: 380px;
-  padding: 14px;
-  border: 1px solid #dcdfe6;
-}
-.relation-box__title {
-  margin-bottom: 12px;
-  text-align: right;
-}
-.relation-buttons {
+.group-transfer {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  :deep(.el-transfer-panel) {
+    flex: 1;
+    min-width: 0;
+  }
+  :deep(.el-transfer-panel__body) {
+    height: 300px;
+  }
+  :deep(.el-transfer-panel__list.is-filterable) {
+    height: 246px;
+  }
+  :deep(.el-transfer__buttons) {
+    flex-shrink: 0;
+    padding: 0 16px;
+  }
+}
+@media (max-width: 768px) {
+  .group-transfer {
+    flex-direction: column;
+    gap: 12px;
+    :deep(.el-transfer-panel) {
+      flex: auto;
+      width: 100%;
+    }
+  }
 }
 .tab-toolbar {
   margin: 10px 0 8px;

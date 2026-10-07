@@ -1,6 +1,13 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
 import { ShopOrderVO, ShopOrderForm, ShopOrderQuery, SfcPreviewVO, ImmediateShopOrderQuery, ImmediateShopOrderVO, ImmediateOperationQuery, ImmediateOperationVO, ImmediateSfcQuery, ImmediateSfcVO } from '@/api/mes/shopOrder/types';
+import type { ShopOrderRouterChangeVO, ShopOrderRouterChangeForm } from './types';
+import type { RouterVO } from '@/api/mes/router/types';
+
+export const getShopOrderRouterChange = (id: string | number): AxiosPromise<ShopOrderRouterChangeVO> => request({ url: `/mes/shopOrder/router-change/${id}`, method: 'get' });
+export const listShopOrderRouterOptions = (): AxiosPromise<RouterVO[]> => request({ url: '/mes/shopOrder/router-change/options', method: 'get' });
+export const listShopOrderRouterSteps = (routerBo: string): AxiosPromise<ImmediateOperationVO[]> => request({ url: '/mes/shopOrder/router-change/steps', method: 'get', params: { routerBo } });
+export const changeShopOrderRouter = (data: ShopOrderRouterChangeForm) => request({ url: '/mes/shopOrder/router-change', method: 'post', data });
 
 /**
  * 查询工单档案列表

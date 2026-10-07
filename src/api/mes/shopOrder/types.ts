@@ -226,6 +226,27 @@ export interface ImmediateOperationVO {
   stepSequence: number;
 }
 
+export interface ShopOrderRouterChangeVO {
+  id: string | number;
+  shopOrder: string;
+  plannedRouterBo: string;
+  plannedRouter: string;
+  plannedRouterRevision: string;
+  operations: ImmediateOperationVO[];
+}
+
+export interface ShopOrderRouterChangeForm {
+  id: string | number;
+  plannedRouterBo: string;
+  newPlannedRouterBo: string;
+  operationMappingList: Array<{
+    routerBo: string;
+    stepId: string;
+    operationBo: string;
+    newStepId?: string;
+  }>;
+}
+
 export interface ImmediateSfcQuery extends PageQuery {
   shopOrderRef?: string;
   operationRef?: string;

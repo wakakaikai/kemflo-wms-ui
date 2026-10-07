@@ -13,7 +13,7 @@
       </app-link>
     </template>
 
-    <el-sub-menu v-else ref="subMenu" :index="resolvePath(item.path)" teleported>
+    <el-sub-menu v-else ref="subMenu" :index="resolvePath(item.path)" :popper-class="`sidebar-menu-popper ${sideTheme}`" teleported>
       <template v-if="item.meta" #title>
         <svg-icon :icon-class="item.meta ? item.meta.icon : ''" />
         <span class="menu-title" :title="hasTitle(item.meta?.title)">{{
@@ -39,6 +39,10 @@ import AppLink from './Link.vue';
 import { getNormalPath } from '@/utils/ruoyi';
 import { translateRouteTitle } from '@/utils/i18n';
 import { RouteRecordRaw } from 'vue-router';
+import { useSettingsStore } from '@/store/modules/settings';
+
+const settingsStore = useSettingsStore();
+const sideTheme = computed(() => settingsStore.sideTheme);
 
 const props = defineProps({
   item: {

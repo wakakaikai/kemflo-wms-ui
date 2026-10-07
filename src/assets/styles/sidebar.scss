@@ -1,5 +1,77 @@
 @use './variables.module.scss' as *;
 
+// Menu SVGs inherit the business palette from the sidebar or its teleported popup.
+.sidebar-container .theme-light,
+.sidebar-menu-popper.theme-light {
+  --menu-icon-system-primary: #4f66e8;
+  --menu-icon-system-accent: #8b5cf6;
+  --menu-icon-warehouse-primary: #2878f0;
+  --menu-icon-warehouse-accent: #06b6d4;
+  --menu-icon-production-primary: #009cb5;
+  --menu-icon-production-accent: #22d3ee;
+  --menu-icon-quality-primary: #0aaa77;
+  --menu-icon-quality-accent: #34d399;
+  --menu-icon-workflow-primary: #8b46ed;
+  --menu-icon-workflow-accent: #d16af0;
+  --menu-icon-print-primary: #ed8718;
+  --menu-icon-print-accent: #fbbf24;
+  --menu-icon-report-primary: #6361ed;
+  --menu-icon-report-accent: #38bdf8;
+  --menu-icon-alert-primary: #f04f73;
+  --menu-icon-alert-accent: #ff9452;
+}
+
+.sidebar-container .theme-dark,
+.sidebar-menu-popper.theme-dark {
+  --menu-icon-system-primary: #91a3ff;
+  --menu-icon-system-accent: #c3a8ff;
+  --menu-icon-warehouse-primary: #62a7ff;
+  --menu-icon-warehouse-accent: #42dcec;
+  --menu-icon-production-primary: #2acddd;
+  --menu-icon-production-accent: #67e8f9;
+  --menu-icon-quality-primary: #32dba5;
+  --menu-icon-quality-accent: #87f0c1;
+  --menu-icon-workflow-primary: #b289ff;
+  --menu-icon-workflow-accent: #ec9bff;
+  --menu-icon-print-primary: #ffac45;
+  --menu-icon-print-accent: #ffe082;
+  --menu-icon-report-primary: #9c9aff;
+  --menu-icon-report-accent: #72d8ff;
+  --menu-icon-alert-primary: #ff7c99;
+  --menu-icon-alert-accent: #ffc07c;
+}
+
+// Overrides live on the SVG itself so every selected icon inherits the white text.
+.el-menu-item.is-active .svg-icon,
+.el-menu--collapse .is-active > .el-sub-menu__title .svg-icon {
+  --menu-icon-system-primary: currentColor;
+  --menu-icon-system-accent: currentColor;
+  --menu-icon-warehouse-primary: currentColor;
+  --menu-icon-warehouse-accent: currentColor;
+  --menu-icon-production-primary: currentColor;
+  --menu-icon-production-accent: currentColor;
+  --menu-icon-quality-primary: currentColor;
+  --menu-icon-quality-accent: currentColor;
+  --menu-icon-workflow-primary: currentColor;
+  --menu-icon-workflow-accent: currentColor;
+  --menu-icon-print-primary: currentColor;
+  --menu-icon-print-accent: currentColor;
+  --menu-icon-report-primary: currentColor;
+  --menu-icon-report-accent: currentColor;
+  --menu-icon-alert-primary: currentColor;
+  --menu-icon-alert-accent: currentColor;
+}
+
+.el-menu--collapse .is-active > .el-sub-menu__title .svg-icon {
+  color: #fff;
+}
+
+// Collapsed submenus are teleported outside #app and need their own active surface.
+.sidebar-menu-popper .el-menu-item.is-active {
+  background-color: var(--el-menu-active-color, var(--el-color-primary)) !important;
+  color: #fff;
+}
+
 #app {
   .main-container {
     height: 100%;

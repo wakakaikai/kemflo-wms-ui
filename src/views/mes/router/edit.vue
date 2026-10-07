@@ -2,7 +2,7 @@
   <div v-loading="loading" class="router-edit p-2">
     <section class="router-section mb-2">
       <div class="router-section__header">
-        <span>基础信息</span>
+        <span class="router-section__title">基础信息</span>
         <el-space class="router-actions">
           <el-button plain icon="ArrowLeft" @click="goBack">返回</el-button>
           <el-button type="primary" icon="Check" :loading="buttonLoading" @click="handleSave">保存</el-button>
@@ -51,7 +51,7 @@
 
     <section class="router-section designer-section mb-2">
       <div class="router-section__header">
-        <span>工艺路线</span>
+        <span class="router-section__title">工艺路线</span>
       </div>
       <div v-loading="pageReady && !designerReady" class="designer-wrap">
         <RoutingDesigner v-if="pageReady" ref="routingRef" :definition="routingData" :processes="operations" />
@@ -300,6 +300,14 @@ onMounted(async () => {
   font-size: 14px;
   font-weight: 600;
   color: #303133;
+}
+
+.router-section__title {
+  padding-left: 10px;
+  border-left: 4px solid #315eb5;
+  font-size: 18px;
+  line-height: 24px;
+  color: #244a90;
 }
 
 .router-base-form {

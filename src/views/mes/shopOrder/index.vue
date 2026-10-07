@@ -47,6 +47,9 @@
             <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['mes:shopOrder:edit']">修改</el-button>
           </el-col>
           <el-col :span="1.5">
+            <el-button type="primary" plain icon="Switch" :disabled="single" @click="handleChangeRouter()" v-hasPermi="['mes:shopOrder:edit']">修改工艺路线</el-button>
+          </el-col>
+          <el-col :span="1.5">
             <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['mes:shopOrder:remove']">删除</el-button>
           </el-col>
           <el-col :span="1.5">
@@ -81,7 +84,7 @@
         <el-table-column label="创建时间" align="center" prop="createTime" width="180" />
         <el-table-column label="更新者" align="center" prop="updater" />
         <el-table-column label="更新时间" align="center" prop="modifyTime" width="180" />
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width" fixed="right">
+        <el-table-column label="操作" align="center" class-name="small-padding fixed-width" fixed="right" width="240">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
               <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['mes:shopOrder:edit']"></el-button>
@@ -89,6 +92,7 @@
             <el-tooltip content="删除" placement="top">
               <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['mes:shopOrder:remove']"></el-button>
             </el-tooltip>
+            <el-button link type="primary" @click="handleChangeRouter(scope.row)" v-hasPermi="['mes:shopOrder:edit']">修改工艺路线</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -180,6 +184,12 @@ import { listShopOrder, getShopOrder, delShopOrder, addShopOrder, updateShopOrde
 import { ShopOrderVO, ShopOrderQuery, ShopOrderForm } from '@/api/mes/shopOrder/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const router = useRouter();
+
+const handleChangeRouter = (row?: ShopOrderVO) => {
+  const id = row?.id || ids.value[0];
+  if (id) router.push(`/mes/shopOrder/change-router/${id}`);
+};
 
 const shopOrderList = ref<ShopOrderVO[]>([]);
 const buttonLoading = ref(false);
@@ -394,5 +404,9 @@ const handleExport = () => {
 
 onMounted(() => {
   getList();
+});
+onActivated(() => {
+  // 路线修改页面返回后更新缓存的工单列表。
+  if (!loading.value) getList();
 });
 </script>

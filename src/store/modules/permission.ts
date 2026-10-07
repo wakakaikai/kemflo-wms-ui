@@ -15,6 +15,8 @@ import { ElNotification } from 'element-plus';
 const modules = import.meta.glob(['./../../views/**/*.vue', '!./../../views/automation/_jeecg_super_source/**/*.vue']);
 
 const VIEW_PATH_ALIASES: Record<string, string> = {
+  'mes/group/index': 'mes/ncGroup/index',
+  'mes/group': 'mes/ncGroup/index',
   'mes/SfcFixedSfc/index': 'mes/sfcFixedSfc/index',
   'mes/SfcFixedSfc': 'mes/sfcFixedSfc/index'
 };
