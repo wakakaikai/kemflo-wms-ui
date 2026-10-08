@@ -9,7 +9,7 @@ export interface PoDetailTreeRow extends PurchaseOrderDetailVO, Partial<Purchase
   parentInboundRowKey?: string;
 }
 
-export const isOutsourcingCategory = (poCategory: string | number | undefined | null) => String(poCategory ?? '') === '3';
+export const isOutsourcingCategory = (poCategory: string | number | undefined | null) => String(poCategory ?? '').trim() === '3';
 
 export const isPoDetailParentRow = (row: PoDetailTreeRow) => row.isPoDetailHead === true;
 

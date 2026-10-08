@@ -68,8 +68,17 @@
               <span v-for="column in containerColumns" :key="column.key">{{ column.name }}</span>
               <span>状态</span>
             </div>
-            <div class="partner-body" :class="{ 'is-seamless': shouldUsePartnerScroll }">
-              <Vue3SeamlessScroll v-if="shouldUsePartnerScroll" :key="partnerScrollKey" :list="partnerTableScrollRows" :visible-count="partnerVisibleCount" :hover="true" :step="stepVal" :wheel="true">
+            <div ref="partnerBodyRef" class="partner-body" :class="{ 'is-seamless': shouldUsePartnerScroll }">
+              <Vue3SeamlessScroll
+                v-if="shouldUsePartnerScroll"
+                ref="partnerSeamlessRef"
+                :key="partnerScrollKey"
+                :list="partnerTableScrollRows"
+                :visible-count="partnerScrollVisibleCount"
+                :hover="true"
+                :step="stepVal"
+                :wheel="true"
+              >
                 <template #default="{ data: row }">
                   <div class="partner-row">
                     <span>{{ row.displayIndex }}</span>
@@ -168,6 +177,7 @@ interface PartnerTableRow {
 
 const designWidth = 1680;
 const designHeight = 945;
+const partnerRowHeight = 27;
 const rangeOptions = [
   { label: '近7天', days: 7 },
   { label: '近30天', days: 30 },
@@ -231,6 +241,9 @@ const emptyFooter = (): ContainerFooterVO => ({
 const boardRef = ref<HTMLElement>();
 const queryFormRef = ref<ElFormInstance>();
 const flowChartRef = ref<HTMLElement>();
+const partnerSeamlessRef = ref<{ reset?: () => void }>();
+const partnerBodyRef = ref<HTMLElement>();
+const partnerFitCount = ref(8);
 const overview = ref<ContainerOverviewVO>(emptyOverview());
 const trendList = ref<ContainerTrendVO[]>([]);
 const inventorySummary = ref<ContainerInventorySummaryVO[]>([]);
@@ -247,6 +260,8 @@ const partnerScrollKey = ref(0);
 const activeRangeDays = ref(7);
 const viewport = reactive({ scale: 1, left: 0, top: 0 });
 let clockTimer: number | undefined;
+let layoutRaf: number | undefined;
+let boardResizeObserver: ResizeObserver | undefined;
 let refreshTimer: number | undefined;
 let flowRenderFrame: number | undefined;
 let flowChart: echarts.ECharts | undefined;
@@ -376,8 +391,10 @@ const partnerTableRows = computed<PartnerTableRow[]>(() => {
 });
 
 const partnerTableScrollRows = computed(() => partnerTableRows.value.map((row, index) => ({ ...row, displayIndex: index + 1 })));
-const partnerVisibleCount = computed(() => Math.min(settingsForm.displayLimit, 8));
-const shouldUsePartnerScroll = computed(() => showScroll.value && settingsForm.enableScroll && partnerTableRows.value.length > partnerVisibleCount.value);
+const partnerScrollVisibleCount = computed(() => Math.max(settingsForm.displayLimit, partnerFitCount.value + 2));
+const shouldUsePartnerScroll = computed(
+  () => showScroll.value && settingsForm.enableScroll && partnerTableRows.value.length > partnerFitCount.value
+);
 
 const footerStats = computed(() => {
   return [
@@ -432,8 +449,9 @@ async function refreshAll() {
   partnerRows.value = partnerRes.status === 'fulfilled' ? getResponseList<ContainerPartnerTurnoverVO>(partnerRes.value) : [];
   footer.value = footerRes.status === 'fulfilled' ? footerRes.value.data || emptyFooter() : emptyFooter();
 
-  partnerScrollKey.value += 1;
   await nextTick();
+  updatePartnerFitCount();
+  remountPartnerScroll();
   scheduleFlowChartRender();
 }
 
@@ -473,6 +491,7 @@ function setRangeDays(days: number) {
 function renderFlowChart() {
   if (!flowChartRef.value || !flowChartRef.value.clientWidth || !flowChartRef.value.clientHeight) return;
   flowChart ||= echarts.init(flowChartRef.value);
+  flowChart.resize();
   const rows = trendList.value.map((item) => ({
     date: String(item.date || '')
       .slice(5)
@@ -569,13 +588,43 @@ function scheduleFlowChartRender() {
   });
 }
 
+function updatePartnerFitCount() {
+  const height = partnerBodyRef.value?.clientHeight || 0;
+  partnerFitCount.value = height > 0 ? Math.max(1, Math.floor(height / partnerRowHeight)) : 8;
+}
+
+function remountPartnerScroll() {
+  partnerScrollKey.value += 1;
+}
+
+function syncPartnerScroll() {
+  nextTick(() => {
+    updatePartnerFitCount();
+    partnerSeamlessRef.value?.reset?.();
+  });
+}
+
 function fitCanvas() {
-  const width = boardRef.value?.clientWidth || window.innerWidth;
-  const height = boardRef.value?.clientHeight || window.innerHeight;
-  viewport.scale = isFullscreen.value ? Math.min(width / designWidth, height / designHeight) : width / designWidth;
-  viewport.left = 0;
-  viewport.top = 0;
-  nextTick(scheduleFlowChartRender);
+  if (!boardRef.value) return;
+  if (layoutRaf) window.cancelAnimationFrame(layoutRaf);
+  layoutRaf = window.requestAnimationFrame(() => {
+    layoutRaf = undefined;
+    const shell = boardRef.value;
+    if (!shell) return;
+    const { clientWidth, clientHeight } = shell;
+    if (clientWidth <= 0 || clientHeight <= 0) return;
+    const scale = clientWidth / designWidth;
+    viewport.scale = scale;
+    viewport.left = 0;
+    viewport.top = Math.max(0, (clientHeight - designHeight * scale) / 2);
+    nextTick(() => {
+      const prevFit = partnerFitCount.value;
+      updatePartnerFitCount();
+      if (prevFit !== partnerFitCount.value) remountPartnerScroll();
+      else syncPartnerScroll();
+      scheduleFlowChartRender();
+    });
+  });
 }
 
 function toggleFullscreen() {
@@ -620,6 +669,13 @@ function updateTime() {
 
 watch(inventoryCards, () => nextTick(scheduleFlowChartRender));
 
+watch(
+  () => [appStore.sidebar.opened, appStore.sidebar.hide] as const,
+  () => {
+    window.setTimeout(fitCanvas, 280);
+  }
+);
+
 onMounted(() => {
   tenantId.value = localStorage.getItem('tenantId') || '000000';
   const saved = localStorage.getItem('scadaContainerBoardSettings');
@@ -639,6 +695,11 @@ onMounted(() => {
   resetRefreshTimer();
   window.addEventListener('resize', fitCanvas);
   document.addEventListener('fullscreenchange', handleFullscreenChange);
+  const host = boardRef.value?.parentElement;
+  if (host && typeof ResizeObserver !== 'undefined') {
+    boardResizeObserver = new ResizeObserver(() => fitCanvas());
+    boardResizeObserver.observe(host);
+  }
   refreshAll();
 });
 
@@ -646,6 +707,9 @@ onBeforeUnmount(() => {
   if (clockTimer) window.clearInterval(clockTimer);
   if (refreshTimer) window.clearInterval(refreshTimer);
   if (flowRenderFrame) window.cancelAnimationFrame(flowRenderFrame);
+  if (layoutRaf) window.cancelAnimationFrame(layoutRaf);
+  boardResizeObserver?.disconnect();
+  boardResizeObserver = undefined;
   window.removeEventListener('resize', fitCanvas);
   document.removeEventListener('fullscreenchange', handleFullscreenChange);
   const currentBoardFullscreen = document.fullscreenElement === boardRef.value;
@@ -665,9 +729,8 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   height: calc(100vh - 84px);
-  min-height: calc(100vh - 84px);
-  overflow-x: hidden;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: auto;
   color: #eaf8ff;
   background: #010b1a;
   font-family: DIN, Bahnschrift, 'Microsoft YaHei', Arial, sans-serif;
@@ -677,8 +740,6 @@ onBeforeUnmount(() => {
 .dashboard-shell:fullscreen {
   width: 100vw;
   height: 100vh;
-  min-height: 100vh;
-  overflow: hidden;
 }
 
 .dashboard-stage {
@@ -1030,7 +1091,7 @@ onBeforeUnmount(() => {
 .middle-grid {
   height: 290px;
   display: grid;
-  grid-template-columns: 910px 1fr;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
   gap: 12px;
   margin-top: 12px;
 }
@@ -1190,21 +1251,24 @@ onBeforeUnmount(() => {
 
 .container-list {
   height: 100%;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 9px;
-  padding: 8px 14px 14px;
+  padding: 6px 14px 12px;
   box-sizing: border-box;
+  align-items: stretch;
 }
 
 .container-card {
   position: relative;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  overflow: hidden;
-  padding: 8px 11px 11px;
+  overflow: visible;
+  padding: 6px 10px 10px;
   border: 1px solid rgba(35, 159, 235, 0.82);
   border-radius: 5px;
   background: linear-gradient(180deg, rgba(12, 76, 129, 0.72), rgba(3, 35, 72, 0.94)), radial-gradient(circle at 52% 18%, rgba(59, 178, 255, 0.18), transparent 52%);
@@ -1235,13 +1299,14 @@ onBeforeUnmount(() => {
 
 .product-wrap {
   position: relative;
-  height: 132px;
-  width: calc(100% + 10px);
-  flex: 0 0 132px;
+  width: calc(100% + 8px);
+  flex: 1 1 auto;
+  min-height: 72px;
+  max-height: 102px;
   display: grid;
   place-items: center;
   overflow: hidden;
-  margin: -1px -5px 7px;
+  margin: 0 -4px 4px;
   border-radius: 4px;
   background: linear-gradient(180deg, rgba(40, 173, 255, 0.07), rgba(40, 173, 255, 0.01));
 }
@@ -1260,11 +1325,13 @@ onBeforeUnmount(() => {
 .product-wrap img {
   position: relative;
   z-index: 1;
-  width: 148px;
-  height: 96px;
+  width: auto;
+  max-width: 92%;
+  height: auto;
+  max-height: 72px;
   object-fit: contain;
-  transform: translateX(-8px);
-  filter: drop-shadow(0 12px 12px rgba(0, 0, 0, 0.38)) drop-shadow(0 0 9px rgba(42, 184, 255, 0.38));
+  transform: translateX(-4px);
+  filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.38)) drop-shadow(0 0 6px rgba(42, 184, 255, 0.38));
 }
 
 .product-wrap img.product-crate {
@@ -1272,54 +1339,56 @@ onBeforeUnmount(() => {
 }
 
 .product-wrap img.product-crate-medium {
-  width: 140px;
-  height: 91px;
+  max-height: 68px;
 }
 
 .product-wrap img.product-crate-small {
-  width: 126px;
-  height: 82px;
+  max-height: 62px;
 }
 
 .product-wrap img.product-cage {
-  width: 152px;
-  height: 100px;
+  max-height: 74px;
   filter: saturate(0.48) brightness(1.16) contrast(1.08) drop-shadow(0 11px 10px rgba(0, 0, 0, 0.42)) drop-shadow(0 0 8px rgba(102, 220, 255, 0.56));
 }
 
 .product-wrap img.product-pallet {
-  width: 156px;
-  height: 88px;
+  max-height: 66px;
   filter: grayscale(1) saturate(0) brightness(1.65) contrast(1.22) drop-shadow(0 11px 10px rgba(0, 0, 0, 0.44)) drop-shadow(0 0 7px rgba(224, 244, 255, 0.42));
 }
 
 .container-card strong,
 .container-card b {
+  position: relative;
+  z-index: 2;
   display: block;
   width: 100%;
+  flex: 0 0 auto;
   text-align: center;
   box-sizing: border-box;
 }
 
 .container-card strong {
-  min-height: 20px;
+  min-height: 18px;
   padding: 0 2px;
   overflow: hidden;
-  display: -webkit-box;
-  font-size: 16px;
-  line-height: 20px;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  font-size: 15px;
+  line-height: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .container-card b {
-  margin-top: 3px;
-  padding-bottom: 2px;
+  margin-top: 2px;
+  padding-bottom: 4px;
   color: #fff;
-  font-size: 29px;
-  line-height: 32px;
+  font-size: 26px;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.28);
+}
+
+.type-panel.dashboard-panel :deep(.panel-body) {
+  overflow: visible;
 }
 
 .partner-table-wrap {
@@ -1380,8 +1449,7 @@ onBeforeUnmount(() => {
 .partner-body {
   min-height: 0;
   flex: 1;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
   border-inline: 1px solid rgba(27, 107, 176, 0.34);
 }

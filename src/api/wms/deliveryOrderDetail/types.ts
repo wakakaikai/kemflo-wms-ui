@@ -1,4 +1,4 @@
-import type { PurchaseOrderBomVO } from '@/api/wms/purchaseOrderDetail/types';
+import type { PurchaseOrderDetailVO } from '@/api/wms/purchaseOrderDetail/types';
 
 export interface DeliveryOrderDetailVO {
   /**
@@ -76,13 +76,16 @@ export interface DeliveryOrderDetailVO {
    */
   conversionRatio: number;
 
+  /** 采购类别：3 为托外加工 */
+  poCategory?: string;
+
   /**
    * 备注
    */
   remark: string;
 
-  /** 采购订单计划行 BOM（与 purchaseOrderDetail/list 一致） */
-  purchaseOrderBomScheduleVoList?: PurchaseOrderBomVO[];
+  /** 对应采购订单项次的计划行；每个计划行内包含其 BOM 明细 */
+  purchaseOrderScheduleVoList?: PurchaseOrderDetailVO[];
 }
 
 export interface DeliveryOrderDetailForm extends BaseEntity {
@@ -165,11 +168,9 @@ export interface DeliveryOrderDetailForm extends BaseEntity {
    * 备注
    */
   remark?: string;
-
 }
 
 export interface DeliveryOrderDetailQuery extends PageQuery {
-
   /**
    * 交货单号
    */
@@ -249,11 +250,8 @@ export interface DeliveryOrderDetailQuery extends PageQuery {
 
   receiveType?: string | number;
 
-    /**
-     * 日期范围参数
-     */
-    params?: any;
+  /**
+   * 日期范围参数
+   */
+  params?: any;
 }
-
-
-

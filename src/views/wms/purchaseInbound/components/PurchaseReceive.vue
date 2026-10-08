@@ -153,14 +153,12 @@
               </el-table-column>
               <el-table-column label="料号" prop="materialCode" min-width="135" />
               <el-table-column label="物料描述" prop="materialDesc" min-width="160" show-overflow-tooltip />
-              <el-table-column label="未清/未发数量" min-width="150" align="center">
+              <el-table-column label="未清/未发数量" min-width="150" align="right">
                 <template #default="scope">
-                  <template v-if="isPoDetailParentRow(scope.row)">
-                    {{ formatQtyWithUnit(scope.row.openQuantity, scope.row.orderUnit) }}
-                  </template>
-                  <template v-else>
-                    {{ formatQtyWithUnit(scope.row.openQuantity, scope.row.inventoryUnit) }}
-                  </template>
+                  <div class="qty-display-cell">
+                    <span class="qty-display-value">{{ formatQty(scope.row.openQuantity) || '-' }}</span>
+                    <span class="qty-display-unit">{{ (isPoDetailParentRow(scope.row) ? scope.row.orderUnit : scope.row.inventoryUnit) || '' }}</span>
+                  </div>
                 </template>
               </el-table-column>
               <el-table-column label="批次" min-width="160">
@@ -181,11 +179,13 @@
                   </TableHistoryInput>
                 </template>
               </el-table-column>
-              <el-table-column label="收货/扣料数量" align="center" width="200">
+              <el-table-column label="收货/扣料数量" align="right" width="210">
                 <template #default="scope">
                   <template v-if="isPoDetailParentRow(scope.row)">
-                    <el-input-number v-model="scope.row.receivePoQuantity" :min="0" :max="parseFloat(scope.row.openQuantity || 0)" :precision="3" size="small" controls-position="right" @change="handleReceivePoQuantityChange(scope.row)" />
-                    <span class="issue-qty-unit">{{ scope.row.orderUnit || '' }}</span>
+                    <div class="qty-convert-cell">
+                      <el-input-number v-model="scope.row.receivePoQuantity" :min="0" :max="parseFloat(scope.row.openQuantity || 0)" :precision="3" size="small" controls-position="right" @change="handleReceivePoQuantityChange(scope.row)" />
+                      <span class="qty-convert-unit">{{ scope.row.orderUnit || '' }}</span>
+                    </div>
                   </template>
                   <template v-else>
                     <div class="qty-convert-cell">
@@ -195,9 +195,12 @@
                   </template>
                 </template>
               </el-table-column>
-              <el-table-column label="库存数量" min-width="100" align="center">
+              <el-table-column label="库存数量" min-width="140" align="right">
                 <template #default="scope">
-                  {{ formatQtyWithUnit(scope.row.inventoryQuantity, scope.row.inventoryUnit) }}
+                  <div class="qty-display-cell">
+                    <span class="qty-display-value">{{ formatQty(scope.row.inventoryQuantity) || '-' }}</span>
+                    <span class="qty-display-unit">{{ scope.row.inventoryUnit || '' }}</span>
+                  </div>
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="80" align="center">
@@ -252,7 +255,7 @@ import { ArrowDown, ArrowRight, ArrowUp, Bell, Switch } from '@element-plus/icon
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
-import { formatQty, formatQtyWithUnit, parseTime } from '@/utils/ruoyi';
+import { formatQty, parseTime } from '@/utils/ruoyi';
 import { buildPurchaseInboundStagingKey, listPurchaseInboundStagings, loadPurchaseInboundStaging, normalizeStagingPostingDate, PurchaseInboundStagingSummary, removePurchaseInboundStaging, resolveInboundStagingSupplier, savePurchaseInboundStaging } from '@/views/wms/purchaseInbound/utils/purchaseInboundStaging';
 import { formatApiErrorMessage } from '@/utils/formatApiErrorMessage';
 import PurchaseOrderDetailTreeTable from '@/views/wms/purchaseOrderDetail/components/PurchaseOrderDetailTreeTable.vue';
@@ -592,20 +595,20 @@ const applyBomInventorySelection = ({ locations }: { locations: any[] }) => {
       const batchCode = location.batchCode || '';
       return inheritPoItemNumberOnBom(
         {
-        ...source,
-        originBomKey,
-        moveType: '543',
-        inventoryDetailId: location.id,
-        warehouseCode: location.warehouseCode,
-        areaCode: location.areaCode,
-        locationCode: location.locationCode,
-        batchCode,
-        specialInventoryFlag: location.specialInventoryFlag || 'O',
-        businessCode: location.businessCode || parent.supplierCode || '',
-        consumeQuantity,
-        inventoryQuantity: inventoryQuantity.toFixed(3),
-        inventorySplitKey: `${originBomKey}_${batchCode || 'batch'}_${location.rowKey || location.id || locationIndex}`
-      } as PurchaseOrderBomVO,
+          ...source,
+          originBomKey,
+          moveType: '543',
+          inventoryDetailId: location.id,
+          warehouseCode: location.warehouseCode,
+          areaCode: location.areaCode,
+          locationCode: location.locationCode,
+          batchCode,
+          specialInventoryFlag: location.specialInventoryFlag || 'O',
+          businessCode: location.businessCode || parent.supplierCode || '',
+          consumeQuantity,
+          inventoryQuantity: inventoryQuantity.toFixed(3),
+          inventorySplitKey: `${originBomKey}_${batchCode || 'batch'}_${location.rowKey || location.id || locationIndex}`
+        } as PurchaseOrderBomVO,
         parent
       );
     })
@@ -1064,12 +1067,6 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-.issue-qty-unit {
-  color: var(--el-text-color-regular);
-  white-space: nowrap;
-  margin-left: 2px;
-}
-
 .qty-convert-cell {
   display: inline-flex;
   align-items: center;
@@ -1079,15 +1076,41 @@ onMounted(() => {
 
 .qty-convert-cell :deep(.el-input-number) {
   width: 132px;
+  flex: 0 0 132px;
+}
+
+.qty-convert-cell :deep(.el-input__inner) {
+  font-variant-numeric: tabular-nums;
 }
 
 .qty-convert-unit {
-  flex-shrink: 0;
-  min-width: 24px;
+  width: 32px;
+  flex: 0 0 32px;
   font-size: 12px;
   font-weight: 600;
   color: var(--el-text-color-secondary);
   text-align: left;
+}
+
+.qty-display-cell {
+  display: inline-grid;
+  grid-template-columns: minmax(0, 74px) 32px;
+  align-items: baseline;
+  column-gap: 6px;
+  width: 112px;
+  max-width: 100%;
+}
+
+.qty-display-value {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.qty-display-unit {
+  text-align: left;
+  white-space: nowrap;
+  color: var(--el-text-color-regular);
 }
 
 .qty-convert-mark {

@@ -16,7 +16,10 @@ function shouldSkipPath(path: string) {
   return SKIP_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
-export function flattenHomeMenuRoutes(routes: RouteRecordRaw[], basePath = ''): HomeMenuLink[] {
+export function flattenHomeMenuRoutes(routes: RouteRecordRaw[], basePath = '', depth = 0): HomeMenuLink[] {
+  if (depth > 30) {
+    return [];
+  }
   const result: HomeMenuLink[] = [];
 
   for (const route of routes) {
@@ -30,7 +33,7 @@ export function flattenHomeMenuRoutes(routes: RouteRecordRaw[], basePath = ''): 
     const visibleChildren = route.children?.filter((child) => !child.hidden) ?? [];
 
     if (visibleChildren.length) {
-      result.push(...flattenHomeMenuRoutes(visibleChildren, fullPath));
+      result.push(...flattenHomeMenuRoutes(visibleChildren, fullPath, depth + 1));
       continue;
     }
 
