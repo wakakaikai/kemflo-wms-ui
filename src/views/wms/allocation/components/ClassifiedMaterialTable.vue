@@ -8,7 +8,7 @@
       <span class="filter-summary">显示 {{ filteredRows.length }} / {{ rows.length }} 条</span>
     </div>
 
-    <el-table v-if="filteredRows.length" :data="filteredRows" border stripe size="small" :max-height="560" :row-key="rowKey">
+    <el-table v-if="filteredRows.length" :data="filteredRows" border stripe size="small" height="100%" class="material-table-body" :row-key="rowKey">
       <el-table-column label="分类" width="122" align="center" fixed="left">
         <template #default="{ row }">
           <el-tag :type="categoryMeta(row).tagType" size="small">{{ categoryMeta(row).label }}</el-tag>
@@ -30,7 +30,7 @@
         <template #default="{ row }">{{ row.recommendedLocation || '-' }}</template>
       </el-table-column>
       <prep-demand-location-source-column show-remark :rows="filteredRows" />
-      <el-table-column label="操作" width="72" fixed="right">
+      <el-table-column v-if="!readOnly" label="操作" width="72" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="emit('adjust', row)">调整</el-button>
         </template>
@@ -53,9 +53,13 @@ type ClassifiedMaterialDisplayRow = MaterialDemandDetailRow & {
   prepQtyText: string;
 };
 
-const props = defineProps<{
-  rows: ClassifiedMaterialDisplayRow[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    rows: ClassifiedMaterialDisplayRow[];
+    readOnly?: boolean;
+  }>(),
+  { readOnly: false }
+);
 
 const emit = defineEmits<{
   adjust: [row: ClassifiedMaterialDisplayRow];
@@ -102,6 +106,12 @@ const rowKey = (row: ClassifiedMaterialDisplayRow) => [row.workOrderNo, row.bomL
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
+}
+
+.material-table-body {
+  flex: 1;
+  min-height: 0;
 }
 
 .category-filter {

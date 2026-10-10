@@ -197,16 +197,323 @@
         color: #fff;
         opacity: 0.5;
       }
+
+      /* Industrial-style application bootstrap screen */
+      #loader-wrapper {
+        overflow: hidden;
+        display: grid;
+        place-items: center;
+        font-family: Inter, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        color: #f3fbff;
+        background: #071c2c;
+        isolation: isolate;
+      }
+
+      #loader-wrapper::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 1001;
+        pointer-events: none;
+        background-image:
+          linear-gradient(rgba(113, 212, 222, 0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(113, 212, 222, 0.045) 1px, transparent 1px);
+        background-size: 46px 46px;
+        mask-image: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent);
+      }
+
+      #loader-wrapper::after {
+        content: '';
+        position: absolute;
+        width: min(760px, 82vw);
+        height: min(760px, 82vw);
+        z-index: 1001;
+        border: 1px solid rgba(89, 205, 216, 0.11);
+        border-radius: 50%;
+        box-shadow:
+          0 0 0 90px rgba(89, 205, 216, 0.025),
+          0 0 0 180px rgba(89, 205, 216, 0.018);
+        animation: loader-breathe 4s ease-in-out infinite;
+      }
+
+      #loader-wrapper .loader-section {
+        background: #071c2c;
+      }
+
+      #loader-wrapper .loader-section.section-left {
+        background:
+          radial-gradient(circle at 25% 32%, rgba(27, 149, 164, 0.35), transparent 44%),
+          linear-gradient(135deg, #0b3044 0%, #071c2c 100%);
+      }
+
+      #loader-wrapper .loader-section.section-right {
+        background:
+          radial-gradient(circle at 78% 70%, rgba(16, 108, 139, 0.32), transparent 48%),
+          linear-gradient(225deg, #0a2c40 0%, #071c2c 100%);
+      }
+
+      #loader-wrapper .loader-content {
+        position: relative;
+        z-index: 1002;
+        width: min(430px, calc(100vw - 40px));
+        box-sizing: border-box;
+        padding: 34px 38px 30px;
+        text-align: center;
+        border: 1px solid rgba(164, 232, 238, 0.16);
+        border-radius: 24px;
+        background: linear-gradient(145deg, rgba(12, 48, 66, 0.76), rgba(7, 28, 44, 0.58));
+        box-shadow:
+          0 26px 70px rgba(0, 9, 18, 0.38),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+      }
+
+      #loader-wrapper .loader-brand {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 13px;
+        margin-bottom: 30px;
+      }
+
+      #loader-wrapper .brand-mark {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        flex: 0 0 auto;
+        overflow: hidden;
+        color: #072333;
+        font-size: 19px;
+        font-weight: 800;
+        border-radius: 14px;
+        background: linear-gradient(145deg, #8ce6e5, #39b4c4);
+        box-shadow: 0 10px 30px rgba(47, 188, 201, 0.26);
+      }
+
+      #loader-wrapper .brand-mark::after {
+        content: '';
+        position: absolute;
+        inset: -60% 38% -60% auto;
+        width: 9px;
+        background: rgba(255, 255, 255, 0.4);
+        transform: rotate(28deg);
+      }
+
+      #loader-wrapper .brand-copy {
+        min-width: 0;
+        text-align: left;
+      }
+
+      #loader-wrapper .brand-name {
+        max-width: 310px;
+        overflow: hidden;
+        color: #f5fcff;
+        font-size: 18px;
+        font-weight: 650;
+        line-height: 1.35;
+        letter-spacing: 0.02em;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      #loader-wrapper .brand-subtitle {
+        margin-top: 4px;
+        color: rgba(187, 225, 233, 0.58);
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+      }
+
+      #loader {
+        position: relative;
+        top: auto;
+        left: auto;
+        width: 92px;
+        height: 92px;
+        margin: 0 auto 26px;
+        box-sizing: border-box;
+        border: 2px solid rgba(112, 221, 224, 0.15);
+        border-top-color: #70dde0;
+        border-right-color: rgba(112, 221, 224, 0.55);
+        box-shadow: 0 0 38px rgba(44, 192, 204, 0.16);
+        animation: spin 1.5s linear infinite;
+      }
+
+      #loader::before {
+        inset: 8px;
+        border-width: 2px;
+        border-top-color: #f2b86b;
+        border-left-color: rgba(242, 184, 107, 0.38);
+        animation: spin-reverse 2.2s linear infinite;
+      }
+
+      #loader::after {
+        inset: 23px;
+        border: 0;
+        background:
+          linear-gradient(90deg, rgba(100, 218, 221, 0.22) 1px, transparent 1px),
+          linear-gradient(rgba(100, 218, 221, 0.22) 1px, transparent 1px),
+          rgba(15, 64, 80, 0.88);
+        background-size: 10px 10px;
+        box-shadow:
+          inset 0 0 16px rgba(91, 217, 220, 0.12),
+          0 0 22px rgba(91, 217, 220, 0.14);
+        animation: none;
+      }
+
+      #loader-wrapper .load_title {
+        position: static;
+        width: auto;
+        color: #f2f9fb;
+        font-family: inherit;
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1.5;
+        letter-spacing: 0.03em;
+      }
+
+      #loader-wrapper .load_hint {
+        margin-top: 7px;
+        color: rgba(190, 222, 229, 0.62);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      #loader-wrapper .load-progress {
+        position: relative;
+        height: 3px;
+        margin-top: 24px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(167, 224, 230, 0.1);
+      }
+
+      #loader-wrapper .load-progress::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: -40%;
+        width: 42%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, transparent, #64d8dc 45%, #f2b86b 100%);
+        box-shadow: 0 0 12px rgba(100, 216, 220, 0.55);
+        animation: loader-progress 1.75s ease-in-out infinite;
+      }
+
+      #loader-wrapper .load-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 16px;
+        color: rgba(188, 224, 230, 0.58);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      #loader-wrapper .load-status::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #68d8d7;
+        box-shadow: 0 0 0 4px rgba(104, 216, 215, 0.1);
+        animation: loader-status 1.5s ease-in-out infinite;
+      }
+
+      .loaded #loader-wrapper .loader-content,
+      .loaded #loader-wrapper::before,
+      .loaded #loader-wrapper::after {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.98);
+        transition: all 0.35s ease-out;
+      }
+
+      @keyframes spin-reverse {
+        to {
+          transform: rotate(-360deg);
+        }
+      }
+
+      @keyframes loader-progress {
+        0% {
+          left: -42%;
+        }
+        100% {
+          left: 105%;
+        }
+      }
+
+      @keyframes loader-breathe {
+        0%,
+        100% {
+          opacity: 0.55;
+          transform: scale(0.98);
+        }
+        50% {
+          opacity: 0.9;
+          transform: scale(1.02);
+        }
+      }
+
+      @keyframes loader-status {
+        50% {
+          opacity: 0.45;
+          transform: scale(0.82);
+        }
+      }
+
+      @media (max-width: 520px) {
+        #loader-wrapper .loader-content {
+          padding: 28px 24px 25px;
+          border-radius: 20px;
+        }
+
+        #loader-wrapper .brand-name {
+          max-width: 230px;
+          font-size: 16px;
+        }
+
+        #loader-wrapper .brand-subtitle {
+          letter-spacing: 0.11em;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #loader,
+        #loader::before,
+        #loader-wrapper::after,
+        #loader-wrapper .load-progress::after,
+        #loader-wrapper .load-status::before {
+          animation-duration: 4s;
+        }
+      }
     </style>
   </head>
 
   <body>
     <div id="app">
       <div id="loader-wrapper">
-        <div id="loader"></div>
         <div class="loader-section section-left"></div>
         <div class="loader-section section-right"></div>
-        <div class="load_title">正在加载系统资源，请耐心等待</div>
+        <div class="loader-content">
+          <div class="loader-brand">
+            <div class="brand-mark">W</div>
+            <div class="brand-copy">
+              <div class="brand-name">%VITE_APP_TITLE%</div>
+              <div class="brand-subtitle">WAREHOUSE MANAGEMENT SYSTEM</div>
+            </div>
+          </div>
+          <div id="loader"></div>
+          <div class="load_title">正在加载系统资源</div>
+          <div class="load_hint">正在初始化工作台与业务数据，请稍候</div>
+          <div class="load-progress"></div>
+          <div class="load-status">System initializing</div>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

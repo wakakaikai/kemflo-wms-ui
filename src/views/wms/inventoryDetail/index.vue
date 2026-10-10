@@ -147,7 +147,7 @@
         </el-form-item>
         <el-form-item label="库存类型" prop="inventoryType">
           <el-select v-model="form.inventoryType" placeholder="请选择库存类型" style="width: 100%">
-            <el-option v-for="dict in wms_inventory_type" :key="dict.value" :label="dict.label" :value="dict.value" />
+            <el-option v-for="dict in wms_inventory_type" :key="dict.value"  :label="dict.value + ' - ' + dict.label" :value="dict.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="数量" prop="quantity">

@@ -1,6 +1,15 @@
 <template>
   <div class="p-2 special-receive-page">
     <el-card shadow="never" class="page-card">
+      <template #header>
+        <div class="page-header">
+          <div>
+            <h2 class="page-title">特殊工单入库</h2>
+            <p class="page-subtitle">按工单类型匹配移动规则，添加入库物料并确认目标库位</p>
+          </div>
+          <el-tag v-if="workOrder" type="primary" effect="light">{{ currentReceiveRule.moveType }} · {{ currentReceiveRule.moveTypeName }}</el-tag>
+        </div>
+      </template>
       <div class="zp-panel">
         <!-- 结果提示 -->
         <div v-if="resultMessage" class="result-alert">
@@ -9,50 +18,85 @@
           </el-alert>
         </div>
 
-        <!-- 工单选择行 -->
-        <div class="work-order-bar">
-          <el-button type="primary" @click="showOrderDialog = true">
+        <!-- 工单选择与摘要 -->
+        <div class="workflow-action-bar">
+          <div class="workflow-action-summary">
+            <span class="workflow-action-icon"
+              ><el-icon><Tickets /></el-icon
+            ></span>
+            <div>
+              <div class="workflow-action-title">选择特殊工单</div>
+              <div class="workflow-action-desc">
+                <template v-if="workOrder">当前工单 {{ workOrder.workOrderNo }}，可继续添加本次入库物料</template>
+                <template v-else>请选择一个特殊工单，系统将自动匹配入库移动规则</template>
+              </div>
+            </div>
+          </div>
+          <el-button type="primary" class="primary-workflow-button" @click="showOrderDialog = true">
             <el-icon><Plus /></el-icon>
-            选择工单
+            {{ workOrder ? '更换工单' : '选择工单' }}
           </el-button>
-          <el-descriptions v-if="workOrder" :column="4" border class="wo-summary">
-            <el-descriptions-item label="工单号">{{ workOrder.workOrderNo }}</el-descriptions-item>
-            <el-descriptions-item label="工单类型">{{ workOrder.workOrderType || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="移动类型">{{ currentReceiveRule.moveType }} {{ currentReceiveRule.moveTypeName }}</el-descriptions-item>
-            <el-descriptions-item label="产品料号">{{ workOrder.item || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="产品描述">{{ workOrder.itemDesc || '-' }}</el-descriptions-item>
-          </el-descriptions>
+        </div>
+
+        <div v-if="workOrder" class="work-order-meta">
+          <span class="meta-item"
+            ><span>工单号</span><strong>{{ workOrder.workOrderNo }}</strong></span
+          >
+          <span class="meta-item"
+            ><span>工单类型</span><strong>{{ workOrder.workOrderType || '-' }}</strong></span
+          >
+          <span class="meta-item"
+            ><span>移动类型</span><strong>{{ currentReceiveRule.moveType }} {{ currentReceiveRule.moveTypeName }}</strong></span
+          >
+          <span class="meta-item"
+            ><span>产品料号</span><strong>{{ workOrder.item || '-' }}</strong></span
+          >
+          <span class="meta-item meta-item-wide"
+            ><span>产品描述</span><strong>{{ workOrder.itemDesc || '-' }}</strong></span
+          >
         </div>
 
         <!-- 添加物料行 -->
-        <div v-if="workOrder" class="material-add-row">
-          <el-radio-group v-model="materialSource" class="material-source-radio" @change="onMaterialSourceChange">
-            <el-radio v-for="option in materialSourceOptions" :key="option.value" :value="option.value">{{ option.label }}</el-radio>
-          </el-radio-group>
-          <el-input v-if="materialSource === 'workOrder'" :model-value="workOrderItemDisplay" readonly placeholder="当前工单无产品料号" style="width: 320px" />
-          <el-input v-else-if="materialSource === 'bom'" v-model="selectedBomDisplay" readonly placeholder="请选择BOM物料" style="width: 320px">
-            <template #append>
-              <el-button icon="Search" @click="openBomDialog" />
-            </template>
-          </el-input>
-          <HistoryInput v-else v-model="manualMaterialCode" :config="materialCodeConfig" placeholder="请输入物料编码" style="width: 240px" @keydown.enter.prevent="handleAddMaterial">
-            <template #append>
-              <el-button icon="Search" @click="showItemDialog" />
-            </template>
-          </HistoryInput>
-          <el-input-number v-model="addQty" :min="0" :precision="3" :step="1" controls-position="right" placeholder="数量" style="width: 150px" />
-          <el-button type="primary" :loading="loadingAdd" :disabled="!canAdd" @click="handleAddMaterial">添加</el-button>
+        <div v-if="workOrder" class="material-entry-panel">
+          <div class="material-entry-title">
+            <el-icon><Box /></el-icon><span>添加入库物料</span>
+          </div>
+          <div class="material-add-row">
+            <el-radio-group v-model="materialSource" class="material-source-radio" @change="onMaterialSourceChange">
+              <el-radio-button v-for="option in materialSourceOptions" :key="option.value" :value="option.value">{{ option.label }}</el-radio-button>
+            </el-radio-group>
+            <el-input v-if="materialSource === 'workOrder'" :model-value="workOrderItemDisplay" readonly placeholder="当前工单无产品料号" class="material-input" />
+            <el-input v-else-if="materialSource === 'bom'" v-model="selectedBomDisplay" readonly placeholder="请选择BOM物料" class="material-input">
+              <template #append>
+                <el-button icon="Search" @click="openBomDialog" />
+              </template>
+            </el-input>
+            <HistoryInput v-else v-model="manualMaterialCode" :config="materialCodeConfig" placeholder="请输入物料编码" class="manual-material-input" @keydown.enter.prevent="handleAddMaterial">
+              <template #append>
+                <el-button icon="Search" @click="showItemDialog" />
+              </template>
+            </HistoryInput>
+            <el-input-number v-model="addQty" :min="0" :precision="3" :step="1" controls-position="right" placeholder="数量" class="quantity-input" />
+            <el-button type="primary" :loading="loadingAdd" :disabled="!canAdd" @click="handleAddMaterial">添加到清单</el-button>
+          </div>
         </div>
 
         <!-- 入库清单 -->
         <div class="list-toolbar">
-          <span class="list-title">入库清单</span>
+          <div class="list-heading">
+            <span class="list-title">入库清单</span>
+            <el-tag type="info" effect="plain">{{ receiveLines.length }} 条</el-tag>
+          </div>
           <div class="list-actions">
             <el-button type="danger" plain :disabled="!receiveLines.length" @click="receiveLines = []">清空</el-button>
+            <el-button type="primary" class="submit-button" :loading="submitting" :disabled="!receiveLines.length" @click="handleSubmit">
+              <el-icon><UploadFilled /></el-icon>
+              提交入库
+            </el-button>
           </div>
         </div>
 
-        <el-table :data="receiveLines" border stripe max-height="420" empty-text="请选择工单后添加入库物料">
+        <el-table :data="receiveLines" border stripe height="100%" class="receive-table" empty-text="请选择工单后添加入库物料">
           <el-table-column type="index" label="序号" width="56" align="center" />
           <el-table-column prop="moveType" label="移动类型" width="100" align="center">
             <template #default="{ row }">
@@ -82,11 +126,6 @@
             </template>
           </el-table-column>
         </el-table>
-
-        <!-- 提交 -->
-        <div class="submit-row">
-          <el-button type="primary" size="large" :loading="submitting" :disabled="!receiveLines.length" @click="handleSubmit"> 提交入库 </el-button>
-        </div>
 
         <!-- 工单选择弹窗 -->
         <work-order-selection-dialog v-model="showOrderDialog" :selected-orders="[]" :show-bom-action="false" :single-select="true" @confirm="handleOrderSelection" />
@@ -126,7 +165,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Plus } from '@element-plus/icons-vue';
+import { Plus, Tickets, Box, UploadFilled } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { HistoryConfig } from '@/types/history';
 import { listWorkOrderBom } from '@/api/wms/workOrderBom';
@@ -269,9 +308,7 @@ const currentReceiveRule = computed(() => {
   return WORK_ORDER_RECEIVE_RULES[type] || DEFAULT_RECEIVE_RULE;
 });
 
-const shouldExcludeBomFromAll = computed(
-  () => !!currentReceiveRule.value.excludeBomFromAll && materialSource.value === 'all'
-);
+const shouldExcludeBomFromAll = computed(() => !!currentReceiveRule.value.excludeBomFromAll && materialSource.value === 'all');
 
 const materialSourceOptions = computed(() =>
   currentReceiveRule.value.sources.map((value) => ({
@@ -699,27 +736,165 @@ const storageLocationSelectCallBack = (record: any) => {
 <style scoped>
 .special-receive-page {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  height: calc(100vh - 84px);
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
 }
-.work-order-bar {
-  margin-bottom: 12px;
+.page-card {
   display: flex;
-  align-items: flex-start;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.page-card :deep(> .el-card__body) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
 }
-.wo-summary {
+.page-title {
+  margin: 0;
+  color: var(--el-text-color-primary);
+  font-size: 18px;
+  font-weight: 600;
+}
+.page-subtitle {
+  margin: 4px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+.zp-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 10px;
+}
+.workflow-action-bar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--el-fill-color-blank) 0%, var(--el-color-primary-light-9) 100%);
+}
+.workflow-action-summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+.workflow-action-icon {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--el-color-primary);
+  font-size: 20px;
+  background: var(--el-color-primary-light-8);
+}
+.workflow-action-title {
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+.workflow-action-desc {
+  overflow: hidden;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.primary-workflow-button,
+.submit-button {
+  border: 0;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--el-color-primary) 0%, #6b8cff 100%);
+  box-shadow: 0 3px 10px rgb(64 158 255 / 22%);
+}
+.work-order-meta {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  padding: 9px 14px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  background: var(--el-fill-color-extra-light);
+}
+.meta-item {
+  display: inline-flex;
+  min-width: 120px;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+.meta-item > span {
+  color: var(--el-text-color-secondary);
+}
+.meta-item > strong {
+  color: var(--el-text-color-primary);
+  font-weight: 600;
+}
+.meta-item-wide {
+  min-width: 260px;
   flex: 1;
 }
-.material-add-row {
-  margin-bottom: 12px;
+.material-entry-panel {
   display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+}
+.material-entry-title {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--el-text-color-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.material-add-row {
+  display: flex;
+  min-width: 0;
+  flex: 1;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 .material-source-radio {
   margin-right: 4px;
+}
+.material-input {
+  width: 320px;
+}
+.manual-material-input {
+  width: 240px;
+}
+.quantity-input {
+  width: 150px;
 }
 .bom-filter {
   margin-bottom: 10px;
@@ -730,10 +905,16 @@ const storageLocationSelectCallBack = (record: any) => {
 }
 .list-toolbar {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  padding: 2px 2px 0;
+}
+.list-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .list-title {
   font-size: 15px;
@@ -743,12 +924,24 @@ const storageLocationSelectCallBack = (record: any) => {
   display: flex;
   gap: 8px;
 }
-.submit-row {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
+.receive-table {
+  flex: 1;
+  min-height: 0;
 }
 .result-alert {
-  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+.result-alert :deep(.el-alert) {
+  padding: 7px 10px;
+}
+@media (max-width: 1200px) {
+  .workflow-action-bar,
+  .material-entry-panel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .material-entry-title {
+    padding-top: 4px;
+  }
 }
 </style>

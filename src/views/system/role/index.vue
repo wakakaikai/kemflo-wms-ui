@@ -15,16 +15,8 @@
                 <el-option v-for="dict in sys_normal_disable" :key="dict.value" :label="dict.label" :value="dict.value" />
               </el-select>
             </el-form-item>
-            <el-form-item label="创建时间" style="width: 308px">
-              <el-date-picker
-                v-model="dateRange"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                type="daterange"
-                range-separator="-"
-                start-placeholder="开始日期"
-                end-placeholder="结束日期"
-                :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
-              ></el-date-picker>
+            <el-form-item label="创建时间">
+              <el-date-picker v-model="dateRange" value-format="YYYY-MM-DD HH:mm:ss" type="daterange" range-separator="-" start-placeholder="开始日期" end-placeholder="结束日期" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"></el-date-picker>
             </el-form-item>
 
             <el-form-item>
@@ -57,21 +49,19 @@
 
       <el-table ref="roleTableRef" border v-loading="loading" :data="roleList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column v-if="false" label="角色编号" prop="roleId" width="120" />
-        <el-table-column label="角色名称" prop="roleName" :show-overflow-tooltip="true" width="150" />
-        <el-table-column label="权限字符" prop="roleKey" :show-overflow-tooltip="true" width="200" />
-        <el-table-column label="显示顺序" prop="roleSort" width="100" />
-        <el-table-column label="状态" align="center" width="100">
+        <el-table-column v-if="false" label="角色编号" prop="roleId" />
+        <el-table-column label="角色名称" prop="roleName" :show-overflow-tooltip="true" />
+        <el-table-column label="权限字符" prop="roleKey" :show-overflow-tooltip="true"  />
+        <el-table-column label="显示顺序" prop="roleSort" />
+        <el-table-column label="状态" align="center">
           <template #default="scope">
             <el-switch v-model="scope.row.status" active-value="0" inactive-value="1" @change="handleStatusChange(scope.row)"></el-switch>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" align="center" prop="createTime">
-          <template #default="scope">
-            <span>{{ proxy.parseTime(scope.row.createTime) }}</span>
-          </template>
-        </el-table-column>
-
+        <el-table-column label="创建时间" prop="createTime" align="center" />
+        <el-table-column label="创建人" prop="createByName" align="center" />
+        <el-table-column label="修改时间" prop="updateTime" align="center" />
+        <el-table-column label="修改人" prop="updateByName" align="center" />
         <el-table-column fixed="right" label="操作" width="180">
           <template #default="scope">
             <el-tooltip v-if="scope.row.roleId !== 1" content="修改" placement="top">
@@ -90,13 +80,7 @@
         </el-table-column>
       </el-table>
 
-      <pagination
-        v-if="total > 0"
-        v-model:total="total"
-        v-model:page="queryParams.pageNum"
-        v-model:limit="queryParams.pageSize"
-        @pagination="getList"
-      />
+      <pagination v-if="total > 0" v-model:total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
     </el-card>
 
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="500px" append-to-body>
@@ -127,16 +111,7 @@
           <el-checkbox v-model="menuExpand" @change="handleCheckedTreeExpand($event, 'menu')">展开/折叠</el-checkbox>
           <el-checkbox v-model="menuNodeAll" @change="handleCheckedTreeNodeAll($event, 'menu')">全选/全不选</el-checkbox>
           <el-checkbox v-model="form.menuCheckStrictly" @change="handleCheckedTreeConnect($event, 'menu')">父子联动</el-checkbox>
-          <el-tree
-            ref="menuRef"
-            class="tree-border"
-            :data="menuOptions"
-            show-checkbox
-            node-key="id"
-            :check-strictly="!form.menuCheckStrictly"
-            empty-text="加载中，请稍候"
-            :props="{ label: 'label', children: 'children' } as any"
-          ></el-tree>
+          <el-tree ref="menuRef" class="tree-border" :data="menuOptions" show-checkbox node-key="id" :check-strictly="!form.menuCheckStrictly" empty-text="加载中，请稍候" :props="{ label: 'label', children: 'children' } as any"></el-tree>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入内容"></el-input>
@@ -168,17 +143,7 @@
           <el-checkbox v-model="deptExpand" @change="handleCheckedTreeExpand($event, 'dept')">展开/折叠</el-checkbox>
           <el-checkbox v-model="deptNodeAll" @change="handleCheckedTreeNodeAll($event, 'dept')">全选/全不选</el-checkbox>
           <el-checkbox v-model="form.deptCheckStrictly" @change="handleCheckedTreeConnect($event, 'dept')">父子联动</el-checkbox>
-          <el-tree
-            ref="deptRef"
-            class="tree-border"
-            :data="deptOptions"
-            show-checkbox
-            default-expand-all
-            node-key="id"
-            :check-strictly="!form.deptCheckStrictly"
-            empty-text="加载中，请稍候"
-            :props="{ label: 'label', children: 'children' } as any"
-          ></el-tree>
+          <el-tree ref="deptRef" class="tree-border" :data="deptOptions" show-checkbox default-expand-all node-key="id" :check-strictly="!form.deptCheckStrictly" empty-text="加载中，请稍候" :props="{ label: 'label', children: 'children' } as any"></el-tree>
         </el-form-item>
       </el-form>
       <template #footer>

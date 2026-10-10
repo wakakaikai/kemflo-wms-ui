@@ -102,9 +102,9 @@
               <el-table-column label="标签描述" align="left" prop="materialName" show-overflow-tooltip />
               <el-table-column label="计划数量" align="center" prop="plannedQty" />
               <el-table-column label="打包数量" align="center" prop="packingQty" />
-              <el-table-column label="入库检" prop="checkEnable" align="center">
+              <el-table-column label="入库检" prop="receiptInspectionFlag" align="center">
                 <template #default="scope">
-                  <dict-tag :options="wms_work_order_check_enable" :value="scope.row.checkEnable" />
+                  <dict-tag :options="wms_work_order_check_enable" :value="scope.row.receiptInspectionFlag" />
                 </template>
               </el-table-column>
               <el-table-column label="物料凭证号" prop="materialOrderNo" align="center" />

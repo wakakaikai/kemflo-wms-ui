@@ -124,6 +124,7 @@ export interface PurchaseOrderInboundBomBo extends Record<string, unknown> {}
 
 /** 采购入库行参数 */
 export interface PurchaseOrderInboundBo extends Record<string, unknown> {
+  receiptInspectionFlag?: boolean;
   purchaseOrderBomScheduleBoList?: PurchaseOrderInboundBomBo[];
 }
 

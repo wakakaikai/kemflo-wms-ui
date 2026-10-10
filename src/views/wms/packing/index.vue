@@ -144,9 +144,9 @@
               <el-table-column label="产品描述" align="left" prop="itemDesc" />
               <el-table-column label="计划数量" align="center" width="130" prop="plannedQty" />
               <el-table-column label="打包数量" align="center" width="130" prop="packingQty" />
-              <el-table-column label="入库检" prop="checkEnable" width="120" align="center">
+              <el-table-column label="入库检" prop="receiptInspectionFlag" width="120" align="center">
                 <template #default="scope">
-                  <dict-tag :options="wms_work_order_check_enable" :value="scope.row.checkEnable" />
+                  <dict-tag :options="wms_work_order_check_enable" :value="scope.row.receiptInspectionFlag" />
                 </template>
               </el-table-column>
               <el-table-column label="备注" align="left" prop="remark" />

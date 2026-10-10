@@ -40,14 +40,14 @@ export interface ItemVO {
   sfcRegular: string;
 
   /**
-   * 质检标识
+   * 入库检标识
    */
-  inspectionFlag: number | string;
+  receiptInspectionFlag: boolean;
 
   /**
    * 启用质检结果：0: 正常 1: 停用
    */
-  checkEnable: number | string;
+  outboundInspectionCheck: boolean;
 
   /**
    * 栈板检查：0: 正常 1: 停用
@@ -112,14 +112,14 @@ export interface ItemForm extends BaseEntity {
   sizeCategory?: string;
 
   /**
-   * 质检标识
+   * 入库检标识
    */
-  inspectionFlag: number | string;
+  receiptInspectionFlag?: boolean;
 
   /**
    * 启用质检结果：0: 正常 1: 停用
    */
-  checkEnable?: number | string;
+  outboundInspectionCheck?: boolean;
 
   /**
    * 栈板检查：0: 正常 1: 停用
@@ -179,14 +179,14 @@ export interface ItemQuery extends PageQuery {
   sizeCategory?: string;
 
   /**
-   * 质检标识
+   * 入库检标识
    */
-  inspectionFlag: number | string;
+  receiptInspectionFlag?: boolean;
 
   /**
    * 启用质检结果：0: 正常 1: 停用
    */
-  checkEnable?: number | string;
+  outboundInspectionCheck?: boolean;
 
   /**
    * 栈板检查：0: 正常 1: 停用

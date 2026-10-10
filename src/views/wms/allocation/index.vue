@@ -1,6 +1,6 @@
 <template>
   <div class="allocation-workbench p-2">
-    <el-card shadow="never">
+    <el-card shadow="never" class="workbench-card">
       <template #header>
         <div class="workbench-header">
           <div>
@@ -22,6 +22,23 @@ import { WORKBENCH_SUBTITLE } from '@/api/wms/allocation/types';
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+}
+.allocation-workbench {
+  height: calc(100vh - 84px);
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.workbench-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+:deep(.workbench-card > .el-card__body) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 .title {
   margin: 0;

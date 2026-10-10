@@ -1,5 +1,5 @@
 /** HR员工考勤与MES报工差异查询参数。 */
-export interface AttendanceWorkDifferenceQuery extends PageQuery {
+export interface MesReportHRDifferenceDataQuery extends PageQuery {
   /** 班次开始日期范围起点，格式为YYYY-MM-DD。 */
   beginDate?: string;
   /** 班次开始日期范围终点，格式为YYYY-MM-DD。 */
@@ -27,7 +27,7 @@ export interface AttendanceCostCenterOption {
 }
 
 /** HR员工每日考勤与MES报工差异结果。 */
-export interface AttendanceWorkDifferenceVO {
+export interface MesReportHRDifferenceDataVO {
   /** 考勤与报工数据归属日期。 */
   attendanceDate: string;
   /** 日期对应的中文星期。 */
@@ -185,9 +185,9 @@ export interface AttendanceShopOrderAnalysisVO {
 }
 
 /** HR员工考勤与MES报工差异图表分析结果。 */
-export interface AttendanceWorkDifferenceChartVO {
+export interface MesReportHRDifferenceDataChartVO {
   /** 当前筛选范围内不分页的差异明细。 */
-  rows: AttendanceWorkDifferenceVO[];
+  rows: MesReportHRDifferenceDataVO[];
   /** 有HR考勤数据的员工人数，按工号去重。 */
   hrEmployeeCount: number;
   /** 有MES成功报工记录的员工人数，按工号去重。 */

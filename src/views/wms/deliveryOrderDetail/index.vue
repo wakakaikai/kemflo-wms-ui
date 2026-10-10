@@ -48,6 +48,11 @@
         <el-table-column label="采购单行号" align="center" prop="purchaseItemNo" min-width="120" />
         <el-table-column label="物料号" align="center" prop="materialCode" min-width="140" />
         <el-table-column label="物料描述" align="left" prop="materialDesc" show-overflow-tooltip min-width="300" />
+        <el-table-column label="入库检" align="center" prop="receiptInspectionFlag">
+          <template #default="scope">
+            <dict-tag :options="wms_boolean_type" :value="scope.row.receiptInspectionFlag" />
+          </template>
+        </el-table-column>
         <el-table-column label="供应商代码" align="center" prop="supplierCode" min-width="120" />
         <el-table-column label="供应商名称" align="center" prop="supplierName" show-overflow-tooltip min-width="200" />
         <el-table-column label="交货日期" align="center" prop="deliveryDate" width="180">
@@ -102,6 +107,9 @@
         <el-form-item label="物料描述" prop="materialDesc">
           <el-input v-model="form.materialDesc" placeholder="请输入物料描述" />
         </el-form-item>
+        <el-form-item label="入库检" prop="receiptInspectionFlag">
+          <el-switch v-model="form.receiptInspectionFlag" />
+        </el-form-item>
         <el-form-item label="交货日期" prop="deliveryDate">
           <el-date-picker clearable v-model="form.deliveryDate" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择交货日期"> </el-date-picker>
         </el-form-item>
@@ -142,6 +150,7 @@ import { listDeliveryOrderDetail, getDeliveryOrderDetail, delDeliveryOrderDetail
 import { DeliveryOrderDetailVO, DeliveryOrderDetailQuery, DeliveryOrderDetailForm } from '@/api/wms/deliveryOrderDetail/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const { wms_boolean_type } = toRefs<any>(proxy?.useDict('wms_boolean_type'));
 const route = useRoute();
 const deliveryOrderDetailList = ref<DeliveryOrderDetailVO[]>([]);
 const buttonLoading = ref(false);
@@ -169,6 +178,7 @@ const initFormData: DeliveryOrderDetailForm = {
   purchaseItemNo: undefined,
   materialCode: undefined,
   materialDesc: undefined,
+  receiptInspectionFlag: undefined,
   deliveryDate: undefined,
   orderQuantity: undefined,
   orderUnit: undefined,
@@ -190,6 +200,7 @@ const data = reactive<PageData<DeliveryOrderDetailForm, DeliveryOrderDetailQuery
     purchaseItemNo: undefined,
     materialCode: undefined,
     materialDesc: undefined,
+    receiptInspectionFlag: undefined,
     deliveryDate: undefined,
     orderQuantity: undefined,
     orderUnit: undefined,

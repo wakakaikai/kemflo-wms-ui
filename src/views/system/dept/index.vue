@@ -54,11 +54,10 @@
             <dict-tag :options="sys_normal_disable" :value="scope.row.status" />
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" align="center" prop="createTime" width="200">
-          <template #default="scope">
-            <span>{{ proxy.parseTime(scope.row.createTime) }}</span>
-          </template>
-        </el-table-column>
+        <el-table-column label="创建时间" prop="createTime" align="center" />
+        <el-table-column label="创建人" prop="createByName" align="center" />
+        <el-table-column label="修改时间" prop="updateTime" align="center" />
+        <el-table-column label="修改人" prop="updateByName" align="center" />
         <el-table-column fixed="right" align="center" label="操作">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">

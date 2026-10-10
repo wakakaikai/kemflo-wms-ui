@@ -17,11 +17,11 @@
               <el-form-item label="物料组" prop="itemGroup">
                 <el-input v-model="queryParams.itemGroup" placeholder="请输入物料组" clearable @keyup.enter="handleQuery" />
               </el-form-item>
-              <el-form-item label="质检标识" prop="inspectionFlag">
-                <DictRadio v-model="queryParams.inspectionFlag" :radio-data="sys_yes_no" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
+              <el-form-item label="入库检" prop="receiptInspectionFlag">
+                <DictRadio v-model="queryParams.receiptInspectionFlag" :radio-data="wms_boolean_type" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
               </el-form-item>
-              <el-form-item label="质检检查" prop="checkEnable">
-                <DictRadio v-model="queryParams.checkEnable" :radio-data="wms_boolean_type" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
+              <el-form-item label="出货质检结果检查" prop="outboundInspectionCheck">
+                <DictRadio v-model="queryParams.outboundInspectionCheck" :radio-data="wms_boolean_type" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
               </el-form-item>
               <el-form-item label="栈板检查" prop="palletCheckFlag">
                 <DictRadio v-model="queryParams.palletCheckFlag" :radio-data="wms_boolean_type" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
@@ -105,14 +105,14 @@
           </template>
         </el-table-column>
         <el-table-column v-if="columns[9].visible" label="条码正则" align="center" prop="sfcRegular" />
-        <el-table-column v-if="columns[10].visible" label="质检标识" align="center" prop="inspectionFlag">
+        <el-table-column v-if="columns[10].visible" label="启用入库检" align="center" prop="receiptInspectionFlag">
           <template #default="scope">
-            <dict-tag :options="sys_yes_no" :value="scope.row.inspectionFlag" />
+            <dict-tag :options="wms_boolean_type" :value="scope.row.receiptInspectionFlag" />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[11].visible" label="质检检查" align="center" prop="checkEnable">
+        <el-table-column v-if="columns[11].visible" label="出货质检结果检查" align="center" prop="outboundInspectionCheck">
           <template #default="scope">
-            <dict-tag :options="wms_boolean_type" :value="scope.row.checkEnable" />
+            <dict-tag :options="wms_boolean_type" :value="scope.row.outboundInspectionCheck" />
           </template>
         </el-table-column>
         <el-table-column v-if="columns[12].visible" label="栈板检查" align="center" prop="palletCheckFlag">
@@ -147,7 +147,7 @@
       <pagination v-show="total > 0" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
     </el-card>
     <!-- 添加或修改物料对话框 -->
-    <el-dialog v-model="dialog.visible" :title="dialog.title" width="500px" append-to-body>
+    <el-dialog v-model="dialog.visible" :title="dialog.title" width="700px" append-to-body>
       <el-form ref="itemFormRef" :model="form" :rules="rules" label-width="auto">
         <el-form-item label="物料" prop="item">
           <el-input v-model="form.item" placeholder="请输入物料" />
@@ -172,8 +172,8 @@
         <el-form-item label="条码正则" prop="sfcRegular">
           <el-input v-model="form.sfcRegular" placeholder="请输入条码正则" />
         </el-form-item>
-        <el-form-item label="质检检查" prop="checkEnable">
-          <el-radio-group v-model="form.checkEnable">
+        <el-form-item label="出货质检结果检查" prop="outboundInspectionCheck">
+          <el-radio-group v-model="form.outboundInspectionCheck">
             <el-radio v-for="dict in wms_boolean_type" :key="dict.value" :value="dict.value == 'true'">{{ dict.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
@@ -213,7 +213,7 @@ import { TableColumns } from '@/api/types';
 import { ArrowDown, ArrowUp } from '@element-plus/icons-vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_purchase_type, wms_item_type, wms_special_purchase, sys_yes_no, wms_boolean_type, wms_item_size_category } = toRefs<any>(proxy?.useDict('wms_purchase_type', 'wms_item_type', 'wms_special_purchase', 'sys_yes_no', 'wms_boolean_type', 'wms_item_size_category'));
+const { wms_purchase_type, wms_item_type, wms_special_purchase, wms_boolean_type, wms_item_size_category } = toRefs<any>(proxy?.useDict('wms_purchase_type', 'wms_item_type', 'wms_special_purchase', 'wms_boolean_type', 'wms_item_size_category'));
 
 const itemList = ref<ItemVO[]>([]);
 const buttonLoading = ref(false);
@@ -271,8 +271,8 @@ const initFormData: ItemForm = {
   itemGroup: undefined,
   unit: undefined,
   sizeCategory: undefined,
-  inspectionFlag: undefined,
-  checkEnable: undefined,
+  receiptInspectionFlag: undefined,
+  outboundInspectionCheck: undefined,
   palletCheckFlag: undefined,
   outboundQuantityCheck: undefined,
   customerRefCheck: undefined,
@@ -289,8 +289,8 @@ const data = reactive<PageData<ItemForm, ItemQuery>>({
     itemGroup: undefined,
     unit: undefined,
     sizeCategory: null,
-    inspectionFlag: null,
-    checkEnable: null,
+    receiptInspectionFlag: null,
+    outboundInspectionCheck: null,
     palletCheckFlag: null,
     outboundQuantityCheck: null,
     customerRefCheck: null,
@@ -301,7 +301,7 @@ const data = reactive<PageData<ItemForm, ItemQuery>>({
     item: [{ required: true, message: '物料不能为空', trigger: 'blur' }],
     itemDesc: [{ required: true, message: '描述不能为空', trigger: 'blur' }],
     itemGroup: [{ required: true, message: '物料组不能为空', trigger: 'blur' }],
-    checkEnable: [{ required: true, message: '质检检查不能为空', trigger: 'change' }]
+    outboundInspectionCheck: [{ required: true, message: '出货质检结果检查不能为空', trigger: 'change' }]
   }
 });
 

@@ -127,8 +127,8 @@
         <el-form-item label="产品描述" prop="itemDesc">
           <el-input v-model="form.itemDesc" placeholder="请输入产品描述" />
         </el-form-item>
-        <el-form-item label="出库检查" prop="checkEnable">
-          <el-switch v-model="form.checkEnable" inline-prompt active-text="是" inactive-text="否" />
+        <el-form-item label="入库检" prop="receiptInspectionFlag">
+          <el-switch v-model="form.receiptInspectionFlag" inline-prompt active-text="是" inactive-text="否" />
         </el-form-item>
         <el-form-item label="计划开工日期" prop="plannedStartDate">
           <el-date-picker v-model="form.plannedStartDate" clearable type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择计划开工日期"> </el-date-picker>
@@ -451,7 +451,7 @@ const initFormData: WorkOrderForm = {
   workOrderNo: undefined,
   item: undefined,
   itemDesc: undefined,
-  checkEnable: 0,
+  receiptInspectionFlag: false,
   plannedStartDate: undefined,
   plannedEndDate: undefined,
   plannedQty: undefined,
@@ -470,7 +470,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
     workOrderNo: undefined,
     item: undefined,
     itemDesc: undefined,
-    inspectionFlag: undefined,
+    receiptInspectionFlag: undefined,
     plannedStartDate: undefined,
     plannedEndDate: undefined,
     plannedQty: undefined,

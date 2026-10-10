@@ -106,12 +106,12 @@
 
 <script setup lang="ts">
 import * as echarts from 'echarts';
-import type { AttendanceAbnormalTimeVO, AttendanceShopOrderAnalysisVO, AttendanceWorkDifferenceVO } from '@/api/report/attendanceWorkDifference/types';
+import type { AttendanceAbnormalTimeVO, AttendanceShopOrderAnalysisVO, MesReportHRDifferenceDataVO } from '@/api/report/mesReportHRDifferenceData/types';
 
 /** 图表组件输入参数。 */
 const props = defineProps<{
   /** 当前查询范围内的完整HR考勤差异数据。 */
-  rows: AttendanceWorkDifferenceVO[];
+  rows: MesReportHRDifferenceDataVO[];
   /** 成功工单异常时间明细。 */
   abnormalRows?: AttendanceAbnormalTimeVO[];
   /** 成功工单按日期及工单类型汇总的分析数据。 */
@@ -248,7 +248,7 @@ const attendanceAchievementRate = computed(() =>
 );
 
 /** 返回单条记录对应的稽核问题，多个问题可以同时存在。 */
-const getAuditIssues = (item: AttendanceWorkDifferenceVO) => {
+const getAuditIssues = (item: MesReportHRDifferenceDataVO) => {
   const issues: string[] = [];
   const hasHr = hours(item.scheduleHours) > 0 || hours(item.leaveHours) > 0 || hours(item.overtimeHours) > 0;
   if (hasHr && Number(item.reportCount || 0) <= 0) issues.push('HR有考勤无MES报工');

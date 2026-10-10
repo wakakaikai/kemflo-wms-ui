@@ -1,40 +1,72 @@
 <template>
   <div class="workbench-panel">
     <el-steps :active="stepsActive" finish-status="success" align-center class="workbench-steps">
-      <el-step title="选择需求人" :description="demandUserStepDesc" />
+      <el-step title="确认操作人员" :description="demandUserStepDesc" />
       <el-step title="选择工单与备料" :description="prepStepDesc" />
       <el-step title="仓别分类" description="按已分配库位仓别编码分流" />
       <el-step title="执行任务" description="按任务卡执行扣料或跟进备料/缺料" />
     </el-steps>
     <div v-if="activeStep === 0" class="step-body demand-user-step">
       <el-card shadow="never" class="demand-user-card">
+        <div class="workflow-action-bar demand-user-heading">
+          <span class="demand-user-icon"
+            ><el-icon><UserFilled /></el-icon
+          ></span>
+          <div>
+            <div class="demand-user-title">确认本轮备料操作人员</div>
+            <div class="demand-user-desc">操作人员将用于备料计划、领料任务及后续进度跟踪</div>
+          </div>
+        </div>
         <el-form label-width="96px" class="demand-user-form">
-          <el-form-item label="需求人">
+          <el-form-item label="操作人员">
             <el-radio-group v-model="demandUserMode">
-              <el-radio value="self">本人（{{ currentUserDisplay || '-' }}）</el-radio>
-              <el-radio value="other">其他人</el-radio>
+              <el-radio-button value="self">本人（{{ currentUserDisplay || '-' }}）</el-radio-button>
+              <el-radio-button value="other">其他人员</el-radio-button>
             </el-radio-group>
           </el-form-item>
-          <el-form-item v-if="demandUserMode === 'other'" label="其他人">
-            <el-select v-model="otherUserCode" placeholder="请选择其他需求人员" filterable clearable style="width: 320px">
+          <el-form-item v-if="demandUserMode === 'other'" label="其他人员">
+            <el-select v-model="otherUserCode" placeholder="请选择其他操作人员" filterable clearable style="width: 320px">
               <el-option v-for="dict in otherUserOptions" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
         </el-form>
-        <div class="step-toolbar">
-          <el-button type="primary" @click="confirmDemandUser">下一步</el-button>
+        <div class="demand-user-actions">
+          <el-button type="primary" class="primary-step-button" @click="confirmDemandUser">
+            确认操作人员
+            <el-icon><ArrowRight /></el-icon>
+          </el-button>
         </div>
       </el-card>
     </div>
-    <div v-if="activeStep === 1" class="step-body">
-      <div class="step-toolbar">
-        <el-button type="primary" @click="showOrderDialog = true">
-          <el-icon><Plus /></el-icon>
-          选择工单
-        </el-button>
-        <span v-if="selectedOrders.length" class="hint">已选 {{ selectedOrders.length }} 个工单 · 备料 {{ totalPrepLineCount }} 条</span>
+    <div v-if="activeStep === 1" class="step-body adaptive-step prep-step">
+      <div class="workflow-action-bar">
+        <div class="prep-action-summary">
+          <el-button link class="back-button" @click="goToDemandUserStep">
+            <el-icon><ArrowLeft /></el-icon>
+            上一步
+          </el-button>
+          <span class="prep-action-divider"></span>
+          <div>
+            <div class="prep-action-title">选择工单并填写备料清单</div>
+            <div class="prep-action-desc">
+              <template v-if="selectedOrders.length">已选 {{ selectedOrders.length }} 个工单，合并备料 {{ totalPrepLineCount }} 条</template>
+              <template v-else>先选择工单，再统一填写备料清单并确认分类</template>
+            </div>
+          </div>
+        </div>
+        <div class="prep-action-buttons">
+          <el-button :type="selectedOrders.length ? undefined : 'primary'" @click="showOrderDialog = true">
+            <el-icon><Plus /></el-icon>
+            {{ selectedOrders.length ? '调整工单选择' : '选择工单' }}
+          </el-button>
+          <el-button v-if="selectedOrders.length" type="primary" plain @click="openMergedPrepBom">填写合并备料清单</el-button>
+          <el-button v-if="selectedOrders.length" type="primary" class="primary-workflow-button" :disabled="!canClassify" :loading="classifying" @click="confirmClassify">
+            <el-icon><Sort /></el-icon>
+            确认备料并分类
+          </el-button>
+        </div>
       </div>
-      <el-table v-if="selectedOrders.length" :data="selectedOrders" border size="small" max-height="420">
+      <el-table v-if="selectedOrders.length" :data="selectedOrders" border stripe size="small" height="100%" class="prep-order-table">
         <el-table-column label="序号" width="56" align="center">
           <template #default="{ $index }">{{ $index + 1 }}</template>
         </el-table-column>
@@ -63,38 +95,37 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-else description="请选择工单，点击「填写合并备料清单」统一勾选物料并分配库位（共用料按序号统一推荐）" />
-
-      <!-- 上一步 + 确认备料并分类（底部居中） -->
-      <div class="step-footer-row">
-        <el-button @click="goToDemandUserStep">上一步</el-button>
-        <el-button type="primary" plain :disabled="!selectedOrders.length" @click="openMergedPrepBom">填写合并备料清单</el-button>
-        <el-button type="success" :disabled="!canClassify" :loading="classifying" @click="confirmClassify">
-          <el-icon><Sort /></el-icon>
-          确认备料并分类
-        </el-button>
-      </div>
+      <el-empty v-else class="prep-empty" description="尚未选择工单">
+        <template #description>
+          <p>请点击右上方“选择工单”，之后可统一勾选物料、分配库位并进行仓别分类</p>
+        </template>
+      </el-empty>
     </div>
-    <div v-if="activeStep === 2" class="step-body">
-      <el-alert v-if="isClassified" type="info" :closable="false" show-icon class="classify-hint">确认下方分类无误后，点「生成备料需求」将自动仓、线边仓、平面仓及缺料合并为一个备料计划</el-alert>
+    <div v-if="activeStep === 2" class="step-body adaptive-step">
+      <div class="workflow-action-bar classify-action-bar">
+        <div class="prep-action-summary">
+          <el-button link class="back-button" @click="backToPrepStep">
+            <el-icon><ArrowLeft /></el-icon>
+            上一步
+          </el-button>
+          <span class="prep-action-divider"></span>
+          <div>
+            <div class="prep-action-title">确认仓别分类结果</div>
+            <div class="prep-action-desc">自动仓 {{ autoMaterialRows.length }} 条 · 线边仓 {{ lineMaterialRows.length }} 条 · 平面仓 {{ flatMaterialRows.length }} 条 · 缺料 {{ shortageMaterialRows.length }} 条</div>
+          </div>
+        </div>
+        <div class="prep-action-buttons">
+          <el-tag type="info" effect="plain">共 {{ planRowCount }} 条</el-tag>
+          <el-button v-if="planRowCount" type="primary" class="primary-workflow-button" :loading="generatingPrep" @click="generateDemandPlan">
+            <el-icon><MagicStick /></el-icon>
+            生成备料需求
+          </el-button>
+        </div>
+      </div>
       <classified-material-table v-if="isClassified" :rows="classifiedMaterialRows" @adjust="openPrepBomByNo($event.workOrderNo, $event.materialCode)" />
       <el-empty v-else description="请返回上一步完成备料并分类" />
-
-      <!-- 上一步 + 生成备料需求（底部居中） -->
-      <div class="step-footer-row">
-        <el-button @click="backToPrepStep">上一步</el-button>
-        <el-button v-if="planRowCount" type="primary" :loading="generatingPrep" @click="generateDemandPlan">
-          <el-icon><MagicStick /></el-icon>
-          生成备料需求（{{ planRowCount }}条）
-        </el-button>
-      </div>
     </div>
-    <div v-if="activeStep === 3" class="step-body">
-      <div class="step-toolbar">
-        <el-button v-if="!taskExecutionFinished" size="small" @click="activeStep = 2">返回分类</el-button>
-        <el-button v-if="currentDemand && !taskExecutionFinished" size="small" @click="reloadDemandDetail">刷新</el-button>
-        <el-button v-if="currentDemand?.issueId && !taskExecutionFinished" type="primary" size="small" @click="goToMaterialIssue">去领料</el-button>
-      </div>
+    <div v-if="activeStep === 3" class="step-body adaptive-step">
       <div v-if="resultMessage" class="result-alert">
         <el-alert show-icon :title="resultMessage" :type="resultStatus ? 'success' : 'error'" :closable="false">
           <template #icon>
@@ -102,174 +133,43 @@
           </template>
         </el-alert>
       </div>
-      <el-result v-if="taskExecutionFinished" icon="success" title="本轮备料任务已提交" sub-title="平面仓与缺料需求已纳入备料计划，仓库将按任务跟进。可开始下一轮备料。" class="task-finish-result">
-        <template #extra>
-          <el-button type="primary" @click="resetForNextPrepRound">开始下一轮备料</el-button>
-        </template>
-      </el-result>
-      <el-descriptions v-if="currentDemand" :column="4" border size="small" class="plan-summary">
-        <el-descriptions-item label="需求单号">{{ currentDemand.demandNo }}</el-descriptions-item>
-        <el-descriptions-item label="工单数">{{ currentDemand.workOrderCount }} 个</el-descriptions-item>
-        <el-descriptions-item label="缺料行">{{ shortageMaterialRows.length }} 条</el-descriptions-item>
-        <el-descriptions-item label="齐套率">{{ formatKitRate(currentDemand.kitRate) }}%</el-descriptions-item>
-      </el-descriptions>
-      <div v-if="currentDemand && hasWarehouse261Tasks && !taskExecutionFinished" class="warehouse261-toolbar">
-        <span class="warehouse261-label">261 扣料操作</span>
-        <el-button v-if="prep261AutoRows.length" type="success" :loading="submittingAuto" @click="submitAutoIssue">自动仓 · 261 扣账（{{ prep261AutoRows.length }}条）</el-button>
-        <el-button v-if="prep261LineRows.length" type="warning" :loading="submittingLine" @click="submitLineIssue">线边仓 · 待物料员 261 扣料（{{ prep261LineRows.length }}条）</el-button>
-        <el-button v-if="canSubmitCombined261" type="primary" :loading="submittingCombined" @click="submitCombinedIssue">自动仓+线边仓 · 261 合并扣料（{{ combined261RowCount }}条）</el-button>
+      <div v-if="currentDemand" class="execution-module">
+        <div class="workflow-action-bar execution-overview">
+          <span class="execution-section-label"
+            ><el-icon><Tickets /></el-icon>需求概览</span
+          >
+          <div class="plan-meta">
+            <span class="plan-meta-item"
+              ><span>需求单号</span><strong>{{ currentDemand.demandNo }}</strong></span
+            >
+            <span class="plan-meta-item"
+              ><span>工单数</span><strong>{{ currentDemand.workOrderCount }} 个</strong></span
+            >
+            <span class="plan-meta-item"
+              ><span>缺料行</span><strong>{{ executionShortageCount }} 条</strong></span
+            >
+            <span class="plan-meta-item"
+              ><span>齐套率</span><strong>{{ formatKitRate(currentDemand.kitRate) }}%</strong></span
+            >
+          </div>
+          <div class="execution-header-actions">
+            <el-tag v-if="taskExecutionFinished" type="success">本轮任务已提交</el-tag>
+            <el-button v-if="currentDemand.issueId && !taskExecutionFinished" type="primary" size="small" @click="goToMaterialIssue">去领料</el-button>
+            <el-button type="primary" size="default" class="next-round-button" @click="resetForNextPrepRound">
+              <el-icon><RefreshRight /></el-icon>
+              开始下一轮备料
+            </el-button>
+          </div>
+        </div>
+        <div v-if="hasWarehouse261Tasks && !taskExecutionFinished" class="execution-operation-row">
+          <span class="warehouse261-label">261 扣料操作</span>
+          <el-button v-if="prep261AutoRows.length" type="success" size="small" :loading="submittingAuto" @click="submitAutoIssue">自动仓 · 261 扣账（{{ prep261AutoRows.length }}条）</el-button>
+          <el-button v-if="prep261LineRows.length" type="warning" size="small" :loading="submittingLine" @click="submitLineIssue">线边仓 · 待物料员 261 扣料（{{ prep261LineRows.length }}条）</el-button>
+          <el-button v-if="canSubmitCombined261" type="primary" size="small" :loading="submittingCombined" @click="submitCombinedIssue">自动仓+线边仓 · 261 合并扣料（{{ combined261RowCount }}条）</el-button>
+        </div>
+        <prep-demand-execution-table :rows="prepDisplayRows" />
       </div>
-      <el-row v-if="currentDemand" :gutter="16" class="task-cards">
-        <el-col v-if="prep261AutoDisplayRows.length" :span="12" class="task-col">
-          <el-card shadow="never" class="task-card section-card">
-            <template #header
-              ><div class="section-header">
-                <span>自动仓 · 261 扣账</span>
-                <el-tag v-if="prep261AutoRows.length" type="warning" size="small">待执行</el-tag>
-                <el-tag v-else type="success" size="small">已完成</el-tag>
-                <el-tag type="info" size="small">{{ prep261AutoDisplayRows.length }} 条</el-tag>
-              </div>
-            </template>
-            <div class="task-card-body">
-              <el-table :data="prep261AutoDisplayRows" border size="small" max-height="280">
-                <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
-                <el-table-column prop="materialCode" label="物料编码" min-width="100" />
-                <el-table-column label="本次备料数量" min-width="110" align="right">
-                  <template #default="{ row }">{{ formatPrepQtyWithUnit(row) }}</template>
-                </el-table-column>
-                <el-table-column label="仓别" width="90">
-                  <template #default="{ row }">{{ row.warehouseCode || '-' }}</template>
-                </el-table-column>
-                <el-table-column label="库位" min-width="100">
-                  <template #default="{ row }">{{ row.locationCode || '-' }}</template>
-                </el-table-column>
-                <el-table-column label="状态" width="88" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="lineStatusTag(row.lineStatus)" size="small">{{ lineStatusLabel(row.lineStatus) }}</el-tag>
-                  </template>
-                </el-table-column>
-                <prep-demand-location-source-column show-remark :rows="prep261AutoDisplayRows" />
-                <el-table-column label="操作" width="70" fixed="right" v-if="!taskExecutionFinished">
-                  <template #default="{ row }">
-                    <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col v-if="prep261LineDisplayRows.length" :span="12" class="task-col">
-          <el-card shadow="never" class="task-card section-card">
-            <template #header>
-              <div class="section-header">
-                <span>线边仓 · 待物料员 261 扣料</span>
-                <el-tag v-if="prep261LineRows.length" type="warning" size="small">待执行</el-tag>
-                <el-tag v-else type="success" size="small">已完成</el-tag>
-                <el-tag type="warning" size="small">{{ prep261LineDisplayRows.length }} 条</el-tag>
-              </div>
-            </template>
-            <div class="task-card-body">
-              <el-table :data="prep261LineDisplayRows" border size="small" max-height="280">
-                <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
-                <el-table-column prop="materialCode" label="物料编码" min-width="100" />
-                <el-table-column label="本次备料数量" min-width="110" align="right">
-                  <template #default="{ row }">{{ formatPrepQtyWithUnit(row) }}</template></el-table-column
-                >
-                <el-table-column label="仓别" width="90">
-                  <template #default="{ row }">{{ row.warehouseCode || '-' }}</template>
-                </el-table-column>
-                <el-table-column label="库位" min-width="100">
-                  <template #default="{ row }">{{ row.locationCode || '-' }}</template></el-table-column
-                >
-                <el-table-column label="状态" width="88" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="lineStatusTag(row.lineStatus)" size="small">{{ lineStatusLabel(row.lineStatus) }}</el-tag>
-                  </template>
-                </el-table-column>
-                <prep-demand-location-source-column show-remark :rows="prep261LineDisplayRows" />
-                <el-table-column label="操作" width="70" fixed="right" v-if="!taskExecutionFinished">
-                  <template #default="{ row }">
-                    <el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col v-if="flatMaterialRows.length" :span="12" class="task-col section-col-bottom">
-          <el-card shadow="never" class="task-card section-card">
-            <template #header>
-              <div class="section-header task-card-header">
-                <span>平面仓 · 备料需求</span>
-                <div class="task-header-actions">
-                  <el-tag type="info" size="small">已纳入备料计划</el-tag>
-                  <el-button type="primary" size="small" link @click="openPlanDetail">查看备料清单</el-button>
-                  <el-tag type="primary" size="small">{{ flatMaterialRows.length }} 条</el-tag>
-                </div>
-              </div>
-            </template>
-            <div class="task-card-body">
-              <el-table :data="flatMaterialRows" border size="small" max-height="280">
-                <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
-                <el-table-column prop="materialCode" label="物料编码" min-width="100" />
-                <el-table-column label="本次备料数量" min-width="110" align="right"
-                  ><template #default="{ row }">{{ row.prepQtyText }}</template></el-table-column
-                >
-                <el-table-column label="推荐仓别" width="90"
-                  ><template #default="{ row }">{{ row.recommendedWarehouse || '-' }}</template></el-table-column
-                >
-                <el-table-column label="推荐库位" min-width="100"
-                  ><template #default="{ row }">{{ row.recommendedLocation || '-' }}</template></el-table-column
-                >
-                <prep-demand-location-source-column show-remark :rows="flatMaterialRows" />
-                <el-table-column label="目标需求库位" min-width="140">
-                  <template #default="{ row }">{{ row.targetDemandLocationCode || '-' }}</template>
-                </el-table-column>
-                <el-table-column label="操作" width="70" fixed="right" v-if="!taskExecutionFinished"
-                  ><template #default="{ row }"><el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button></template></el-table-column
-                >
-              </el-table>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col v-if="shortageMaterialRows.length" :span="12" class="task-col section-col-bottom">
-          <el-card shadow="never" class="task-card section-card">
-            <template #header>
-              <div class="section-header task-card-header">
-                <span>缺料</span>
-                <div class="task-header-actions">
-                  <el-tag type="info" size="small">已纳入备料计划</el-tag>
-                  <el-button type="primary" size="small" link @click="openPlanDetail">查看备料清单</el-button>
-                  <el-tag type="danger" size="small">{{ shortageMaterialRows.length }} 条</el-tag>
-                </div>
-              </div>
-            </template>
-            <div class="task-card-body">
-              <el-table :data="shortageMaterialRows" border size="small" max-height="280">
-                <el-table-column prop="workOrderNo" label="工单号" min-width="100" />
-                <el-table-column prop="materialCode" label="物料编码" min-width="100" />
-                <el-table-column label="库存类型" width="100" align="center">
-                  <template #default="{ row }">
-                    <dict-tag :options="wms_inventory_special_flag" :value="resolveDemandRowInventoryFlag(row)" />
-                  </template>
-                </el-table-column>
-                <el-table-column label="本次备料数量" min-width="110" align="right"
-                  ><template #default="{ row }">{{ row.prepQtyText }}</template></el-table-column
-                >
-                <el-table-column label="操作" width="70" fixed="right" v-if="!taskExecutionFinished"
-                  ><template #default="{ row }"><el-button type="primary" link size="small" @click="openPrepBomByNo(row.workOrderNo, row.materialCode)">调整</el-button></template></el-table-column
-                >
-              </el-table>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
-      <el-collapse v-if="currentDemand && showPlanDetail" v-model="planDetailOpen" class="plan-detail-collapse">
-        <el-collapse-item title="查看备料清单" name="plan">
-          <prep-demand-plan-view :demand="currentDemand" :location-hints="prepLocationHints" :issue-line-hints="prepIssueLineHints" @refresh="reloadDemandDetail" @go-issue="goToMaterialIssue" />
-        </el-collapse-item>
-      </el-collapse>
-      <el-empty v-else-if="!currentDemand" description="请在上一步生成备料需求" />
+      <el-empty v-else description="请在上一步生成备料需求" />
     </div>
     <work-order-selection-dialog :key="orderSelectionRoundKey" v-model="showOrderDialog" :selected-orders="selectedOrders" :show-bom-action="false" @confirm="handleOrderSelection" />
     <work-order-prep-demand-dialog v-model="showPrepBomDialog" :work-orders="prepBomOrders" :material-issues-by-work-order="prepMaterialIssuesMap" :demand-user-no="materialDemandUserCode" :initial-material-code="prepBomFilterMaterialCode" @save="onBomSave" />
@@ -280,25 +180,24 @@
 <script setup lang="ts">
 import { ref, computed, getCurrentInstance, toRefs, watch, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, Check, MagicStick, Sort, Bell } from '@element-plus/icons-vue';
+import { Plus, MagicStick, Sort, Bell, RefreshRight, ArrowLeft, ArrowRight, UserFilled, Tickets } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import WorkOrderSelectionDialog from '@/views/wms/workOrder/components/WorkOrderSelectionDialog.vue';
 import WorkOrderPrepDemandDialog from './WorkOrderPrepDemandDialog.vue';
 import ClassifiedMaterialTable from './ClassifiedMaterialTable.vue';
-import PrepDemandPlanView from './PrepDemandPlanView.vue';
-import PrepDemandLocationSourceColumn from './PrepDemandLocationSourceColumn.vue';
+import PrepDemandExecutionTable from './PrepDemandExecutionTable.vue';
 import IssueProcessDrawer from '@/views/wms/materialIssue/components/IssueProcessDrawer.vue';
 import TargetDemandLocationDialog from './TargetDemandLocationDialog.vue';
 import type { TargetDemandLocationSelection } from './TargetDemandLocationDialog.vue';
 import { useUserStore } from '@/store/modules/user';
 import { getPrepDemand } from '@/api/wms/workOrderPrepDemand/index';
-import { buildPrepLocationRecIssueOutBoList, isIssuablePrepLocationRecRow, isPrepWarehouse261DisplayRow, lineStatusLabel, lineStatusTag, prepLocationRecIssueOut } from '@/api/wms/issueTask';
+import { buildPrepLocationRecIssueOutBoList, isIssuablePrepLocationRecRow, isPrepWarehouse261DisplayRow, prepLocationRecIssueOut } from '@/api/wms/issueTask';
 import { generateAllocation, loadWarehouseRouteContext } from '@/api/wms/allocation/index';
 import type { AllocationGenerateResult, MaterialDemandDetailRow, WorkOrderVO, WorkOrderMaterialIssueLine, WarehouseRouteContext } from '@/api/wms/allocation/types';
 import type { WorkOrderPrepDemandVO, PrepDemandLineItem } from '@/api/wms/workOrderPrepDemand/types';
-import { buildPrepDemandItems, resolveDemandRowInventoryFlag, isClassifiedShortageRow, findIssueLineForDemandDetail, formatDemandDetailPrepQty, resolvePrepDemandTargetLocationFromItems } from '@/api/wms/allocation/index';
+import { buildPrepDemandItems, isClassifiedShortageRow, findIssueLineForDemandDetail, formatDemandDetailPrepQty, resolvePrepDemandTargetLocationFromItems } from '@/api/wms/allocation/index';
 import { classifyWorkOrders, flattenClassifiedMaterials } from '@/api/wms/allocation/index';
-import { flattenPrepDemandDisplayRows, formatPrepQtyWithUnit, type PrepDemandDisplayRow } from '@/api/wms/workOrderPrepDemand/index';
+import { flattenPrepDemandDisplayRows, type PrepDemandDisplayRow } from '@/api/wms/workOrderPrepDemand/index';
 
 type DemandUserMode = 'self' | 'other';
 type ClassifiedMaterialDisplayRow = MaterialDemandDetailRow & {
@@ -308,7 +207,7 @@ type ClassifiedMaterialDisplayRow = MaterialDemandDetailRow & {
 
 const userStore = useUserStore();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_material_user, wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_material_user', 'wms_inventory_special_flag'));
+const { wms_material_user } = toRefs<any>(proxy?.useDict('wms_material_user'));
 
 const activeStep = ref(0);
 const taskExecutionFinished = ref(false);
@@ -334,8 +233,6 @@ const showPrepBomDialog = ref(false);
 const prepBomOrders = ref<WorkOrderVO[]>([]);
 /** 单行调整时按物料编码预过滤 BOM 列表 */
 const prepBomFilterMaterialCode = ref('');
-const showPlanDetail = ref(false);
-const planDetailOpen = ref<string[]>([]);
 const autoWarehouseCodes = ref<string[]>([]);
 const lineSideWarehouseCodes = ref<string[]>([]);
 const routeCtx = ref<WarehouseRouteContext>({ autoWarehouseCodes: [], lineSideWarehouseCodes: [] });
@@ -367,6 +264,7 @@ const prep261AutoDisplayRows = computed(() => prepDisplayRows.value.filter((r) =
 const prep261LineDisplayRows = computed(() => prepDisplayRows.value.filter((r) => isPrepWarehouse261DisplayRow(r, 'LINE')));
 const prep261AutoRows = computed(() => prep261AutoDisplayRows.value.filter(isIssuablePrepLocationRecRow));
 const prep261LineRows = computed(() => prep261LineDisplayRows.value.filter(isIssuablePrepLocationRecRow));
+const executionShortageCount = computed(() => prepDisplayRows.value.filter((row) => row.warehouseRoute === 'SHORTAGE' || row.lineType === 'SHORTAGE').length);
 const flatMaterialRows = computed(() => classifiedMaterialRows.value.filter((r) => r.warehouseRoute === 'FLAT'));
 const shortageMaterialRows = computed(() => classifiedMaterialRows.value.filter(isClassifiedShortageRow));
 const prepLocationHints = computed(() => [...flatMaterialRows.value, ...shortageMaterialRows.value]);
@@ -407,9 +305,9 @@ const otherUserOptions = computed(() => {
 
 const demandUserStepDesc = computed(() => {
   if (materialDemandUserLabel.value) {
-    return `需求人：${materialDemandUserLabel.value}`;
+    return `操作人员：${materialDemandUserLabel.value}`;
   }
-  return '请选择本人或其他人';
+  return '请选择本人或其他操作人员';
 });
 
 const prepStepDesc = computed(() => {
@@ -448,7 +346,7 @@ const applyDemandUserSelection = (): boolean => {
 
 const confirmDemandUser = () => {
   if (!applyDemandUserSelection()) {
-    ElMessage.warning(demandUserMode.value === 'other' ? '请选择其他需求人员' : '无法获取登录工号（userName）');
+    ElMessage.warning(demandUserMode.value === 'other' ? '请选择其他操作人员' : '无法获取登录工号（userName）');
     return;
   }
   activeStep.value = 1;
@@ -507,7 +405,7 @@ const handleOrderSelection = (orders: WorkOrderVO[]) => {
 
 const confirmClassify = async () => {
   if (!materialDemandUserCode.value) {
-    ElMessage.warning('请先选择需求人');
+    ElMessage.warning('请先确认操作人员');
     activeStep.value = 0;
     return;
   }
@@ -558,7 +456,7 @@ const openMergedPrepBom = () => {
     return;
   }
   if (!materialDemandUserCode.value) {
-    ElMessage.warning('请先选择需求人');
+    ElMessage.warning('请先确认操作人员');
     activeStep.value = 0;
     return;
   }
@@ -572,7 +470,7 @@ const openPrepBomByNo = (workOrderNo: string, materialCode?: string) => {
   const order = selectedOrders.value.find((o) => o.workOrderNo === workOrderNo);
   if (!order) return;
   if (!materialDemandUserCode.value) {
-    ElMessage.warning('请先选择需求人');
+    ElMessage.warning('请先确认操作人员');
     activeStep.value = 0;
     return;
   }
@@ -652,8 +550,6 @@ const resetForNextPrepRound = () => {
   currentDemandId.value = null;
   prepDisplayRows.value = [];
   isClassified.value = false;
-  showPlanDetail.value = false;
-  planDetailOpen.value = [];
   taskExecutionFinished.value = false;
   resultMessage.value = '';
   resultStatus.value = false;
@@ -756,11 +652,6 @@ const submitCombinedIssue = async () => {
   }
 };
 
-const openPlanDetail = () => {
-  showPlanDetail.value = true;
-  planDetailOpen.value = ['plan'];
-};
-
 const loadDemandDetail = async (demandId: number) => {
   currentDemandId.value = demandId;
   const response = await getPrepDemand(demandId);
@@ -818,8 +709,6 @@ const generatePrepPlan = async (prepItems: PrepDemandLineItem[], emptyHint: stri
     return;
   }
   ElMessage.success('备料需求已生成');
-  showPlanDetail.value = false;
-  planDetailOpen.value = [];
   taskExecutionFinished.value = false;
   resultMessage.value = '';
   resultStatus.value = false;
@@ -864,78 +753,229 @@ const goToMaterialIssue = () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-.mode-tip {
-  margin-bottom: 4px;
+  height: 100%;
+  min-height: 0;
 }
 .workbench-steps {
-  margin: 8px 0 16px;
+  flex-shrink: 0;
+  margin: 4px 0 10px;
 }
 .step-body {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.step-toolbar {
+.adaptive-step {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.adaptive-step :deep(.classified-material-table),
+.execution-module :deep(.execution-material-table) {
+  flex: 1;
+  min-height: 0;
+}
+.prep-step {
+  gap: 10px;
+}
+.workflow-action-bar {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.hint {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-.section-col-bottom {
-  margin-top: 16px;
-}
-.section-card {
-  min-height: 240px;
-}
-.section-header {
-  display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  font-weight: 600;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--el-fill-color-blank) 0%, var(--el-color-primary-light-9) 100%);
 }
-.plan-summary {
-  margin-bottom: 16px;
+.prep-action-summary,
+.prep-action-buttons {
+  display: flex;
+  align-items: center;
+}
+.prep-action-summary {
+  min-width: 0;
+  gap: 12px;
+}
+.prep-action-buttons {
+  flex-shrink: 0;
+  gap: 8px;
+}
+.back-button {
+  flex-shrink: 0;
+  padding: 0;
+}
+.prep-action-divider {
+  width: 1px;
+  height: 32px;
+  flex-shrink: 0;
+  background: var(--el-border-color);
+}
+.prep-action-title {
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+.prep-action-desc {
+  overflow: hidden;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prep-order-table {
+  flex: 1;
+  min-height: 0;
+}
+.prep-empty {
+  flex: 1;
+  min-height: 0;
+  border: 1px dashed var(--el-border-color);
+  border-radius: 8px;
+  background: var(--el-fill-color-extra-light);
+}
+.prep-empty p {
+  margin: 0;
+  color: var(--el-text-color-secondary);
 }
 .demand-user-step {
-  max-width: 640px;
+  width: min(760px, 100%);
   margin: 0 auto;
 }
 .demand-user-card {
-  padding: 8px 4px 4px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.demand-user-card :deep(> .el-card__body) {
+  padding: 0;
+}
+.demand-user-heading {
+  justify-content: flex-start;
+  border: 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-radius: 0;
+}
+.demand-user-icon {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--el-color-primary);
+  font-size: 20px;
+  background: var(--el-color-primary-light-8);
+}
+.demand-user-title {
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+.demand-user-desc {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 18px;
 }
 .demand-user-form {
-  margin-bottom: 8px;
+  padding: 24px 28px 8px;
 }
-.demand-user-card .step-toolbar {
-  justify-content: center;
-}
-.step-footer-row {
+.demand-user-actions {
   display: flex;
-  justify-content: center;
-  margin-top: 12px;
+  justify-content: flex-end;
+  padding: 0 28px 24px;
 }
-.classify-hint {
-  margin-bottom: 4px;
+.primary-workflow-button,
+.primary-step-button {
+  border: 0;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--el-color-primary) 0%, #6b8cff 100%);
+  box-shadow: 0 3px 10px rgb(64 158 255 / 22%);
 }
-.task-tip {
-  margin-bottom: 8px;
+.primary-step-button {
+  min-width: 156px;
 }
-.warehouse261-toolbar {
+.execution-module {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+}
+.execution-overview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.execution-section-label {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--el-color-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.plan-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 12px;
-  padding: 12px 14px;
-  background: var(--el-fill-color-light);
-  border-radius: 8px;
-  border: 1px solid var(--el-border-color-lighter);
+  gap: 8px 20px;
+}
+.plan-meta-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+.plan-meta-item > span {
+  color: var(--el-text-color-secondary);
+}
+.plan-meta-item > strong {
+  color: var(--el-text-color-primary);
+  font-weight: 600;
+}
+.execution-header-actions,
+.execution-operation-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.next-round-button {
+  min-width: 148px;
+  height: 34px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 17px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, var(--el-color-primary) 0%, #6b8cff 100%);
+  box-shadow: 0 4px 12px rgb(64 158 255 / 28%);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.next-round-button:hover,
+.next-round-button:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgb(64 158 255 / 36%);
+}
+.next-round-button:active {
+  transform: translateY(0);
+}
+.execution-operation-row {
+  padding-top: 8px;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 .warehouse261-label {
   font-size: 13px;
@@ -943,56 +983,24 @@ const goToMaterialIssue = () => {
   color: var(--el-text-color-secondary);
   margin-right: 4px;
 }
-.task-cards {
-  margin-top: 4px;
-}
-.task-col {
-  margin-bottom: 16px;
-}
-.task-card {
-  min-height: 200px;
-}
-.task-card-header {
-  flex-wrap: wrap;
-}
-.task-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-.task-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.task-desc {
-  margin: 0;
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-.task-more-hint {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-.task-mini-table {
-  width: 100%;
-}
-.plan-detail-collapse {
-  margin-top: 8px;
-}
 .result-alert {
   margin-bottom: 4px;
 }
 .result-alert :deep(.el-alert) {
   padding: 6px 10px;
 }
-.task-finish-result {
-  padding: 8px 0 4px;
-}
-.task-finish-result :deep(.el-result__subtitle) {
-  max-width: 560px;
-  margin: 0 auto;
+@media (max-width: 1200px) {
+  .workflow-action-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .demand-user-heading {
+    align-items: center;
+    flex-direction: row;
+  }
+  .prep-action-buttons {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 </style>

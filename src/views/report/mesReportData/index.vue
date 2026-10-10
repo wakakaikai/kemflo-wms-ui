@@ -109,7 +109,7 @@
   </div>
 </template>
 
-<script setup name="ReportEmployeeData" lang="ts">
+<script setup name="MesReportData" lang="ts">
 import { getEmployeeDurationChart, listEmployeeDurationSummary, listEmployeeDurationDetail, listEmployeeDurationDuplicate } from '@/api/mes/shopOrderReport';
 import type { ShopOrderReportEmployeeDurationChartVO, ShopOrderReportEmployeeDurationQuery, ShopOrderReportEmployeeDurationSummaryVO, ShopOrderReportEmployeeDurationDetailVO, ShopOrderReportEmployeeDurationDuplicateVO } from '@/api/mes/shopOrderReport/types';
 import BatchInputDialog from '@/components/BatchInputDialog/index.vue';

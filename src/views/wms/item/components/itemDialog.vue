@@ -78,7 +78,7 @@ const initFormData: ItemForm = {
   oldItem: undefined,
   itemGroup: undefined,
   unit: undefined,
-  checkEnable: undefined,
+  outboundInspectionCheck: undefined,
   remark: undefined
 };
 const data = reactive<PageData<ItemForm, ItemQuery>>({
@@ -91,7 +91,7 @@ const data = reactive<PageData<ItemForm, ItemQuery>>({
     oldItem: undefined,
     itemGroup: undefined,
     unit: undefined,
-    checkEnable: null,
+    outboundInspectionCheck: null,
     params: {}
   },
   rules: {
@@ -99,7 +99,7 @@ const data = reactive<PageData<ItemForm, ItemQuery>>({
     item: [{ required: true, message: '物料不能为空', trigger: 'blur' }],
     itemDesc: [{ required: true, message: '描述不能为空', trigger: 'blur' }],
     itemGroup: [{ required: true, message: '物料组不能为空', trigger: 'blur' }],
-    checkEnable: [{ required: true, message: '质检检查不能为空', trigger: 'change' }]
+    outboundInspectionCheck: [{ required: true, message: '启用质检结果不能为空', trigger: 'change' }]
   }
 });
 

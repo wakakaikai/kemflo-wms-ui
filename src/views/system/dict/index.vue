@@ -20,15 +20,7 @@
                 <el-input v-model="typeQueryParams.dictType" placeholder="请输入字典类型" clearable @keyup.enter="handleTypeQuery" />
               </el-form-item>
               <el-form-item label="创建时间" style="width: 308px">
-                <el-date-picker
-                  v-model="dateRange"
-                  value-format="YYYY-MM-DD HH:mm:ss"
-                  type="daterange"
-                  range-separator="-"
-                  start-placeholder="开始日期"
-                  end-placeholder="结束日期"
-                  :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
-                ></el-date-picker>
+                <el-date-picker v-model="dateRange" value-format="YYYY-MM-DD HH:mm:ss" type="daterange" range-separator="-" start-placeholder="开始日期" end-placeholder="结束日期" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"></el-date-picker>
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" icon="Search" @click="handleTypeQuery">搜索</el-button>
@@ -39,40 +31,24 @@
 
           <div class="dict-actions">
             <el-button v-hasPermi="['system:dict:add']" type="primary" plain icon="Plus" @click="handleTypeAdd">新增</el-button>
-            <el-button v-hasPermi="['system:dict:edit']" type="success" plain icon="Edit" :disabled="typeSingle" @click="handleTypeUpdate()"
-              >修改</el-button
-            >
-            <el-button v-hasPermi="['system:dict:remove']" type="danger" plain icon="Delete" :disabled="typeMultiple" @click="handleTypeDelete()"
-              >删除</el-button
-            >
+            <el-button v-hasPermi="['system:dict:edit']" type="success" plain icon="Edit" :disabled="typeSingle" @click="handleTypeUpdate()">修改</el-button>
+            <el-button v-hasPermi="['system:dict:remove']" type="danger" plain icon="Delete" :disabled="typeMultiple" @click="handleTypeDelete()">删除</el-button>
             <el-button v-hasPermi="['system:dict:export']" type="warning" plain icon="Download" @click="handleTypeExport">导出</el-button>
             <el-button v-hasPermi="['system:dict:remove']" type="danger" plain icon="Refresh" @click="handleRefreshCache">刷新缓存</el-button>
           </div>
 
           <div class="dict-table-wrap">
-            <el-table
-              ref="typeTableRef"
-              v-loading="typeLoading"
-              border
-              :data="typeList"
-              highlight-current-row
-              @row-click="handleTypeRowClick"
-              @selection-change="handleTypeSelectionChange"
-            >
+            <el-table ref="typeTableRef" v-loading="typeLoading" border :data="typeList" highlight-current-row @row-click="handleTypeRowClick" @selection-change="handleTypeSelectionChange">
               <el-table-column type="selection" width="55" align="center" />
               <el-table-column v-if="false" label="字典编号" align="center" prop="dictId" />
-              <el-table-column label="字典名称" align="center" prop="dictName" width="120" />
-              <el-table-column label="字典类型" align="center" prop="dictType" width="160">
+              <el-table-column label="字典名称" align="center" prop="dictName" />
+              <el-table-column label="字典类型" align="center" prop="dictType">
                 <template #default="scope">
                   <span class="link-type" @click.stop="handleTypeRowClick(scope.row)">{{ scope.row.dictType }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="备注" align="center" prop="remark" width="160" />
-              <el-table-column label="创建时间" align="center" prop="createTime" width="180">
-                <template #default="scope">
-                  <span>{{ proxy.parseTime(scope.row.createTime) }}</span>
-                </template>
-              </el-table-column>
+              <el-table-column label="备注" align="center" prop="remark" />
+
               <el-table-column label="操作" fixed="right" align="center" width="120" class-name="small-padding fixed-width">
                 <template #default="scope">
                   <el-tooltip content="修改" placement="top">
@@ -86,13 +62,7 @@
             </el-table>
           </div>
 
-          <pagination
-            v-show="typeTotal > 0"
-            v-model:page="typeQueryParams.pageNum"
-            v-model:limit="typeQueryParams.pageSize"
-            :total="typeTotal"
-            @pagination="getTypeList"
-          />
+          <pagination v-show="typeTotal > 0" v-model:page="typeQueryParams.pageNum" v-model:limit="typeQueryParams.pageSize" :total="typeTotal" @pagination="getTypeList" />
         </el-card>
       </el-col>
 
@@ -112,13 +82,7 @@
           <div v-show="showDataSearch" class="dict-form-scroll">
             <el-form ref="dataQueryFormRef" :model="dataQueryParams" :inline="true">
               <el-form-item label="字典标签" prop="dictLabel">
-                <el-input
-                  v-model="dataQueryParams.dictLabel"
-                  placeholder="请输入字典标签"
-                  clearable
-                  :disabled="!hasCurrentDict"
-                  @keyup.enter="handleDataQuery"
-                />
+                <el-input v-model="dataQueryParams.dictLabel" placeholder="请输入字典标签" clearable :disabled="!hasCurrentDict" @keyup.enter="handleDataQuery" />
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" icon="Search" :disabled="!hasCurrentDict" @click="handleDataQuery">搜索</el-button>
@@ -128,60 +92,25 @@
           </div>
 
           <div class="dict-actions">
-            <el-button v-hasPermi="['system:dict:add']" type="primary" plain icon="Plus" :disabled="!hasCurrentDict" @click="handleDataAdd"
-              >新增</el-button
-            >
-            <el-button
-              v-hasPermi="['system:dict:edit']"
-              type="success"
-              plain
-              icon="Edit"
-              :disabled="dataSingle || !hasCurrentDict"
-              @click="handleDataUpdate()"
-              >修改</el-button
-            >
-            <el-button
-              v-hasPermi="['system:dict:remove']"
-              type="danger"
-              plain
-              icon="Delete"
-              :disabled="dataMultiple || !hasCurrentDict"
-              @click="handleDataDelete()"
-              >删除</el-button
-            >
-            <el-button v-hasPermi="['system:dict:export']" type="warning" plain icon="Download" :disabled="!hasCurrentDict" @click="handleDataExport"
-              >导出</el-button
-            >
+            <el-button v-hasPermi="['system:dict:add']" type="primary" plain icon="Plus" :disabled="!hasCurrentDict" @click="handleDataAdd">新增</el-button>
+            <el-button v-hasPermi="['system:dict:edit']" type="success" plain icon="Edit" :disabled="dataSingle || !hasCurrentDict" @click="handleDataUpdate()">修改</el-button>
+            <el-button v-hasPermi="['system:dict:remove']" type="danger" plain icon="Delete" :disabled="dataMultiple || !hasCurrentDict" @click="handleDataDelete()">删除</el-button>
+            <el-button v-hasPermi="['system:dict:export']" type="warning" plain icon="Download" :disabled="!hasCurrentDict" @click="handleDataExport">导出</el-button>
           </div>
 
           <div class="dict-table-wrap">
             <el-table v-loading="dataLoading" border :data="dataList" @selection-change="handleDataSelectionChange">
               <el-table-column type="selection" width="55" align="center" />
               <el-table-column v-if="false" label="字典编码" align="center" prop="dictCode" />
-              <el-table-column label="字典标签" align="center" prop="dictLabel" width="80">
+              <el-table-column label="字典标签" align="center" prop="dictLabel">
                 <template #default="scope">
-                  <span
-                    v-if="
-                      (scope.row.listClass === '' || scope.row.listClass === 'default') && (scope.row.cssClass === '' || scope.row.cssClass == null)
-                    "
-                    >{{ scope.row.dictLabel }}</span
-                  >
-                  <el-tag
-                    v-else
-                    :type="scope.row.listClass === 'primary' || scope.row.listClass === 'default' ? 'primary' : scope.row.listClass"
-                    :class="scope.row.cssClass"
-                    >{{ scope.row.dictLabel }}</el-tag
-                  >
+                  <span v-if="(scope.row.listClass === '' || scope.row.listClass === 'default') && (scope.row.cssClass === '' || scope.row.cssClass == null)">{{ scope.row.dictLabel }}</span>
+                  <el-tag v-else :type="scope.row.listClass === 'primary' || scope.row.listClass === 'default' ? 'primary' : scope.row.listClass" :class="scope.row.cssClass">{{ scope.row.dictLabel }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="字典键值" align="center" prop="dictValue" width="80" />
-              <el-table-column label="字典排序" align="center" prop="dictSort" width="80" />
-              <el-table-column label="备注" align="center" prop="remark" width="100" />
-              <el-table-column label="创建时间" align="center" prop="createTime" width="180">
-                <template #default="scope">
-                  <span>{{ proxy.parseTime(scope.row.createTime) }}</span>
-                </template>
-              </el-table-column>
+              <el-table-column label="字典键值" align="center" prop="dictValue" />
+              <el-table-column label="字典排序" align="center" prop="dictSort"  />
+              <el-table-column label="备注" align="center" prop="remark"  />
               <el-table-column label="操作" fixed="right" align="center" width="120" class-name="small-padding fixed-width">
                 <template #default="scope">
                   <el-tooltip content="修改" placement="top">
@@ -195,13 +124,7 @@
             </el-table>
           </div>
 
-          <pagination
-            v-show="dataTotal > 0"
-            v-model:page="dataQueryParams.pageNum"
-            v-model:limit="dataQueryParams.pageSize"
-            :total="dataTotal"
-            @pagination="getDataList"
-          />
+          <pagination v-show="dataTotal > 0" v-model:page="dataQueryParams.pageNum" v-model:limit="dataQueryParams.pageSize" :total="dataTotal" @pagination="getDataList" />
         </el-card>
       </el-col>
     </el-row>
@@ -255,12 +178,7 @@
         </el-form-item>
         <el-form-item label="回显样式" prop="listClass">
           <el-select v-model="dataForm.listClass">
-            <el-option
-              v-for="item in listClassOptions"
-              :key="item.value"
-              :label="item.label + '(' + item.value + ')'"
-              :value="item.value"
-            ></el-option>
+            <el-option v-for="item in listClassOptions" :key="item.value" :label="item.label + '(' + item.value + ')'" :value="item.value"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="备注" prop="remark">

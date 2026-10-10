@@ -41,9 +41,9 @@
     </template>
   </el-table-column>
   <el-table-column v-if="columns[10]?.visible" label="订单单位" align="center" prop="orderUnit" />
-  <el-table-column v-if="columns[11]?.visible" label="需质检" align="center" prop="inspectionFlag">
+  <el-table-column v-if="columns[11]?.visible" label="需质检" align="center" prop="receiptInspectionFlag">
     <template #default="scope">
-      <span v-if="isPoDetailParentRow(scope.row)">{{ scope.row.inspectionFlag }}</span>
+      <dict-tag v-if="isPoDetailParentRow(scope.row)" :options="wms_boolean_type" :value="scope.row.receiptInspectionFlag" />
     </template>
   </el-table-column>
   <el-table-column v-if="columns[13]?.visible" label="库存单位" align="center" prop="inventoryUnit" />
@@ -63,6 +63,9 @@
 <script setup lang="ts">
 import { formatBomOpenOrderQuantity, isPoDetailParentRow } from '../utils/purchaseOrderDetailTree';
 import { formatQty } from '@/utils/ruoyi';
+
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const { wms_boolean_type } = toRefs<any>(proxy?.useDict('wms_boolean_type'));
 
 withDefaults(
   defineProps<{

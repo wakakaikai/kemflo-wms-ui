@@ -36,6 +36,14 @@ export function updateNotice(data: NoticeForm) {
   });
 }
 
+// 发布公告并通过 SSE 推送给所有在线用户
+export function publishNotice(noticeId: string | number) {
+  return request({
+    url: `/system/notice/${noticeId}/publish`,
+    method: 'post'
+  });
+}
+
 // 删除公告
 export function delNotice(noticeId: string | number | Array<string | number>) {
   return request({

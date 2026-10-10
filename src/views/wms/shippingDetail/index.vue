@@ -67,7 +67,7 @@
 
       <el-table :key="tableKey" v-loading="loading" :data="shippingDetailList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column v-if="columns[0].visible" label="客户代码" align="left" prop="customerCode" min-width="100" />
+        <el-table-column v-if="columns[0].visible" label="客户代码" align="left" prop="customerCode" min-width="120" />
         <el-table-column v-if="columns[1].visible" label="客户名称" align="left" prop="customerName" show-overflow-tooltip />
         <el-table-column v-if="columns[2].visible" label="条码" align="left" prop="sfc" min-width="180" />
         <el-table-column v-if="columns[3].visible" label="数量" align="right" prop="quantity" />
@@ -130,6 +130,9 @@
         <el-form-item label="客户订单号" prop="customerNo">
           <el-input v-model="form.customerNo" placeholder="请输入客户订单号" />
         </el-form-item>
+        <el-form-item label="客户参考" prop="customerRef">
+          <el-input v-model="form.customerRef" placeholder="请输入客户参考" />
+        </el-form-item>
         <el-form-item label="目的地" prop="shipmentDestination">
           <el-input v-model="form.shipmentDestination" placeholder="请输入出货目的地" />
         </el-form-item>
@@ -191,6 +194,8 @@ const total = ref(0);
 
 const queryFormRef = ref<ElFormInstance>();
 const shippingDetailFormRef = ref<ElFormInstance>();
+/** 当前出货通知的客户参考，新增时表单被重置后仍要传给后端 */
+const shippingNoticeCustomerRef = ref<string>();
 
 const dialog = reactive<DialogOption>({
   visible: false,
@@ -227,6 +232,7 @@ const initFormData: ShippingDetailForm = {
   customerCode: undefined,
   customerName: undefined,
   customerNo: undefined,
+  customerRef: undefined,
   shipmentNo: undefined,
   shipmentDestination: undefined,
   item: undefined,
@@ -393,7 +399,7 @@ const handleSelectionChange = (selection: ShippingDetailVO[]) => {
 /** 新增按钮操作 */
 const handleAdd = async () => {
   reset();
-  getRouterParams();
+  await getRouterParams();
   form.value.id = null;
   form.value.remark = '';
   dialog.visible = true;
@@ -410,6 +416,15 @@ const handleUpdate = async (row?: ShippingDetailVO) => {
   dialog.title = '修改出货明细';
 };
 
+/** 新增出货明细时带上客户参考：优先用表单值，否则用出货通知上的客户参考 */
+const buildAddPayload = (): ShippingDetailForm => {
+  const customerRef = String(form.value.customerRef ?? '').trim() || shippingNoticeCustomerRef.value;
+  return {
+    ...form.value,
+    customerRef
+  };
+};
+
 /** 提交按钮 */
 const submitForm = (ignoreError: number) => {
   shippingDetailFormRef.value?.validate(async (valid: boolean) => {
@@ -419,7 +434,7 @@ const submitForm = (ignoreError: number) => {
       if (form.value.id) {
         await updateShippingDetail(form.value).finally(() => (buttonLoading.value = false));
       } else {
-        await addShippingDetail(form.value).finally(() => (buttonLoading.value = false));
+        await addShippingDetail(buildAddPayload()).finally(() => (buttonLoading.value = false));
       }
       proxy?.$modal.msgSuccess('操作成功');
       dialog.visible = false;
@@ -436,7 +451,7 @@ const keyDownTab = async () => {
     if (valid) {
       buttonLoading.value = true;
       if (!form.value.id) {
-        await addShippingDetail(form.value).finally(() => (buttonLoading.value = false));
+        await addShippingDetail(buildAddPayload()).finally(() => (buttonLoading.value = false));
       }
       proxy?.$modal.msgSuccess('操作成功');
     }
@@ -483,10 +498,11 @@ const getRouterParams = async () => {
       form.value.item = res.data.item;
       form.value.itemDesc = res.data.itemDesc;
       form.value.shippingCustomerNoticeId = res.data.shippingCustomerNoticeId;
+      shippingNoticeCustomerRef.value = res.data.customerRef;
+      form.value.customerRef = res.data.customerRef;
     }
   }
   form.value.sfcType = Number(localStorage.getItem(SFC_TYPE_CACHE_KEY) || 1);
-  console.log(form.value.sfcType);
 };
 onMounted(() => {
   getRouterParams();

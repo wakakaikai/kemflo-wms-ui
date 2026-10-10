@@ -42,6 +42,11 @@ export interface DeliveryOrderDetailVO {
   materialDesc: string;
 
   /**
+   * 入库检
+   */
+  receiptInspectionFlag: boolean;
+
+  /**
    * 交货日期
    */
   deliveryDate: string;
@@ -130,6 +135,11 @@ export interface DeliveryOrderDetailForm extends BaseEntity {
   materialDesc?: string;
 
   /**
+   * 入库检
+   */
+  receiptInspectionFlag?: boolean;
+
+  /**
    * 交货日期
    */
   deliveryDate?: string;
@@ -205,6 +215,11 @@ export interface DeliveryOrderDetailQuery extends PageQuery {
    * 物料描述
    */
   materialDesc?: string;
+
+  /**
+   * 入库检
+   */
+  receiptInspectionFlag?: boolean;
 
   /**
    * 交货日期

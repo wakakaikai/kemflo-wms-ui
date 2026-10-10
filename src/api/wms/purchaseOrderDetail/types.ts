@@ -68,6 +68,11 @@ export interface PurchaseOrderDetailVO {
   materialDesc: string;
 
   /**
+   * 入库检
+   */
+  receiptInspectionFlag: boolean;
+
+  /**
    * 短文本
    */
   shortText: string;
@@ -188,6 +193,11 @@ export interface PurchaseOrderDetailForm extends BaseEntity {
   materialDesc?: string;
 
   /**
+   * 入库检
+   */
+  receiptInspectionFlag?: boolean;
+
+  /**
    * 短文本
    */
   shortText?: string;
@@ -298,6 +308,11 @@ export interface PurchaseOrderDetailQuery extends PageQuery {
    * 物料描述
    */
   materialDesc?: string;
+
+  /**
+   * 入库检
+   */
+  receiptInspectionFlag?: boolean;
 
   /**
    * 短文本

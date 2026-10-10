@@ -222,9 +222,9 @@
   </div>
 </template>
 
-<script setup name="AttendanceWorkDifference" lang="ts">
-import { getAttendanceWorkDifferenceChart, listAttendanceCostCenters } from '@/api/report/attendanceWorkDifference';
-import type { AttendanceAbnormalTimeVO, AttendanceCostCenterOption, AttendanceMesEmployeeOnlineVO, AttendanceShopOrderAnalysisVO, AttendanceWorkDifferenceQuery, AttendanceWorkDifferenceVO } from '@/api/report/attendanceWorkDifference/types';
+<script setup name="MesReportHRDifferenceData" lang="ts">
+import { getMesReportHRDifferenceDataChart, listAttendanceCostCenters } from '@/api/report/mesReportHRDifferenceData';
+import type { AttendanceAbnormalTimeVO, AttendanceCostCenterOption, AttendanceMesEmployeeOnlineVO, AttendanceShopOrderAnalysisVO, MesReportHRDifferenceDataQuery, MesReportHRDifferenceDataVO } from '@/api/report/mesReportHRDifferenceData/types';
 import BatchInputDialog from '@/components/BatchInputDialog/index.vue';
 import AttendanceDifferenceCharts from './components/AttendanceDifferenceCharts.vue';
 
@@ -288,7 +288,7 @@ const costCenterLoading = ref(false);
 const costCenterOptions = ref<AttendanceCostCenterOption[]>([]);
 
 /** 当前筛选范围内不分页的图表分析数据。 */
-const chartRows = ref<AttendanceWorkDifferenceVO[]>([]);
+const chartRows = ref<MesReportHRDifferenceDataVO[]>([]);
 
 /** 成功工单员工在线及异常时间完整明细。 */
 const employeeOnlineRows = ref<AttendanceMesEmployeeOnlineVO[]>([]);
@@ -376,7 +376,7 @@ const mesReportEmployeeCount = ref(0);
 const batchInputVisible = ref(false);
 
 /** 页面查询条件，考勤时间默认留空，用户选择完整时间范围后才能执行查询。 */
-const queryParams = reactive<AttendanceWorkDifferenceQuery & { dateRange: string[] }>({
+const queryParams = reactive<MesReportHRDifferenceDataQuery & { dateRange: string[] }>({
   pageNum: 1,
   pageSize: 20,
   dateRange: [],
@@ -490,7 +490,7 @@ const parseEmployeeIds = () => [
  *
  * @returns 后端差异报表查询参数
  */
-const buildQuery = (): AttendanceWorkDifferenceQuery => {
+const buildQuery = (): MesReportHRDifferenceDataQuery => {
   const employeeIdList = parseEmployeeIds();
   queryParams.employeeIdList = employeeIdList.length ? employeeIdList : undefined;
   queryParams.employeeIdStr = employeeIdList.length ? employeeIdList.join(',') : undefined;
@@ -533,7 +533,7 @@ const getChart = async () => {
   loading.value = true;
   chartLoading.value = true;
   try {
-    const res = await getAttendanceWorkDifferenceChart(buildQuery());
+    const res = await getMesReportHRDifferenceDataChart(buildQuery());
     chartRows.value = res.data?.rows || [];
     hrEmployeeCount.value = res.data?.hrEmployeeCount || 0;
     mesReportEmployeeCount.value = res.data?.mesReportEmployeeCount || 0;
@@ -560,7 +560,7 @@ const formatHours = (value?: number) => Number(value || 0).toFixed(2);
 type AuditRisk = 'high' | 'medium' | 'low';
 
 /** 识别一条员工日期记录命中的全部稽核问题。 */
-const resolveAuditIssues = (row: AttendanceWorkDifferenceVO) => {
+const resolveAuditIssues = (row: MesReportHRDifferenceDataVO) => {
   const issues: string[] = [];
   const hasHr = Number(row.scheduleHours || 0) > 0 || Number(row.leaveHours || 0) > 0 || Number(row.overtimeHours || 0) > 0;
   if (hasHr && Number(row.reportCount || 0) <= 0) issues.push('HR有考勤无MES报工');
@@ -572,7 +572,7 @@ const resolveAuditIssues = (row: AttendanceWorkDifferenceVO) => {
 };
 
 /** 根据数据缺口、工时差异幅度及时段异常划分稽核风险。 */
-const resolveAuditRisk = (row: AttendanceWorkDifferenceVO, issues: string[]): AuditRisk => {
+const resolveAuditRisk = (row: MesReportHRDifferenceDataVO, issues: string[]): AuditRisk => {
   const absoluteDifference = Math.abs(Number(row.differenceHours || 0));
   if (issues.includes('HR有考勤无MES报工') || issues.includes('MES报工无排班') || absoluteDifference >= 2) return 'high';
   if (issues.includes('上下线时段差异') || absoluteDifference >= 0.5) return 'medium';
@@ -597,7 +597,7 @@ const signed = (value?: number) => `${Number(value || 0) > 0 ? '+' : ''}${format
 const differenceClass = (value?: number) => (Number(value || 0) === 0 ? 'is-normal' : Number(value) < 0 ? 'is-danger' : 'is-warning');
 
 /** 根据差异状态返回Element Plus标签类型。 */
-const statusType = (status: AttendanceWorkDifferenceVO['differenceStatus']) => (status === '一致' ? 'success' : status === '报工不足' ? 'danger' : 'warning');
+const statusType = (status: MesReportHRDifferenceDataVO['differenceStatus']) => (status === '一致' ? 'success' : status === '报工不足' ? 'danger' : 'warning');
 
 /** 执行新查询时回到第一页。 */
 const handleQuery = async () => {
@@ -653,7 +653,7 @@ const handleBatchConfirm = (values: string[]) => {
 const handleExport = () => {
   if (!validateDate()) return;
   const [beginDate, endDate] = queryParams.dateRange;
-  proxy?.download('wms/report/attendanceWorkDifference/export', buildQuery(), `HR员工考勤与报工差异_${beginDate}_${endDate}.xlsx`);
+  proxy?.download('wms/report/mesReportHRDifferenceData/export', buildQuery(), `HR员工考勤与报工差异_${beginDate}_${endDate}.xlsx`);
 };
 
 /** 切换报表全屏状态。 */

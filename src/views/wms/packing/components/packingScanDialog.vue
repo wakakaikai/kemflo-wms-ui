@@ -42,9 +42,9 @@
           <el-table-column label="计划数量" align="center" prop="plannedQty" />
           <el-table-column label="打包数量" align="center" min-width="120" prop="packingQty">
           </el-table-column>
-          <el-table-column label="入库检" align="center" prop="checkEnable">
+          <el-table-column label="入库检" align="center" prop="receiptInspectionFlag">
             <template #default="scope">
-              <dict-tag :options="wms_work_order_check_enable" :value="scope.row.checkEnable" />
+              <dict-tag :options="wms_work_order_check_enable" :value="scope.row.receiptInspectionFlag" />
             </template>
           </el-table-column>
           <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
@@ -126,7 +126,7 @@ const initFormData: WorkOrderForm = {
   workOrderNo: undefined,
   item: undefined,
   itemDesc: undefined,
-  checkEnable: undefined,
+  receiptInspectionFlag: undefined,
   plannedStartDate: undefined,
   plannedEndDate: undefined,
   plannedQty: undefined,
@@ -146,7 +146,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
     workOrderNo: undefined,
     item: undefined,
     itemDesc: undefined,
-    checkEnable: undefined,
+    receiptInspectionFlag: undefined,
     plannedStartDate: undefined,
     plannedEndDate: undefined,
     plannedQty: undefined,

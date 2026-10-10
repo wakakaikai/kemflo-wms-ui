@@ -34,7 +34,7 @@ import { resolveDictTagType } from '@/utils/dict';
 
 interface Props {
   options: Array<DictDataOption>;
-  value: number | string | Array<number | string>;
+  value: number | string | boolean | Array<number | string | boolean>;
   showValue?: boolean;
   separator?: string;
 }
@@ -43,10 +43,17 @@ const props = withDefaults(defineProps<Props>(), {
   separator: ','
 });
 
+/** 布尔值转成字典里的 "true" / "false"。true == "true" 在 JS 中为 false，不能直接比较 */
+const normalizeDictValue = (val: string | number | boolean) => {
+  if (typeof val === 'boolean') return val ? 'true' : 'false';
+  return val;
+};
+
 const values = computed(() => {
   if (props.value === '' || props.value === null || typeof props.value === 'undefined') return [];
-  if (typeof props.value === 'number' || typeof props.value === 'boolean') return [props.value]
-  return Array.isArray(props.value) ? props.value.map((item) => '' + item) : String(props.value).split(props.separator);
+  if (typeof props.value === 'boolean') return [normalizeDictValue(props.value)];
+  if (typeof props.value === 'number') return [props.value];
+  return Array.isArray(props.value) ? props.value.map((item) => normalizeDictValue(item)) : String(props.value).split(props.separator);
 });
 
 const unmatch = computed(() => {

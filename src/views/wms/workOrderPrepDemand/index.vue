@@ -1,32 +1,5 @@
 <template>
   <div class="p-2 prep-demand-page">
-    <el-row :gutter="12" class="stats-row">
-      <el-col :xs="12" :sm="6">
-        <div class="stat-card">
-          <div class="stat-label">需求单总数</div>
-          <div class="stat-value">{{ total }}</div>
-        </div>
-      </el-col>
-      <el-col :xs="12" :sm="6">
-        <div class="stat-card warning">
-          <div class="stat-label">本页缺料单</div>
-          <div class="stat-value">{{ pageShortageCount }}</div>
-        </div>
-      </el-col>
-      <el-col :xs="12" :sm="6">
-        <div class="stat-card danger">
-          <div class="stat-label">本页紧急单</div>
-          <div class="stat-value">{{ pageEmergencyCount }}</div>
-        </div>
-      </el-col>
-      <el-col :xs="12" :sm="6">
-        <div class="stat-card primary">
-          <div class="stat-label">本页平均齐套率</div>
-          <div class="stat-value">{{ pageAvgKitRate }}%</div>
-        </div>
-      </el-col>
-    </el-row>
-
     <el-tabs v-model="statusTab" class="status-tabs" @tab-change="onStatusTabChange">
       <el-tab-pane name="all">
         <template #label>
@@ -343,14 +316,6 @@ const shortcuts = [
   }
 ];
 
-const pageShortageCount = computed(() => prepDemandList.value.filter((row) => Number(row.totalShortage ?? 0) > 0 || Number(row.shortageLines ?? 0) > 0).length);
-const pageEmergencyCount = computed(() => prepDemandList.value.filter((row) => row.isEmergency).length);
-const pageAvgKitRate = computed(() => {
-  if (!prepDemandList.value.length) return '0.0';
-  const sum = prepDemandList.value.reduce((acc, row) => acc + kitRatePercentValue(resolvePrepDemandKitRate(row)), 0);
-  return (sum / prepDemandList.value.length).toFixed(1);
-});
-
 const prepDemandTabBadgeColor = (status: string) => {
   const tag = demandStatusTag(status, wms_prepare_demand_status.value);
   return BADGE_COLOR_MAP[tag] || ALL_TAB_BADGE_COLOR;
@@ -538,40 +503,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.stats-row {
-  margin-bottom: 4px;
-}
-
-.stat-card {
-  padding: 14px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--el-text-color-secondary);
-
-  &.warning {
-    border-color: var(--el-color-warning-light-5);
-  }
-
-  &.danger {
-    border-color: var(--el-color-danger-light-5);
-  }
-
-  &.primary {
-    border-color: var(--el-color-primary-light-5);
-  }
-}
-
-.stat-label {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.stat-value {
-  margin-top: 6px;
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.2;
 }
 
 .status-tabs {

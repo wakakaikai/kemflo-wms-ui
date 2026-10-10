@@ -1,9 +1,18 @@
 <template>
   <div class="p-2 special-issue-page">
     <el-card shadow="never" class="page-card">
+      <template #header>
+        <div class="page-header">
+          <div>
+            <h2 class="page-title">特殊工单领料</h2>
+            <p class="page-subtitle">确认操作人员，选择特殊工单并完成物料分类、备料需求与 261 扣料</p>
+          </div>
+          <el-tag v-if="ui.workOrder" type="primary" effect="light">{{ ui.workOrder.workOrderNo }}</el-tag>
+        </div>
+      </template>
       <div class="zp-panel">
         <el-steps :active="ui.stepsActive" finish-status="success" align-center class="workbench-steps">
-          <el-step title="选择需求人" :description="ui.demandUserStepDesc" />
+          <el-step title="确认操作人员" :description="ui.demandUserStepDesc" />
           <el-step title="选择工单与备料" description="选择工单后手动添加物料，检查库存并确认分类" />
           <el-step title="仓别分类" description="按已分配库位仓别编码分流" />
           <el-step title="执行任务" description="按任务卡执行扣料或跟进备料/缺料" />
@@ -13,72 +22,112 @@
         <div v-if="ui.resultMessage" class="result-alert">
           <el-alert show-icon :type="ui.resultStatus ? 'success' : 'error'" :closable="false">
             <template #icon><Bell /></template>
-            <div class="result-alert-body">
-              <span>{{ ui.resultMessage }}</span>
-              <el-button v-if="ui.resultStatus && ui.generatedDemand && ui.activeStep === 3" type="primary" link @click="ui.startNewIssue">继续填写领料单</el-button>
-            </div>
+            <span>{{ ui.resultMessage }}</span>
           </el-alert>
         </div>
 
-        <!-- 第 1 步：选择需求人 -->
+        <!-- 第 1 步：确认操作人员 -->
         <div v-if="ui.activeStep === 0" class="step-body demand-user-step">
           <el-card shadow="never" class="demand-user-card">
+            <div class="workflow-action-bar demand-user-heading">
+              <span class="demand-user-icon"
+                ><el-icon><UserFilled /></el-icon
+              ></span>
+              <div>
+                <div class="demand-user-title">确认本轮领料操作人员</div>
+                <div class="demand-user-desc">操作人员将用于备料需求、领料任务及后续进度跟踪</div>
+              </div>
+            </div>
             <el-form label-width="96px" class="demand-user-form">
-              <el-form-item label="需求人">
-                <el-radio-group v-model="ui.demandUserMode">
-                  <el-radio value="self">本人（{{ ui.currentUserDisplay || '-' }}）</el-radio>
-                  <el-radio value="other">其他人</el-radio>
+              <el-form-item label="操作人员">
+                <el-radio-group v-model="ui.demandUserMode" @change="ui.onDemandUserModeChange">
+                  <el-radio-button value="self">本人（{{ ui.currentUserDisplay || '-' }}）</el-radio-button>
+                  <el-radio-button value="other">其他人员</el-radio-button>
                 </el-radio-group>
               </el-form-item>
-              <el-form-item v-if="ui.demandUserMode === 'other'" label="其他人">
-                <el-select v-model="ui.otherUserCode" placeholder="请选择其他需求人员" filterable clearable style="width: 320px">
+              <el-form-item v-if="ui.demandUserMode === 'other'" label="其他人员">
+                <el-select v-model="ui.otherUserCode" placeholder="请选择其他操作人员" filterable clearable style="width: 320px">
                   <el-option v-for="dict in ui.otherUserOptions" :key="dict.value" :label="dict.label" :value="dict.value" />
                 </el-select>
               </el-form-item>
             </el-form>
-            <div class="step-toolbar">
-              <el-button type="primary" @click="ui.confirmDemandUser">下一步</el-button>
+            <div class="demand-user-actions">
+              <el-button type="primary" class="primary-step-button" @click="ui.confirmDemandUser">
+                确认操作人员
+                <el-icon><ArrowRight /></el-icon>
+              </el-button>
             </div>
           </el-card>
         </div>
 
         <!-- 第 2 步：选择工单与备料 -->
-        <div v-if="ui.activeStep === 1" class="step-body">
-          <div class="work-order-bar">
-            <el-button type="primary" @click="ui.showOrderDialog = true">
-              <el-icon><Plus /></el-icon>
-              选择工单
-            </el-button>
-            <el-descriptions v-if="ui.workOrder" :column="4" border class="wo-summary">
-              <el-descriptions-item label="工单号">{{ ui.workOrder.workOrderNo }}</el-descriptions-item>
-              <el-descriptions-item label="产品料号">{{ ui.workOrder.item || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="产品描述">{{ ui.workOrder.itemDesc || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="计划数量">{{ ui.formatQty(ui.workOrder.plannedQty) }} {{ ui.workOrder.unit }}</el-descriptions-item>
-            </el-descriptions>
+        <div v-if="ui.activeStep === 1" class="step-body adaptive-step prep-step">
+          <div class="workflow-action-bar">
+            <div class="prep-action-summary">
+              <el-button link class="back-button" @click="ui.goToDemandUserStep"
+                ><el-icon><ArrowLeft /></el-icon>上一步</el-button
+              >
+              <span class="prep-action-divider"></span>
+              <div>
+                <div class="prep-action-title">选择工单并填写领料清单</div>
+                <div class="prep-action-desc">
+                  <template v-if="ui.workOrder">当前工单 {{ ui.workOrder.workOrderNo }}，领料清单 {{ ui.pickLines.length }} 条</template>
+                  <template v-else>先选择一个特殊工单，再添加本次领料物料</template>
+                </div>
+              </div>
+            </div>
+            <div class="prep-action-buttons">
+              <el-button :type="ui.workOrder ? undefined : 'primary'" @click="ui.showOrderDialog = true"
+                ><el-icon><Plus /></el-icon>{{ ui.workOrder ? '更换工单' : '选择工单' }}</el-button
+              >
+              <el-button type="success" plain :disabled="!ui.canGenerate" :loading="ui.checkingInventory" @click="() => ui.handleCheckInventory()">检查库存</el-button>
+              <el-button type="primary" class="primary-workflow-button" :disabled="!ui.canGenerate" :loading="ui.classifyLoading" @click="ui.confirmClassify"
+                ><el-icon><Sort /></el-icon>确认备料并分类</el-button
+              >
+            </div>
+          </div>
+
+          <div v-if="ui.workOrder" class="work-order-meta">
+            <span class="meta-item"
+              ><span>工单号</span><strong>{{ ui.workOrder.workOrderNo }}</strong></span
+            >
+            <span class="meta-item"
+              ><span>产品料号</span><strong>{{ ui.workOrder.item || '-' }}</strong></span
+            >
+            <span class="meta-item meta-item-wide"
+              ><span>产品描述</span><strong>{{ ui.workOrder.itemDesc || '-' }}</strong></span
+            >
+            <span class="meta-item"
+              ><span>计划数量</span><strong>{{ ui.formatQty(ui.workOrder.plannedQty) }} {{ ui.workOrder.unit }}</strong></span
+            >
           </div>
 
           <!-- 手动添加物料 -->
-          <div class="material-add-row">
-            <HistoryInput v-model="ui.materialCode" :config="ui.materialCodeConfig" placeholder="请输入物料编码" style="width: 240px" @keydown.enter.prevent="ui.handleAddByMaterial">
-              <template #append>
-                <el-button icon="Search" @click="showItemDialog" />
-              </template>
-            </HistoryInput>
-            <el-input-number v-model="ui.requiredQty" :min="0" :precision="3" :step="1" controls-position="right" placeholder="需求数量" style="width: 170px" @keydown.enter.prevent="ui.handleAddByMaterial" />
-            <el-button type="primary" :loading="ui.loadingAdd" :disabled="!ui.canAddMaterial" @click="ui.handleAddByMaterial">添加</el-button>
+          <div v-if="ui.workOrder" class="material-entry-panel">
+            <div class="material-entry-title">
+              <el-icon><Box /></el-icon><span>添加领料物料</span>
+            </div>
+            <div class="material-add-row">
+              <HistoryInput v-model="ui.materialCode" :config="ui.materialCodeConfig" placeholder="请输入物料编码" class="material-input" @keydown.enter.prevent="ui.handleAddByMaterial">
+                <template #append><el-button icon="Search" @click="showItemDialog" /></template>
+              </HistoryInput>
+              <el-input-number v-model="ui.requiredQty" :min="0" :precision="3" :step="1" controls-position="right" placeholder="需求数量" class="quantity-input" @keydown.enter.prevent="ui.handleAddByMaterial" />
+              <el-button type="primary" :loading="ui.loadingAdd" :disabled="!ui.canAddMaterial" @click="ui.handleAddByMaterial">添加到清单</el-button>
+            </div>
           </div>
 
           <!-- 清单工具栏 -->
           <div class="list-toolbar">
-            <span class="list-title">领料清单</span>
+            <div class="list-heading">
+              <span class="list-title">领料清单</span><el-tag type="info" effect="plain">{{ ui.pickLines.length }} 条</el-tag>
+            </div>
             <div class="list-actions">
-              <el-button type="success" plain :disabled="!ui.canGenerate" :loading="ui.checkingInventory" @click="() => ui.handleCheckInventory()">检查库存</el-button>
               <el-button type="danger" plain :disabled="!ui.pickLines.length" @click="ui.clearPickLines">清空清单</el-button>
             </div>
           </div>
 
           <!-- 领料清单表格 -->
-          <el-table :data="ui.pickLines" border stripe max-height="420" empty-text="选择工单后输入物料编码与本次备料数量，点击「添加」加入清单">
+          <el-table :data="ui.pickLines" border stripe height="100%" class="pick-table" empty-text="选择工单后输入物料编码与本次备料数量，点击「添加到清单」">
             <el-table-column type="index" label="序号" width="56" align="center" />
             <el-table-column label="库存" width="52" align="center">
               <template #default="{ row }">
@@ -124,119 +173,73 @@
               </template>
             </el-table-column>
           </el-table>
-
-          <!-- 上一步 + 确认备料并分类（底部居中） -->
-          <div class="step-footer-row">
-            <el-button @click="ui.goToDemandUserStep">上一步</el-button>
-            <el-button size="default" type="success" plain :disabled="!ui.canGenerate" :loading="ui.classifyLoading" @click="ui.confirmClassify">
-              <el-icon><Sort /></el-icon>
-              确认备料并分类
-            </el-button>
-          </div>
         </div>
 
         <!-- 第 3 步：确认备料并分类 -->
-        <div v-if="ui.activeStep === 2" class="step-body">
-          <div class="step-toolbar">
-            <span class="classify-summary">自动仓 {{ ui.autoMaterialRows.length }} · 线边仓 {{ ui.lineMaterialRows.length }} · 平面仓 {{ ui.flatMaterialRows.length }} · 缺料 {{ ui.shortageMaterialRows.length }}</span>
+        <div v-if="ui.activeStep === 2" class="step-body adaptive-step">
+          <div class="workflow-action-bar">
+            <div class="prep-action-summary">
+              <el-button link class="back-button" @click="ui.goBackToPrepStep"
+                ><el-icon><ArrowLeft /></el-icon>上一步</el-button
+              >
+              <span class="prep-action-divider"></span>
+              <div>
+                <div class="prep-action-title">确认仓别分类结果</div>
+                <div class="prep-action-desc">自动仓 {{ ui.autoMaterialRows.length }} 条 · 线边仓 {{ ui.lineMaterialRows.length }} 条 · 平面仓 {{ ui.flatMaterialRows.length }} 条 · 缺料 {{ ui.shortageMaterialRows.length }} 条</div>
+              </div>
+            </div>
+            <div class="prep-action-buttons">
+              <el-tag type="info" effect="plain">共 {{ ui.classifiedMaterialRows.length }} 条</el-tag>
+              <el-button type="primary" class="primary-workflow-button" :disabled="!ui.classifiedMaterialRows.length" :loading="ui.generating" @click="ui.openTargetLocationDialog"
+                ><el-icon><MagicStick /></el-icon>生成备料需求</el-button
+              >
+            </div>
           </div>
-          <el-alert type="info" :closable="false" show-icon class="classify-tip">确认下方分类无误后，点「生成备料计划」将自动仓、线边仓、平面仓及缺料合并生成备料计划</el-alert>
-          <el-row :gutter="16" class="classify-sections">
-            <el-col :span="12">
-              <el-card shadow="never" class="classify-card">
-                <template #header>
-                  <div class="section-header">
-                    <span>自动仓</span>
-                    <el-tag type="success">{{ ui.autoMaterialRows.length }} 条</el-tag>
-                  </div>
-                </template>
-                <el-table v-if="ui.autoMaterialRows.length" :data="ui.autoMaterialRows" border max-height="240">
-                  <el-table-column prop="materialCode" label="物料编码" min-width="110" />
-                  <el-table-column prop="materialDesc" label="物料描述" min-width="150" show-overflow-tooltip />
-                  <el-table-column label="本次备料数量" min-width="100" align="right">
-                    <template #default="{ row }">{{ ui.formatClassifiedPrepQty(row) }}</template>
-                  </el-table-column>
-                  <el-table-column label="推荐仓别" width="80">
-                    <template #default="{ row }">{{ row.recommendedWarehouse || '-' }}</template>
-                  </el-table-column>
-                </el-table>
-                <el-empty v-else description="暂无自动仓需求" :image-size="48" />
-              </el-card>
-            </el-col>
-            <el-col :span="12">
-              <el-card shadow="never" class="classify-card">
-                <template #header>
-                  <div class="section-header">
-                    <span>线边仓</span>
-                    <el-tag type="warning">{{ ui.lineMaterialRows.length }} 条</el-tag>
-                  </div>
-                </template>
-                <el-table v-if="ui.lineMaterialRows.length" :data="ui.lineMaterialRows" border max-height="240">
-                  <el-table-column prop="materialCode" label="物料编码" min-width="110" />
-                  <el-table-column prop="materialDesc" label="物料描述" min-width="150" show-overflow-tooltip />
-                  <el-table-column label="本次备料数量" min-width="100" align="right">
-                    <template #default="{ row }">{{ ui.formatClassifiedPrepQty(row) }}</template>
-                  </el-table-column>
-                  <el-table-column label="推荐仓别" width="80">
-                    <template #default="{ row }">{{ row.recommendedWarehouse || '-' }}</template>
-                  </el-table-column>
-                </el-table>
-                <el-empty v-else description="暂无线边仓需求" :image-size="48" />
-              </el-card>
-            </el-col>
-            <el-col :span="12">
-              <el-card shadow="never" class="classify-card">
-                <template #header>
-                  <div class="section-header">
-                    <span>平面仓</span>
-                    <el-tag type="primary">{{ ui.flatMaterialRows.length }} 条</el-tag>
-                  </div>
-                </template>
-                <el-table v-if="ui.flatMaterialRows.length" :data="ui.flatMaterialRows" border max-height="240">
-                  <el-table-column prop="materialCode" label="物料编码" min-width="110" />
-                  <el-table-column prop="materialDesc" label="物料描述" min-width="150" show-overflow-tooltip />
-                  <el-table-column label="本次备料数量" min-width="100" align="right">
-                    <template #default="{ row }">{{ ui.formatClassifiedPrepQty(row) }}</template>
-                  </el-table-column>
-                  <el-table-column label="推荐库位" width="90">
-                    <template #default="{ row }">{{ row.recommendedLocation || '-' }}</template>
-                  </el-table-column>
-                </el-table>
-                <el-empty v-else description="暂无平面仓需求" :image-size="48" />
-              </el-card>
-            </el-col>
-            <el-col :span="12">
-              <el-card shadow="never" class="classify-card">
-                <template #header>
-                  <div class="section-header">
-                    <span>缺料</span>
-                    <el-tag type="danger">{{ ui.shortageMaterialRows.length }} 条</el-tag>
-                  </div>
-                </template>
-                <el-table v-if="ui.shortageMaterialRows.length" :data="ui.shortageMaterialRows" border max-height="240">
-                  <el-table-column prop="materialCode" label="物料编码" min-width="110" />
-                  <el-table-column prop="materialDesc" label="物料描述" min-width="150" show-overflow-tooltip />
-                  <el-table-column label="本次备料数量" min-width="100" align="right">
-                    <template #default="{ row }">{{ ui.formatClassifiedPrepQty(row) }}</template>
-                  </el-table-column>
-                </el-table>
-                <el-empty v-else description="暂无缺料需求" :image-size="48" />
-              </el-card>
-            </el-col>
-          </el-row>
-
-          <!-- 上一步 + 生成备料需求（底部居中） -->
-          <div class="step-footer-row">
-            <el-button @click="ui.goBackToPrepStep">上一步</el-button>
-            <el-button size="default" type="primary" :disabled="!ui.classifiedMaterialRows.length" :loading="ui.generating" @click="ui.openTargetLocationDialog">
-              <el-icon><MagicStick /></el-icon>
-              生成备料需求
-            </el-button>
-          </div>
+          <classified-material-table :rows="classifiedDisplayRows" read-only />
         </div>
 
         <!-- 第 4 步：执行任务 -->
-        <div v-if="ui.activeStep === 3" class="step-body">
+        <div v-if="ui.activeStep === 3" class="step-body adaptive-step">
+          <div v-if="ui.generatedDemand" class="execution-module">
+            <div class="workflow-action-bar execution-overview">
+              <span class="execution-section-label"
+                ><el-icon><Tickets /></el-icon>需求概览</span
+              >
+              <div class="plan-meta">
+                <span class="plan-meta-item"
+                  ><span>需求单号</span><strong>{{ ui.generatedDemand.demandNo }}</strong></span
+                >
+                <span class="plan-meta-item"
+                  ><span>工单数</span><strong>{{ ui.generatedDemand.workOrderCount }} 个</strong></span
+                >
+                <span class="plan-meta-item"
+                  ><span>缺料行</span><strong>{{ executionShortageCount }} 条</strong></span
+                >
+                <span class="plan-meta-item"
+                  ><span>齐套率</span><strong>{{ ui.formatKitRate(ui.generatedDemand.kitRate) }}%</strong></span
+                >
+              </div>
+              <div class="execution-header-actions">
+                <el-tag v-if="ui.taskExecutionFinished" type="success">本轮任务已提交</el-tag>
+                <el-button v-if="ui.generatedDemand.issueId && !ui.taskExecutionFinished" type="primary" size="small" @click="ui.goToMaterialIssue">去领料</el-button>
+                <el-button type="primary" class="next-round-button" @click="ui.startNewIssue"
+                  ><el-icon><RefreshRight /></el-icon>开始下一轮领料</el-button
+                >
+              </div>
+            </div>
+            <div v-if="ui.hasWarehouse261Tasks && !ui.taskExecutionFinished" class="execution-operation-row">
+              <span class="warehouse261-label">261 扣料操作</span>
+              <el-button v-if="ui.prep261AutoRows.length" type="success" size="small" :loading="ui.submittingAuto" @click="ui.submitAutoIssue">自动仓 · 261 扣账（{{ ui.prep261AutoRows.length }}条）</el-button>
+              <el-button v-if="ui.prep261LineRows.length" type="warning" size="small" :loading="ui.submittingLine" @click="ui.submitLineIssue">线边仓 · 待物料员 261 扣料（{{ ui.prep261LineRows.length }}条）</el-button>
+              <el-button v-if="ui.canSubmitCombined261" type="primary" size="small" :loading="ui.submittingCombined" @click="ui.submitCombinedIssue">自动仓+线边仓 · 261 合并扣料（{{ ui.combined261RowCount }}条）</el-button>
+            </div>
+            <prep-demand-execution-table :rows="ui.prepDisplayRows" />
+          </div>
+          <el-empty v-else description="请在上一步生成备料需求" />
+        </div>
+
+        <!-- 旧版分卡展示保留为不可渲染模板，便于业务字段兼容 -->
+        <div v-if="false" class="step-body">
           <div class="step-toolbar">
             <el-button v-if="ui.generatedDemand && !ui.taskExecutionFinished" type="primary" @click="ui.startNewIssue">继续领料</el-button>
           </div>
@@ -414,7 +417,7 @@
 
 <script setup lang="ts">
 import { computed, getCurrentInstance, nextTick, reactive, ref, toRefs, watch } from 'vue';
-import { Bell, MagicStick, Plus, Sort } from '@element-plus/icons-vue';
+import { ArrowLeft, ArrowRight, Bell, Box, MagicStick, Plus, RefreshRight, Sort, Tickets, UserFilled } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { HttpStatus } from '@/enums/RespEnum';
 import type { HistoryConfig } from '@/types/history';
@@ -435,6 +438,8 @@ import LocationDetailDialog, { type LocationDialogMode } from '@/views/wms/alloc
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import WorkOrderSelectionDialog from '@/views/wms/workOrder/components/WorkOrderSelectionDialog.vue';
 import TargetDemandLocationDialog from '@/views/wms/allocation/components/TargetDemandLocationDialog.vue';
+import ClassifiedMaterialTable from '@/views/wms/allocation/components/ClassifiedMaterialTable.vue';
+import PrepDemandExecutionTable from '@/views/wms/allocation/components/PrepDemandExecutionTable.vue';
 import PrepDemandPlanView from '@/views/wms/allocation/components/PrepDemandPlanView.vue';
 import PrepDemandLocationSourceColumn from '@/views/wms/allocation/components/PrepDemandLocationSourceColumn.vue';
 import IssueProcessDrawer from '@/views/wms/materialIssue/components/IssueProcessDrawer.vue';
@@ -689,7 +694,7 @@ function useZpIssue() {
   // 多步向导
   const activeStep = ref(0);
   const stepsActive = computed(() => (activeStep.value >= 3 ? 3 : activeStep.value));
-  const demandUserStepDesc = computed(() => (materialUserCode.value ? `已选择：${materialUserLabel.value}` : ''));
+  const demandUserStepDesc = computed(() => (materialUserCode.value ? `操作人员：${materialUserLabel.value}` : '请选择本人或其他操作人员'));
 
   // ==================== 执行任务状态 ====================
   const taskExecutionFinished = ref(false);
@@ -1403,6 +1408,15 @@ function useZpIssue() {
 
 const ui = reactive(useZpIssue());
 
+/** 复用仓别分类列表所需的统一展示字段。 */
+const classifiedDisplayRows = computed(() =>
+  ui.classifiedMaterialRows.map((row) => ({
+    ...row,
+    prepQtyText: ui.formatClassifiedPrepQty(row)
+  }))
+);
+const executionShortageCount = computed(() => ui.prepDisplayRows.filter((row) => row.warehouseRoute === 'SHORTAGE' || row.lineType === 'SHORTAGE').length);
+
 // ==================== 物料选择弹框 ====================
 const itemDialogRef = ref<InstanceType<typeof ItemDialog>>();
 
@@ -1595,5 +1609,326 @@ const itemSelectCallBack = (record: any) => {
 }
 .plan-detail-collapse {
   margin-top: 12px;
+}
+
+/* 与工单发料工作台保持一致的紧凑、自适应布局 */
+.special-issue-page {
+  height: calc(100vh - 84px);
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.page-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.page-card :deep(> .el-card__body) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.page-title {
+  margin: 0;
+  color: var(--el-text-color-primary);
+  font-size: 18px;
+  font-weight: 600;
+}
+.page-subtitle {
+  margin: 4px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+.zp-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 10px;
+}
+.workbench-steps {
+  flex-shrink: 0;
+  margin: 4px 0 10px;
+}
+.adaptive-step {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.adaptive-step :deep(.classified-material-table),
+.execution-module :deep(.execution-material-table) {
+  flex: 1;
+  min-height: 0;
+}
+.prep-step {
+  gap: 10px;
+}
+.workflow-action-bar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--el-fill-color-blank) 0%, var(--el-color-primary-light-9) 100%);
+}
+.prep-action-summary,
+.prep-action-buttons {
+  display: flex;
+  align-items: center;
+}
+.prep-action-summary {
+  min-width: 0;
+  gap: 12px;
+}
+.prep-action-buttons {
+  flex-shrink: 0;
+  gap: 8px;
+}
+.back-button {
+  flex-shrink: 0;
+  padding: 0;
+}
+.prep-action-divider {
+  width: 1px;
+  height: 32px;
+  flex-shrink: 0;
+  background: var(--el-border-color);
+}
+.prep-action-title {
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+.prep-action-desc {
+  overflow: hidden;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.demand-user-step {
+  width: min(760px, 100%);
+  max-width: none;
+  margin: 0 auto;
+}
+.demand-user-card {
+  overflow: hidden;
+  padding: 0;
+  border-radius: 8px;
+}
+.demand-user-card :deep(> .el-card__body) {
+  padding: 0;
+}
+.demand-user-heading {
+  justify-content: flex-start;
+  border: 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-radius: 0;
+}
+.demand-user-icon {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--el-color-primary);
+  font-size: 20px;
+  background: var(--el-color-primary-light-8);
+}
+.demand-user-title {
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+.demand-user-desc {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.demand-user-form {
+  margin-bottom: 0;
+  padding: 24px 28px 8px;
+}
+.demand-user-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 28px 24px;
+}
+.primary-workflow-button,
+.primary-step-button {
+  border: 0;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--el-color-primary) 0%, #6b8cff 100%);
+  box-shadow: 0 3px 10px rgb(64 158 255 / 22%);
+}
+.primary-step-button {
+  min-width: 156px;
+}
+.work-order-meta {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  padding: 9px 14px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  background: var(--el-fill-color-extra-light);
+}
+.meta-item {
+  display: inline-flex;
+  min-width: 120px;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+.meta-item > span,
+.plan-meta-item > span {
+  color: var(--el-text-color-secondary);
+}
+.meta-item > strong,
+.plan-meta-item > strong {
+  color: var(--el-text-color-primary);
+  font-weight: 600;
+}
+.meta-item-wide {
+  min-width: 260px;
+  flex: 1;
+}
+.material-entry-panel {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+}
+.material-entry-title {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.material-add-row {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+}
+.material-input {
+  width: 240px;
+}
+.quantity-input {
+  width: 170px;
+}
+.list-toolbar {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 2px 2px 0;
+}
+.list-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pick-table {
+  flex: 1;
+  min-height: 0;
+}
+.execution-module {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+}
+.execution-overview {
+  flex-wrap: wrap;
+}
+.execution-section-label {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--el-color-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.plan-meta,
+.execution-header-actions,
+.execution-operation-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.plan-meta {
+  gap: 8px 20px;
+}
+.plan-meta-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+.execution-operation-row {
+  padding-top: 8px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+.next-round-button {
+  min-width: 148px;
+  height: 34px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 17px;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--el-color-primary) 0%, #6b8cff 100%);
+  box-shadow: 0 4px 12px rgb(64 158 255 / 28%);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.next-round-button:hover,
+.next-round-button:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgb(64 158 255 / 36%);
+}
+@media (max-width: 1200px) {
+  .workflow-action-bar,
+  .material-entry-panel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .demand-user-heading {
+    align-items: center;
+    flex-direction: row;
+  }
+  .prep-action-buttons {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 </style>

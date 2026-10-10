@@ -27,7 +27,7 @@ export interface WorkOrderVO {
   /**
    * 是否需要入库检
    */
-  checkEnable: number;
+  receiptInspectionFlag: boolean;
 
   /**
    * 计划开工日期
@@ -139,7 +139,7 @@ export interface WorkOrderForm extends BaseEntity {
   /**
    * 是否需要入库检
    */
-  checkEnable?: number;
+  receiptInspectionFlag?: boolean;
 
   /**
    * 计划开工日期
@@ -246,7 +246,7 @@ export interface WorkOrderQuery extends PageQuery {
   /**
    * 是否需要入库检
    */
-  checkEnable?: number;
+  receiptInspectionFlag?: boolean;
 
   /**
    * 计划开工日期

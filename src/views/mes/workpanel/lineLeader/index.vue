@@ -162,7 +162,7 @@
       <template #header>
         <div class="detail-header">
           <span>查看详情</span>
-          <el-button link type="primary" icon="Refresh" @click="loadPanelData">刷新</el-button>
+          <el-button link type="primary" icon="Refresh" :disabled="!podConfig.shopOrder" @click="loadPanelData">刷新</el-button>
         </div>
       </template>
 
@@ -591,6 +591,12 @@ const isActiveRouteStep = (step: WorkPanelRouterStepVO) => {
 };
 
 const loadPanelData = async () => {
+  if (!podConfig.value.shopOrder) {
+    reportList.value = [];
+    onlineEmployeeList.value = [];
+    reportEmployeeList.value = [];
+    return;
+  }
   loading.value = true;
   try {
     const res = await getWorkPanelData({
@@ -1604,6 +1610,28 @@ onMounted(async () => {
 
 .records-card {
   overflow: hidden;
+
+  :deep(.el-table:has(.el-table__empty-block)) {
+    .el-table__inner-wrapper,
+    .el-table__header-wrapper,
+    .el-table__body-wrapper {
+      overflow: hidden;
+    }
+
+    .el-table__empty-block,
+    .el-table__body,
+    .el-scrollbar__view {
+      width: 100% !important;
+    }
+
+    .el-scrollbar__wrap {
+      overflow: hidden !important;
+    }
+
+    .el-scrollbar__bar {
+      display: none !important;
+    }
+  }
 }
 
 .selector-bar {

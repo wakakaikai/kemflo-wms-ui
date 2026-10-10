@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
   <!-- Phosphor Icons (MIT). License: /licenses/phosphor-icons.txt -->
   <g transform="scale(0.09375 0.09375)">
-    <g fill="var(--menu-icon-warehouse-primary, #2878f0)">
-    <path fill="var(--menu-icon-warehouse-accent, #06b6d4)" d="M80 40v96L32 88Z" opacity="0.32"/>
+    <g fill="currentColor">
+    <path fill="currentColor" d="M80 40v96L32 88Z" opacity="0.32"/>
     <path d="M168 80H88V40a8 8 0 0 0-13.66-5.66l-48 48a8 8 0 0 0 0 11.32l48 48A8 8 0 0 0 88 136V96h80a48 48 0 0 1 0 96H80a8 8 0 0 0 0 16h88a64 64 0 0 0 0-128m-96 36.69L43.31 88L72 59.31Z"/>
     </g>
   </g>

@@ -5,6 +5,7 @@ import { useAbnormalCallNoticeStore } from '@/store/modules/abnormalCallNotice';
 import { useSerialNoticeStore } from '@/store/modules/serialNotice';
 import { useSpeech } from './speak-tts';
 import { MessageCategory, MessagePriority } from '@/store/modules/notice';
+import { onScopeDispose, watch } from 'vue';
 
 // 初始化 SSE
 export const initSSE = (baseUrl: string) => {
@@ -23,14 +24,52 @@ export const initSSE = (baseUrl: string) => {
   // 构建 SSE URL
   const url = `${baseUrl}?Authorization=Bearer ${getToken()}&clientid=${import.meta.env.VITE_APP_CLIENT_ID}`;
 
-  const { data, error } = useEventSource(url, [], {
+  let hasOpened = false;
+  let pageUnloading = false;
+  let reconnectNotificationShown = false;
+  let reconnectNoticeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const clearReconnectNoticeTimer = () => {
+    if (reconnectNoticeTimer) {
+      clearTimeout(reconnectNoticeTimer);
+      reconnectNoticeTimer = undefined;
+    }
+  };
+
+  const markPageUnloading = () => {
+    pageUnloading = true;
+    clearReconnectNoticeTimer();
+  };
+
+  const showReconnectNotification = () => {
+    if (pageUnloading || reconnectNotificationShown) return;
+    reconnectNotificationShown = true;
+    ElNotification.error({
+      title: '连接错误',
+      message: '实时消息连接中断，正在尝试重新连接...',
+      duration: 3000
+    });
+  };
+
+  window.addEventListener('beforeunload', markPageUnloading);
+  window.addEventListener('pagehide', markPageUnloading);
+
+  const { data, error, status } = useEventSource(url, [], {
     autoReconnect: {
       retries: 10,
       delay: 30000,
       onFailed() {
         console.error('SSE 连接失败，已重试10次');
+        showReconnectNotification();
       }
     }
+  });
+
+  watch(status, (newStatus) => {
+    if (newStatus !== 'OPEN') return;
+    hasOpened = true;
+    reconnectNotificationShown = false;
+    clearReconnectNoticeTimer();
   });
 
   // 错误处理
@@ -38,13 +77,19 @@ export const initSSE = (baseUrl: string) => {
     if (err) {
       console.error('SSE 连接错误:', err);
       error.value = null;
-
-      ElNotification.error({
-        title: '连接错误',
-        message: '实时消息连接中断，正在尝试重新连接...',
-        duration: 3000
-      });
+      // 页面刷新/关闭、首次连接尚未成功时不提示，避免正常连接切换被误报。
+      if (pageUnloading || !hasOpened || reconnectNotificationShown || reconnectNoticeTimer) return;
+      reconnectNoticeTimer = setTimeout(() => {
+        reconnectNoticeTimer = undefined;
+        if (status.value !== 'OPEN') showReconnectNotification();
+      }, 3000);
     }
+  });
+
+  onScopeDispose(() => {
+    markPageUnloading();
+    window.removeEventListener('beforeunload', markPageUnloading);
+    window.removeEventListener('pagehide', markPageUnloading);
   });
 
   // 消息处理

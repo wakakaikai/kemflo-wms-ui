@@ -52,7 +52,11 @@
               <el-table-column v-if="stoColumns[9].visible" label="已收数量" align="left" prop="receivedQuantity" />
               <el-table-column v-if="stoColumns[10].visible" label="未清数量" align="left" prop="openQuantity" />
               <el-table-column v-if="stoColumns[11].visible" label="订单单位" align="center" prop="orderUnit" />
-              <el-table-column v-if="stoColumns[12].visible" label="需质检" align="center" prop="inspectionFlag" />
+              <el-table-column v-if="stoColumns[12].visible" label="需质检" align="center" prop="receiptInspectionFlag">
+                <template #default="scope">
+                  <dict-tag :options="wms_boolean_type" :value="scope.row.receiptInspectionFlag" />
+                </template>
+              </el-table-column>
               <el-table-column v-if="stoColumns[13].visible" label="库存单位" align="center" prop="inventoryUnit" />
               <el-table-column v-if="stoColumns[14].visible" label="换算比例" align="center" prop="conversionRatio" />
               <el-table-column v-if="stoColumns[15].visible" label="供应商代码" align="center" prop="supplierCode" />
@@ -85,6 +89,7 @@
                 <el-radio-button label="fixed">固定库位</el-radio-button>
                 <el-radio-button label="multiple">多库位</el-radio-button>
               </el-radio-group>
+              <el-button @click="openStoStagingDialog">持有数据{{ stoStagingSummaries.length ? `(${stoStagingSummaries.length})` : '' }}</el-button>
               <el-button type="danger" @click="clearStoInboundList" :disabled="stoInboundList.length === 0">清空列表</el-button>
             </div>
           </div>
@@ -205,6 +210,7 @@
           </PurchaseOrderDetailTreeTable>
 
           <div style="margin-top: 20px; text-align: center">
+            <el-button :loading="stoStagingLoading" :disabled="stoInboundList.length === 0" @click="handleSaveStoStaging">暂存</el-button>
             <el-button :loading="stoButtonLoading" type="primary" @click="submitStoForm" :disabled="stoInboundList.length === 0">STO收货</el-button>
           </div>
         </div>
@@ -214,6 +220,23 @@
 
   <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
   <InventorySelectionDialog v-model="bomInventoryDialog.visible" :material-code="bomInventoryDialog.materialCode" :material-desc="bomInventoryDialog.materialDesc" :issue-qty="bomInventoryDialog.issueQty" :unit="bomInventoryDialog.unit" :general-only="false" special-inventory-flag="O" :business-code="bomInventoryDialog.supplierCode" @confirm="applyBomInventorySelection" />
+
+  <el-dialog v-model="stoStagingDialogVisible" title="持有数据（交货单号 + 过账日期）" width="80%" append-to-body destroy-on-close>
+    <el-table :data="stoStagingSummaries" border max-height="360" empty-text="暂无暂存数据">
+      <el-table-column label="交货单号" prop="deliveryOrderNo" min-width="150" />
+      <el-table-column label="过账日期" prop="postingDate" width="110" align="center" />
+      <el-table-column label="行数" prop="lineCount" width="70" align="center" />
+      <el-table-column label="暂存时间" min-width="160" align="center">
+        <template #default="scope">{{ parseTime(scope.row.savedAt) }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="140" align="center" fixed="right">
+        <template #default="scope">
+          <el-button type="primary" link @click="handleLoadStoStaging(scope.row)">加载</el-button>
+          <el-button type="danger" link @click="handleDeleteStoStaging(scope.row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+  </el-dialog>
 </template>
 
 <script setup name="StoReceive" lang="ts">
@@ -226,15 +249,16 @@ import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import InventorySelectionDialog from '@/views/wms/inventoryDetail/components/InventorySelectionDialog.vue';
 import PurchaseOrderDetailTreeTable from '@/views/wms/purchaseOrderDetail/components/PurchaseOrderDetailTreeTable.vue';
-import { findOperationParentRow, inheritPoItemNumberOnBom, isOutsourcingCategory, isPoDetailParentRow } from '@/views/wms/purchaseOrderDetail/utils/purchaseOrderDetailTree';
+import { cloneInboundListForPersist, findOperationParentRow, inheritPoItemNumberOnBom, isOutsourcingCategory, isPoDetailParentRow, normalizeInboundListAfterLoad } from '@/views/wms/purchaseOrderDetail/utils/purchaseOrderDetailTree';
+import { buildStoInboundStagingKey, listStoInboundStagings, loadStoInboundStaging, normalizeStoStagingPostingDate, removeStoInboundStaging, resolveStoStagingDeliveryOrder, saveStoInboundStaging, type StoInboundStagingPayload, type StoInboundStagingSummary } from '@/views/wms/purchaseInbound/utils/stoInboundStaging';
 import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
-import { formatQty } from '@/utils/ruoyi';
+import { formatQty, parseTime } from '@/utils/ruoyi';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { wms_purchase_category } = toRefs<any>(proxy?.useDict('wms_purchase_category'));
+const { wms_purchase_category, wms_boolean_type } = toRefs<any>(proxy?.useDict('wms_purchase_category', 'wms_boolean_type'));
 
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 const stoOrderDetailList = ref<DeliveryOrderDetailVO[]>([]);
@@ -249,6 +273,9 @@ const stoInboundMode = ref<'fixed' | 'multiple'>('fixed');
 const stoResultMessage = ref('');
 const stoResultStatus = ref(false);
 const stoButtonLoading = ref(false);
+const stoStagingLoading = ref(false);
+const stoStagingDialogVisible = ref(false);
+const stoStagingSummaries = ref<StoInboundStagingSummary[]>([]);
 const stoTableLoading = ref(false);
 const currenIndex = ref(0);
 let inboundRowKeySeq = 0;
@@ -262,7 +289,7 @@ const bomInventoryDialog = reactive({
   unit: '',
   supplierCode: ''
 });
-const stoFixedInboundForm = ref({
+const stoFixedInboundForm = ref<StoInboundStagingPayload['fixedInboundForm']>({
   locationCode: '',
   lfsnr: '',
   bktxt: '',
@@ -753,6 +780,96 @@ const buildMissingBatchBomMessage = (items: any[]) => {
   return details.length ? `请先为以下543扣料明细选择批次：\n${details.join('\n')}` : '';
 };
 
+const refreshStoStagingSummaries = async () => {
+  stoStagingSummaries.value = await listStoInboundStagings();
+};
+
+const openStoStagingDialog = async () => {
+  await refreshStoStagingSummaries();
+  stoStagingDialogVisible.value = true;
+};
+
+const applyStoStagingPayload = (payload: StoInboundStagingPayload) => {
+  stoInboundMode.value = payload.inboundMode;
+  stoFixedInboundForm.value = { ...payload.fixedInboundForm };
+  stoInboundList.value = normalizeInboundListAfterLoad(JSON.parse(JSON.stringify(payload.inboundList)));
+  stoResultMessage.value = '';
+  stoResultStatus.value = false;
+  transferExpanded.value = true;
+};
+
+const handleSaveStoStaging = async () => {
+  if (!stoInboundList.value.length) {
+    proxy?.$modal.msgWarning('STO入库列表为空，无法暂存');
+    return;
+  }
+  const deliveryOrderNo = resolveStoStagingDeliveryOrder(stoInboundList.value);
+  if (!deliveryOrderNo) {
+    proxy?.$modal.msgWarning('暂存要求同一交货单：请确保STO入库列表中的交货单号一致');
+    return;
+  }
+  const postingDate = normalizeStoStagingPostingDate(stoFixedInboundForm.value.postingDate);
+  if (!stoFixedInboundForm.value.postingDate) {
+    stoFixedInboundForm.value.postingDate = postingDate;
+  }
+  stoStagingLoading.value = true;
+  try {
+    const summary = await saveStoInboundStaging(
+      {
+        receiveType: '2',
+        inboundMode: stoInboundMode.value,
+        fixedInboundForm: { ...stoFixedInboundForm.value, postingDate },
+        inboundList: cloneInboundListForPersist(stoInboundList.value)
+      },
+      deliveryOrderNo
+    );
+    await refreshStoStagingSummaries();
+    stoResultStatus.value = true;
+    stoResultMessage.value = `已暂存：${summary.deliveryOrderNo} / ${summary.postingDate}（${summary.lineCount} 行）`;
+    proxy?.$modal.msgSuccess('暂存成功');
+  } finally {
+    stoStagingLoading.value = false;
+  }
+};
+
+const handleLoadStoStaging = async (row: StoInboundStagingSummary) => {
+  const payload = await loadStoInboundStaging(row.storageKey);
+  if (!payload) {
+    proxy?.$modal.msgWarning('暂存数据不存在或已损坏');
+    await refreshStoStagingSummaries();
+    return;
+  }
+  if (stoInboundList.value.length) {
+    try {
+      await proxy?.$modal.confirm(`将加载暂存 ${row.deliveryOrderNo} / ${row.postingDate}，是否覆盖当前STO入库列表？`);
+    } catch {
+      return;
+    }
+  }
+  applyStoStagingPayload(payload);
+  stoStagingDialogVisible.value = false;
+  proxy?.$modal.msgSuccess('已加载暂存数据');
+};
+
+const handleDeleteStoStaging = async (row: StoInboundStagingSummary) => {
+  try {
+    await proxy?.$modal.confirm(`确认删除暂存 ${row.deliveryOrderNo} / ${row.postingDate}？`);
+  } catch {
+    return;
+  }
+  await removeStoInboundStaging(row.storageKey);
+  await refreshStoStagingSummaries();
+  proxy?.$modal.msgSuccess('已删除暂存');
+};
+
+const clearCurrentStoStagingIfPosted = async () => {
+  const deliveryOrderNo = resolveStoStagingDeliveryOrder(stoInboundList.value);
+  if (!deliveryOrderNo) return;
+  const postingDate = normalizeStoStagingPostingDate(stoFixedInboundForm.value.postingDate);
+  await removeStoInboundStaging(buildStoInboundStagingKey(deliveryOrderNo, postingDate));
+  await refreshStoStagingSummaries();
+};
+
 const submitStoForm = async () => {
   const validStoInboundList = stoInboundList.value.filter((item) => item.receivePoQuantity > 0);
   stoResultStatus.value = true;
@@ -848,6 +965,7 @@ const submitStoForm = async () => {
     }
     stoResultMessage.value = `STO入库成功，物料凭证号${res.msg}`;
     stoResultStatus.value = true;
+    await clearCurrentStoStagingIfPosted();
     stoInboundList.value = [];
     stoFixedInboundForm.value.locationCode = '';
     stoFixedInboundForm.value.lfsnr = '';
@@ -863,6 +981,10 @@ const submitStoForm = async () => {
     stoButtonLoading.value = false;
   }
 };
+
+onMounted(() => {
+  void refreshStoStagingSummaries();
+});
 </script>
 
 <style scoped>

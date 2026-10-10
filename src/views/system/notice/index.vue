@@ -31,14 +31,13 @@
             <el-button v-hasPermi="['system:notice:add']" type="primary" plain icon="Plus" @click="handleAdd">新增</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['system:notice:edit']" type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()"
-              >修改</el-button
-            >
+            <el-button v-hasPermi="['system:notice:edit']" type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()">修改</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button v-hasPermi="['system:notice:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()">
-              删除
-            </el-button>
+            <el-button v-hasPermi="['system:notice:edit']" type="warning" plain icon="Promotion" :disabled="single" @click="handlePublish()"> 发布 </el-button>
+          </el-col>
+          <el-col :span="1.5">
+            <el-button v-hasPermi="['system:notice:remove']" type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()"> 删除 </el-button>
           </el-col>
           <right-toolbar v-model:show-search="showSearch" @query-table="getList"></right-toolbar>
         </el-row>
@@ -58,16 +57,19 @@
             <dict-tag :options="sys_notice_status" :value="scope.row.status" />
           </template>
         </el-table-column>
-        <el-table-column label="创建者" align="center" prop="createByName" width="100" />
-        <el-table-column label="创建时间" align="center" prop="createTime" width="100">
-          <template #default="scope">
-            <span>{{ proxy.parseTime(scope.row.createTime, '{y}-{m}-{d}') }}</span>
-          </template>
-        </el-table-column>
+        <el-table-column label="创建时间" prop="createTime" align="center" />
+        <el-table-column label="创建人" prop="createByName" align="center" />
+        <el-table-column label="修改时间" prop="updateTime" align="center" />
+        <el-table-column label="修改人" prop="updateByName" align="center" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
               <el-button v-hasPermi="['system:notice:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row)"></el-button>
+            </el-tooltip>
+            <el-tooltip :content="scope.row.status === '0' ? '发布' : '已关闭的公告不能发布'" placement="top">
+              <span>
+                <el-button v-hasPermi="['system:notice:edit']" link type="warning" icon="Promotion" :disabled="scope.row.status !== '0'" @click="handlePublish(scope.row)"></el-button>
+              </span>
             </el-tooltip>
             <el-tooltip content="删除" placement="top">
               <el-button v-hasPermi="['system:notice:remove']" link type="primary" icon="Delete" @click="handleDelete(scope.row)"></el-button>
@@ -119,7 +121,7 @@
 </template>
 
 <script setup name="Notice" lang="ts">
-import { listNotice, getNotice, delNotice, addNotice, updateNotice } from '@/api/system/notice';
+import { listNotice, getNotice, delNotice, addNotice, updateNotice, publishNotice } from '@/api/system/notice';
 import { NoticeForm, NoticeQuery, NoticeVO } from '@/api/system/notice/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -227,6 +229,18 @@ const submitForm = () => {
       await getList();
     }
   });
+};
+/** 发布公告 */
+const handlePublish = async (row?: NoticeVO) => {
+  const noticeId = row?.noticeId || ids.value[0];
+  const notice = row || noticeList.value.find((item) => item.noticeId === noticeId);
+  if (notice?.status !== '0') {
+    proxy?.$modal.msgWarning('已关闭的公告不能发布');
+    return;
+  }
+  await proxy?.$modal.confirm(`是否确认发布公告“${notice?.noticeTitle || noticeId}”？发布后将实时推送给所有在线用户。`);
+  await publishNotice(noticeId);
+  proxy?.$modal.msgSuccess('公告发布成功');
 };
 /** 删除按钮操作 */
 const handleDelete = async (row?: NoticeVO) => {
