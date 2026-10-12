@@ -8,8 +8,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite serve --mode development",
-    "build:prod": "vite build --mode production",
-    "build:dev": "vite build --mode development",
+    "build:prod": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build --mode production",
+    "build:dev": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build --mode development",
     "preview": "vite preview",
     "lint:eslint": "eslint",
     "lint:eslint:fix": "eslint --fix",
@@ -18,8 +18,8 @@
     "fix:home-i18n": "node scripts/generate-home.mjs"
   },
   "repository": {
-    "type": "git",
-    "url": "https://gitee.com/JavaLionLi/plus-ui.git"
+    "type": "URL",
+    "url": "https://wms.kemflo.cn:8777"
   },
   "dependencies": {
     "@antv/x6": "^3.1.7",

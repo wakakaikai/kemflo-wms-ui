@@ -653,7 +653,7 @@ const handleBatchConfirm = (values: string[]) => {
 const handleExport = () => {
   if (!validateDate()) return;
   const [beginDate, endDate] = queryParams.dateRange;
-  proxy?.download('wms/report/mesReportHRDifferenceData/export', buildQuery(), `HR员工考勤与报工差异_${beginDate}_${endDate}.xlsx`);
+  proxy?.download('wms/report/mesReportHRDifference/export', buildQuery(), `HR员工考勤与报工差异_${beginDate}_${endDate}.xlsx`);
 };
 
 /** 切换报表全屏状态。 */

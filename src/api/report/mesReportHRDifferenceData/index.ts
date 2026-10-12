@@ -5,7 +5,7 @@ import type { AttendanceCostCenterOption, MesReportHRDifferenceDataChartVO, MesR
 /** 查询当前租户存在ZhiJian_001直接人员的成本中心选项。 */
 export const listAttendanceCostCenters = (): AxiosPromise<AttendanceCostCenterOption[]> => {
   return request({
-    url: '/wms/report/mesReportHRDifferenceData/cost-centers',
+    url: '/wms/report/mesReportHRDifference/cost-centers',
     method: 'get'
   });
 };
@@ -18,7 +18,7 @@ export const listAttendanceCostCenters = (): AxiosPromise<AttendanceCostCenterOp
  */
 export const listMesReportHRDifferenceData = (data: MesReportHRDifferenceDataQuery): AxiosPromise<MesReportHRDifferenceDataVO[]> => {
   return request({
-    url: '/wms/report/mesReportHRDifferenceData/list',
+    url: '/wms/report/mesReportHRDifference/list',
     method: 'post',
     params: {
       pageNum: data.pageNum,
@@ -36,7 +36,7 @@ export const listMesReportHRDifferenceData = (data: MesReportHRDifferenceDataQue
  */
 export const getMesReportHRDifferenceDataChart = (data: MesReportHRDifferenceDataQuery): AxiosPromise<MesReportHRDifferenceDataChartVO> => {
   return request({
-    url: '/wms/report/mesReportHRDifferenceData/chart',
+    url: '/wms/report/mesReportHRDifference/chart',
     method: 'post',
     data
   });

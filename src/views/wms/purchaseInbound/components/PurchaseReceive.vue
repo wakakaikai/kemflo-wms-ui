@@ -15,25 +15,37 @@
         </template>
 
         <div v-show="historyExpanded" class="history-card-body">
-          <el-form v-show="showSearch" ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
-            <el-form-item label="采购单" prop="poNumber">
-              <HistoryInput v-model="queryParams.poNumber" :config="poNumberConfig" placeholder="请输入采购单" @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="项次" prop="itemNumber">
-              <HistoryInput v-model="queryParams.itemNumber" :config="itemNoConfig" placeholder="请输入项次" @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="采购类别" prop="poCategory">
-              <el-select v-model="queryParams.poCategory" placeholder="请选择采购类别" clearable>
-                <el-option v-for="dict in wms_purchase_category" :key="dict.value" :label="dict.label" :value="dict.value" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="显示已收货" prop="showOpenQuantityZero">
-              <el-checkbox v-model="queryParams.showOpenQuantityZero" @change="handleQuery" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" icon="Search" @click="handleQuery" :loading="loading">搜索</el-button>
-              <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-            </el-form-item>
+          <el-form v-show="showSearch" ref="queryFormRef" :model="queryParams" :rules="queryRules" label-width="auto" class="po-search-form">
+            <el-row :gutter="16">
+              <el-col :xs="24" :sm="6" :md="6" :lg="6" :xl="4">
+                <el-form-item label="采购单" prop="poNumber">
+                  <HistoryInput v-model="queryParams.poNumber" :config="poNumberConfig" placeholder="请输入采购单" @keyup.enter="handleQuery" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="5" :md="5" :lg="5" :xl="4">
+                <el-form-item label="项次" prop="itemNumber">
+                  <HistoryInput v-model="queryParams.itemNumber" :config="itemNoConfig" placeholder="请输入项次" @keyup.enter="handleQuery" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="4" :md="4" :lg="4" :xl="4">
+                <el-form-item label="采购类别" prop="poCategory">
+                  <el-select v-model="queryParams.poCategory" placeholder="请选择采购类别" clearable>
+                    <el-option v-for="dict in wms_purchase_category" :key="dict.value" :label="dict.value + ' ' + dict.label" :value="dict.value" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="4" :md="4" :lg="4" :xl="2">
+                <el-form-item label="显示已收货" prop="showOpenQuantityZero">
+                  <el-checkbox v-model="queryParams.showOpenQuantityZero" @change="handleShowReceivedChange" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="5" :md="5" :lg="5" :xl="4">
+                <el-form-item class="po-search-actions">
+                  <el-button type="primary" icon="Search" @click="handleQuery" :loading="loading">搜索</el-button>
+                  <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+                </el-form-item>
+              </el-col>
+            </el-row>
           </el-form>
 
           <div class="search-result">
@@ -88,7 +100,7 @@
         <div v-show="transferExpanded" class="transfer-card-body">
           <el-form :model="fixedInboundForm" ref="fixedInboundFormRef" label-width="auto" :inline="true">
             <el-row :gutter="20">
-              <el-col :sm="24" :md="8" :lg="8" v-if="inboundMode === 'fixed'">
+              <el-col :sm="24" :md="8" :lg="6" :xl="4" v-if="inboundMode === 'fixed'">
                 <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
                   <HistoryInput v-model="fixedInboundForm.locationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(fixedInboundForm.locationCode)">
                     <template #append>
@@ -97,25 +109,17 @@
                   </HistoryInput>
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="8" :lg="8">
+              <el-col :sm="24" :md="8" :lg="6" :xl="4">
                 <el-form-item label="交货单">
                   <HistoryInput v-model="fixedInboundForm.lfsnr" :config="lfsnrConfig" placeholder="请输入交货单" />
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="inboundMode === 'fixed' ? 7 : 8" :lg="inboundMode === 'fixed' ? 7 : 8">
+              <el-col :sm="24" :md="8" :lg="6" :xl="4">
                 <el-form-item label="抬头文本" prop="bktxt">
                   <HistoryInput v-model="fixedInboundForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
                 </el-form-item>
               </el-col>
-              <el-col v-if="inboundMode === 'fixed'" :sm="1" :md="1" :lg="1" class="posting-date-toggle-col">
-                <el-form-item label-width="0" class="posting-date-toggle-item">
-                  <el-icon class="posting-date-toggle-icon" @click.stop="postingDateVisible = !postingDateVisible">
-                    <ArrowUp v-if="postingDateVisible" />
-                    <ArrowDown v-else />
-                  </el-icon>
-                </el-form-item>
-              </el-col>
-              <el-col v-show="inboundMode === 'multiple' || postingDateVisible" :sm="24" :md="8" :lg="8">
+              <el-col :sm="24" :md="8" :lg="4" :xl="4">
                 <el-form-item label="过账日期" prop="postingDate">
                   <el-date-picker clearable v-model="fixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
                 </el-form-item>
@@ -267,7 +271,7 @@ const { wms_purchase_category } = toRefs<any>(proxy?.useDict('wms_purchase_categ
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 const userCollectionsDialogRef = ref<InstanceType<typeof UserCollectionsDialog>>();
 const purchaseOrderDetailList = ref<PurchaseOrderDetailVO[]>([]);
-const loading = ref(true);
+const loading = ref(false);
 const showSearch = ref(true);
 const historyExpanded = ref(true);
 const transferExpanded = ref(true);
@@ -360,6 +364,10 @@ const data = reactive<PageData<PurchaseOrderDetailForm, PurchaseOrderDetailQuery
 });
 
 const { queryParams } = toRefs(data);
+
+const queryRules = {
+  poNumber: [{ required: true, message: '采购单不能为空', trigger: [] }]
+};
 
 const poNumberConfig: HistoryConfig = {
   key: 'poNumber',
@@ -469,7 +477,20 @@ const isEarlyDeliveryForbidden = (row) => {
   return isSupplierNotTWZ0 && isProjectCategoryNot2 && isPostingTooEarly;
 };
 
-const getList = async () => {
+const getList = async (needValidate = false) => {
+  const poNumber = String(queryParams.value.poNumber ?? '').trim();
+  if (!poNumber) {
+    if (needValidate) {
+      await queryFormRef.value?.validate().catch(() => false);
+    }
+    return;
+  }
+  if (needValidate) {
+    const valid = await queryFormRef.value?.validate().catch(() => false);
+    if (!valid) {
+      return;
+    }
+  }
   loading.value = true;
   try {
     const res = await listPurchaseOrderDetail(queryParams.value);
@@ -647,13 +668,22 @@ const handleReceivePoQuantityChange = (row) => {
 
 const handleQuery = () => {
   queryParams.value.pageNum = 1;
-  getList();
+  getList(true);
+};
+
+const handleShowReceivedChange = () => {
+  if (!queryParams.value.poNumber) {
+    return;
+  }
+  handleQuery();
 };
 
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
+  queryFormRef.value?.clearValidate();
   purchaseTableRef.value?.clearSelection();
-  handleQuery();
+  purchaseOrderDetailList.value = [];
+  total.value = 0;
 };
 
 const handleSelectionChange = (selection: PoDetailTreeRow[]) => {
@@ -959,7 +989,9 @@ const submitForm = async () => {
     fixedInboundForm.value.lfsnr = '';
     fixedInboundForm.value.bktxt = '';
     fixedInboundForm.value.postingDate = null;
-    handleQuery();
+    if (queryParams.value.poNumber) {
+      getList(false);
+    }
   } catch (error: any) {
     const raw = typeof error === 'string' ? error : error?.message;
     resultMessage.value = formatApiErrorMessage(raw) || '入库失败';
@@ -971,7 +1003,6 @@ const submitForm = async () => {
 
 onMounted(() => {
   void refreshStagingSummaries();
-  getList();
 });
 </script>
 
@@ -981,6 +1012,25 @@ onMounted(() => {
   flex-direction: column;
   height: 100%;
   min-height: 300px;
+}
+.po-search-form :deep(.el-col) {
+  min-width: 0;
+}
+.po-search-form :deep(.el-form-item) {
+  width: 100%;
+  margin-right: 0;
+  margin-bottom: 12px;
+}
+.po-search-form :deep(.el-form-item__content) {
+  flex: 1;
+  min-width: 0;
+}
+.po-search-form :deep(.el-input),
+.po-search-form :deep(.el-select) {
+  width: 100%;
+}
+.po-search-form .po-search-actions :deep(.el-form-item__content) {
+  flex-wrap: nowrap;
 }
 .history-card.is-history-collapsed :deep(.el-card__body),
 .transfer-main-card.is-transfer-collapsed :deep(.el-card__body) {
@@ -1020,7 +1070,7 @@ onMounted(() => {
   min-height: 200px;
 }
 .transfer-card-body {
-  padding: 12px 16px 16px;
+  padding: 0;
 }
 .transfer-header {
   display: flex;

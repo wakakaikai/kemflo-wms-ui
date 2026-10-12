@@ -98,7 +98,7 @@
         <div v-show="transferExpanded" class="transfer-card-body">
           <el-form :model="stoFixedInboundForm" ref="stoFixedInboundFormRef" label-width="auto" :inline="true">
             <el-row :gutter="20">
-              <el-col :sm="24" :md="8" :lg="8" v-if="stoInboundMode === 'fixed'">
+              <el-col :sm="24" :md="8" :lg="8" :xl="4" v-if="stoInboundMode === 'fixed'">
                 <el-form-item label="目标库位" prop="locationCode" :rules="[{ required: true, message: '请输入目标库位编码', trigger: 'blur' }]">
                   <HistoryInput v-model.trim="stoFixedInboundForm.locationCode" :config="locationCodeConfig" placeholder="请输入目标库位编码" @keydown.tab.prevent="locationCodeKeyDownTab(stoFixedInboundForm.locationCode)" @keydown.enter.prevent="locationCodeKeyDownTab(stoFixedInboundForm.locationCode)">
                     <template #append>
@@ -107,12 +107,12 @@
                   </HistoryInput>
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="8" :lg="8">
+              <el-col :sm="24" :md="8" :lg="8" :xl="4">
                 <el-form-item label="抬头文本" prop="bktxt">
                   <HistoryInput v-model="stoFixedInboundForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
                 </el-form-item>
               </el-col>
-              <el-col :sm="24" :md="8" :lg="8">
+              <el-col :sm="24" :md="8" :lg="8" :xl="4">
                 <el-form-item label="过账日期" prop="postingDate">
                   <el-date-picker clearable v-model="stoFixedInboundForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择接收日期" />
                 </el-form-item>
@@ -144,17 +144,12 @@
               </el-table-column>
               <el-table-column label="采购订单号" prop="poNumber" min-width="120" />
               <el-table-column label="采购项次" prop="itemNumber" width="90" align="center" />
-              <el-table-column label="计划行" prop="scheduleNumber" width="80" align="center">
-                <template #default="scope">
-                  <el-tag v-if="!isPoDetailParentRow(scope.row)" size="small" type="info">{{ scope.row.scheduleNumber }}</el-tag>
-                </template>
-              </el-table-column>
               <el-table-column label="料号" prop="materialCode" min-width="135" />
               <el-table-column label="物料描述" prop="materialDesc" min-width="170" show-overflow-tooltip />
-              <el-table-column label="未清/未发数量" min-width="140" align="right">
+              <el-table-column label="未清/本次用量" min-width="140" align="right">
                 <template #default="scope">
                   <div class="qty-display-cell">
-                    <span class="qty-display-value">{{ formatQty(scope.row.openQuantity) || '-' }}</span>
+                    <span class="qty-display-value">{{ formatQty(isPoDetailParentRow(scope.row) ? scope.row.openQuantity : scope.row.inventoryQuantity) || '-' }}</span>
                     <span class="qty-display-unit">{{ (isPoDetailParentRow(scope.row) ? scope.row.orderUnit : scope.row.inventoryUnit) || '' }}</span>
                   </div>
                 </template>
@@ -481,8 +476,40 @@ const preserveBomInventorySelection = (candidate: PurchaseOrderBomVO, oldRows: P
   return oldRows.map((row) => ({ ...row, consumeQuantity: row.consumeQuantity, inventoryQuantity: row.inventoryQuantity }));
 };
 
+/** SAP 543 按同一组件汇总展示和过账，计划行仅作为用量计算来源。 */
+const aggregateAllocatedBoms = (boms: PurchaseOrderBomVO[]) => {
+  const grouped = new Map<string, { bom: PurchaseOrderBomVO; scheduleNumbers: Set<string>; originKeys: Set<string> }>();
+  boms.forEach((bom, index) => {
+    const ratio = getBomConversionRatio(bom);
+    const key = [bom.componentMaterial || '', bom.orderUnit || '', bom.inventoryUnit || '', ratio].join('|');
+    const scheduleNumber = String(bom.scheduleNumber || '').trim();
+    const originKey = getBomOriginKey(bom, index);
+    const current = grouped.get(key);
+    if (!current) {
+      grouped.set(key, {
+        bom: { ...bom },
+        scheduleNumbers: new Set(scheduleNumber ? [scheduleNumber] : []),
+        originKeys: new Set([originKey])
+      });
+      return;
+    }
+    current.bom.consumeQuantity = roundQty(toNumber(current.bom.consumeQuantity) + toNumber(bom.consumeQuantity));
+    current.bom.inventoryQuantity = roundQty(toNumber(current.bom.inventoryQuantity) + toNumber(bom.inventoryQuantity)).toFixed(3);
+    if (scheduleNumber) current.scheduleNumbers.add(scheduleNumber);
+    current.originKeys.add(originKey);
+  });
+
+  return Array.from(grouped.entries()).map(([key, value]) => ({
+    ...value.bom,
+    scheduleNumber: Array.from(value.scheduleNumbers)
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      .join('/'),
+    originBomKey: `aggregate_${key}_${Array.from(value.originKeys).sort().join('_')}`
+  }));
+};
+
 /**
- * 同一采购单项次下按计划行号顺序分配收货数量。
+ * 同一采购订单项次下的 STO 交货行共享计划行余额，并按计划行号顺序分配收货数量。
  * 每个 STO 父行只挂载本次实际命中的计划行 BOM，未命中的 BOM 不展示也不提交。
  */
 const syncAllStoBomAllocations = () => {
@@ -509,7 +536,7 @@ const syncAllStoBomAllocations = () => {
     });
 
     let receiptRemaining = Math.max(0, toNumber(row.receivePoQuantity));
-    const selectedBoms: PurchaseOrderBomVO[] = [];
+    const allocatedBoms: PurchaseOrderBomVO[] = [];
     scheduleGroups.forEach((group) => {
       if (receiptRemaining <= 0) return;
       const available = Math.max(0, scheduleRemaining.get(group.scheduleNumber) ?? group.capacity);
@@ -535,14 +562,14 @@ const syncAllStoBomAllocations = () => {
           },
           row
         );
-        selectedBoms.push(...preserveBomInventorySelection(candidate, oldRowsByOrigin.get(originBomKey) || []));
+        allocatedBoms.push(candidate);
       });
 
       receiptRemaining = roundQty(receiptRemaining - allocatedReceipt);
       scheduleRemaining.set(group.scheduleNumber, roundQty(available - allocatedReceipt));
     });
 
-    row.purchaseOrderBomScheduleVoList = selectedBoms;
+    row.purchaseOrderBomScheduleVoList = aggregateAllocatedBoms(allocatedBoms).flatMap((bom, index) => preserveBomInventorySelection(bom, oldRowsByOrigin.get(getBomOriginKey(bom, index)) || []));
     row.stoBomAllocationShortage = receiptRemaining;
   });
 };
@@ -1032,7 +1059,7 @@ onMounted(() => {
   min-height: 200px;
 }
 .transfer-card-body {
-  padding: 12px 16px 16px;
+  padding: 0;
 }
 .transfer-header {
   display: flex;

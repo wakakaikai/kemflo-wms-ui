@@ -318,8 +318,7 @@ onBeforeUnmount(() => {
       transition:
         box-shadow 0.2s ease,
         transform 0.2s ease,
-        border-color 0.2s ease,
-        color 0.2s ease;
+        border-color 0.2s ease;
       &:hover {
         color: var(--el-color-primary);
         border-color: var(--el-color-primary-light-5);

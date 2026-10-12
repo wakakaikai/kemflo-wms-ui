@@ -1,17 +1,5 @@
 <template>
-  <el-table
-    ref="tableRef"
-    :data="treeData"
-    row-key="rowKey"
-    border
-    :height="height"
-    :max-height="maxHeight"
-    v-loading="loading"
-    :default-expand-all="defaultExpandAll"
-    :tree-props="{ children: 'children' }"
-    :row-class-name="resolveRowClassName"
-    @selection-change="handleSelectionChange"
-  >
+  <el-table ref="tableRef" :data="treeData" row-key="rowKey" border :height="height" :max-height="maxHeight" v-loading="loading" :default-expand-all="defaultExpandAll" :tree-props="{ children: 'children' }" :row-class-name="resolveRowClassName" :class="{ 'is-empty-data': treeData.length === 0 }" @selection-change="handleSelectionChange">
     <el-table-column v-if="selectable" type="selection" width="55" align="center" :selectable="isRowSelectable" />
     <template v-if="mode === 'history'">
       <PurchaseOrderDetailHistoryColumns :columns="columns" :received-quantity-label="receivedQuantityLabel" :show-move-type="showMoveType" :wms_purchase_category="wms_purchase_category">
@@ -87,5 +75,18 @@ defineExpose({ clearSelection, toggleRowExpansion, tableRef });
 <style scoped>
 :deep(.po-detail-tree-parent-row) {
   font-weight: 500;
+}
+
+:deep(.el-table.is-empty-data .el-scrollbar__wrap) {
+  overflow-x: hidden;
+}
+
+:deep(.el-table.is-empty-data .el-table__empty-block),
+:deep(.el-table.is-empty-data .el-scrollbar__view) {
+  width: 100% !important;
+}
+
+:deep(.el-table.is-empty-data .el-scrollbar__bar.is-horizontal) {
+  display: none;
 }
 </style>
