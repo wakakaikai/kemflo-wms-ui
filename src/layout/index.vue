@@ -80,8 +80,15 @@ onMounted(() => {
   initWebSocket(protocol + window.location.host + import.meta.env.VITE_APP_BASE_API + '/resource/websocket');
 });
 
+let cleanupSSE: (() => void) | undefined;
+
 onMounted(() => {
-  initSSE(import.meta.env.VITE_APP_BASE_API + '/resource/sse');
+  cleanupSSE = initSSE(import.meta.env.VITE_APP_BASE_API + '/resource/sse');
+});
+
+onBeforeUnmount(() => {
+  cleanupSSE?.();
+  cleanupSSE = undefined;
 });
 
 const handleClickOutside = () => {
@@ -127,7 +134,7 @@ const setLayout = () => {
   width: calc(100% - #{$base-sidebar-width});
   transition: width 0.28s;
   background: $fixed-header-bg;
-  box-shadow: 0 2px 8px rgba(0, 21, 41, 0.10);
+  box-shadow: 0 2px 8px rgba(0, 21, 41, 0.1);
 }
 
 .hideSidebar .fixed-header {

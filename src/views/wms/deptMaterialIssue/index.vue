@@ -115,7 +115,9 @@
 
     <div class="add-transfer-bar">
       <el-button type="primary" @click="addSelectedToIssueList" circle class="rotate-button">
-        <el-icon><Switch /></el-icon>
+        <el-icon>
+          <Switch />
+        </el-icon>
       </el-button>
     </div>
 
@@ -240,7 +242,7 @@
             <el-input v-model.trim="scope.row.orderNo" placeholder="可选" clearable />
           </template>
         </el-table-column>
-        <el-table-column v-if="issueColumns[9].visible" label="领料数量" width="115">
+        <el-table-column v-if="issueColumns[9].visible" label="领料数量" min-width="120">
           <template #default="scope">
             <el-input-number v-model="scope.row.transferQuantity" :min="0" :max="scope.row.currentQuantity ? parseFloat(scope.row.currentQuantity) : scope.row.currentQuantity" :precision="3" controls-position="right" style="width: 100%" />
           </template>
@@ -270,7 +272,7 @@
 </template>
 
 <script setup name="DeptMaterialIssue" lang="ts">
-import { computed, ref, reactive, onMounted } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { listInventoryDetail, transferInventory } from '@/api/wms/inventoryDetail';
 import { InventoryDetailForm, InventoryDetailQuery, InventoryDetailVO } from '@/api/wms/inventoryDetail/types';
 import { ArrowDown, ArrowRight, ArrowUp, Bell, Switch } from '@element-plus/icons-vue';
@@ -284,7 +286,7 @@ import type { CostCenterMoveTypeVO } from '@/api/wms/costCenterMoveType/types';
 import type { MoveTypeReasonVO } from '@/api/wms/moveTypeReason/types';
 import { DEFAULT_DEPT_ISSUE_MOVE_TYPE, DEPT_ISSUE_MOVE_TYPES, getDefaultSourceInventoryType, getIssueMoveTypeDesc, isDeptIssueZ01 } from './utils/issueMoveConfig';
 import InventorySortHeader from '@/views/wms/components/InventorySortHeader.vue';
-import { applyInventorySortToQuery, createDefaultInventorySortRules, getInventorySortState, toggleInventorySort, type InventorySortKey, type InventorySortRule } from '@/views/wms/components/inventorySort';
+import { applyInventorySortToQuery, createDefaultInventorySortRules, getInventorySortState, type InventorySortKey, type InventorySortRule, toggleInventorySort } from '@/views/wms/components/inventorySort';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_inventory_special_flag } = toRefs<any>(proxy?.useDict('wms_inventory_special_flag'));
@@ -763,7 +765,7 @@ onMounted(() => {
 }
 
 .inventory-collapse-icon {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--el-text-color-secondary);
   transition: transform 0.2s;
 }
@@ -773,7 +775,7 @@ onMounted(() => {
 }
 
 .inventory-header-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -837,7 +839,7 @@ onMounted(() => {
 }
 
 .header-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 

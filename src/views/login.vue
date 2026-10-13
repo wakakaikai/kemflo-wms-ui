@@ -1,21 +1,27 @@
 <template>
   <div class="login">
     <el-form ref="loginRef" :model="loginForm" :rules="loginRules" class="login-form">
-      <h3 class="title">溢泰制造管理系统</h3>
+      <h3 class="title">制造管理系统</h3>
       <el-form-item v-if="tenantEnabled" prop="tenantId">
         <el-select v-model="loginForm.tenantId" filterable placeholder="请选择/输入公司名称" style="width: 100%">
           <el-option v-for="item in tenantList" :key="item.tenantId" :label="item.companyName" :value="item.tenantId"></el-option>
-          <template #prefix><svg-icon icon-class="company" class="el-input__icon input-icon" /></template>
+          <template #prefix>
+            <svg-icon icon-class="company" class="el-input__icon input-icon" />
+          </template>
         </el-select>
       </el-form-item>
       <el-form-item prop="username">
         <el-input v-model="loginForm.username" text size="large" auto-complete="off" placeholder="账号">
-          <template #prefix><svg-icon icon-class="user" class="el-input__icon input-icon" /></template>
+          <template #prefix>
+            <svg-icon icon-class="user" class="el-input__icon input-icon" />
+          </template>
         </el-input>
       </el-form-item>
       <el-form-item prop="password">
         <el-input v-model="loginForm.password" type="password" size="large" auto-complete="off" placeholder="密码" @keyup.enter="handleLogin" show-password>
-          <template #prefix><svg-icon icon-class="password" class="el-input__icon input-icon" /></template>
+          <template #prefix>
+            <svg-icon icon-class="password" class="el-input__icon input-icon" />
+          </template>
         </el-input>
       </el-form-item>
       <!--      <el-form-item v-if="captchaEnabled" prop="code">-->
@@ -68,8 +74,8 @@ import { useUserStore } from '@/store/modules/user';
 import { LoginData, TenantVO } from '@/api/types';
 import { to } from 'await-to-js';
 import { HttpStatus } from '@/enums/RespEnum';
-import { setToken } from '@/utils/auth';
 import { buildCopyrightText, resolveTenantCompanyName } from '@/utils/copyright';
+
 const userStore = useUserStore();
 const router = useRouter();
 

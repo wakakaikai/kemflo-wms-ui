@@ -2,7 +2,10 @@
   <div v-loading="state.loading" class="layout-navbars-breadcrumb-user-news">
     <div class="head-box">
       <div class="head-box-title">通知公告</div>
-      <div class="head-box-btn" @click="readAll">全部已读</div>
+      <div v-if="newsList.length > 0" class="head-box-actions">
+        <div class="head-box-btn" @click="readAll">全部已读</div>
+        <div class="head-box-btn danger" @click="clearAll">清空消息</div>
+      </div>
     </div>
     <div v-loading="state.loading" class="content-box">
       <template v-if="newsList.length > 0">
@@ -68,6 +71,28 @@ const readAll = async () => {
     state.loading = false;
   }
 };
+
+// 清空全部消息
+const clearAll = async () => {
+  try {
+    await ElMessageBox.confirm('清空后消息将无法恢复，确定要清空全部消息吗？', '提示', {
+      confirmButtonText: '确定清空',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+  } catch {
+    return;
+  }
+
+  try {
+    state.loading = true;
+    await noticeStore.removeAllNotices();
+    newsList.value = [...noticeStore.state.notices];
+    ElMessage.success('消息已清空');
+  } finally {
+    state.loading = false;
+  }
+};
 // 前往通知中心点击
 const onGoToGiteeClick = () => {
   proxy.$router.push({
@@ -92,6 +117,11 @@ onMounted(() => {
     justify-content: space-between;
     height: 35px;
     align-items: center;
+    .head-box-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
     .head-box-btn {
       color: var(--el-color-primary);
       font-size: 13px;
@@ -99,6 +129,9 @@ onMounted(() => {
       opacity: 0.8;
       &:hover {
         opacity: 1;
+      }
+      &.danger {
+        color: var(--el-color-danger);
       }
     }
   }

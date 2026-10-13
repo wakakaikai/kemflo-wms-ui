@@ -30,7 +30,9 @@
               <div class="filter-header">
                 <div class="collapse__title">
                   <span>工单号</span>
-                  <el-icon><Filter /></el-icon>
+                  <el-icon>
+                    <Filter />
+                  </el-icon>
                 </div>
                 <el-input v-model="workOrderFilter" size="small" placeholder="搜索工单号" clearable @clear="workOrderFilter = ''" />
               </div>
@@ -40,13 +42,7 @@
           <el-table-column label="标签料号" align="center" width="150" prop="materialCode" />
           <el-table-column label="描述" align="left" prop="materialName" :show-overflow-tooltip="true" />
           <el-table-column label="计划数量" align="center" prop="plannedQty" />
-          <el-table-column label="打包数量" align="center" min-width="120" prop="packingQty">
-          </el-table-column>
-          <el-table-column label="入库检" align="center" prop="receiptInspectionFlag">
-            <template #default="scope">
-              <dict-tag :options="wms_work_order_check_enable" :value="scope.row.receiptInspectionFlag" />
-            </template>
-          </el-table-column>
+          <el-table-column label="打包数量" align="center" min-width="120" prop="packingQty"> </el-table-column>
           <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
             <template #default="{ $index }">
               <el-tooltip content="删除" placement="top">
@@ -412,11 +408,13 @@ h2 {
   line-height: 1;
   padding-top: 4px;
 }
+
 .filter-header {
   display: flex;
   flex-direction: column;
   gap: 5px;
 }
+
 .el-form-item__error {
   color: #f56c6c;
   font-size: 12px;
@@ -436,6 +434,7 @@ h2 {
   align-items: center;
   justify-content: center;
   margin-right: -12px;
+
   .el-radio__label {
     display: none;
   }

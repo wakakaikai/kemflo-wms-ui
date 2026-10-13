@@ -20,16 +20,7 @@
               <el-input v-model="queryParams.sn" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="操作时间" prop="dateTimeRange">
-              <el-date-picker
-                v-model="queryParams.dateTimeRange"
-                type="datetimerange"
-                :shortcuts="shortcuts"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                range-separator="-"
-                start-placeholder="请选择开始日期"
-                end-placeholder="请选择结束日期"
-                :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
-              />
+              <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" :shortcuts="shortcuts" value-format="YYYY-MM-DD HH:mm:ss" range-separator="-" start-placeholder="请选择开始日期" end-placeholder="请选择结束日期" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -71,7 +62,7 @@
       <template #header>
         <el-row :gutter="24" class="mb8">
           <el-col :span="1.5">
-            <el-button v-hasPermi="['wms:packing:export']" type="warning" plain icon="Download" @click="handleExport"> 导出 </el-button>
+            <el-button v-hasPermi="['wms:packing:export']" type="warning" plain icon="Download" @click="handleExport"> 导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @query-table="getList"></right-toolbar>
         </el-row>
@@ -82,7 +73,7 @@
         <el-table-column type="expand">
           <template #default="scope">
             <el-table :data="scope.row.packingDetailVoList" style="width: calc(100% - 110px); float: right; margin: 10px 0" empty-text="暂无数据">
-              <el-table-column type="selection" width="55" align="center" />
+              <!--              <el-table-column type="selection" width="55" align="center" />-->
               <el-table-column label="序号" align="center" width="60">
                 <template #default="{ $index }">
                   {{ $index + 1 }}
@@ -96,17 +87,17 @@
                 </template>
               </el-table-column>
               <el-table-column label="标签码" align="center" width="130" prop="sn" />
-<!--              <el-table-column label="产品料号" align="center" prop="item" />
-              <el-table-column label="产品描述" align="left" prop="itemDesc"  show-overflow-tooltip />-->
+              <!--              <el-table-column label="产品料号" align="center" prop="item" />
+                            <el-table-column label="产品描述" align="left" prop="itemDesc"  show-overflow-tooltip />-->
               <el-table-column label="标签料号" align="center" prop="materialCode" />
               <el-table-column label="标签描述" align="left" prop="materialName" show-overflow-tooltip />
               <el-table-column label="计划数量" align="center" prop="plannedQty" />
               <el-table-column label="打包数量" align="center" prop="packingQty" />
-              <el-table-column label="入库检" prop="receiptInspectionFlag" align="center">
-                <template #default="scope">
-                  <dict-tag :options="wms_work_order_check_enable" :value="scope.row.receiptInspectionFlag" />
-                </template>
-              </el-table-column>
+              <!--              <el-table-column label="入库检" prop="receiptInspectionFlag" align="center">
+                              <template #default="scope">
+                                <dict-tag :options="wms_work_order_check_enable" :value="scope.row.receiptInspectionFlag" />
+                              </template>
+                            </el-table-column>-->
               <el-table-column label="物料凭证号" prop="materialOrderNo" align="center" />
               <el-table-column label="物料文件项次" prop="materialItem" align="center" />
               <el-table-column label="备注" prop="remark" align="center" />
@@ -123,7 +114,7 @@
         </el-table-column>
         <el-table-column label="库区" align="left" prop="areaCode" />
         <el-table-column label="库位" align="left" prop="locationCode" />
-        <el-table-column label="状态" align="center" prop="status">
+        <el-table-column label="状态" align="center" prop="status" min-width="120">
           <template #default="scope">
             <dict-tag :options="wms_packing_status" :value="scope.row.status" />
           </template>
@@ -146,9 +137,6 @@
             <el-tooltip content="入库" placement="top" v-if="tabActiveName == 'pendingInbound' || tabActiveName == 'warehouseFailed'">
               <el-button v-hasPermi="['wms:packing:edit']" link type="success" icon="CircleCheck" @click="handleReceivePacking(scope.row)">接收</el-button>
             </el-tooltip>
-            <!--            <el-tooltip content="出库" placement="top" v-if="tabActiveName == 'warehouseReceive'">
-              <el-button v-hasPermi="['wms:packing:edit']" link type="danger" icon="CircleCheck" @click="handleReturnPacking(scope.row)">退料</el-button>
-            </el-tooltip>-->
           </template>
         </el-table-column>
       </el-table>

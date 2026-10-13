@@ -141,6 +141,12 @@ export const useNoticeStore = defineStore('notice', () => {
     await saveToDB();
   };
 
+  // 清空全部通知
+  const removeAllNotices = async (): Promise<void> => {
+    state.notices = [];
+    await saveToDB();
+  };
+
   // 标记全部为已读
   const markAllAsRead = async (): Promise<void> => {
     state.notices.forEach((n) => {
@@ -165,6 +171,7 @@ export const useNoticeStore = defineStore('notice', () => {
     markAsRead,
     removeNotice,
     removeNotices,
+    removeAllNotices,
     markAllAsRead,
     getNoticesByCategory,
     cleanupExpiredNotices

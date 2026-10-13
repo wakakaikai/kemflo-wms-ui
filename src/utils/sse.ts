@@ -5,11 +5,14 @@ import { useAbnormalCallNoticeStore } from '@/store/modules/abnormalCallNotice';
 import { useSerialNoticeStore } from '@/store/modules/serialNotice';
 import { useSpeech } from './speak-tts';
 import { MessageCategory, MessagePriority } from '@/store/modules/notice';
-import { onScopeDispose, watch } from 'vue';
+import { watch } from 'vue';
+
+let activeSSECleanup: (() => void) | undefined;
 
 // 初始化 SSE
-export const initSSE = (baseUrl: string) => {
-  if (import.meta.env.VITE_APP_SSE === 'false') return;
+export const initSSE = (baseUrl: string): (() => void) => {
+  activeSSECleanup?.();
+  if (import.meta.env.VITE_APP_SSE === 'false') return () => undefined;
 
   const noticeStore = useNoticeStore();
   const abnormalCallNoticeStore = useAbnormalCallNoticeStore();
@@ -54,7 +57,7 @@ export const initSSE = (baseUrl: string) => {
   window.addEventListener('beforeunload', markPageUnloading);
   window.addEventListener('pagehide', markPageUnloading);
 
-  const { data, error, status } = useEventSource(url, [], {
+  const { data, error, status, close } = useEventSource(url, [], {
     autoReconnect: {
       retries: 10,
       delay: 30000,
@@ -65,7 +68,7 @@ export const initSSE = (baseUrl: string) => {
     }
   });
 
-  watch(status, (newStatus) => {
+  const stopStatusWatch = watch(status, (newStatus) => {
     if (newStatus !== 'OPEN') return;
     hasOpened = true;
     reconnectNotificationShown = false;
@@ -73,7 +76,7 @@ export const initSSE = (baseUrl: string) => {
   });
 
   // 错误处理
-  watch(error, (err) => {
+  const stopErrorWatch = watch(error, (err) => {
     if (err) {
       console.error('SSE 连接错误:', err);
       error.value = null;
@@ -86,14 +89,8 @@ export const initSSE = (baseUrl: string) => {
     }
   });
 
-  onScopeDispose(() => {
-    markPageUnloading();
-    window.removeEventListener('beforeunload', markPageUnloading);
-    window.removeEventListener('pagehide', markPageUnloading);
-  });
-
   // 消息处理
-  watch(data, async (newData) => {
+  const stopDataWatch = watch(data, async (newData) => {
     if (!newData) return;
     try {
       let messageData: any = {};
@@ -188,4 +185,21 @@ export const initSSE = (baseUrl: string) => {
       data.value = null;
     }
   });
+
+  let disposed = false;
+  const cleanup = () => {
+    if (disposed) return;
+    disposed = true;
+    markPageUnloading();
+    stopStatusWatch();
+    stopErrorWatch();
+    stopDataWatch();
+    close();
+    window.removeEventListener('beforeunload', markPageUnloading);
+    window.removeEventListener('pagehide', markPageUnloading);
+    if (activeSSECleanup === cleanup) activeSSECleanup = undefined;
+  };
+
+  activeSSECleanup = cleanup;
+  return cleanup;
 };

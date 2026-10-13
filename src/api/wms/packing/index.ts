@@ -3,6 +3,24 @@ import { AxiosPromise } from 'axios';
 import { PackingVO, PackingForm, PackingQuery, PackingExtVO } from '@/api/wms/packing/types';
 
 /**
+ * 工单和打包明细都存在 status 字段，但含义和类型不同：
+ * 工单状态是字符串（如 RELEASABLE），打包状态是数字。
+ * 保存打包记录时明细状态由后端业务处理，提交前统一移除，避免字段污染。
+ */
+const preparePackingData = (data: PackingForm): PackingForm => {
+  if (!Array.isArray(data.packingDetailBoList)) return data;
+
+  return {
+    ...data,
+    packingDetailBoList: data.packingDetailBoList.map((detail) => {
+      const normalizedDetail = { ...detail };
+      delete normalizedDetail.status;
+      return normalizedDetail;
+    })
+  };
+};
+
+/**
  * 查询打包记录列表
  * @param query
  * @returns {*}
@@ -57,7 +75,6 @@ export const listScadaPackingAndDetail = (query?: PackingQuery): AxiosPromise<Pa
   });
 };
 
-
 /**
  * 查询打包记录详细
  * @param id
@@ -77,7 +94,7 @@ export const addPacking = (data: PackingForm) => {
   return request({
     url: '/wms/packing',
     method: 'post',
-    data: data
+    data: preparePackingData(data)
   });
 };
 
@@ -89,7 +106,7 @@ export const updatePacking = (data: PackingForm) => {
   return request({
     url: '/wms/packing',
     method: 'put',
-    data: data
+    data: preparePackingData(data)
   });
 };
 /**

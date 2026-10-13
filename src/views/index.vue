@@ -2,7 +2,7 @@
   <div class="app-container home">
     <el-row :gutter="20">
       <el-col :sm="24" :lg="12" style="padding-left: 20px">
-        <h2>溢泰制造管理系统</h2>
+        <h2>制造管理系统</h2>
         <p><b>当前版本:</b> <span>v1.0.0</span></p>
       </el-col>
     </el-row>
@@ -24,12 +24,14 @@ const goTarget = (url: string) => {
     font-size: 17.5px;
     border-left: 5px solid #eee;
   }
+
   hr {
     margin-top: 20px;
     margin-bottom: 20px;
     border: 0;
     border-top: 1px solid #eee;
   }
+
   .col-item {
     margin-bottom: 20px;
   }

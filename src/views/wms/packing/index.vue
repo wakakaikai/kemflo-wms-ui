@@ -20,16 +20,7 @@
               <el-input v-model="queryParams.sn" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="操作时间" prop="dateTimeRange">
-              <el-date-picker
-                v-model="queryParams.dateTimeRange"
-                type="datetimerange"
-                :shortcuts="shortcuts"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                range-separator="-"
-                start-placeholder="请选择开始日期"
-                end-placeholder="请选择结束日期"
-                :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
-              />
+              <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" :shortcuts="shortcuts" value-format="YYYY-MM-DD HH:mm:ss" range-separator="-" start-placeholder="请选择开始日期" end-placeholder="请选择结束日期" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -93,18 +84,20 @@
     <el-card shadow="never">
       <template #header>
         <el-row :gutter="24" class="mb8">
-          <el-col v-if="tabActiveName == 'all' || tabActiveName == 'waitInStore'" :span="1.5">
-            <el-button v-hasPermi="['wms:packing:workOrderSn']" type="primary" plain icon="Plus" @click="handleWorkOrderSn">产品码打包</el-button>
-          </el-col>
-          <el-col v-if="tabActiveName == 'all' || tabActiveName == 'waitInStore'" :span="1.5">
-            <el-button v-hasPermi="['wms:packing:workOrder']" type="primary" plain icon="Plus" @click="handleAdd">新增工单打包</el-button>
-          </el-col>
-          <el-col v-if="tabActiveName == 'all' || tabActiveName == 'waitInStore'" :span="1.5">
-            <el-button v-hasPermi="['wms:packing:workOrder']" type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()">修改工单打包</el-button>
-          </el-col>
+          <!--
+         <el-col v-if="tabActiveName == 'all' || tabActiveName == 'waitInStore'" :span="1.5">
+           <el-button v-hasPermi="['wms:packing:workOrderSn']" type="primary" plain icon="Plus" @click="handleWorkOrderSn">产品码打包</el-button>
+         </el-col>
+        <el-col v-if="tabActiveName == 'all' || tabActiveName == 'waitInStore'" :span="1.5">
+                     <el-button v-hasPermi="['wms:packing:workOrder']" type="primary" plain icon="Plus" @click="handleAdd">新增工单打包</el-button>
+                   </el-col>-->
           <el-col v-if="tabActiveName == 'all' || tabActiveName == 'waitInStore'" :span="1.5">
             <el-button v-hasPermi="['wms:packing:receiptOrderNo']" type="primary" plain icon="Plus" @click="handleScanAdd">新增入库单打包</el-button>
           </el-col>
+          <!--          <el-col v-if="tabActiveName == 'all' || tabActiveName == 'waitInStore'" :span="1.5">
+                      <el-button v-hasPermi="['wms:packing:workOrder']" type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()">修改工单打包</el-button>
+                    </el-col>-->
+
           <el-col v-if="tabActiveName == 'all' || tabActiveName == 'waitInStore'" :span="1.5">
             <el-button v-hasPermi="['wms:packing:receiptOrderNo']" type="success" plain icon="Edit" :disabled="single" @click="handleScanUpdate()">修改入库单打包</el-button>
           </el-col>
@@ -144,11 +137,6 @@
               <el-table-column label="产品描述" align="left" prop="itemDesc" />
               <el-table-column label="计划数量" align="center" width="130" prop="plannedQty" />
               <el-table-column label="打包数量" align="center" width="130" prop="packingQty" />
-              <el-table-column label="入库检" prop="receiptInspectionFlag" width="120" align="center">
-                <template #default="scope">
-                  <dict-tag :options="wms_work_order_check_enable" :value="scope.row.receiptInspectionFlag" />
-                </template>
-              </el-table-column>
               <el-table-column label="备注" align="left" prop="remark" />
             </el-table>
           </template>
@@ -199,9 +187,9 @@
             <el-tooltip content="删除" placement="top" v-if="scope.row.status == 1 || scope.row.status == 4 || scope.row.status == 5">
               <el-button v-hasPermi="['wms:packing:remove']" link type="danger" icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
             </el-tooltip>
-            <el-tooltip content="下达标签" placement="top" v-if="scope.row.status == 1 || scope.row.status == 4 || scope.row.status == 5">
-              <el-button v-hasPermi="['wms:workOrderSn:add']" link type="primary" icon="Collection" @click="handleGeneratePackingDetailSn(scope.row)">下达标签</el-button>
-            </el-tooltip>
+            <!--            <el-tooltip content="下达标签" placement="top" v-if="scope.row.status == 1 || scope.row.status == 4 || scope.row.status == 5">
+                          <el-button v-hasPermi="['wms:workOrderSn:add']" link type="primary" icon="Collection" @click="handleGeneratePackingDetailSn(scope.row)">下达标签</el-button>
+                        </el-tooltip>-->
             <el-tooltip content="打印" placement="top" v-if="scope.row.status == 1 || scope.row.status == 4 || scope.row.status == 5">
               <el-button v-hasPermi="['wms:workOrderSn:print']" link type="primary" :icon="Printer" @click="handlePrintDialog(scope.row)">打印标签</el-button>
             </el-tooltip>
@@ -235,12 +223,7 @@
           <el-col :lg="12" :md="12" :sm="24">
             <el-form-item label="目的仓库" prop="warehouseCode">
               <el-select v-model="form.warehouseCode" placeholder="请选择目的仓库" clearable filterable>
-                <el-option
-                  v-for="warehouse in warehouseLocationList"
-                  :key="warehouse.warehouseCode"
-                  :label="`${warehouse.warehouseCode}-${warehouse.warehouseName}`"
-                  :value="warehouse.warehouseCode"
-                />
+                <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.warehouseCode" :label="`${warehouse.warehouseCode}-${warehouse.warehouseName}`" :value="warehouse.warehouseCode" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -1097,6 +1080,7 @@ onMounted(() => {
   overflow: hidden;
   box-sizing: border-box;
 }
+
 /* 适配97×84mm尺寸的内容样式 */
 .size9784 .receipt-header {
   margin: 0 3mm;
@@ -1268,6 +1252,7 @@ onMounted(() => {
   font-weight: bold;
   white-space: nowrap;
 }
+
 /* 二维码模板样式 - 80×60mm */
 .qr-template.qr8060 {
   width: 80mm;

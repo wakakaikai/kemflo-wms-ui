@@ -115,7 +115,9 @@
 
     <div class="add-transfer-bar">
       <el-button type="primary" @click="addSelectedToTransferList" circle class="rotate-button">
-        <el-icon><Switch /></el-icon>
+        <el-icon>
+          <Switch />
+        </el-icon>
       </el-button>
     </div>
 
@@ -285,7 +287,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column v-if="transferColumns[11].visible" label="移转数量" width="115">
+        <el-table-column v-if="transferColumns[11].visible" label="移转数量" min-width="120">
           <template #default="scope">
             <el-input-number v-model="scope.row.transferQuantity" :min="0" :max="scope.row.currentQuantity ? parseFloat(scope.row.currentQuantity) : scope.row.currentQuantity" :precision="3" controls-position="right" style="width: 100%" />
           </template>
@@ -323,8 +325,8 @@
 </template>
 
 <script setup name="InventoryTransfer" lang="ts">
-import { computed, ref, reactive, onMounted } from 'vue';
-import { listInventoryDetail } from '@/api/wms/inventoryDetail';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { listInventoryDetail, transferInventory } from '@/api/wms/inventoryDetail';
 import { InventoryDetailForm, InventoryDetailQuery, InventoryDetailVO } from '@/api/wms/inventoryDetail/types';
 // 导入图标组件
 import { ArrowDown, ArrowRight, ArrowUp, Bell, Switch } from '@element-plus/icons-vue';
@@ -336,15 +338,14 @@ import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import { HistoryConfig } from '@/types/history';
-import { transferInventory } from '@/api/wms/inventoryDetail';
 import { SalesOrderDetailVO } from '@/api/wms/salesOrderDetail/types';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { listMoveTypeReason } from '@/api/wms/moveTypeReason';
 import type { MoveTypeReasonVO } from '@/api/wms/moveTypeReason/types';
-import { DEFAULT_TRANSFER_MOVE_TYPE, canSelectTargetLocation, getDefaultSourceInventoryType, getDefaultTargetInventoryType, getTransferMoveTypeDesc, INVENTORY_TRANSFER_MOVE_TYPES, isMaterialConversionTransfer, isStockStatusTransfer, needsTargetLocation } from './utils/transferMoveConfig';
+import { canSelectTargetLocation, DEFAULT_TRANSFER_MOVE_TYPE, getDefaultSourceInventoryType, getDefaultTargetInventoryType, getTransferMoveTypeDesc, INVENTORY_TRANSFER_MOVE_TYPES, isMaterialConversionTransfer, isStockStatusTransfer, needsTargetLocation } from './utils/transferMoveConfig';
 import InventorySortHeader from '@/views/wms/components/InventorySortHeader.vue';
-import { applyInventorySortToQuery, createDefaultInventorySortRules, getInventorySortState, toggleInventorySort, type InventorySortKey, type InventorySortRule } from '@/views/wms/components/inventorySort';
+import { applyInventorySortToQuery, createDefaultInventorySortRules, getInventorySortState, type InventorySortKey, type InventorySortRule, toggleInventorySort } from '@/views/wms/components/inventorySort';
 
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
 const salesOrderDetailDialogRef = ref<InstanceType<typeof SalesOrderDetailDialog>>();
@@ -979,18 +980,14 @@ const submitTransfer = async () => {
       item.targetWarehouseCode = item.targetWarehouseCode || item.sourceWarehouseCode;
       item.targetAreaCode = item.targetAreaCode || item.sourceAreaCode;
       item.targetLocationCode = item.targetLocationCode || item.sourceLocationCode;
-      item.targetInventoryType = isMaterialConversionMove.value
-        ? item.inventoryType
-        : item.targetInventoryType || getDefaultTargetInventoryType(moveType.value);
+      item.targetInventoryType = isMaterialConversionMove.value ? item.inventoryType : item.targetInventoryType || getDefaultTargetInventoryType(moveType.value);
     });
   } else {
     validTransfers.forEach((item) => {
       item.targetWarehouseCode = item.sourceWarehouseCode;
       item.targetAreaCode = item.sourceAreaCode;
       item.targetLocationCode = item.sourceLocationCode;
-      item.targetInventoryType = isMaterialConversionMove.value
-        ? item.inventoryType
-        : item.targetInventoryType || getDefaultTargetInventoryType(moveType.value);
+      item.targetInventoryType = isMaterialConversionMove.value ? item.inventoryType : item.targetInventoryType || getDefaultTargetInventoryType(moveType.value);
     });
   }
 

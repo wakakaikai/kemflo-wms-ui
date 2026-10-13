@@ -13,15 +13,15 @@
           <el-option v-for="warehouse in warehouseLocationList" :key="warehouse.warehouseCode" :label="`${warehouse.warehouseCode}-${warehouse.warehouseName}`" :value="warehouse.warehouseCode" />
         </el-select>
       </el-form-item>
-<!--      <el-col :lg="12" :md="12" :sm="24">
-        <el-form-item label="目的库位" prop="locationCode">
-          <el-input v-model="form.locationCode" clearable placeholder="请输入目的库位或点击选择" @keydown.tab.prevent="locationCodeKeyDownTab" @keydown.enter.prevent="locationCodeKeyDownTab">
-            <template #append>
-              <el-button icon="Search" type="primary" @click="showStorageLocationDialog" />
-            </template>
-          </el-input>
-        </el-form-item>
-      </el-col>-->
+      <!--      <el-col :lg="12" :md="12" :sm="24">
+              <el-form-item label="目的库位" prop="locationCode">
+                <el-input v-model="form.locationCode" clearable placeholder="请输入目的库位或点击选择" @keydown.tab.prevent="locationCodeKeyDownTab" @keydown.enter.prevent="locationCodeKeyDownTab">
+                  <template #append>
+                    <el-button icon="Search" type="primary" @click="showStorageLocationDialog" />
+                  </template>
+                </el-input>
+              </el-form-item>
+            </el-col>-->
       <div class="material-record-container">
         <el-row :gutter="24">
           <el-col :lg="12" :md="12" :sm="24">
@@ -37,7 +37,9 @@
               <div class="filter-header">
                 <div class="collapse__title">
                   <span>工单号</span>
-                  <el-icon><Filter /></el-icon>
+                  <el-icon>
+                    <Filter />
+                  </el-icon>
                 </div>
                 <el-input v-model="workOrderFilter" size="small" placeholder="搜索工单号" clearable @clear="workOrderFilter = ''" />
               </div>
@@ -57,11 +59,6 @@
                   <div class="el-form-item__tip">当前最大可入打包数量: {{ scope.row.maxInboundQty || 0 }}</div>
                 </div>
               </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="入库检" align="center" prop="receiptInspectionFlag">
-            <template #default="scope">
-              <dict-tag :options="wms_work_order_check_enable" :value="scope.row.receiptInspectionFlag" />
             </template>
           </el-table-column>
           <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
@@ -169,9 +166,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
   }
 });
 
-const { title, visible, openDialog, closeDialog } = useDialog({
-
-});
+const { title, visible, openDialog, closeDialog } = useDialog({});
 // 创建一个工单号到otherPackingQty的映射
 const workOrderToOtherPackingQtyMap = new Map<string, number>();
 const { queryParams, form, rules } = toRefs(data);
@@ -402,11 +397,13 @@ h2 {
   line-height: 1;
   padding-top: 4px;
 }
+
 .filter-header {
   display: flex;
   flex-direction: column;
   gap: 5px;
 }
+
 .el-form-item__error {
   color: #f56c6c;
   font-size: 12px;
