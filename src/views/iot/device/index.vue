@@ -425,11 +425,12 @@
 </template>
 
 <script setup name="IotDevice" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, computed, reactive, ref, toRefs, onBeforeUnmount, onMounted, watch } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, computed, reactive, ref, toRefs, onActivated, onBeforeUnmount, onDeactivated, onMounted, watch } from 'vue';
 import type { CheckboxValueType, FormInstance } from 'element-plus';
 import { Monitor } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 import { getToken } from '@/utils/auth';
+import { createManagedEventSource } from '@/utils/managedEventSource';
 import { listDevice, getDevice, addDevice, updateDevice, copyDevice, delDevice, testDeviceConnection, readDevicePoints, readDeviceTcpPoints } from '@/api/iot/device';
 import type { PointReadItem, TcpMessageItem } from '@/api/iot/device';
 import { DeviceCopyForm, DeviceForm, DeviceQuery, DeviceStatusEvent, DeviceVO, TcpMessageEvent } from '@/api/iot/device/types';
@@ -1367,7 +1368,7 @@ const opcUaAuth = reactive<OpcUaAuthForm>(createDefaultOpcUaAuth());
 const formOnlineStatus = ref<string>('0');
 const formLastOnlineTime = ref<string>('');
 const formLastOfflineTime = ref<string>('');
-let deviceStatusSource: EventSource | undefined;
+let cleanupDeviceStatusSse: (() => void) | undefined;
 
 const dialog = reactive<DialogOption>({ visible: false, title: '' });
 const copyDialog = reactive<DialogOption>({ visible: false, title: '复制采集设备' });
@@ -1898,25 +1899,37 @@ const refreshTcpCollectResult = async (deviceId: string | number) => {
 };
 
 const connectDeviceStatusSse = () => {
+  cleanupDeviceStatusSse?.();
   const params = new URLSearchParams({
     Authorization: `Bearer ${getToken() || ''}`,
     clientid: import.meta.env.VITE_APP_CLIENT_ID,
     connectionId: crypto.randomUUID()
   });
-  deviceStatusSource = new EventSource(`${import.meta.env.VITE_APP_BASE_API}/iot/device/status/sse?${params.toString()}`);
-  deviceStatusSource.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data) as DeviceStatusEvent | TcpMessageEvent;
-      if (data.messageType === 'iot-tcp-message') {
-        appendTcpMessage(data);
-        return;
+  cleanupDeviceStatusSse = createManagedEventSource(`${import.meta.env.VITE_APP_BASE_API}/iot/device/status/sse?${params.toString()}`, {
+    onMessage(event) {
+      try {
+        const data = JSON.parse(event.data) as DeviceStatusEvent | TcpMessageEvent;
+        if (data.messageType === 'iot-tcp-message') {
+          appendTcpMessage(data);
+          return;
+        }
+        handleDeviceStatusChanged(data as DeviceStatusEvent);
+      } catch (error) {
+        console.error('数采设备状态消息解析失败:', error);
       }
-      handleDeviceStatusChanged(data as DeviceStatusEvent);
-    } catch (error) {
-      console.error('数采设备状态消息解析失败:', error);
+    },
+    onError(error, retryAttempt) {
+      console.warn(`数采设备状态 SSE 连接异常，第 ${retryAttempt} 次重连`, error);
+    },
+    onFailed(error) {
+      console.error('数采设备状态 SSE 连接失败，已停止重连', error);
     }
-  };
-  deviceStatusSource.onerror = (error) => console.warn('数采设备状态SSE连接异常，浏览器将自动重连', error);
+  });
+};
+
+const disconnectDeviceStatusSse = () => {
+  cleanupDeviceStatusSse?.();
+  cleanupDeviceStatusSse = undefined;
 };
 
 onMounted(() => {
@@ -1924,10 +1937,12 @@ onMounted(() => {
   getList();
 });
 
-onBeforeUnmount(() => {
-  deviceStatusSource?.close();
-  deviceStatusSource = undefined;
+onActivated(() => {
+  if (!cleanupDeviceStatusSse) connectDeviceStatusSse();
 });
+
+onDeactivated(disconnectDeviceStatusSse);
+onBeforeUnmount(disconnectDeviceStatusSse);
 </script>
 
 <style scoped lang="scss">

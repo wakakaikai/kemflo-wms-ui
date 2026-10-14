@@ -4,11 +4,11 @@
       <div v-show="showSearch" class="mb-[10px]">
         <el-card shadow="hover">
           <el-form ref="queryFormRef" :model="queryParams" :rules="rules" :inline="true" label-width="auto">
-<!--            <el-form-item label="工厂" prop="site">
-              <el-select v-model="queryParams.site" value-key="id" placeholder="请选择工厂">
-                <el-option v-for="item in siteOption" :key="item.value" :label="item.label" :value="item.value" />
-              </el-select>
-            </el-form-item>-->
+            <!--            <el-form-item label="工厂" prop="site">
+                          <el-select v-model="queryParams.site" value-key="id" placeholder="请选择工厂">
+                            <el-option v-for="item in siteOption" :key="item.value" :label="item.label" :value="item.value" />
+                          </el-select>
+                        </el-form-item>-->
             <el-form-item label="工单号" prop="shopOrder">
               <el-input v-model="queryParams.shopOrder" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -23,16 +23,7 @@
               </el-input>
             </el-form-item>
             <el-form-item label="扫码时间" prop="dateTimeRange">
-              <el-date-picker
-                v-model="queryParams.dateTimeRange"
-                type="datetimerange"
-                :shortcuts="shortcuts"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                range-separator="-"
-                start-placeholder="请选择开始日期"
-                end-placeholder="请选择结束日期"
-                :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
-              />
+              <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" :shortcuts="shortcuts" value-format="YYYY-MM-DD HH:mm:ss" range-separator="-" start-placeholder="请选择开始日期" end-placeholder="请选择结束日期" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]" />
             </el-form-item>
 
             <el-form-item>
@@ -48,7 +39,7 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button v-hasPermi="['report:mesProductData:export']" type="warning" plain icon="Download" @click="handleExport">导出</el-button>
+            <el-button type="warning" plain icon="Download" @click="handleExport">导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @query-table="getList"></right-toolbar>
         </el-row>
@@ -70,18 +61,12 @@
             <!--            <el-table-column label="操作" align="center" class-name="small-padding fixed-width" fixed="right">
               <template #default="scope">
                 <el-tooltip content="详情" placement="top">
-                  <el-button v-hasPermi="['report:mesProductData:query']" link type="primary" icon="View" @click="handleView(scope.row)"> </el-button>
+                  <el-button link type="primary" icon="View" @click="handleView(scope.row)"> </el-button>
                 </el-tooltip>
               </template>
             </el-table-column>-->
           </el-table>
-          <pagination
-            v-if="tableItem.dataList.length > 0 && activeName == tableItem.tabName"
-            v-model:page="queryParams.pageNum"
-            v-model:limit="queryParams.pageSize"
-            :total="tableItem.dataList.length"
-            @pagination="getCurrentPageData(tableItem.dataList)"
-          />
+          <pagination v-if="tableItem.dataList.length > 0 && activeName == tableItem.tabName" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="tableItem.dataList.length" @pagination="getCurrentPageData(tableItem.dataList)" />
         </el-tab-pane>
       </el-tabs>
     </el-card>
@@ -119,8 +104,9 @@
 <script setup name="mesProductData" lang="ts">
 import type { TabsPaneContext } from 'element-plus';
 import { listMesProductData } from '@/api/report/mesProductData';
-import { MesProductDataQuery, MesProductDataForm } from '@/api/report/mesProductData/types';
+import { MesProductDataForm, MesProductDataQuery } from '@/api/report/mesProductData/types';
 import { ref } from 'vue';
+
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const route = useRoute();
 const mesProductDataList = ref([]);

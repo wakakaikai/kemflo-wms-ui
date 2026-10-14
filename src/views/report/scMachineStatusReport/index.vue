@@ -147,7 +147,7 @@
   </div>
 </template>
 
-<script setup name="InjectMachineStatus" lang="ts">
+<script setup name="ScMachineStatusReport" lang="ts">
 import { computed, getCurrentInstance, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import * as echarts from 'echarts';
 import html2canvas from 'html2canvas';

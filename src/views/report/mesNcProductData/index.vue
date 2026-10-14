@@ -44,7 +44,7 @@
         <el-tab-pane v-for="tab in tabs" :key="tab.name" :label="tab.label" :name="tab.name" />
       </el-tabs>
       <div class="report-toolbar">
-        <el-button v-hasPermi="['report:ncProductData:export']" type="warning" plain icon="Download" :loading="exporting" :disabled="loading || !loaded" @click="handleExport">导出</el-button>
+        <el-button type="warning" plain icon="Download" :loading="exporting" :disabled="loading || !loaded" @click="handleExport">导出</el-button>
         <span class="report-hint">{{ timeHint }}</span>
         <right-toolbar v-model:showSearch="showSearch" @query-table="retryList" />
       </div>
@@ -55,7 +55,7 @@
     </el-card>
     <el-dialog v-model="detailVisible" :title="detailTitle" width="90%" append-to-body @closed="clearDetail">
       <div class="report-toolbar">
-        <el-button v-hasPermi="['report:ncProductData:export']" type="warning" plain icon="Download" :loading="exporting" :disabled="detailLoading || !detailLoaded" @click="exportDetail">导出明细</el-button>
+        <el-button type="warning" plain icon="Download" :loading="exporting" :disabled="detailLoading || !detailLoaded" @click="exportDetail">导出明细</el-button>
         <span class="report-hint">沿用来源查询的时间和筛选条件</span>
       </div>
       <el-alert v-if="detailFailed" type="error" title="明细加载失败，请重试。" :closable="false" class="mb-2"><el-button link type="primary" @click="loadDetail">重试</el-button></el-alert>

@@ -444,11 +444,12 @@
 </template>
 
 <script setup name="IotPoint" lang="ts">
-import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed, onMounted, onActivated, onBeforeUnmount, watch } from 'vue';
+import { getCurrentInstance, ComponentInternalInstance, reactive, ref, toRefs, computed, onMounted, onActivated, onBeforeUnmount, onDeactivated, watch } from 'vue';
 import type { ElFormInstance } from 'element-plus';
 import { Coin } from '@element-plus/icons-vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getToken } from '@/utils/auth';
+import { createManagedEventSource } from '@/utils/managedEventSource';
 import { listPoint, getPoint, addPoint, updatePoint, getPointDisplayConfig, savePointDisplayConfig, delPoint } from '@/api/iot/point';
 import { PointDisplayConfigForm, PointForm, PointQuery, PointVO } from '@/api/iot/point/types';
 import { listDevice, getDevice, readDevicePoints, readDeviceTcpPoints, PointReadItem, TcpMessageItem } from '@/api/iot/device';
@@ -1333,7 +1334,7 @@ let tcpCollectRefreshVersion = 0;
 const tcpExprPresets = ['BARCODE', 'TEST_STATUS', 'WORKCENTER_CODE', 'Group_Code', 'GB_VALUE', 'GB_STATUS', 'ACW_VALUE', 'ACW_STATUS', 'IR_VALUE', 'IR_STATUS'];
 const queryFormRef = ref<ElFormInstance>();
 const formRef = ref<ElFormInstance>();
-let tcpMessageSource: EventSource | undefined;
+let cleanupTcpMessageSse: (() => void) | undefined;
 
 const protocolGroup = computed(() => getProtocolGroup(selectedProtocol.value));
 const isModbusDeviceList = computed(() => protocolGroup.value === 'modbus');
@@ -1907,23 +1908,35 @@ const refreshTcpCollectResult = async (deviceId: string | number) => {
 };
 
 const connectTcpMessageSse = () => {
+  cleanupTcpMessageSse?.();
   const params = new URLSearchParams({
     Authorization: `Bearer ${getToken() || ''}`,
     clientid: import.meta.env.VITE_APP_CLIENT_ID,
     connectionId: crypto.randomUUID()
   });
-  tcpMessageSource = new EventSource(`${import.meta.env.VITE_APP_BASE_API}/iot/device/status/sse?${params.toString()}`);
-  tcpMessageSource.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data) as TcpMessageEvent;
-      if (data.messageType === 'iot-tcp-message') {
-        appendTcpMessage(data);
+  cleanupTcpMessageSse = createManagedEventSource(`${import.meta.env.VITE_APP_BASE_API}/iot/device/status/sse?${params.toString()}`, {
+    onMessage(event) {
+      try {
+        const data = JSON.parse(event.data) as TcpMessageEvent;
+        if (data.messageType === 'iot-tcp-message') {
+          appendTcpMessage(data);
+        }
+      } catch (error) {
+        console.error('TCP实时报文解析失败:', error);
       }
-    } catch (error) {
-      console.error('TCP实时报文解析失败:', error);
+    },
+    onError(error, retryAttempt) {
+      console.warn(`TCP实时报文 SSE 连接异常，第 ${retryAttempt} 次重连`, error);
+    },
+    onFailed(error) {
+      console.error('TCP实时报文 SSE 连接失败，已停止重连', error);
     }
-  };
-  tcpMessageSource.onerror = (error) => console.warn('TCP实时报文SSE连接异常，浏览器将自动重连', error);
+  });
+};
+
+const disconnectTcpMessageSse = () => {
+  cleanupTcpMessageSse?.();
+  cleanupTcpMessageSse = undefined;
 };
 
 onMounted(async () => {
@@ -1931,12 +1944,11 @@ onMounted(async () => {
   await bootstrapPointList();
 });
 
-onBeforeUnmount(() => {
-  tcpMessageSource?.close();
-  tcpMessageSource = undefined;
-});
+onDeactivated(disconnectTcpMessageSse);
+onBeforeUnmount(disconnectTcpMessageSse);
 
 onActivated(async () => {
+  if (!cleanupTcpMessageSse) connectTcpMessageSse();
   // 与 onMounted 同一次进入时跳过，避免重复请求
   if (skipNextActivate) {
     skipNextActivate = false;

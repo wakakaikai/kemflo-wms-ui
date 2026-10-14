@@ -12,16 +12,7 @@
               </el-input>
             </el-form-item>
             <el-form-item label="巡检时间" prop="dateTimeRange">
-              <el-date-picker
-                v-model="queryParams.dateTimeRange"
-                type="datetimerange"
-                :shortcuts="shortcuts"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                range-separator="-"
-                start-placeholder="请选择开始日期"
-                end-placeholder="请选择结束日期"
-                :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
-              />
+              <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" :shortcuts="shortcuts" value-format="YYYY-MM-DD HH:mm:ss" range-separator="-" start-placeholder="请选择开始日期" end-placeholder="请选择结束日期" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]" />
             </el-form-item>
 
             <el-form-item>
@@ -37,7 +28,7 @@
       <template #header>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button v-hasPermi="['report:mesProductData:export']" type="warning" plain icon="Download" @click="handleExport">导出</el-button>
+            <el-button type="warning" plain icon="Download" @click="handleExport">导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @query-table="getList"></right-toolbar>
         </el-row>
@@ -46,7 +37,7 @@
       <el-tabs v-else v-model="activeName" :tab-position="'top'" @tab-click="handleTabClick">
         <el-tab-pane v-for="(tableItem, tableIndex) in mesProductDataList" :key="tableIndex" :label="tableItem.tabName" :name="tableItem.tabName">
           <template #label>
-            <el-badge :value="tableItem.dataList.length || 0" :max="9999" :offset="[10, 0]">{{ tableItem.tabName }}</el-badge>
+            <el-badge :value="tableItem.dataList.length || 0" :max="9999999" :offset="[10, 0]">{{ tableItem.tabName }}</el-badge>
           </template>
           <el-table v-if="activeName == tableItem.tabName" :key="tableKey" v-loading="loading" :data="getCurrentPageData(tableItem.dataList)" row-key="sfc">
             <el-table-column type="selection" width="55" align="center" />
@@ -56,13 +47,7 @@
               </template>
             </el-table-column>
           </el-table>
-          <pagination
-            v-if="tableItem.dataList.length > 0 && activeName == tableItem.tabName"
-            v-model:page="queryParams.pageNum"
-            v-model:limit="queryParams.pageSize"
-            :total="tableItem.dataList.length"
-            @pagination="getCurrentPageData(tableItem.dataList)"
-          />
+          <pagination v-if="tableItem.dataList.length > 0 && activeName == tableItem.tabName" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" :total="tableItem.dataList.length" @pagination="getCurrentPageData(tableItem.dataList)" />
         </el-tab-pane>
       </el-tabs>
     </el-card>
@@ -107,7 +92,6 @@ import { MesProductDataForm, MesProductDataQuery } from '@/api/report/mesProduct
 import { ref } from 'vue';
 import ResourceDialog from '@/views/mes/workpanel/components/resourceDialog.vue';
 
-
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const route = useRoute();
 const mesProductDataList = ref([]);
@@ -136,7 +120,6 @@ const dialog = reactive<DialogOption>({
 });
 
 const resourceDialogRef = ref<InstanceType<typeof ResourceDialog>>();
-
 
 const shortcuts = [
   {

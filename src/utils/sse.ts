@@ -24,8 +24,13 @@ export const initSSE = (baseUrl: string): (() => void) => {
     initSpeech();
   }
 
-  // 构建 SSE URL
-  const url = `${baseUrl}?Authorization=Bearer ${getToken()}&clientid=${import.meta.env.VITE_APP_CLIENT_ID}`;
+  // 每个标签页使用独立连接 ID，避免同一 token 的多个页面互相踢掉 SSE 连接。
+  const params = new URLSearchParams({
+    Authorization: `Bearer ${getToken() || ''}`,
+    clientid: import.meta.env.VITE_APP_CLIENT_ID,
+    connectionId: crypto.randomUUID()
+  });
+  const url = `${baseUrl}?${params.toString()}`;
 
   let hasOpened = false;
   let pageUnloading = false;
