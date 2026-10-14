@@ -760,6 +760,67 @@ const bomDialogVisible = ref(false);
 const bomKeyword = ref('');
 const bomDialogSelectedId = ref<string | number | ''>('');
 const selectedBomDisplay = ref('');
+const loadedWorkOrderNo = ref('');
+
+/** 工单号被修改或查询失败时，清除上一次查询带出的资料。 */
+const clearWorkOrderDetails = (workOrderNo = workOrderInfo.value.workOrderNo) => {
+  Object.assign(workOrderInfo.value, {
+    workOrderNo,
+    workOrderType: '',
+    item: '',
+    itemDesc: '',
+    salesOrderNo: '',
+    soDeliveryDate: '',
+    curProcess: '',
+    plannedStartDate: '',
+    plannedEndDate: '',
+    previousOrderNo: '',
+    previousWorkCenter: '',
+    nextOrderNo: '',
+    nextWorkCenter: '',
+    nextPlannedStartDate: '',
+    standardPersonCapacity: '',
+    standardPersonNumber: '',
+    actualCapacity: '',
+    actualStartTime: '',
+    actualEndTime: '',
+    previousEndDate: '',
+    sfcContent: '',
+    material: '',
+    materialDesc: '',
+    qty: null,
+    plannedQty: null,
+    unit: 'PCS',
+    inboundUnit: 'PCS',
+    productLine: '',
+    inspector: '',
+    version: 1,
+    remark: '',
+    intensiveProductionFlag: false,
+    mantissaOrderFlag: false,
+    sequence: undefined,
+    printTotal: undefined,
+    reserveNo: '',
+    reserveItemNo: ''
+  });
+  selectedBomDisplay.value = '';
+  bomDialogSelectedId.value = '';
+  bomList.value = [];
+  bomDialogVisible.value = false;
+  materialSource.value = DEFAULT_PRINT_RULE.defaultSource;
+  copies.value = 1;
+};
+
+watch(
+  () => workOrderInfo.value.workOrderNo,
+  (value) => {
+    const currentWorkOrderNo = String(value || '').trim();
+    if (loadedWorkOrderNo.value && currentWorkOrderNo !== loadedWorkOrderNo.value) {
+      loadedWorkOrderNo.value = '';
+      clearWorkOrderDetails(value);
+    }
+  }
+);
 
 const findBomRowByCurrentMaterial = (): WorkOrderBomVO | undefined => {
   const code = String(workOrderInfo.value.material || '').trim();
@@ -852,7 +913,7 @@ const applyWorkOrderItemMaterial = () => {
 
 const applyWorkOrderBase = (workOrderNoInfo: any) => {
   workOrderInfo.value = { ...workOrderInfo.value, ...workOrderNoInfo };
-  workOrderInfo.value.workOrderNo = workOrderNoInfo.workOrderNo;
+  workOrderInfo.value.workOrderNo = String(workOrderNoInfo.workOrderNo || '').trim();
   workOrderInfo.value.workOrderType = workOrderNoInfo.workOrderType || '';
   workOrderInfo.value.item = workOrderNoInfo.item || '';
   workOrderInfo.value.itemDesc = workOrderNoInfo.itemDesc || '';
@@ -866,6 +927,7 @@ const applyWorkOrderBase = (workOrderNoInfo: any) => {
   workOrderInfo.value.nextWorkCenter = workOrderNoInfo.nextWorkCenter;
   workOrderInfo.value.nextPlannedStartDate = workOrderNoInfo.nextPlannedStartDate;
   workOrderInfo.value.remark = '';
+  loadedWorkOrderNo.value = workOrderInfo.value.workOrderNo;
   clearReserveFields();
 };
 
@@ -901,7 +963,9 @@ const loadBomList = async (workOrderNo: string) => {
   bomLoading.value = true;
   try {
     const res = await listWorkOrderBom({ workOrderNo, pageNum: 1, pageSize: 2000 } as any);
-    bomList.value = res.rows || [];
+    if (loadedWorkOrderNo.value === workOrderNo && workOrderInfo.value.workOrderNo.trim() === workOrderNo) {
+      bomList.value = res.rows || [];
+    }
   } catch {
     bomList.value = [];
   } finally {
@@ -1009,6 +1073,12 @@ const workOrderInputRef = ref<HTMLInputElement | null>(null);
 const qtyInputRef = ref<HTMLInputElement | null>(null);
 const keyDownTab = async () => {
   workOrderInfo.value.workOrderNo = workOrderInfo.value.workOrderNo.trim();
+  const requestedWorkOrderNo = workOrderInfo.value.workOrderNo;
+  if (!requestedWorkOrderNo) {
+    loadedWorkOrderNo.value = '';
+    clearWorkOrderDetails('');
+    return;
+  }
   await nextTick(() => {
     if (workOrderInputRef.value) {
       workOrderInputRef.value.focus();
@@ -1018,8 +1088,11 @@ const keyDownTab = async () => {
   const res = await listWorkOrder({
     pageNum: 1,
     pageSize: 10,
-    workOrderNo: workOrderInfo.value.workOrderNo
+    workOrderNo: requestedWorkOrderNo
   });
+
+  // 查询期间再次修改了工单号，不允许旧响应覆盖当前输入。
+  if (workOrderInfo.value.workOrderNo.trim() !== requestedWorkOrderNo) return;
 
   if ((res.rows || []).length == 1) {
     const workOrderNoInfo = res.rows[0] || { workOrderNo: '', item: '', itemDesc: '', productLine: '', workOrderType: '' };
@@ -1032,8 +1105,12 @@ const keyDownTab = async () => {
       qtyInputRef.value?.focus();
     });
   } else if ((res.rows || []).length == 0) {
+    loadedWorkOrderNo.value = '';
+    clearWorkOrderDetails(requestedWorkOrderNo);
     proxy?.$modal.msgError('工单记录不存在');
   } else if ((res.rows || []).length > 1) {
+    loadedWorkOrderNo.value = '';
+    clearWorkOrderDetails(requestedWorkOrderNo);
     proxy?.$modal.msgError('工单记录存在多条');
   }
 };
@@ -1500,6 +1577,10 @@ const handlePrint = async () => {
   if (!printContent.value || printLoading.value) return;
   queryFormRef.value?.validate(async (valid: boolean) => {
     if (!valid) return;
+    if (!loadedWorkOrderNo.value || workOrderInfo.value.workOrderNo.trim() !== loadedWorkOrderNo.value) {
+      ElMessage.warning('请先查询并确认有效工单');
+      return;
+    }
     if (showMaterialSelect.value && !String(workOrderInfo.value.material || '').trim()) {
       ElMessage.warning('请选择产品品号');
       return;
@@ -1721,7 +1802,8 @@ onMounted(() => {
 
 <style scoped>
 .print-container {
-  height: calc(100vh - 200px);
+  height: calc(100vh - 84px);
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background-color: #f5f7fa;
@@ -1741,7 +1823,8 @@ onMounted(() => {
 }
 
 .el-container {
-  height: calc(100vh - 60px);
+  height: 100%;
+  min-height: 0;
 }
 
 .sidebar {
@@ -1774,6 +1857,9 @@ onMounted(() => {
   padding: 16px;
   background-color: #f5f7fa;
   height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -1783,6 +1869,8 @@ onMounted(() => {
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -1818,6 +1906,7 @@ onMounted(() => {
 
 .preview-content {
   flex: 1;
+  min-height: 0;
   padding: 16px;
   overflow: auto;
   display: flex;
@@ -2080,6 +2169,7 @@ onMounted(() => {
 .action-buttons {
   padding: 16px;
   border-top: 1px solid #e6e6e6;
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
   gap: 12px;
