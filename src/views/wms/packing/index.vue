@@ -133,8 +133,8 @@
                 </template>
               </el-table-column>
               <el-table-column label="标签码" align="center" width="130" prop="sn" />
-              <el-table-column label="产品料号" align="center" width="150" prop="item" />
-              <el-table-column label="产品描述" align="left" prop="itemDesc" />
+              <el-table-column label="标签料号" align="center" width="150" prop="materialCode" />
+              <el-table-column label="标签描述" align="left" prop="materialName" />
               <el-table-column label="计划数量" align="center" width="130" prop="plannedQty" />
               <el-table-column label="打包数量" align="center" width="130" prop="packingQty" />
               <el-table-column label="备注" align="left" prop="remark" />

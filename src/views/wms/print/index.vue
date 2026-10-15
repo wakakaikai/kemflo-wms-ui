@@ -1148,10 +1148,10 @@ const disabledFutureDate = (time: Date) => {
   return time.getTime() > now.getTime();
 };
 // DOM引用
-const qrcodeCanvas = ref(null);
-const qrCanvas5060 = ref(null);
-const qrCanvas8060 = ref(null);
-const printContent = ref(null);
+const qrcodeCanvas = ref<HTMLCanvasElement | null>(null);
+const qrCanvas5060 = ref<HTMLCanvasElement | null>(null);
+const qrCanvas8060 = ref<HTMLCanvasElement | null>(null);
+const printContent = ref<HTMLElement | null>(null);
 
 // 根据选择的纸张大小返回对应的CSS类名
 const getPaperSizeClass = () => {
@@ -1174,14 +1174,15 @@ const getPaperSizeClass = () => {
 // 处理纸张大小变化
 const handlePaperSizeChange = () => {
   nextTick(() => {
-    generateQRCode();
+    void generateQRCode();
   });
 };
 
 // 生成二维码
-const generateQRCode = () => {
+const generateQRCode = async () => {
   const content = workOrderInfo.value.sfcContent;
   if (!content) return;
+  const tasks: Promise<void>[] = [];
   if (qrcodeCanvas.value) {
     // 根据纸张大小调整二维码尺寸
     let qrSize = 120;
@@ -1192,28 +1193,35 @@ const generateQRCode = () => {
     if (paperSize.value === '9784-3') qrSize = 80;
     if (currentTemplate.value === 'receiptOrderTemplate' && paperSize.value === '9784') qrSize = 100;
 
-    QRCode.toCanvas(qrcodeCanvas.value, content, {
-      width: qrSize,
-      margin: 1,
-      color: { dark: '#000', light: '#fff' }
-    });
+    tasks.push(
+      QRCode.toCanvas(qrcodeCanvas.value, content, {
+        width: qrSize,
+        margin: 1,
+        color: { dark: '#000', light: '#fff' }
+      })
+    );
   }
 
   if (qrCanvas5060.value) {
-    QRCode.toCanvas(qrCanvas5060.value, content, {
-      width: 150,
-      margin: 1,
-      color: { dark: '#000', light: '#fff' }
-    });
+    tasks.push(
+      QRCode.toCanvas(qrCanvas5060.value, content, {
+        width: 150,
+        margin: 1,
+        color: { dark: '#000', light: '#fff' }
+      })
+    );
   }
 
   if (qrCanvas8060.value) {
-    QRCode.toCanvas(qrCanvas8060.value, content, {
-      width: 180,
-      margin: 1,
-      color: { dark: '#000', light: '#fff' }
-    });
+    tasks.push(
+      QRCode.toCanvas(qrCanvas8060.value, content, {
+        width: 180,
+        margin: 1,
+        color: { dark: '#000', light: '#fff' }
+      })
+    );
   }
+  await Promise.all(tasks);
 };
 const buildGenerateWorkOrderSnPayload = (): WorkOrderSnForm => {
   const payload: WorkOrderSnForm = {
@@ -1380,8 +1388,7 @@ const immediatelyPrint = async () => {
 
           // 重新生成二维码
           await nextTick();
-          generateQRCode();
-          await nextTick(); // 确保二维码渲染完成
+          await generateQRCode();
 
           // 生成截图
           const canvas = await html2canvas(printContent.value, {
@@ -1400,7 +1407,7 @@ const immediatelyPrint = async () => {
 
         // 重新生成原始二维码
         await nextTick();
-        generateQRCode();
+        await generateQRCode();
 
         const printWindow = window.open('', '_blank');
         if (printWindow) {
@@ -1572,6 +1579,147 @@ const buildPrintWindowScript = () => `
   };
 `;
 
+/** 复制当前标签 DOM，并把 Canvas 二维码转换为可在打印窗口显示的图片。 */
+const serializePrintContent = () => {
+  if (!printContent.value) return '';
+  const source = printContent.value;
+  const clone = source.cloneNode(true) as HTMLElement;
+  const sourceCanvases = source.querySelectorAll('canvas');
+  const clonedCanvases = clone.querySelectorAll('canvas');
+
+  sourceCanvases.forEach((canvas, index) => {
+    const clonedCanvas = clonedCanvases[index];
+    if (!clonedCanvas) return;
+    const image = document.createElement('img');
+    Array.from(clonedCanvas.attributes).forEach((attribute) => image.setAttribute(attribute.name, attribute.value));
+    const rect = canvas.getBoundingClientRect();
+    image.src = canvas.toDataURL('image/png');
+    image.alt = '';
+    image.width = canvas.width;
+    image.height = canvas.height;
+    image.style.width = `${rect.width || canvas.width}px`;
+    image.style.height = `${rect.height || canvas.height}px`;
+    image.style.objectFit = 'contain';
+    clonedCanvas.replaceWith(image);
+  });
+
+  return clone.outerHTML;
+};
+
+/** 复用当前页面已经加载的样式，保留 scoped 样式生成的属性选择器。 */
+const collectPrintStyleResources = () =>
+  Array.from(document.head.querySelectorAll<HTMLStyleElement | HTMLLinkElement>('style, link[rel="stylesheet"]'))
+    .map((element) => {
+      if (element instanceof HTMLLinkElement) {
+        const clone = element.cloneNode(true) as HTMLLinkElement;
+        clone.href = element.href;
+        return clone.outerHTML;
+      }
+      return element.outerHTML;
+    })
+    .join('');
+
+const buildPrintPageStyles = () => {
+  let pageSize = '';
+  let pageWidth = '';
+  let pageHeight = '';
+  let printableHeight = '';
+  switch (paperSize.value) {
+    case '9784-2':
+    case '9784-3':
+    case '9784':
+      pageSize = '97mm 84mm';
+      pageWidth = '97mm';
+      pageHeight = '84mm';
+      printableHeight = '83mm';
+      break;
+    case '8060':
+      pageSize = '80mm 60mm';
+      pageWidth = '80mm';
+      pageHeight = '60mm';
+      printableHeight = '59mm';
+      break;
+    case '5060':
+      pageSize = '50mm 60mm';
+      pageWidth = '50mm';
+      pageHeight = '60mm';
+      printableHeight = '59mm';
+      break;
+    case '3040':
+      pageSize = '30mm 40mm';
+      pageWidth = '30mm';
+      pageHeight = '40mm';
+      printableHeight = '39mm';
+      break;
+  }
+
+  return `
+    @page {
+      ${pageSize ? `size: ${pageSize};` : ''}
+      margin: 0;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+    }
+    .print-page {
+      ${pageWidth ? `width: ${pageWidth};` : ''}
+      ${printableHeight ? `height: ${printableHeight};` : pageHeight ? `height: ${pageHeight};` : ''}
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      break-after: auto;
+      page-break-after: auto;
+    }
+    .print-page > * {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      box-sizing: border-box !important;
+      overflow: hidden !important;
+    }
+    /*
+     * 兼容 Win7 Chrome 109/标签打印驱动：不要在满页元素后强制分页，
+     * 否则纸张尺寸取整后容易多生成一张空白页。从第二张开始前分页。
+     */
+    .print-page + .print-page {
+      break-before: page;
+      page-break-before: always;
+    }
+    .print-page,
+    .print-page * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    /*
+     * 标签模板原先使用 background 绘制横线。浏览器或标签打印机关闭
+     * “背景图形”时会把它省略，打印页改用实体边框，确保预览和实物都有线。
+     */
+    .print-page .top-hr,
+    .print-page .bottom-hr {
+      height: 0 !important;
+      border: 0 !important;
+      border-top: 2px solid #000 !important;
+      background: transparent !important;
+      opacity: 1 !important;
+    }
+    .print-page .split-line {
+      height: 0 !important;
+      border: 0 !important;
+      border-top: 1px solid #000 !important;
+      background: transparent !important;
+      opacity: 1 !important;
+    }
+  `;
+};
+
 // 打印处理支持连续打印不同二维码
 const handlePrint = async () => {
   if (!printContent.value || printLoading.value) return;
@@ -1585,133 +1733,59 @@ const handlePrint = async () => {
       ElMessage.warning('请选择产品品号');
       return;
     }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      ElMessage.error('打印窗口被拦截，请允许弹窗后重试');
+      return;
+    }
+    printWindow.document.write('<!doctype html><html><head><title>正在准备打印</title></head><body>正在准备打印数据，请稍候...</body></html>');
+    printWindow.document.close();
+
     startPrintLoading('正在下达打印，请稍候...');
+    let printDispatched = false;
+    const originalPreview = {
+      sfcContent: workOrderInfo.value.sfcContent,
+      sequence: workOrderInfo.value.sequence,
+      printTotal: workOrderInfo.value.printTotal
+    };
     try {
-      // 生成序列号列表
       const snList = await generateSerialNumbers();
+      if (!snList.length) {
+        throw new Error('接口未返回可打印的条码');
+      }
 
       let printContentHTML = '';
+      isBatchPrinting.value = true;
+      try {
+        for (const snInfo of snList) {
+          workOrderInfo.value.sfcContent = snInfo.sn;
+          workOrderInfo.value.sequence = snInfo.sequence;
+          workOrderInfo.value.printTotal = snInfo.printTotal;
 
-      // 为每个序列号生成一个打印页面
-      for (let i = 0; i < snList.length; i++) {
-        workOrderInfo.value.sfcContent = snList[i].sn;
-        workOrderInfo.value.sequence = snList[i].sequence;
-        workOrderInfo.value.printTotal = snList[i].printTotal;
-
-        // 重新生成二维码
+          await nextTick();
+          await generateQRCode();
+          printContentHTML += `<div class="print-page">${serializePrintContent()}</div>`;
+        }
+      } finally {
+        Object.assign(workOrderInfo.value, originalPreview);
         await nextTick();
-        generateQRCode();
-        await nextTick(); // 确保二维码渲染完成
-
-        // 生成截图
-        const canvas = await html2canvas(printContent.value, {
-          scale: 2,
-          logging: false,
-          useCORS: true,
-          scrollX: 0,
-          scrollY: 0
-        });
-
-        printContentHTML += `<div style="page-break-after: ${i < snList.length - 1 ? 'always' : 'auto'};"><img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" /></div>`;
+        await generateQRCode();
+        isBatchPrinting.value = false;
       }
 
-      // 重新生成原始二维码
-      await nextTick();
-      generateQRCode();
-
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        ElMessage.error('打印窗口被拦截，请允许弹窗后重试');
-        return;
+      if (printWindow.closed) {
+        throw new Error('打印窗口已关闭');
       }
 
-      // 根据纸张大小设置打印页面尺寸
-      let printStyles = '';
-      switch (paperSize.value) {
-        case '9784-2':
-        case '9784-3':
-        case '9784':
-          printStyles = `
-              @page {
-                size: 97mm 84mm;
-                margin: 0;
-              }
-              body {
-                width: 97mm;
-                height: 84mm;
-                margin: 0;
-                padding: 0;
-              }
-            `;
-          break;
-        case '8060':
-          printStyles = `
-              @page {
-                size: 80mm 60mm;
-                margin: 0;
-              }
-              body {
-                width: 80mm;
-                height: 60mm;
-                margin: 0;
-                padding: 0;
-              }
-            `;
-          break;
-        case '5060':
-          printStyles = `
-              @page {
-                size: 50mm 60mm;
-                margin: 0;
-              }
-              body {
-                width: 50mm;
-                height: 60mm;
-                margin: 0;
-                padding: 0;
-              }
-            `;
-          break;
-        case '3040':
-          printStyles = `
-              @page {
-                size: 30mm 40mm;
-                margin: 0;
-              }
-              body {
-                width: 30mm;
-                height: 40mm;
-                margin: 0;
-                padding: 0;
-              }
-            `;
-          break;
-        default:
-          printStyles = `
-              @page {
-                margin: 0;
-              }
-              body {
-                margin: 0;
-                padding: 0;
-              }
-            `;
-      }
-
+      printWindow.document.open();
       printWindow.document.write(`
+            <!doctype html>
             <html>
               <head>
                 <title>批量打印预览</title>
+                ${collectPrintStyleResources()}
                 <style>
-                  ${printStyles}
-                  @media print {
-                    img {
-                      width: 100%;
-                      height: 100%;
-                      max-width: 100%;
-                      max-height: 100%;
-                    }
-                  }
+                  ${buildPrintPageStyles()}
                 </style>
               </head>
               <body>
@@ -1723,11 +1797,17 @@ const handlePrint = async () => {
             </html>
       `);
       printWindow.document.close();
+      printDispatched = true;
+      proxy?.$modal.closeLoading();
       await waitPrintReceived(printWindow);
     } catch (error) {
       console.error('打印失败:', error);
-      ElMessage.error('打印失败');
+      ElMessage.error(error instanceof Error ? error.message : '打印失败');
     } finally {
+      isBatchPrinting.value = false;
+      if (!printDispatched && !printWindow.closed) {
+        printWindow.close();
+      }
       stopPrintLoading();
     }
   });
@@ -1757,14 +1837,14 @@ const handleExportImage = async () => {
 // 监听模板变化
 watch(currentTemplate, () => {
   nextTick(() => {
-    generateQRCode();
+    void generateQRCode();
   });
 });
 
 // 监听纸张大小变化
 watch(paperSize, () => {
   nextTick(() => {
-    generateQRCode();
+    void generateQRCode();
   });
 });
 
@@ -1779,7 +1859,10 @@ watch(copiesMax, (max) => {
 watch(
   workOrderInfo,
   () => {
-    nextTick(generateQRCode);
+    if (isBatchPrinting.value) return;
+    nextTick(() => {
+      void generateQRCode();
+    });
   },
   { deep: true }
 );
@@ -1792,7 +1875,7 @@ onMounted(() => {
   workOrderInfo.value.productDate = parseTime(new Date(), '{y}-{m}-{d}');
   workOrderInfo.value.makeDate = parseTime(new Date(), '{y}-{m}-{d}');
   getUser();
-  generateQRCode();
+  void generateQRCode();
   const tenantId = localStorage.getItem('tenantId');
   if (tenantId === '000001') {
     workOrderInfo.value.companyName = '亿泰精密工业（南京）有限公司';
