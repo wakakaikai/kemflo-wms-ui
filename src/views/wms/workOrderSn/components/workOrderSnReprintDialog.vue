@@ -247,23 +247,35 @@
                     <span class="version-text">V{{ workOrderInfo.version }}</span>
                   </span>
                 </div>
-                <div class="info-row">
-                  <label>客户订单</label>
-                  <span>{{ workOrderInfo.salesOrderNo }}</span>
-                </div>
-                <div class="info-row">
-                  <label>交&nbsp;货&nbsp;日</label>
-                  <span>{{ parseTime(workOrderInfo.soDeliveryDate, '{y}-{m}-{d}') }}</span>
-                </div>
-                <div class="info-row full-row">
-                  <label>产品品号</label>
-                  <span>{{ workOrderInfo.material }}</span>
+                <div class="info-row-container">
+                  <div class="info-column">
+                    <div class="info-row">
+                      <label>客户订单</label>
+                      <span>{{ workOrderInfo.salesOrderNo }}</span>
+                    </div>
+                    <div class="info-row">
+                      <label>交&nbsp;货&nbsp;日</label>
+                      <span>{{ parseTime(workOrderInfo.soDeliveryDate, '{y}-{m}-{d}') }}</span>
+                    </div>
+                    <div class="info-row">
+                      <label>产品品号</label>
+                      <span>{{ workOrderInfo.material }}</span>
+                    </div>
+                  </div>
+                  <div class="info-column">
+                    <div class="info-row">
+                      <div class="seal-stamp-container">
+                        <div class="seal-stamp seal-intensive" v-if="workOrderInfo.intensiveProductionFlag">集</div>
+                        <div class="seal-stamp seal-mantissa" v-if="workOrderInfo.mantissaOrderFlag">尾</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div class="info-row product-description">
                   <label>产品描述</label>
                   <span>{{ workOrderInfo.materialDesc }}</span>
                 </div>
-                <div class="info-with-qr">
+                <div class="info-row-container">
                   <div class="info-column">
                     <div class="info-row">
                       <label>工单数量</label>
@@ -271,7 +283,7 @@
                     </div>
                     <div class="info-row">
                       <label>入库数量</label>
-                      <span>{{ workOrderInfo.qty }} {{ workOrderInfo.unit }}</span>
+                      <span>{{ workOrderInfo.qty }} {{ inboundUnitDisplay }}</span>
                       <span>{{ workOrderInfo.remark }}</span>
                     </div>
                     <div class="info-row">
@@ -291,21 +303,22 @@
                     <div class="qr-info">
                       <span>{{ workOrderInfo.sfcContent }}</span>
                     </div>
-                    <canvas ref="previewQrCodeCanvas97843" v-if="workOrderInfo.sn"></canvas>
+                    <canvas ref="previewQrCodeCanvas97843" v-if="workOrderInfo.sfcContent"></canvas>
+                    <div v-else style="width: 80px"></div>
                   </div>
                 </div>
                 <hr class="split-line" />
-                <div class="info-with-qr">
+                <div class="info-row-container">
                   <div class="info-column">
                     <div class="info-row">
-                      <label>下一制程</label>
-                      <span>{{ formatPreviousOrderNo(workOrderInfo.nextOrderNo) }} {{ workOrderInfo.nextWorkCenter }}</span>
+                      <label style="font-size: 12px">下一制程</label>
+                      <span style="font-size: 12px">{{ formatPreviousOrderNo(workOrderInfo.nextOrderNo) }} {{ workOrderInfo.nextWorkCenter }}</span>
                     </div>
                   </div>
                   <div class="info-column">
                     <div class="info-row">
-                      <label>预计开工</label>
-                      <span>{{ parseTime(workOrderInfo.nextPlannedStartDate) }}</span>
+                      <label style="font-size: 12px">预计开工</label>
+                      <span style="font-size: 12px">{{ parseTime(workOrderInfo.nextPlannedStartDate) }}</span>
                     </div>
                   </div>
                 </div>
@@ -379,9 +392,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from 'vue';
+import { computed, ref, watch, nextTick, onMounted } from 'vue';
 import QRCode from 'qrcode';
-import html2canvas from 'html2canvas';
 import { parseTime } from '@/utils/ruoyi';
 import { getUserProfile } from '@/api/system/user';
 import type { WorkOrderSnVO } from '@/api/wms/workOrderSn/types';
@@ -397,6 +409,8 @@ const emit = defineEmits(['update:modelValue', 'print-success']);
 
 const visible = ref(false);
 const printLoading = ref(false);
+const PRINT_RECEIVED_MESSAGE = 'WMS_PRINT_RECEIVED';
+let printWaitCleanup: (() => void) | null = null;
 const currentTemplate = ref('receiptOrderTemplate3');
 const operator = ref('');
 
@@ -409,7 +423,7 @@ const previewQrCodeCanvas5060 = ref<HTMLCanvasElement | null>(null);
 const previewQrCodeCanvas3040 = ref<HTMLCanvasElement | null>(null);
 const printPreviewContent = ref<HTMLElement | null>(null);
 
-const workOrderInfo = ref({
+const workOrderInfo = ref<Record<string, any>>({
   companyName: '溢泰（南京）环保科技有限公司',
   workOrderNo: '',
   salesOrderNo: '',
@@ -429,11 +443,13 @@ const workOrderInfo = ref({
   actualEndTime: '',
   previousEndDate: '',
   sfcContent: '',
+  sn: '',
   material: '',
   materialDesc: '',
   qty: null,
   plannedQty: null,
   unit: 'PCS',
+  inboundUnit: 'PCS',
   productDate: '',
   makeDate: '',
   productLine: '',
@@ -443,8 +459,13 @@ const workOrderInfo = ref({
   remark: '',
   printPageNum: 1,
   printTotal: 1,
-  sequence: undefined as number | undefined
+  sequence: undefined as number | undefined,
+  intensiveProductionFlag: false,
+  mantissaOrderFlag: false
 });
+
+/** 入库数量单位取标签单位，工单数量仍用工单单位 */
+const inboundUnitDisplay = computed(() => workOrderInfo.value.inboundUnit || workOrderInfo.value.unit || '');
 
 const printTemplates = ref([
   // { value: 'receiptOrderTemplate', label: '生产入库单模板1(97×84mm)' },
@@ -478,18 +499,32 @@ watch(
   { deep: true }
 );
 
-const initPreviewData = () => {
-  const record = props.selectedRecords[0];
-  workOrderInfo.value = { ...record.wmsWorkOrderVo, ...record };
-  workOrderInfo.value.sfcContent = record.sn;
-  workOrderInfo.value.material = record.item;
-  workOrderInfo.value.materialDesc = record.itemDesc;
-  workOrderInfo.value.productDate = record.productDate ? proxy?.parseTime(record.productDate, '{y}-{m}-{d}') : '';
-  workOrderInfo.value.makeDate = parseTime(new Date(), '{y}-{m}-{d}');
-  workOrderInfo.value.operator = operator.value;
+/** 用工单资料铺底，标签料号、入库单位和条码以已下达记录为准。 */
+const applyPrintRecord = (record: WorkOrderSnVO & Record<string, any>) => {
+  const workOrder = record.wmsWorkOrderVo || {};
+  workOrderInfo.value = {
+    ...workOrderInfo.value,
+    ...workOrder,
+    ...record,
+    unit: workOrder.unit || record.unit || 'PCS',
+    inboundUnit: record.unit || workOrder.unit || '',
+    sfcContent: record.sn || '',
+    material: record.materialCode || record.item || '',
+    materialDesc: record.materialName || record.itemDesc || '',
+    productDate: record.productDate ? proxy?.parseTime(record.productDate, '{y}-{m}-{d}') : '',
+    makeDate: parseTime(new Date(), '{y}-{m}-{d}'),
+    operator: operator.value,
+    intensiveProductionFlag: !!workOrder.intensiveProductionFlag,
+    mantissaOrderFlag: !!workOrder.mantissaOrderFlag,
+    sequence: record.sequence,
+    printTotal: record.printTotal
+  };
+};
 
+const initPreviewData = () => {
+  applyPrintRecord(props.selectedRecords[0]);
   nextTick(() => {
-    generatePreviewQRCode();
+    void generatePreviewQRCode();
   });
 };
 
@@ -518,10 +553,10 @@ const getPaperSizeClass = (template: string) => {
   }
 };
 
-const generatePreviewQRCode = () => {
+const generatePreviewQRCode = async () => {
   if (props.selectedRecords.length === 0) return;
 
-  const content = workOrderInfo.value.sn;
+  const content = workOrderInfo.value.sfcContent || workOrderInfo.value.sn;
   if (!content) return;
 
   let qrCanvasRef = null;
@@ -558,7 +593,7 @@ const generatePreviewQRCode = () => {
   }
 
   if (qrCanvasRef) {
-    QRCode.toCanvas(qrCanvasRef, content, {
+    await QRCode.toCanvas(qrCanvasRef, content, {
       width: qrSize,
       margin: 1,
       color: { dark: '#000000', light: '#ffffff' }
@@ -587,64 +622,214 @@ const formattedQty = (qty: number | string | null | undefined): string => {
   }).format(num);
 };
 
-const getPrintStyles = (template: string) => {
-  switch (template) {
-    case 'qr3040':
-      return `
-        @page {
-          size: 30mm 40mm;
-          margin: 0;
-        }
-        body {
-          width: 30mm;
-          height: 40mm;
-          margin: 0;
-          padding: 0;
-        }
-      `;
-    case 'qr5060':
-      return `
-        @page {
-          size: 50mm 60mm;
-          margin: 0;
-        }
-        body {
-          width: 50mm;
-          height: 60mm;
-          margin: 0;
-          padding: 0;
-        }
-      `;
+const resolvePaperSize = () => {
+  switch (currentTemplate.value) {
     case 'qr8060':
-      return `
-        @page {
-          size: 80mm 60mm;
-          margin: 0;
-        }
-        body {
-          width: 80mm;
-          height: 60mm;
-          margin: 0;
-          padding: 0;
-        }
-      `;
-    case 'receiptOrderTemplate':
-    case 'receiptOrderTemplate2':
-    case 'receiptOrderTemplate3':
+      return '8060';
+    case 'qr5060':
+      return '5060';
+    case 'qr3040':
+      return '3040';
     default:
-      return `
-        @page {
-          size: 97mm 84mm;
-          margin: 0;
-        }
-        body {
-          width: 97mm;
-          height: 84mm;
-          margin: 0;
-          padding: 0;
-        }
-      `;
+      return '9784';
   }
+};
+
+const startPrintLoading = (text = '正在准备打印，请稍候...') => {
+  printLoading.value = true;
+  proxy?.$modal.loading(text);
+};
+
+const stopPrintLoading = () => {
+  printLoading.value = false;
+  proxy?.$modal.closeLoading();
+  if (printWaitCleanup) {
+    printWaitCleanup();
+    printWaitCleanup = null;
+  }
+};
+
+/** 等待打印窗口完成打印接收（afterprint / 关闭窗口）后再结束 loading */
+const waitPrintReceived = (printWindow: Window) =>
+  new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', onMessage);
+      window.clearInterval(closeTimer);
+      window.clearTimeout(fallbackTimer);
+      if (printWaitCleanup === finish) {
+        printWaitCleanup = null;
+      }
+      resolve();
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.source === printWindow && event.data?.type === PRINT_RECEIVED_MESSAGE) {
+        finish();
+      }
+    };
+    window.addEventListener('message', onMessage);
+    const closeTimer = window.setInterval(() => {
+      if (printWindow.closed) {
+        finish();
+      }
+    }, 300);
+    const fallbackTimer = window.setTimeout(finish, 120000);
+    printWaitCleanup = finish;
+  });
+
+const buildPrintWindowScript = () => `
+  window.onload = function () {
+    var notified = false;
+    function notifyParent() {
+      if (notified) return;
+      notified = true;
+      try {
+        if (window.opener) {
+          window.opener.postMessage({ type: '${PRINT_RECEIVED_MESSAGE}' }, '*');
+        }
+      } catch (e) {}
+    }
+    window.onafterprint = function () {
+      notifyParent();
+      setTimeout(function () { window.close(); }, 100);
+    };
+    window.addEventListener('beforeunload', notifyParent);
+    window.focus();
+    window.print();
+  };
+`;
+
+/** 复制当前标签 DOM，并把 Canvas 二维码转换为可在打印窗口显示的图片。 */
+const serializePrintContent = () => {
+  if (!printPreviewContent.value) return '';
+  const source = printPreviewContent.value;
+  const clone = source.cloneNode(true) as HTMLElement;
+  const sourceCanvases = source.querySelectorAll('canvas');
+  const clonedCanvases = clone.querySelectorAll('canvas');
+
+  sourceCanvases.forEach((canvas, index) => {
+    const clonedCanvas = clonedCanvases[index];
+    if (!clonedCanvas) return;
+    const image = document.createElement('img');
+    Array.from(clonedCanvas.attributes).forEach((attribute) => image.setAttribute(attribute.name, attribute.value));
+    const rect = canvas.getBoundingClientRect();
+    image.src = canvas.toDataURL('image/png');
+    image.alt = '';
+    image.width = canvas.width;
+    image.height = canvas.height;
+    image.style.width = `${rect.width || canvas.width}px`;
+    image.style.height = `${rect.height || canvas.height}px`;
+    image.style.objectFit = 'contain';
+    clonedCanvas.replaceWith(image);
+  });
+
+  return clone.outerHTML;
+};
+
+/** 复用当前页面已经加载的样式，保留 scoped 样式生成的属性选择器。 */
+const collectPrintStyleResources = () =>
+  Array.from(document.head.querySelectorAll<HTMLStyleElement | HTMLLinkElement>('style, link[rel="stylesheet"]'))
+    .map((element) => {
+      if (element instanceof HTMLLinkElement) {
+        const clone = element.cloneNode(true) as HTMLLinkElement;
+        clone.href = element.href;
+        return clone.outerHTML;
+      }
+      return element.outerHTML;
+    })
+    .join('');
+
+const buildPrintPageStyles = () => {
+  let pageSize = '';
+  let pageWidth = '';
+  let pageHeight = '';
+  let printableHeight = '';
+  switch (resolvePaperSize()) {
+    case '9784':
+      pageSize = '97mm 84mm';
+      pageWidth = '97mm';
+      pageHeight = '84mm';
+      printableHeight = '83mm';
+      break;
+    case '8060':
+      pageSize = '80mm 60mm';
+      pageWidth = '80mm';
+      pageHeight = '60mm';
+      printableHeight = '59mm';
+      break;
+    case '5060':
+      pageSize = '50mm 60mm';
+      pageWidth = '50mm';
+      pageHeight = '60mm';
+      printableHeight = '59mm';
+      break;
+    case '3040':
+      pageSize = '30mm 40mm';
+      pageWidth = '30mm';
+      pageHeight = '40mm';
+      printableHeight = '39mm';
+      break;
+  }
+
+  return `
+    @page {
+      ${pageSize ? `size: ${pageSize};` : ''}
+      margin: 0;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+    }
+    .print-page {
+      ${pageWidth ? `width: ${pageWidth};` : ''}
+      ${printableHeight ? `height: ${printableHeight};` : pageHeight ? `height: ${pageHeight};` : ''}
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      break-after: auto;
+      page-break-after: auto;
+    }
+    .print-page > * {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      box-sizing: border-box !important;
+      overflow: hidden !important;
+    }
+    .print-page + .print-page {
+      break-before: page;
+      page-break-before: always;
+    }
+    .print-page,
+    .print-page * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .print-page .top-hr,
+    .print-page .bottom-hr {
+      height: 0 !important;
+      border: 0 !important;
+      border-top: 2px solid #000 !important;
+      background: transparent !important;
+      opacity: 1 !important;
+    }
+    .print-page .split-line {
+      height: 0 !important;
+      border: 0 !important;
+      border-top: 1px solid #000 !important;
+      background: transparent !important;
+      opacity: 1 !important;
+    }
+  `;
 };
 
 const handleBatchPrint = async () => {
@@ -652,76 +837,69 @@ const handleBatchPrint = async () => {
     proxy?.$modal.msgWarning('没有可打印的记录');
     return;
   }
+  if (!printPreviewContent.value || printLoading.value) return;
 
-  printLoading.value = true;
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    proxy?.$modal.msgError('打印窗口被拦截，请允许弹窗后重试');
+    return;
+  }
+  printWindow.document.write('<!doctype html><html><head><title>正在准备打印</title></head><body>正在准备打印数据，请稍候...</body></html>');
+  printWindow.document.close();
+
+  startPrintLoading();
+  let printDispatched = false;
+  const previewRecord = props.selectedRecords[0];
   try {
     let printContentHTML = '';
-    for (let i = 0; i < props.selectedRecords.length; i++) {
-      const record = props.selectedRecords[i];
-
-      workOrderInfo.value = { ...record.wmsWorkOrderVo, ...record };
-      workOrderInfo.value.sfcContent = record.sn;
-      workOrderInfo.value.material = record.item;
-      workOrderInfo.value.materialDesc = record.itemDesc;
-      workOrderInfo.value.productDate = record.productDate ? proxy?.parseTime(record.productDate, '{y}-{m}-{d}') : '';
-      workOrderInfo.value.makeDate = parseTime(new Date(), '{y}-{m}-{d}');
-      workOrderInfo.value.operator = operator.value;
-
+    for (const record of props.selectedRecords) {
+      applyPrintRecord(record);
       await nextTick();
-      generatePreviewQRCode();
-      await nextTick();
-
-      const canvas = await html2canvas(printPreviewContent.value, {
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        scrollX: 0,
-        scrollY: 0
-      });
-
-      printContentHTML += `
-        <div style="page-break-after: ${i < props.selectedRecords.length - 1 ? 'always' : 'auto'};">
-          <img src="${canvas.toDataURL('image/png')}" style="width:100%; height:100%;" />
-        </div>
-      `;
+      await generatePreviewQRCode();
+      printContentHTML += `<div class="print-page">${serializePrintContent()}</div>`;
     }
 
+    applyPrintRecord(previewRecord);
     await nextTick();
-    generatePreviewQRCode();
+    await generatePreviewQRCode();
 
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>批量打印预览</title>
-            <style>
-              ${getPrintStyles(currentTemplate.value)}
-              @media print {
-                img {
-                  width: 100%;
-                  height: 100%;
-                  max-width: 100%;
-                  max-height: 100%;
-                }
-              }
-            </style>
-          </head>
-          <body onload="window.print(); setTimeout(() => window.close(), 500);">
-            ${printContentHTML}
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
+    if (printWindow.closed) {
+      throw new Error('打印窗口已关闭');
     }
 
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>批量打印预览</title>
+          ${collectPrintStyleResources()}
+          <style>
+            ${buildPrintPageStyles()}
+          </style>
+        </head>
+        <body>
+          ${printContentHTML}
+          <script>
+            ${buildPrintWindowScript()}
+          <\/script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printDispatched = true;
+    proxy?.$modal.closeLoading();
+    await waitPrintReceived(printWindow);
     emit('print-success');
     visible.value = false;
   } catch (error) {
     console.error('打印失败:', error);
-    proxy?.$modal.msgError('打印失败，请重试');
+    proxy?.$modal.msgError(error instanceof Error ? error.message : '打印失败，请重试');
   } finally {
-    printLoading.value = false;
+    if (!printDispatched && !printWindow.closed) {
+      printWindow.close();
+    }
+    stopPrintLoading();
   }
 };
 
@@ -928,7 +1106,8 @@ onMounted(() => {
   margin-bottom: 10px;
 }
 
-.info-with-qr {
+.info-with-qr,
+.info-row-container {
   display: flex;
   flex-direction: row;
 }
@@ -1273,7 +1452,7 @@ onMounted(() => {
 
   .top-hr,
   .bottom-hr {
-    margin: 6px 3mm 6px 3mm;
+    margin: 4px 3mm 4px 3mm;
     height: 2px;
   }
 
@@ -1345,6 +1524,38 @@ onMounted(() => {
     background-color: #000;
     width: 100%;
   }
+}
+
+.seal-stamp-container {
+  position: relative;
+  width: 120px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+}
+
+.seal-stamp {
+  position: absolute;
+  font-size: 30px;
+  font-weight: bold;
+  color: #c00000;
+  text-align: center;
+  line-height: 1;
+  transform: rotate(0deg);
+  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.3);
+  background-color: transparent;
+  border: 3px solid #c00000;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.seal-mantissa {
+  margin-left: 60px;
 }
 
 @media screen and (max-width: 992px) {

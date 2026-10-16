@@ -34,7 +34,10 @@ export function inheritPoItemNumberOnBom(bom: PurchaseOrderBomVO, parent: Pick<P
 
 function attachBomTreeChild(bom: PurchaseOrderBomVO, parentKey: string, index: number, parent: PurchaseOrderDetailVO): PoDetailTreeRow {
   inheritPoItemNumberOnBom(bom, parent);
-  const rowKey = String(bom.inventorySplitKey || bom.originBomKey || `${parentKey}-bom-${bom.id ?? index}`);
+  // Element Plus 要求整张树表中的 row-key 全局唯一。同一采购项次的多个交货行会
+  // 共享同一组 BOM，单独使用 BOM id/originBomKey 会导致 543 子行串到其他主行。
+  const bomKey = bom.inventorySplitKey || bom.originBomKey || (bom.id ?? index);
+  const rowKey = `${parentKey}-bom-${String(bomKey)}`;
   const node = bom as PoDetailTreeRow;
   node.rowKey = rowKey;
   node.isPoDetailHead = false;

@@ -7,17 +7,29 @@ import { PackingVO, PackingForm, PackingQuery, PackingExtVO } from '@/api/wms/pa
  * 工单状态是字符串（如 RELEASABLE），打包状态是数字。
  * 保存打包记录时明细状态由后端业务处理，提交前统一移除，避免字段污染。
  */
-const preparePackingData = (data: PackingForm): PackingForm => {
-  if (!Array.isArray(data.packingDetailBoList)) return data;
-
-  return {
+const preparePackingData = (data: PackingForm, isUpdate: boolean): PackingForm => {
+  const normalizedData: PackingForm = {
     ...data,
-    packingDetailBoList: data.packingDetailBoList.map((detail) => {
-      const normalizedDetail = { ...detail };
-      delete normalizedDetail.status;
-      return normalizedDetail;
-    })
+    packingDetailBoList: Array.isArray(data.packingDetailBoList)
+      ? data.packingDetailBoList.map((detail) => {
+          const normalizedDetail = { ...detail };
+          delete normalizedDetail.status;
+          // 明细由后端按主表打包编号重新生成，禁止沿用页面中的旧主键和关联字段
+          delete normalizedDetail.id;
+          delete normalizedDetail.packingCode;
+          delete normalizedDetail.palletCode;
+          return normalizedDetail;
+        })
+      : []
   };
+  delete (normalizedData as PackingForm & { packingDetailVoList?: unknown }).packingDetailVoList;
+
+  // 新增时主键和打包编号均由后端生成，避免弹窗残留数据误走错误关联
+  if (!isUpdate) {
+    delete normalizedData.id;
+    delete normalizedData.packingCode;
+  }
+  return normalizedData;
 };
 
 /**
@@ -94,7 +106,7 @@ export const addPacking = (data: PackingForm) => {
   return request({
     url: '/wms/packing',
     method: 'post',
-    data: preparePackingData(data)
+    data: preparePackingData(data, false)
   });
 };
 
@@ -106,7 +118,7 @@ export const updatePacking = (data: PackingForm) => {
   return request({
     url: '/wms/packing',
     method: 'put',
-    data: preparePackingData(data)
+    data: preparePackingData(data, true)
   });
 };
 /**

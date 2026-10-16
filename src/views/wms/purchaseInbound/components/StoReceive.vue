@@ -198,7 +198,7 @@
               </el-table-column>
               <el-table-column label="操作" width="80" align="center">
                 <template #default="scope">
-                  <el-button v-if="isPoDetailParentRow(scope.row)" type="danger" link icon="Delete" @click="removeFromStoInboundList(stoInboundList.findIndex((item) => item.inboundRowKey === scope.row.inboundRowKey))"></el-button>
+                  <el-button v-if="isPoDetailParentRow(scope.row)" type="danger" link icon="Delete" @click="removeFromStoInboundList(scope.row.inboundRowKey)"></el-button>
                 </template>
               </el-table-column>
             </template>
@@ -764,7 +764,9 @@ const addSelectedToStoInboundList = () => {
   stoTableRef.value?.clearSelection();
 };
 
-const removeFromStoInboundList = (index: number) => {
+const removeFromStoInboundList = (inboundRowKey: string) => {
+  const index = stoInboundList.value.findIndex((item) => item.inboundRowKey === inboundRowKey);
+  if (index < 0) return;
   stoInboundList.value.splice(index, 1);
   syncAllStoBomAllocations();
 };

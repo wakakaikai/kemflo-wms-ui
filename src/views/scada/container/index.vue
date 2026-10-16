@@ -921,30 +921,38 @@ onBeforeUnmount(() => {
   gap: 15px;
   padding: 14px 22px;
   overflow: hidden;
-  border: 1px solid var(--accent);
-  border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--accent) 58%, transparent);
+  border-radius: 10px;
   background: linear-gradient(135deg, var(--surface), rgba(3, 25, 63, 0.9)), linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent 34%);
   box-shadow:
-    inset 0 0 48px var(--glow),
-    0 0 15px var(--glow);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 42px color-mix(in srgb, var(--accent) 14%, transparent),
+    0 8px 24px rgba(0, 8, 28, 0.32),
+    0 0 15px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .metric-card::before {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 10%;
+  width: 80%;
+  height: 1px;
   content: '';
-  background: linear-gradient(110deg, rgba(255, 255, 255, 0.05), transparent 36%);
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--accent) 22%, var(--accent) 78%, transparent);
+  opacity: 0.72;
+  box-shadow: 0 0 10px var(--accent);
 }
 
 .metric-card::after {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 82px;
-  height: 10px;
+  inset: 0;
   content: '';
-  border-right: 2px solid var(--accent);
-  border-bottom: 2px solid var(--accent);
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 0 0, var(--accent) 0, transparent 24%),
+    radial-gradient(circle at 100% 100%, var(--accent) 0, transparent 22%);
+  opacity: 0.06;
 }
 
 .metric-card.green {
@@ -1109,8 +1117,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgba(24, 191, 255, 0.92);
-  border-radius: 6px;
+  border: 1px solid rgba(24, 191, 255, 0.58);
+  border-radius: 10px;
   background: linear-gradient(90deg, rgba(5, 65, 118, 0.32), transparent 26%, transparent 74%, rgba(5, 65, 118, 0.32)), linear-gradient(135deg, rgba(3, 39, 76, 0.66), rgba(2, 17, 39, 0.88)), linear-gradient(rgba(64, 162, 226, 0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(64, 162, 226, 0.08) 1px, transparent 1px);
   background-size:
     auto,
@@ -1118,8 +1126,10 @@ onBeforeUnmount(() => {
     34px 34px,
     34px 34px;
   box-shadow:
-    inset 0 0 38px rgba(0, 136, 255, 0.2),
-    0 0 14px rgba(0, 190, 255, 0.34);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 38px rgba(0, 136, 255, 0.14),
+    0 8px 24px rgba(0, 8, 28, 0.3),
+    0 0 14px rgba(0, 190, 255, 0.14);
 }
 
 .dashboard-panel::before,
@@ -1131,21 +1141,21 @@ onBeforeUnmount(() => {
 }
 
 .dashboard-panel::before {
-  left: 11px;
   top: 0;
-  width: 82px;
-  height: 2px;
-  background: #15dbff;
-  box-shadow: 0 0 12px #15dbff;
+  left: 10%;
+  width: 80%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #15dbff 22%, #15dbff 78%, transparent);
+  opacity: 0.72;
+  box-shadow: 0 0 10px #15dbff;
 }
 
 .dashboard-panel::after {
-  right: 0;
-  bottom: 0;
-  width: 72px;
-  height: 3px;
-  border-right: 1px solid #1ccaff;
-  border-bottom: 1px solid #1ccaff;
+  inset: 0;
+  background:
+    radial-gradient(circle at 0 0, #1ccaff 0, transparent 22%),
+    radial-gradient(circle at 100% 100%, #1ccaff 0, transparent 20%);
+  opacity: 0.05;
 }
 
 .dashboard-panel :deep(.panel-title) {
@@ -1270,7 +1280,7 @@ onBeforeUnmount(() => {
   overflow: visible;
   padding: 6px 10px 10px;
   border: 1px solid rgba(35, 159, 235, 0.82);
-  border-radius: 5px;
+  border-radius: 8px;
   background: linear-gradient(180deg, rgba(12, 76, 129, 0.72), rgba(3, 35, 72, 0.94)), radial-gradient(circle at 52% 18%, rgba(59, 178, 255, 0.18), transparent 52%);
   box-shadow:
     inset 0 0 28px rgba(31, 179, 255, 0.16),
@@ -1280,21 +1290,24 @@ onBeforeUnmount(() => {
 
 .container-card::before {
   position: absolute;
-  inset: 8px 10px auto;
+  top: 0;
+  left: 12%;
+  width: 76%;
   height: 1px;
   content: '';
-  background: linear-gradient(90deg, transparent, rgba(28, 197, 255, 0.38), transparent);
+  background: linear-gradient(90deg, transparent, rgba(28, 197, 255, 0.76), transparent);
+  box-shadow: 0 0 8px rgba(28, 197, 255, 0.62);
 }
 
 .container-card::after {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
+  inset: 0;
   content: '';
-  background: linear-gradient(90deg, transparent, #19cfff, transparent);
-  box-shadow: 0 0 10px #19cfff;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 0 0, #19cfff 0, transparent 28%),
+    radial-gradient(circle at 100% 100%, #19cfff 0, transparent 24%);
+  opacity: 0.05;
 }
 
 .product-wrap {
