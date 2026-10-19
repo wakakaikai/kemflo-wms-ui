@@ -33,7 +33,7 @@
 
           <div class="search-result">
             <el-table ref="stoTableRef" :data="stoOrderDetailList" height="300" border v-loading="stoLoading" @selection-change="handleStoSelectionChange">
-              <el-table-column type="selection" width="55" align="center" />
+              <el-table-column type="selection" width="55" align="center" :selectable="isStoDetailSelectable" />
               <el-table-column v-if="stoColumns[0].visible" label="交货单号" align="left" prop="deliveryOrderNo" min-width="100" />
               <el-table-column v-if="stoColumns[1].visible" label="交货项次" align="left" prop="deliveryItemNo" />
               <el-table-column v-if="stoColumns[2].visible" label="采购单号" align="left" prop="purchaseOrderNo" min-width="100" />
@@ -726,9 +726,43 @@ const handleStoSelectionChange = (selection: DeliveryOrderDetailVO[]) => {
   stoSelectedItems.value = selection;
 };
 
+const normalizeDeliveryItemNo = (value: unknown) => {
+  const itemNo = String(value ?? '').trim();
+  return /^\d+$/.test(itemNo) ? itemNo.replace(/^0+(?=\d)/, '') : itemNo.toUpperCase();
+};
+
+const getStoDeliveryItemKey = (item: Pick<DeliveryOrderDetailVO, 'deliveryOrderNo' | 'deliveryItemNo'>) => {
+  const deliveryOrderNo = String(item.deliveryOrderNo ?? '').trim().toUpperCase();
+  return `${deliveryOrderNo}|${normalizeDeliveryItemNo(item.deliveryItemNo)}`;
+};
+
+const formatStoDeliveryItem = (item: Pick<DeliveryOrderDetailVO, 'deliveryOrderNo' | 'deliveryItemNo'>) => {
+  return `${String(item.deliveryOrderNo ?? '').trim()} / ${String(item.deliveryItemNo ?? '').trim()}`;
+};
+
+const stoInboundDeliveryItemKeys = computed(() => new Set(stoInboundList.value.map(getStoDeliveryItemKey)));
+
+const isStoDetailSelectable = (item: DeliveryOrderDetailVO) => {
+  return !stoInboundDeliveryItemKeys.value.has(getStoDeliveryItemKey(item));
+};
+
 const addSelectedToStoInboundList = () => {
   if (stoSelectedItems.value.length === 0) {
     proxy?.$modal.msgWarning('请先选择要添加的STO订单明细');
+    return;
+  }
+  const existingKeys = stoInboundDeliveryItemKeys.value;
+  const selectedKeys = new Set<string>();
+  const duplicateItems = new Set<string>();
+  stoSelectedItems.value.forEach((item) => {
+    const key = getStoDeliveryItemKey(item);
+    if (existingKeys.has(key) || selectedKeys.has(key)) {
+      duplicateItems.add(formatStoDeliveryItem(item));
+    }
+    selectedKeys.add(key);
+  });
+  if (duplicateItems.size > 0) {
+    proxy?.$modal.msgWarning(`交货单号 + 交货项次不能重复：${Array.from(duplicateItems).join('、')}`);
     return;
   }
   const newItems = stoSelectedItems.value.map((item) => {

@@ -49,7 +49,7 @@
           </el-form>
 
           <div class="search-result">
-            <PurchaseOrderDetailTreeTable ref="purchaseTableRef" :rows="purchaseOrderDetailList" mode="history" :columns="columns" :loading="loading" height="300" show-move-type :wms_purchase_category="wms_purchase_category" @selection-change="handleSelectionChange">
+            <PurchaseOrderDetailTreeTable ref="purchaseTableRef" :rows="purchaseOrderDetailList" mode="history" :columns="columns" :loading="loading" height="300" show-move-type :row-selectable="isPurchaseDetailSelectable" :wms_purchase_category="wms_purchase_category" @selection-change="handleSelectionChange">
               <template #after-category>
                 <el-table-column label="交货状态" align="center" width="100">
                   <template #default="scope">
@@ -694,9 +694,43 @@ const handleSelectionChange = (selection: PoDetailTreeRow[]) => {
   multiple.value = !parents.length;
 };
 
+const normalizePurchaseLineNo = (value: unknown) => {
+  const lineNo = String(value ?? '').trim();
+  return /^\d+$/.test(lineNo) ? lineNo.replace(/^0+(?=\d)/, '') : lineNo.toUpperCase();
+};
+
+const getPurchaseScheduleKey = (item: Pick<PurchaseOrderDetailVO, 'poNumber' | 'itemNumber' | 'scheduleNumber'>) => {
+  const poNumber = String(item.poNumber ?? '').trim().toUpperCase();
+  return `${poNumber}|${normalizePurchaseLineNo(item.itemNumber)}|${normalizePurchaseLineNo(item.scheduleNumber)}`;
+};
+
+const formatPurchaseSchedule = (item: Pick<PurchaseOrderDetailVO, 'poNumber' | 'itemNumber' | 'scheduleNumber'>) => {
+  return `${String(item.poNumber ?? '').trim()} / ${String(item.itemNumber ?? '').trim()} / ${String(item.scheduleNumber ?? '').trim()}`;
+};
+
+const inboundPurchaseScheduleKeys = computed(() => new Set(inboundList.value.map(getPurchaseScheduleKey)));
+
+const isPurchaseDetailSelectable = (item: PoDetailTreeRow) => {
+  return !inboundPurchaseScheduleKeys.value.has(getPurchaseScheduleKey(item as PurchaseOrderDetailVO));
+};
+
 const addSelectedToInboundList = () => {
   if (selectedSearchItems.value.length === 0) {
     proxy?.$modal.msgWarning('请先选择要添加的采购订单明细');
+    return;
+  }
+  const existingKeys = inboundPurchaseScheduleKeys.value;
+  const selectedKeys = new Set<string>();
+  const duplicateItems = new Set<string>();
+  selectedSearchItems.value.forEach((item) => {
+    const key = getPurchaseScheduleKey(item);
+    if (existingKeys.has(key) || selectedKeys.has(key)) {
+      duplicateItems.add(formatPurchaseSchedule(item));
+    }
+    selectedKeys.add(key);
+  });
+  if (duplicateItems.size > 0) {
+    proxy?.$modal.msgWarning(`采购订单号 + 采购项次 + 计划行不能重复：${Array.from(duplicateItems).join('、')}`);
     return;
   }
   const newItems = selectedSearchItems.value.map((item) => {
