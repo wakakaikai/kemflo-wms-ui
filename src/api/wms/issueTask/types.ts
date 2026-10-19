@@ -54,9 +54,9 @@ export interface IssueTaskLineVO {
   reserveNo?: string;
   reserveItemNo?: string;
   /** 超领编码（SAP grund） */
-  overPickCode?: string;
+  moveReasonCode?: string;
   /** 超领原因 */
-  overPickReason?: string;
+  moveReasonDesc?: string;
   /** 是否紧急 */
   isEmergency?: boolean;
   createTime?: string;
@@ -88,9 +88,9 @@ export interface PrepLocationRecIssueOutBo {
   postingDate?: string;
   remark?: string;
   /** 超领编码（SAP grund） */
-  overPickCode?: string;
+  moveReasonCode?: string;
   /** 超领原因 */
-  overPickReason?: string;
+  moveReasonDesc?: string;
 }
 
 /** 备料领料出库结果（/issueOut 接口 data） */

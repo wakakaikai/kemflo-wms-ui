@@ -82,7 +82,7 @@
         </el-table-column>
         <el-table-column label="超领原因" min-width="180">
           <template #default="{ row, $index }">
-            <el-select :model-value="row.overPickCode" placeholder="请选择" filterable clearable size="small" class="reason-select" @update:model-value="(val: string | number) => updateOverPickReason($index, val)">
+            <el-select :model-value="row.moveReasonCode" placeholder="请选择" filterable clearable size="small" class="reason-select" @update:model-value="(val: string | number) => updateOverPickReason($index, val)">
               <el-option v-for="dict in overPickReasonOptions" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </template>

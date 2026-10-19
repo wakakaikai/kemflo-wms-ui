@@ -142,12 +142,12 @@ export interface WorkOrderPrepLocationRecVO {
   /**
    * 超领编码
    */
-  overPickCode: string;
+  moveReasonCode: string;
 
   /**
    * 超领原因
    */
-  overPickReason: string;
+  moveReasonDesc: string;
 
 }
 
@@ -295,12 +295,12 @@ export interface WorkOrderPrepLocationRecForm extends BaseEntity {
   /**
    * 超领编码
    */
-  overPickCode?: string;
+  moveReasonCode?: string;
 
   /**
    * 超领原因
    */
-  overPickReason?: string;
+  moveReasonDesc?: string;
 
 }
 
@@ -439,12 +439,12 @@ export interface WorkOrderPrepLocationRecQuery extends PageQuery {
   /**
    * 超领编码
    */
-  overPickCode?: string;
+  moveReasonCode?: string;
 
   /**
    * 超领原因
    */
-  overPickReason?: string;
+  moveReasonDesc?: string;
 
     /**
      * 日期范围参数

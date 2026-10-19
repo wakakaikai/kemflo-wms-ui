@@ -99,9 +99,9 @@ export interface WorkOrderMaterialIssueLine {
   salesOrderItem?: string;
   specialInventoryFlag?: string;
   /** 超领编码（字典 wms_material_over_pick） */
-  overPickCode?: string;
+  moveReasonCode?: string;
   /** 超领原因 */
-  overPickReason?: string;
+  moveReasonDesc?: string;
   /** 工作台：按 FIFO 推荐仓别分类后的路由 */
   warehouseRoute?: 'AUTO' | 'LINE' | 'FLAT' | 'SHORTAGE' | 'OTHER_LINE';
   /** 工作台：FIFO 推荐主仓别编码 */

@@ -27,6 +27,7 @@ const props = withDefaults(
     receivedQuantityLabel?: string;
     showMoveType?: boolean;
     selectable?: boolean;
+    rowSelectable?: (row: PoDetailTreeRow) => boolean;
     loading?: boolean;
     height?: number | string;
     maxHeight?: number | string;
@@ -53,7 +54,7 @@ const emit = defineEmits<{
 const tableRef = ref();
 const treeData = computed(() => (props.mode === 'operation' ? buildPurchaseOrderDetailOperationTree(props.rows) : buildPurchaseOrderDetailHistoryTree(props.rows as PurchaseOrderDetailVO[])));
 
-const isRowSelectable = (row: PoDetailTreeRow) => isPoDetailParentRow(row);
+const isRowSelectable = (row: PoDetailTreeRow) => isPoDetailParentRow(row) && (!props.rowSelectable || props.rowSelectable(row));
 
 const resolveRowClassName = ({ row }: { row: PoDetailTreeRow }) => (row.children?.length ? 'po-detail-tree-parent-row' : '');
 

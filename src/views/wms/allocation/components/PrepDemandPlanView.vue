@@ -373,7 +373,7 @@ const allDetailTitle = computed(() => {
 
 const validateOverPickIssueOut = (issueOutBoList: ReturnType<typeof buildPrepLocationRecIssueOutBoList>) => {
   if (!isOverPickDemand.value) return true;
-  const missing = issueOutBoList.filter((line) => !String(line.overPickCode ?? '').trim());
+  const missing = issueOutBoList.filter((line) => !String(line.moveReasonCode ?? '').trim());
   if (!missing.length) return true;
   resultMessage.value = '超领出库请填写超领编码';
   resultStatus.value = false;

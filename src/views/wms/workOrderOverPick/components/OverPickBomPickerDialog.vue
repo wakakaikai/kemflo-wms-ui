@@ -26,7 +26,7 @@
       </el-table-column>
       <el-table-column label="超领原因" min-width="180">
         <template #default="{ row }">
-          <el-select :model-value="row.overPickCode" placeholder="请选择" filterable clearable size="small" class="reason-select" @update:model-value="(val: string | number) => onOverPickReasonChange(row, val)">
+          <el-select :model-value="row.moveReasonCode" placeholder="请选择" filterable clearable size="small" class="reason-select" @update:model-value="(val: string | number) => onOverPickReasonChange(row, val)">
             <el-option v-for="dict in overPickReasonOptions" :key="dict.value" :label="dict.label" :value="dict.value" />
           </el-select>
         </template>
@@ -102,7 +102,7 @@ const resolveRowKey = (row: OverPickLine) => {
   return getBomRowKey(row, index >= 0 ? index : undefined);
 };
 
-const isRowSelectable = (row: OverPickLine) => Number(row.issueQty ?? 0) > 0 && row.overPickCode;
+const isRowSelectable = (row: OverPickLine) => Number(row.issueQty ?? 0) > 0 && row.moveReasonCode;
 
 const findRowIndex = (row: OverPickLine) => {
   const byRef = bomRows.value.indexOf(row);
@@ -182,8 +182,8 @@ const restoreSavedQty = (rows: OverPickLine[]) => {
       issueQty: saved.issueQty,
       unit: saved.unit ?? row.unit,
       conversionRatio: saved.conversionRatio,
-      overPickCode: saved.overPickCode,
-      overPickReason: saved.overPickReason,
+      moveReasonCode: saved.moveReasonCode,
+      moveReasonDesc: saved.moveReasonDesc,
       manualLocationSelections: saved.manualLocationSelections,
       fifoRecommendedLocations: saved.fifoRecommendedLocations
     };

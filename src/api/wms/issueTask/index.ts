@@ -603,8 +603,8 @@ export function buildPrepLocationRecIssueOutBoFromDisplayRow(row: PrepDemandDisp
     issueQuantity: normalizeQty(row.issueQty),
     issueUnit: resolveIssueUnit(row),
     remark: normalizeField(resolvePrepRowLocationAdjustRemark(row)),
-    overPickCode: normalizeField(row.overPickCode),
-    overPickReason: normalizeField(resolveOverPickReasonLabel(row.overPickCode) || row.overPickReason)
+    moveReasonCode: normalizeField(row.moveReasonCode),
+    moveReasonDesc: normalizeField(resolveOverPickReasonLabel(row.moveReasonCode) || row.moveReasonDesc)
   };
 }
 
@@ -633,8 +633,8 @@ export function buildPrepLocationRecIssueOutBoFromLine(row: IssueTaskLineVO): Pr
     issueQuantity: issue261Qty,
     issueUnit: normalizeField(row.inventoryUnit),
     remark: normalizeField(row.remark),
-    overPickCode: normalizeField(row.overPickCode),
-    overPickReason: normalizeField(resolveOverPickReasonLabel(row.overPickCode) || row.overPickReason)
+    moveReasonCode: normalizeField(row.moveReasonCode),
+    moveReasonDesc: normalizeField(resolveOverPickReasonLabel(row.moveReasonCode) || row.moveReasonDesc)
   };
 
   if (transfer311Qty && transfer311Qty > 0) {
@@ -664,8 +664,8 @@ export function buildPrepLocationRecActualDeductTransBoFromLine(row: IssueTaskLi
     actualIssueQuantity: resolveLineActualIssueQty(row),
     issueUnit: normalizeField(row.inventoryUnit),
     remark: normalizeField(row.remark),
-    overPickCode: normalizeField(row.overPickCode),
-    overPickReason: normalizeField(resolveOverPickReasonLabel(row.overPickCode) || row.overPickReason)
+    moveReasonCode: normalizeField(row.moveReasonCode),
+    moveReasonDesc: normalizeField(resolveOverPickReasonLabel(row.moveReasonCode) || row.moveReasonDesc)
   };
 }
 

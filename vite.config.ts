@@ -1,9 +1,9 @@
-import { defineConfig, loadEnv } from 'vite';
-import createPlugins from './vite/plugins';
+import { type ConfigEnv, defineConfig, loadEnv, type UserConfig } from 'vite';
+import createPlugins from './vite/plugins/index.js';
 import autoprefixer from 'autoprefixer'; // css自动添加兼容性前缀
 import path from 'path';
 
-export default defineConfig(({ mode, command }) => {
+const createViteConfig = ({ mode, command }: ConfigEnv): UserConfig => {
   const env = loadEnv(mode, process.cwd());
   return {
     // 部署生产环境和开发环境下的URL。
@@ -61,18 +61,14 @@ export default defineConfig(({ mode, command }) => {
               }
             }
           }
-        ]
+        ] as any
       }
     },
     // 预编译
     optimizeDeps: {
       include: ['vue', 'vue-router', 'pinia', 'axios', '@vueuse/core', 'echarts', 'vue-i18n', '@vueup/vue-quill', 'image-conversion', 'element-plus/es/components/**/css', '@antv/x6', '@antv/x6-vue-shape']
-    },
-
-    build: {
-      sourcemap: false,
-      reportCompressedSize: false,
-      chunkSizeWarningLimit: 2000
     }
   };
-});
+};
+
+export default defineConfig(createViteConfig);

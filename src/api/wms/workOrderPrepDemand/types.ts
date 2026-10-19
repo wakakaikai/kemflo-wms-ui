@@ -43,9 +43,9 @@ export interface PrepLocationRecVO {
   /** 业务合作伙伴名称 */
   businessName?: string;
   /** 超领编码（SAP grund） */
-  overPickCode?: string;
+  moveReasonCode?: string;
   /** 超领原因 */
-  overPickReason?: string;
+  moveReasonDesc?: string;
 }
 
 /** 备料需求工单下的一条 BOM 物料行 */
@@ -165,9 +165,9 @@ export interface PrepDemandLineItem {
   /** 缺料行备注 */
   remark?: string;
   /** 超领编码（SAP grund） */
-  overPickCode?: string;
+  moveReasonCode?: string;
   /** 超领原因 */
-  overPickReason?: string;
+  moveReasonDesc?: string;
   /** 目标需求库位（备料送达库位） */
   targetDemandLocationCode?: string;
   targetDemandWarehouseCode?: string;
@@ -257,8 +257,8 @@ export interface PrepDemandDisplayRow {
   businessName?: string;
   reserveNo?: string;
   reserveItemNo?: string;
-  overPickCode?: string;
-  overPickReason?: string;
+  moveReasonCode?: string;
+  moveReasonDesc?: string;
 }
 
 /** 261 发料仓别路由 */

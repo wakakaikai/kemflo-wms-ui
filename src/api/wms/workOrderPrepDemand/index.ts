@@ -229,11 +229,11 @@ export function resolvePrepRowSalesOrderFields(
   return { salesOrderNo, salesOrderItem };
 }
 
-export function resolvePrepRowLocationAdjustRemark(row: Pick<PrepDemandDisplayRow, 'recommendationReason' | 'overPickReason'>): string {
+export function resolvePrepRowLocationAdjustRemark(row: Pick<PrepDemandDisplayRow, 'recommendationReason' | 'moveReasonDesc'>): string {
   const text = String(row.recommendationReason ?? '').trim();
-  const overPickReason = String(row.overPickReason ?? '').trim();
+  const moveReasonDesc = String(row.moveReasonDesc ?? '').trim();
   if (!text) return '';
-  if (overPickReason && text === overPickReason) return '';
+  if (moveReasonDesc && text === moveReasonDesc) return '';
   return text;
 }
 
@@ -249,8 +249,8 @@ export function hasPrepRowRemark(rows: Array<Pick<PrepDemandDisplayRow, 'locatio
   return rows.some((row) => resolvePrepRowRemark(row).length > 0);
 }
 
-export function hasPrepRowOverPickInfo(rows: Pick<PrepDemandDisplayRow, 'overPickCode' | 'overPickReason'>[]): boolean {
-  return rows.some((row) => String(row.overPickCode ?? '').trim());
+export function hasPrepRowOverPickInfo(rows: Pick<PrepDemandDisplayRow, 'moveReasonCode' | 'moveReasonDesc'>[]): boolean {
+  return rows.some((row) => String(row.moveReasonCode ?? '').trim());
 }
 
 function resolveMaterialOverPickOptions(options?: DictDataOption[]) {
@@ -264,10 +264,10 @@ export function resolveOverPickReasonLabel(code?: string | number | null, option
   return String(hit?.label ?? '').trim();
 }
 
-/** 超领编码/原因合并展示（原因走字典，避免后端 overPickReason 乱码） */
-export function formatPrepRowOverPickDisplay(row: Pick<PrepDemandDisplayRow, 'overPickCode' | 'overPickReason'>, options?: DictDataOption[]): string {
-  const code = String(row.overPickCode ?? '').trim();
-  const reasonLabel = resolveOverPickReasonLabel(code, options);
+/** 超领编码/原因合并展示（持久化统一使用移动原因字段） */
+export function formatPrepRowOverPickDisplay(row: Pick<PrepDemandDisplayRow, 'moveReasonCode' | 'moveReasonDesc'>, options?: DictDataOption[]): string {
+  const code = String(row.moveReasonCode ?? '').trim();
+  const reasonLabel = resolveOverPickReasonLabel(code, options) || String(row.moveReasonDesc ?? '').trim();
   if (code && reasonLabel) return `${code}-${reasonLabel}`;
   if (code) return code;
   if (reasonLabel) return reasonLabel;
@@ -709,8 +709,8 @@ export function aggregateOverPickAllDetailRows(rows: PrepDemandDisplayRow[]): Pr
       ...existing,
       prepQty,
       issueQty,
-      overPickCode: existing.overPickCode ?? row.overPickCode,
-      overPickReason: existing.overPickReason ?? row.overPickReason,
+      moveReasonCode: existing.moveReasonCode ?? row.moveReasonCode,
+      moveReasonDesc: existing.moveReasonDesc ?? row.moveReasonDesc,
       _locationCodes: existing._locationCodes,
       _warehouseCodes: existing._warehouseCodes,
       _batchCodes: existing._batchCodes,
@@ -766,8 +766,8 @@ function buildRowsFromDemand(demand: WorkOrderPrepDemandVO, ctx: WarehouseRouteC
             locationRemark: rec.remark,
             reserveNo: rec.reserveNo ?? line.reserveNo,
             reserveItemNo: rec.reserveItemNo ?? line.reserveItemNo,
-            overPickCode: rec.overPickCode,
-            overPickReason: rec.overPickReason,
+            moveReasonCode: rec.moveReasonCode,
+            moveReasonDesc: rec.moveReasonDesc,
             ...pickInventoryFields({
               specialInventoryFlag: rec.specialInventoryFlag ?? line.specialInventoryFlag,
               businessCode: rec.businessCode ?? line.businessCode,

@@ -82,8 +82,8 @@
           </template>
         </el-table-column>
         <el-table-column label="备注" align="center" prop="remark" show-overflow-tooltip />
-        <el-table-column label="超领编码" align="center" prop="overPickCode" />
-        <el-table-column label="超领原因" align="center" prop="overPickReason" />
+        <el-table-column label="超领编码" align="center" prop="moveReasonCode" />
+        <el-table-column label="超领原因" align="center" prop="moveReasonDesc" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -179,11 +179,11 @@
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" placeholder="请输入备注" />
         </el-form-item>
-        <el-form-item label="超领编码" prop="overPickCode">
-          <el-input v-model="form.overPickCode" placeholder="请输入超领编码" />
+        <el-form-item label="超领编码" prop="moveReasonCode">
+          <el-input v-model="form.moveReasonCode" placeholder="请输入超领编码" />
         </el-form-item>
-        <el-form-item label="超领原因" prop="overPickReason">
-          <el-input v-model="form.overPickReason" placeholder="请输入超领原因" />
+        <el-form-item label="超领原因" prop="moveReasonDesc">
+          <el-input v-model="form.moveReasonDesc" placeholder="请输入超领原因" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -250,8 +250,8 @@ const initFormData: WorkOrderPrepLocationRecForm = {
   recommendationSource: undefined,
   recommendationReason: undefined,
   remark: undefined,
-  overPickCode: undefined,
-  overPickReason: undefined
+  moveReasonCode: undefined,
+  moveReasonDesc: undefined
 };
 const data = reactive<PageData<WorkOrderPrepLocationRecForm, WorkOrderPrepLocationRecQuery>>({
   form: { ...initFormData },
@@ -284,8 +284,8 @@ const data = reactive<PageData<WorkOrderPrepLocationRecForm, WorkOrderPrepLocati
     lineStatus: undefined,
     recommendationSource: undefined,
     recommendationReason: undefined,
-    overPickCode: undefined,
-    overPickReason: undefined,
+    moveReasonCode: undefined,
+    moveReasonDesc: undefined,
     params: {}
   },
   rules: {

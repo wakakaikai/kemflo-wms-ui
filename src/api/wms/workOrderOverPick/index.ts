@@ -5,14 +5,14 @@ import type { PrepDemandLineItem } from '@/api/wms/workOrderPrepDemand/types';
 
 export type OverPickLine = BomIssueRow & {
   componentDesc?: string;
-  overPickCode?: string;
-  overPickReason?: string;
+  moveReasonCode?: string;
+  moveReasonDesc?: string;
 };
 
 export { PREP_DEMAND_TYPE_NORMAL, PREP_DEMAND_TYPE_OVER_PICK, isOverPickPrepDemand } from '@/api/wms/workOrderPrepDemand/index';
 
 export function isOverPickLineReady(row: OverPickLine): boolean {
-  return Number(row.issueQty ?? 0) > 0 && !!String(row.overPickCode ?? '').trim();
+  return Number(row.issueQty ?? 0) > 0 && !!String(row.moveReasonCode ?? '').trim();
 }
 
 export function validateOverPickLines(rows: OverPickLine[]): string | null {
@@ -20,7 +20,7 @@ export function validateOverPickLines(rows: OverPickLine[]): string | null {
   if (!activeRows.length) {
     return '请先添加超领物料并填写数量';
   }
-  const missingReason = activeRows.filter((row) => !String(row.overPickCode ?? '').trim());
+  const missingReason = activeRows.filter((row) => !String(row.moveReasonCode ?? '').trim());
   if (missingReason.length) {
     const codes = missingReason.map((row) => row.componentMaterial).join('、');
     return `请为物料 ${codes} 选择超领原因`;
@@ -100,8 +100,8 @@ export function applyOverPickReasonOption(row: OverPickLine, code: string | numb
   const hit = options.find((item) => String(item.value) === normalizedCode);
   return {
     ...row,
-    overPickCode: normalizedCode || undefined,
-    overPickReason: hit?.label || undefined
+    moveReasonCode: normalizedCode || undefined,
+    moveReasonDesc: hit?.label || undefined
   };
 }
 
@@ -149,8 +149,8 @@ export function mergeOverPickLines(existing: OverPickLine[], incoming: OverPickL
         ...prev,
         ...row,
         issueQty: Number(row.issueQty ?? prev.issueQty ?? 0),
-        overPickCode: row.overPickCode ?? prev.overPickCode,
-        overPickReason: row.overPickReason ?? prev.overPickReason,
+        moveReasonCode: row.moveReasonCode ?? prev.moveReasonCode,
+        moveReasonDesc: row.moveReasonDesc ?? prev.moveReasonDesc,
         manualLocationSelections: row.manualLocationSelections ?? prev.manualLocationSelections,
         fifoRecommendedLocations: row.fifoRecommendedLocations ?? prev.fifoRecommendedLocations,
         locationOverrideReason: row.locationOverrideReason ?? prev.locationOverrideReason
@@ -163,7 +163,7 @@ export function mergeOverPickLines(existing: OverPickLine[], incoming: OverPickL
 }
 
 function mapOverPickRowToIssueLine(row: OverPickLine): WorkOrderMaterialIssueLine {
-  const overPickReason = String(row.overPickReason ?? '').trim();
+  const moveReasonDesc = String(row.moveReasonDesc ?? '').trim();
   return {
     bomLineId: row.id,
     reserveNo: row.reserveNo,
@@ -179,8 +179,8 @@ function mapOverPickRowToIssueLine(row: OverPickLine): WorkOrderMaterialIssueLin
     salesOrderNo: row.salesOrderNo,
     salesOrderItem: row.salesOrderItem,
     specialInventoryFlag: row.specialInventoryFlag,
-    overPickCode: row.overPickCode,
-    overPickReason: overPickReason || undefined
+    moveReasonCode: row.moveReasonCode,
+    moveReasonDesc: moveReasonDesc || undefined
   };
 }
 
@@ -326,8 +326,8 @@ export function buildOverPickPrepItems(order: WorkOrderVO): PrepDemandLineItem[]
   const reasonMap = new Map<string, string>();
   const codeMap = new Map<string, string>();
   (order.materialIssues || []).forEach((line) => {
-    const code = String(line.overPickCode ?? '').trim();
-    const reason = String(line.overPickReason ?? '').trim();
+    const code = String(line.moveReasonCode ?? '').trim();
+    const reason = String(line.moveReasonDesc ?? '').trim();
     const keys: string[] = [];
     if (line.reserveNo && line.reserveItemNo) {
       keys.push(`${order.workOrderNo}|${line.reserveNo}|${line.reserveItemNo}`);
@@ -359,12 +359,12 @@ export function buildOverPickPrepItems(order: WorkOrderVO): PrepDemandLineItem[]
   const itemMap = new Map<string, PrepDemandLineItem>();
 
   baseItems.forEach((item) => {
-    const overPickCode = resolveByItem(item, codeMap);
-    const overPickReason = resolveByItem(item, reasonMap);
+    const moveReasonCode = resolveByItem(item, codeMap);
+    const moveReasonDesc = resolveByItem(item, reasonMap);
     const enriched: PrepDemandLineItem = {
       ...item,
-      overPickCode: overPickCode || undefined,
-      overPickReason: overPickReason || undefined
+      moveReasonCode: moveReasonCode || undefined,
+      moveReasonDesc: moveReasonDesc || undefined
     };
     const key = [enriched.workOrderNo, enriched.materialCode, enriched.warehouseRoute ?? '', enriched.lineType ?? 'LOCATION', enriched.warehouseCode ?? '', enriched.locationCode ?? '', String(enriched.bomLineId ?? ''), enriched.reserveNo ?? '', enriched.reserveItemNo ?? ''].join('|');
     const prev = itemMap.get(key);
