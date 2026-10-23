@@ -221,7 +221,6 @@ import { listShopOrder } from '@/api/mes/shopOrder';
 import { ShopOrderQuery, ShopOrderForm } from '@/api/mes/shopOrder/types';
 
 import { ref, computed, nextTick } from 'vue';
-import { TableColumns } from '@/api/types';
 import { enableRowDrop } from '@/utils/sortable';
 import { Sort } from '@element-plus/icons-vue';
 import HistoryInput from '@/components/HistoryInput/index.vue';
@@ -400,7 +399,7 @@ const shopOrderData = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
 
 const { shopOrderQueryParams, shopOrderForm } = toRefs(shopOrderData);
 
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: 'BOM料号', visible: true },
   { key: 2, label: '组件料号', visible: true },
   { key: 3, label: '顺序号', visible: true },

@@ -17,15 +17,29 @@ export const listShopOrderSfc = (query?: ShopOrderSfcQuery): AxiosPromise<ShopOr
 };
 
 /**
- * 新增工单下达的条码
- * @param data
- * @returns {*}
+ * 分页查询工单下达的条码。页码和每页条数同时放在查询参数里，避免后端按默认条数返回。
  */
-export const pageShopOrderSfc = (data: any): AxiosPromise<ShopOrderSfcVO[]> => {
+export const pageShopOrderSfc = (data?: ShopOrderSfcQuery) => {
   return request({
     url: '/mes/shopOrderSfc/page',
     method: 'post',
-    data: data
+    params: {
+      pageNum: data?.pageNum,
+      pageSize: data?.pageSize
+    },
+    data
+  }).then((res: any) => {
+    const nested = res?.data;
+    const rows = Array.isArray(res?.rows)
+      ? res.rows
+      : Array.isArray(nested?.rows)
+        ? nested.rows
+        : Array.isArray(nested?.records)
+          ? nested.records
+          : [];
+    const totalValue = res?.total ?? nested?.total;
+    const total = totalValue == null || totalValue === '' ? rows.length : Number(totalValue);
+    return { ...res, rows, total };
   });
 };
 

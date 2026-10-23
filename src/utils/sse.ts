@@ -6,6 +6,7 @@ import { useSerialNoticeStore } from '@/store/modules/serialNotice';
 import { useSpeech } from './speak-tts';
 import { MessageCategory, MessagePriority } from '@/store/modules/notice';
 import { watch } from 'vue';
+import { randomUUID } from '@/utils/randomUUID';
 
 let activeSSECleanup: (() => void) | undefined;
 
@@ -28,7 +29,7 @@ export const initSSE = (baseUrl: string): (() => void) => {
   const params = new URLSearchParams({
     Authorization: `Bearer ${getToken() || ''}`,
     clientid: import.meta.env.VITE_APP_CLIENT_ID,
-    connectionId: crypto.randomUUID()
+    connectionId: randomUUID()
   });
   const url = `${baseUrl}?${params.toString()}`;
 

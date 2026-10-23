@@ -118,7 +118,6 @@
 <script setup name="Pallet" lang="ts">
 import { listPallet, getPallet, delPallet, addPallet, updatePallet } from '@/api/mes/pallet';
 import { PalletVO, PalletQuery, PalletForm } from '@/api/mes/pallet/types';
-import { TableColumns } from '@/api/wms/shippingNotice/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
@@ -181,7 +180,7 @@ const data = reactive<PageData<PalletForm, PalletQuery>>({
 const { queryParams, form, rules } = toRefs(data);
 
 // 创建响应式数组对象
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '栈板号', visible: true },
   { key: 2, label: '生产日期', visible: true },
   { key: 3, label: '托盘净重', visible: true },

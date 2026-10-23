@@ -107,7 +107,6 @@ import type { WorkOrderVO, WorkOrderMaterialIssueLine } from '@/api/wms/allocati
 
 import { listWorkOrder } from '@/api/wms/workOrder';
 import { WorkOrderForm, WorkOrderQuery } from '@/api/wms/workOrder/types';
-import { TableColumns } from '@/api/types';
 import BatchInputDialog from '@/components/BatchInputDialog/index.vue';
 interface Props {
   modelValue: boolean;
@@ -203,7 +202,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '工单号', visible: true },
   { key: 2, label: '产品料号', visible: true },
   { key: 3, label: '产品描述', visible: true },

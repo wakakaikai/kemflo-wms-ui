@@ -122,7 +122,6 @@
 <script setup name="SalesOrder" lang="ts">
 import { listSalesOrder, getSalesOrder, delSalesOrder, addSalesOrder, updateSalesOrder } from '@/api/wms/salesOrder';
 import { SalesOrderVO, SalesOrderQuery, SalesOrderForm } from '@/api/wms/salesOrder/types';
-import { TableColumns } from '@/api/types';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import type { HistoryConfig } from '@/types/history';
 
@@ -142,7 +141,7 @@ const salesOrderFormRef = ref<ElFormInstance>();
 
 const tableKey = ref(1);
 // 创建响应式数组对象
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '销售订单号', visible: true },
   { key: 2, label: '凭证日期', visible: true },
   { key: 3, label: '凭证类型', visible: true },

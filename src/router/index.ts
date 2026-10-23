@@ -106,6 +106,32 @@ export const constantRoutes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/mes/workpanel/work-start',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mes/workpanel/lineLeader/components/workStart.vue'),
+        name: 'MesWorkPanelWorkStart',
+        meta: { title: '开工登记', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/mes/workpanel/work-complete',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mes/workpanel/lineLeader/components/workComplete.vue'),
+        name: 'MesWorkPanelWorkComplete',
+        meta: { title: '完工汇报', noCache: true }
+      }
+    ]
+  },
+  {
     path: '/lowcode/form/designer/index/:formId',
     component: () => import('@/views/lowcode/form/designer/index.vue'),
     name: 'LowcodeFormDesigner',

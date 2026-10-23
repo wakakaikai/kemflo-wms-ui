@@ -109,7 +109,7 @@
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="700px" append-to-body>
       <el-form ref="recCheckFormRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="检验单号" prop="checkNo">
-          <el-input v-model="form.checkNo" placeholder="请输入检验单号" disabled />
+          <el-input v-model="form.checkNo" placeholder="请输入检验单号" :disabled="!!form.id" />
         </el-form-item>
         <el-form-item label="入库单号" prop="receiptOrderNo">
           <el-input v-model="form.receiptOrderNo" placeholder="请输入入库单号" />
@@ -118,10 +118,14 @@
           <el-input v-model="form.shopOrder" placeholder="请输入工单号" />
         </el-form-item>
         <el-form-item label="物料" prop="item">
-          <el-input v-model="form.item" placeholder="请输入物料" />
+          <el-input v-model="form.item" placeholder="请选择物料" readonly>
+            <template #append>
+              <el-button icon="Search" @click="showItemDialog" />
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item label="物料描述" prop="itemDesc">
-          <el-input v-model="form.itemDesc" placeholder="请输入物料描述" />
+          <el-input v-model="form.itemDesc" placeholder="由物料带出" disabled />
         </el-form-item>
         <el-form-item label="开始条码" prop="startSfc">
           <el-input v-model="form.startSfc" placeholder="请输入开始条码" />
@@ -133,8 +137,7 @@
           <el-input v-model="form.checkUser" placeholder="请输入质检人" />
         </el-form-item>
         <el-form-item label="质检时间" prop="checkTime">
-          <el-date-picker v-model="form.checkTime" clearable type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择质检时间" style="min-width: 50%">
-          </el-date-picker>
+          <el-date-picker v-model="form.checkTime" clearable type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择质检时间" style="min-width: 50%" />
         </el-form-item>
         <el-form-item label="检验数量" prop="checkQuantity">
           <el-input-number v-model="form.checkQuantity" :min="0" controls-position="right" placeholder="请输入检验批数量" style="min-width: 50%" />
@@ -158,20 +161,21 @@
         </div>
       </template>
     </el-dialog>
+    <ItemDialog ref="itemDialogRef" @item-select-call-back="itemSelectCallBack" />
   </div>
 </template>
 
 <script setup name="RecCheck" lang="ts">
 import { listRecCheck, getRecCheck, delRecCheck, addRecCheck, updateRecCheck } from '@/api/wms/recCheck';
 import { RecCheckVO, RecCheckQuery, RecCheckForm } from '@/api/wms/recCheck/types';
-import { TableColumns } from '@/api/types';
+import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
 import { ref } from 'vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_check_result } = toRefs<any>(proxy?.useDict('wms_check_result'));
 const tableKey = ref(1);
 // 创建响应式数组对象
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '检验单号', visible: true },
   { key: 2, label: '入库单号', visible: true },
   { key: 3, label: '工单号', visible: true },
@@ -205,6 +209,7 @@ const total = ref(0);
 
 const queryFormRef = ref<ElFormInstance>();
 const recCheckFormRef = ref<ElFormInstance>();
+const itemDialogRef = ref<InstanceType<typeof ItemDialog>>();
 
 const dialog = reactive<DialogOption>({
   visible: false,
@@ -355,6 +360,19 @@ const handleExport = () => {
     },
     `recCheck_${new Date().getTime()}.xlsx`
   );
+};
+
+/** 显示物料选择对话框 */
+const showItemDialog = () => {
+  itemDialogRef.value?.openDialog();
+  itemDialogRef.value?.handleQuery();
+};
+
+/** 物料选择回调 */
+const itemSelectCallBack = (record: any) => {
+  form.value.item = record.item;
+  form.value.itemDesc = record.itemDesc;
+  recCheckFormRef.value?.clearValidate(['item', 'itemDesc']);
 };
 
 onMounted(() => {

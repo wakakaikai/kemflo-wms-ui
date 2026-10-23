@@ -104,7 +104,7 @@ function checkOrTryHttp() {
 })();
 
 //==获取LODOP对象主过程,判断是否安装、需否升级:==
-function getLodop(oOBJECT, oEMBED) {
+function getLodop(oOBJECT?: any, oEMBED?: any) {
   const strFontTag = "<br><font color='#FF00FF'>打印控件";
   const strLodopInstall = strFontTag + "未安装!点击这里<a href='install_lodop32.exe' target='_self'>执行安装</a>";
   const strLodopUpdate = strFontTag + "需要升级!点击这里<a href='install_lodop32.exe' target='_self'>执行升级</a>";

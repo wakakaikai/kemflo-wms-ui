@@ -221,7 +221,6 @@ import { ShippingNoticeVO, ShippingNoticeQuery, ShippingNoticeForm } from '@/api
 import { globalHeaders } from '@/utils/request';
 import { parseTime } from '@/utils/ruoyi';
 import { ref } from 'vue';
-import { TableColumns } from '@/api/wms/recCheck/types';
 
 const route = useRoute();
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -281,7 +280,7 @@ const dialog = reactive<DialogOption>({
 });
 const tableKey = ref(1);
 // 创建响应式数组对象
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '客户代码', visible: true },
   { key: 2, label: '客户名称', visible: true },
   { key: 3, label: '客户单号', visible: true },

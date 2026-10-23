@@ -88,6 +88,31 @@ export interface ShopOrderSfcVO {
    * 租户组织ID
    */
   tenantOrgId: string | number;
+
+  /**
+   * 工单号
+   */
+  shopOrder?: string;
+
+  /**
+   * 条码
+   */
+  sfc?: string;
+
+  /**
+   * 生产日期
+   */
+  productDate?: string;
+
+  /**
+   * 普通标签打印次数
+   */
+  normalPrintQuantity?: number;
+
+  /**
+   * 即扫即打标签打印次数
+   */
+  promptlyPrintQuantity?: number;
 }
 
 export interface ShopOrderSfcForm extends BaseEntity {
@@ -211,6 +236,16 @@ export interface ShopOrderSfcQuery extends PageQuery {
    * 条码
    */
   sfc?: string;
+
+  /**
+   * 为 true 时只查普通标签打印次数大于 0 的条码
+   */
+  enableNormalPrint?: boolean;
+
+  /**
+   * 为 true 时只查即扫即打标签打印次数大于 0 的条码
+   */
+  enablePromptlyPrint?: boolean;
 
   /**
    * 条码数量

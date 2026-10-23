@@ -1,6 +1,14 @@
 <template>
-  <div>
-    <el-dialog v-model="visible" :title="title" width="70%" append-to-body @opened="handleOpenDialog">
+  <div class="release-shop-order-root">
+    <el-dialog
+      v-model="visible"
+      :title="title"
+      width="70%"
+      append-to-body
+      destroy-on-close
+      :close-on-click-modal="false"
+      @opened="handleOpenDialog"
+    >
       <el-form ref="queryFormRef" :model="queryParams" :rules="rules" label-width="auto">
         <el-row :gutter="24">
           <el-col :lg="10" :md="10" :sm="24" :offset="5">
@@ -14,7 +22,14 @@
           </el-col>
           <el-col :lg="10" :md="10" :sm="24" :offset="5">
             <el-form-item label="待下达数量" prop="releaseQty">
-              <el-input-number v-model="queryParams.releaseQty" placeholder="请输入待下达数量" clearable @keyup.enter="handleQuery" controls-position="right" style="width: 100%" />
+              <el-input-number
+                v-model="queryParams.releaseQty"
+                placeholder="请输入待下达数量"
+                clearable
+                controls-position="right"
+                style="width: 100%"
+                @keyup.enter="handleQuery"
+              />
             </el-form-item>
           </el-col>
 
@@ -63,7 +78,7 @@
         </el-row>
       </el-form>
       <template #footer>
-        <el-button @click="visible = false">取 消</el-button>
+        <el-button @click="closeDialog">取 消</el-button>
         <el-button type="primary" @click="submitForm">确 定</el-button>
       </template>
     </el-dialog>
@@ -161,12 +176,25 @@ const data = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
-const props = defineProps<{
-  podConfig: Record<string, any>;
+const props = withDefaults(
+  defineProps<{
+    podConfig?: Record<string, any>;
+  }>(),
+  {
+    podConfig: () => ({})
+  }
+);
+const emit = defineEmits<{
+  shopOrderCallBack: [row: Record<string, any>];
+  closed: [];
 }>();
 const { title, visible, openDialog, closeDialog } = useDialog({
   title: '工单下达'
 });
+const finishRelease = () => {
+  closeDialog();
+  emit('closed');
+};
 
 /** 查询工序列表 */
 const getList = async () => {
@@ -208,7 +236,7 @@ const submitForm = () => {
   queryFormRef.value.validate((valid) => {
     if (valid) {
       if (sfcPreviewConfirm.value) {
-        proxy.$emit('shopOrderCallBack', selectedRowData.value);
+        emit('shopOrderCallBack', selectedRowData.value);
         const parmas: SfcPreviewVO = {
           shopOrder: queryParams.value.shopOrder,
           releaseQty: queryParams.value.releaseQty
@@ -216,7 +244,7 @@ const submitForm = () => {
         proxy?.download('/mes/shopOrder/releaseAndDownload', parmas, `shopOrderSfc_${new Date().getTime()}.xlsx`).finally(() => {
           loading.value = false;
         });
-        closeDialog();
+        finishRelease();
         sfcPreviewConfirm.value = false;
       } else {
         openShopOrderSfcPreviewDialog();
@@ -264,13 +292,22 @@ const handleOpenDialog = () => {
 };
 onMounted(async () => {});
 
+const openReleaseDialog = () => {
+  openDialog();
+};
+
 defineExpose({
-  openDialog,
-  closeDialog
+  openDialog: openReleaseDialog,
+  closeDialog,
+  submitForm
 });
 </script>
 
 <style scoped>
+.release-shop-order-root {
+  display: contents;
+}
+
 .radio-no-label :deep(.el-radio__label) {
   display: none;
 }

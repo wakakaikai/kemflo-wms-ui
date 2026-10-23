@@ -266,7 +266,7 @@ const data = reactive<PageData<PalletInventoryForm, PalletInventoryQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '栈板编号', visible: true },
   { key: 2, label: '工单号', visible: true },
   { key: 3, label: '物料编码', visible: true },

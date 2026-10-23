@@ -99,7 +99,7 @@ export interface ItemForm extends BaseEntity {
   /**
    * 条码正则
    */
-  sfcRegular: string;
+  sfcRegular?: string;
 
   /**
    * 计量单位
@@ -166,7 +166,7 @@ export interface ItemQuery extends PageQuery {
   /**
    * 条码正则
    */
-  sfcRegular: string;
+  sfcRegular?: string;
 
   /**
    * 计量单位
@@ -192,6 +192,11 @@ export interface ItemQuery extends PageQuery {
    * 栈板检查：0: 正常 1: 停用
    */
   palletCheckFlag?: number | string;
+
+  /**
+   * 出货数量校验
+   */
+  outboundQuantityCheck?: number | string;
 
   /**
    * 客户参考检查

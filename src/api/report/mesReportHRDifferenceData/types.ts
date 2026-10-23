@@ -155,6 +155,14 @@ export interface AttendanceAbnormalTimeVO {
   id: number;
   reportId: number;
   workCenter?: string;
+  /** 工单档案计划工作中心。 */
+  shopOrderWorkCenter?: string;
+  /** 工单工作中心对应的成本中心。 */
+  shopOrderCostCenter?: string;
+  /** 工单成本中心描述。 */
+  shopOrderCostCenterName?: string;
+  /** 工单工作中心负责人。 */
+  shopOrderManager?: string;
   shopOrder?: string;
   shutdownStartTime?: string;
   shutdownEndTime?: string;

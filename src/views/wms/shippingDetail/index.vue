@@ -164,7 +164,6 @@ import { listShippingDetail, getShippingDetail, delShippingDetail, addShippingDe
 import { getShippingNotice } from '@/api/wms/shippingNotice';
 import { getShippingCustomerNotice } from '@/api/wms/shippingCustomerNotice';
 import { ShippingDetailVO, ShippingDetailQuery, ShippingDetailForm } from '@/api/wms/shippingDetail/types';
-import { TableColumns } from '@/api/types';
 import { ref } from 'vue';
 
 /** 条码类型选项 */
@@ -203,7 +202,7 @@ const dialog = reactive<DialogOption>({
 });
 const tableKey = ref(1);
 // 创建响应式数组对象
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '客户代码', visible: true },
   { key: 2, label: '客户名称', visible: true },
   { key: 3, label: '条码', visible: true },

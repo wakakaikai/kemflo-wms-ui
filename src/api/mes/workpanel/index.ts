@@ -12,7 +12,8 @@ import type {
   WorkPanelEmployeeOnlineStatusVO,
   WorkPanelProductionShiftVO,
   WorkPanelRouterStepVO,
-  WorkPanelStartForm
+  WorkPanelStartForm,
+  WorkPanelStartTimeLimitVO
 } from '@/api/mes/workpanel/types';
 import type { ShopOrderReportVO } from '@/api/mes/shopOrderReport/types';
 
@@ -149,6 +150,13 @@ export const getProductionShiftList = (): AxiosPromise<WorkPanelProductionShiftV
   });
 };
 
+export const getWorkPanelStartTimeLimit = (): AxiosPromise<WorkPanelStartTimeLimitVO> => {
+  return request({
+    url: '/mes/workpanel/start-time-limit',
+    method: 'get'
+  });
+};
+
 export const getWorkPanelData = (params: {
   workCenter?: string;
   resrce?: string;
@@ -205,7 +213,10 @@ export const prepareCompleteWork = (data: WorkPanelCompletePrepareForm): AxiosPr
   return request({
     url: '/mes/workpanel/complete/prepare',
     method: 'post',
-    data
+    data,
+    headers: {
+      repeatSubmit: false
+    }
   });
 };
 
@@ -220,6 +231,22 @@ export const completeWork = (data: WorkPanelCompleteForm): AxiosPromise<ShopOrde
 export const cancelWorkReport = (reportId: string | number): AxiosPromise<ShopOrderReportVO> => {
   return request({
     url: `/mes/workpanel/cancel/${reportId}`,
+    method: 'post'
+  });
+};
+
+/** SAP报工失败 / SAP已撤销后重新报工 */
+export const retryWorkReport = (reportId: string | number): AxiosPromise<ShopOrderReportVO> => {
+  return request({
+    url: `/mes/workpanel/retry-report/${reportId}`,
+    method: 'post'
+  });
+};
+
+/** SAP撤销失败后重新取消 SAP 报工 */
+export const retryCancelWorkReport = (reportId: string | number): AxiosPromise<ShopOrderReportVO> => {
+  return request({
+    url: `/mes/workpanel/retry-cancel/${reportId}`,
     method: 'post'
   });
 };

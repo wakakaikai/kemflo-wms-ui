@@ -262,13 +262,16 @@ export function useRoFilmDisplay(deviceId: Ref<string>, device: ComputedRef<Devi
     await loadPoints();
   };
 
-  watch(deviceId, () => {
+  watch(deviceId, (id, prev) => {
+    if (id === prev) return;
     recordHistory.value = [];
     loadPoints();
   });
 
   onMounted(() => {
-    loadPoints();
+    if (deviceId.value) {
+      loadPoints();
+    }
     clockTimer = window.setInterval(() => {
       clock.value = new Date();
     }, 1000);

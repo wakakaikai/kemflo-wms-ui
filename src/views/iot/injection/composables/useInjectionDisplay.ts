@@ -112,7 +112,8 @@ export function useInjectionDisplay(deviceId: Ref<string>, device: ComputedRef<D
     nextTick(ensureCategoryHasCards);
   });
 
-  watch(deviceId, () => {
+  watch(deviceId, (id, prev) => {
+    if (id === prev) return;
     activeMode.value = 'current';
     activeCategory.value = '状态';
     loadPoints();
@@ -285,7 +286,10 @@ export function useInjectionDisplay(deviceId: Ref<string>, device: ComputedRef<D
   };
 
   onMounted(() => {
-    loadPoints();
+    // deviceId watch 在首次有值时会加载；此处仅处理挂载时已有 deviceId 的场景，避免与 watch 叠刷
+    if (deviceId.value) {
+      loadPoints();
+    }
     refreshTimer = window.setInterval(() => {
       readCurrentValues().then(() => {
         lastRefreshTime.value = new Date();

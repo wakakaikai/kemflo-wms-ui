@@ -130,7 +130,6 @@ import { listWorkOrderProcess, getWorkOrderProcess, delWorkOrderProcess, addWork
 import { WorkOrderProcessVO, WorkOrderProcessQuery, WorkOrderProcessForm } from '@/api/wms/workOrderProcess/types';
 import { parseTime } from '@/utils/ruoyi';
 import { ref } from 'vue';
-import { TableColumns } from '@/api/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
@@ -209,7 +208,7 @@ const data = reactive<PageData<WorkOrderProcessForm, WorkOrderProcessQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '工单号', visible: true },
   { key: 2, label: '工序', visible: true },
   { key: 3, label: '工序描述', visible: true },

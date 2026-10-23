@@ -121,7 +121,6 @@
 import { listShopOrderBomComponent, getShopOrderBomComponent, delShopOrderBomComponent, addShopOrderBomComponent, updateShopOrderBomComponent } from '@/api/mes/shopOrderBomComponent';
 import { ShopOrderBomComponentVO, ShopOrderBomComponentQuery, ShopOrderBomComponentForm } from '@/api/mes/shopOrderBomComponent/types';
 import { ref } from 'vue';
-import { TableColumns } from '@/api/types';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import { HistoryConfig } from '@/types/history';
 
@@ -199,7 +198,7 @@ const data = reactive<PageData<ShopOrderBomComponentForm, ShopOrderBomComponentQ
 
 const { queryParams, form, rules } = toRefs(data);
 
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '工单号', visible: true },
   { key: 2, label: 'BOM料号', visible: true },
   { key: 3, label: '组件料号', visible: true },

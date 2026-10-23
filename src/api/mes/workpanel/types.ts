@@ -19,6 +19,10 @@ export interface WorkPanelDataVO {
   reportList: ShopOrderReportVO[];
   onlineEmployeeList: WorkCenterEmployeeBindingVO[];
   reportEmployeeList: ShopOrderReportEmployeeVO[];
+  /** 已报工数：mes_erp_integration_message.counted = true 的 qty 累加 */
+  qtyReportedCounted?: number;
+  /** 已报工待上传数：mes_shop_order_report status 非 3 且非 -1 的 qtyReport 累加 */
+  qtyPendingUpload?: number;
 }
 
 export interface WorkPanelRouterStepVO {
@@ -87,6 +91,11 @@ export interface WorkPanelProductionShiftBreakVO {
   breakEnd?: string;
 }
 
+export interface WorkPanelStartTimeLimitVO {
+  minStartDateTime?: string;
+  maxStartDateTime?: string;
+}
+
 export interface WorkPanelProductionShiftVO {
   shiftId: string;
   shiftDesc?: string;
@@ -117,6 +126,9 @@ export interface WorkPanelCompletePrepareVO {
   standardCapacity?: number;
   actualPersonNumber?: number;
   theoryOutput?: number;
+  theoryDuration?: number;
+  theoryPersonTime?: number;
+  actualCapacity?: number;
   totalDuration?: number;
   restDuration?: number;
   operationDuration?: number;

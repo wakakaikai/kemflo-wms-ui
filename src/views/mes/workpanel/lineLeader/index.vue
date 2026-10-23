@@ -5,70 +5,62 @@
         <section class="side-section">
           <div class="side-title">
             <span>当前资源</span>
-            <el-button link type="primary" @click="openResourceDialog">选择</el-button>
+            <el-button link type="primary" icon="Search" @click="openResourceDialog">选择</el-button>
           </div>
           <button type="button" class="resource-card" @click="openResourceDialog">
-            <el-icon><Cpu /></el-icon>
+            <el-icon>
+              <Cpu />
+            </el-icon>
             <span>
               <strong>{{ podConfig.resource || '未选择资源' }}</strong>
-              <small>{{ podConfig.resourceDesc || '选择资源后可加载在线员工和工单记录' }}</small>
+              <small>{{ podConfig.resourceDesc || '选择资源后可加载工单记录' }}</small>
             </span>
           </button>
         </section>
 
-        <section class="side-section">
+        <section class="side-section side-section--grow">
           <div class="side-title">
             <span>工单收藏</span>
             <el-button link type="primary" icon="Plus" @click="openShopOrderDialog">添加</el-button>
           </div>
-          <el-empty v-if="!workOrderFavoriteList.length" description="暂无收藏" :image-size="64" />
-          <div v-else class="order-list">
-            <button
-              v-for="item in workOrderFavoriteList"
-              :key="item.shopOrder"
-              type="button"
-              class="order-list-item"
-              :class="{ 'is-active': item.shopOrder === podConfig.shopOrder }"
-              @click="switchWorkOrder(item)"
-            >
-              <span>
-                <strong>{{ item.shopOrder }}</strong>
-                <small>{{ item.shopOrderDesc || '-' }}</small>
-              </span>
-              <el-button link type="danger" icon="Close" @click.stop="removeWorkOrderFavorite(item.shopOrder)" />
-            </button>
+          <div class="side-panel-body" :class="{ 'is-empty': !workOrderFavoriteList.length }">
+            <el-empty v-if="!workOrderFavoriteList.length" description="暂无收藏" :image-size="56" />
+            <div v-else class="order-list">
+              <button v-for="item in workOrderFavoriteList" :key="item.shopOrder" type="button" class="order-list-item" :class="{ 'is-active': item.shopOrder === podConfig.shopOrder }" @click="switchWorkOrder(item)">
+                <span>
+                  <strong>{{ item.shopOrder }}</strong>
+                  <small>{{ item.shopOrderDesc || '-' }}</small>
+                </span>
+                <el-button link type="danger" icon="Close" @click.stop="removeWorkOrderFavorite(item.shopOrder)" />
+              </button>
+            </div>
           </div>
         </section>
 
-        <section class="side-section">
+        <section class="side-section side-section--grow">
           <div class="side-title">
             <span>最近工单</span>
             <el-button link type="primary" icon="Search" @click="openShopOrderDialog">查找</el-button>
           </div>
-          <div class="order-list compact">
-            <button
-              v-for="item in recentWorkOrderList"
-              :key="item.shopOrder"
-              type="button"
-              class="order-list-item"
-              :class="{ 'is-active': item.shopOrder === podConfig.shopOrder }"
-              @click="switchWorkOrder(item)"
-            >
-              <span>
-                <strong>{{ item.shopOrder }}</strong>
-                <small>{{ item.shopOrderDesc || '-' }}</small>
-              </span>
-            </button>
+          <div class="side-panel-body" :class="{ 'is-empty': !recentWorkOrderList.length }">
+            <el-empty v-if="!recentWorkOrderList.length" description="暂无最近工单" :image-size="56" />
+            <div v-else class="order-list">
+              <button v-for="item in recentWorkOrderList" :key="item.shopOrder" type="button" class="order-list-item" :class="{ 'is-active': item.shopOrder === podConfig.shopOrder }" @click="switchWorkOrder(item)">
+                <span>
+                  <strong>{{ item.shopOrder }}</strong>
+                  <small>{{ item.shopOrderDesc || '-' }}</small>
+                </span>
+              </button>
+            </div>
           </div>
         </section>
       </aside>
 
       <main class="workbench-main">
-        <el-card shadow="hover">
+        <el-card shadow="hover" class="main-panel-card">
           <div class="work-order-head">
             <div class="work-order-title">
-              <span>当前工单</span>
-              <strong>{{ podConfig.shopOrder || '未选择工单' }}</strong>
+              <strong>{{ podConfig.shopOrder || '' }}</strong>
             </div>
             <div class="head-actions">
               <el-button type="primary" icon="Search" @click="openShopOrderDialog">查找工单</el-button>
@@ -83,158 +75,123 @@
               <strong>{{ podConfig.shopOrderDesc || '-' }}</strong>
             </div>
             <div class="metric-item">
-              <span>当前工序</span>
-              <button type="button" @click="openOperationDialog">{{ podConfig.operationDesc || podConfig.operation || '选择工序' }}</button>
-            </div>
-            <div class="metric-item">
               <span>计划数量</span>
-              <strong>{{ podConfig.qtyToBuild ?? '-' }}</strong>
+              <strong>{{ formatIntegerValue(podConfig.qtyToBuild) }}</strong>
             </div>
             <div class="metric-item">
               <span>已完成数量</span>
-              <strong>{{ podConfig.qtyDone ?? '-' }}</strong>
+              <strong>{{ formatIntegerValue(podConfig.qtyDone) }}</strong>
             </div>
             <div class="metric-item">
-              <span>在线员工</span>
-              <strong>{{ onlineEmployeeList.length }}</strong>
+              <span>已报工数</span>
+              <strong>{{ formatIntegerValue(qtyReportedCounted) }}</strong>
+            </div>
+            <div class="metric-item">
+              <span>已报工待上传数</span>
+              <strong>{{ formatIntegerValue(qtyPendingUpload) }}</strong>
             </div>
           </div>
 
           <div class="primary-actions">
             <el-button type="primary" @click="handleReleaseShopOrder">
-              <el-icon><DocumentAdd /></el-icon>
+              <el-icon>
+                <DocumentAdd />
+              </el-icon>
               工单下达
             </el-button>
-            <el-button color="#3b82f6" class="text-white" :loading="submitLoading" @click="openWorkStartDialog">
-              <el-icon><VideoPlay /></el-icon>
+            <el-button color="#3b82f6" class="text-white" @click="openWorkStartPage">
+              <el-icon>
+                <VideoPlay />
+              </el-icon>
               开工登记
             </el-button>
-            <el-button color="#22c55e" class="text-white" :loading="submitLoading" @click="openWorkCompleteDialog">
-              <el-icon><CircleCheck /></el-icon>
+            <el-button color="#22c55e" class="text-white" @click="openWorkCompletePage()">
+              <el-icon>
+                <CircleCheck />
+              </el-icon>
               完工汇报
             </el-button>
             <el-button color="#10b981" class="text-white" @click="handleStaffOnline">
-              <el-icon><User /></el-icon>
+              <el-icon>
+                <User />
+              </el-icon>
               员工刷卡上线
             </el-button>
             <el-button color="#ef4444" class="text-white" @click="handleStaffOffline">
-              <el-icon><UserFilled /></el-icon>
+              <el-icon>
+                <UserFilled />
+              </el-icon>
               员工下线
             </el-button>
             <el-button plain type="primary" @click="openEmployeeFavoriteDialog">
-              <el-icon><Star /></el-icon>
+              <el-icon>
+                <Star />
+              </el-icon>
               员工收藏
             </el-button>
           </div>
-        </el-card>
 
-        <el-card shadow="never" class="mt-[10px]">
-          <template #header>
+          <div class="records-section">
             <div class="detail-header">
-              <span>工艺路线</span>
-              <el-button link type="primary" icon="Refresh" :loading="routeLoading" @click="handleQueryRoute">刷新</el-button>
+              <span>开工/完工记录</span>
+              <div class="records-actions">
+                <el-button v-if="selectedReport?.status === 0" type="primary" @click="openWorkCompletePage(selectedReport)">完工登记</el-button>
+                <el-button v-if="selectedReport?.status === 4 || selectedReport?.status === 7" type="warning" @click="openWorkCompletePage(selectedReport)">重新报工</el-button>
+                <el-button v-if="selectedReport?.status === 8" type="warning" @click="handleRetryCancelReport(selectedReport)">重新取消SAP报工</el-button>
+                <el-button v-if="selectedReport?.status === 0" type="danger" @click="handleReplayReport(selectedReport)">删除开工</el-button>
+                <el-button v-if="selectedReport?.status === 1 || selectedReport?.status === 4 || selectedReport?.status === 7" type="danger" @click="handleReplayReport(selectedReport)">取消完工状态</el-button>
+                <el-button v-if="selectedReport?.status === 3" type="danger" @click="handleReplayReport(selectedReport)">取消SAP报工</el-button>
+                <el-button v-if="selectedReport?.status === 8" type="primary" @click="handleReplayReport(selectedReport)">恢复报工</el-button>
+                <el-button link type="primary" icon="Refresh" :disabled="!podConfig.shopOrder" @click="() => loadPanelData()">刷新</el-button>
+              </div>
             </div>
-          </template>
-          <div v-loading="routeLoading">
-            <el-empty v-if="!routeTimelineSteps.length" description="暂无工艺路线" />
-            <div v-else class="route-timeline">
-              <button
-                v-for="(step, index) in routeTimelineSteps"
-                :key="`${step.operation}-${index}`"
-                type="button"
-                class="route-step"
-                :class="{ 'is-active': isActiveRouteStep(step) }"
-                @click="handleRouteStepClick(step)"
-              >
-                <span class="route-step-node">{{ index + 1 }}</span>
-                <span class="route-step-line" />
-                <span class="route-step-content">
-                  <span class="route-step-title">{{ getRouteStepTitle(step) }}</span>
-                  <span class="route-step-desc">{{ getRouteStepDesc(step) }}</span>
-                  <span v-if="step.isReportingStep === 'true'" class="route-step-tag">报工</span>
-                </span>
-              </button>
+            <div class="records-body" :class="{ 'is-empty': !reportList.length && !loading }">
+              <el-empty v-if="!reportList.length && !loading" description="暂无开工/完工记录" :image-size="72" />
+              <el-table v-else ref="reportTableRef" v-loading="loading" :data="reportList" highlight-current-row height="100%" class="records-table" :row-class-name="reportRowClassName" @row-click="handleReportRowClick">
+                <el-table-column width="48" align="center">
+                  <template #default="{ row }">
+                    <el-radio :model-value="selectedReport?.id" :value="row.id" :disabled="!isReportSelectable(row.status)" class="report-row-radio" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="状态" min-width="100">
+                  <template #default="{ row }">
+                    <div class="status-cell">
+                      <small>{{ statusLabel(row.status) }}</small>
+                      <small>{{ statusSubLabel(row.status) }}</small>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="开工时间" prop="startDateTime" min-width="155" align="center" />
+                <el-table-column label="完工时间" prop="endDateTime" min-width="155" align="center" />
+                <el-table-column label="班次" prop="productionShift" min-width="90" align="center" />
+                <el-table-column label="人数" prop="personNumber" width="60" align="center" />
+                <el-table-column label="良品数" prop="qtyReport" width="90" align="center">
+                  <template #default="{ row }">{{ formatIntegerValue(row.qtyReport) }}</template>
+                </el-table-column>
+                <el-table-column label="不良数量" prop="qtyScrapped" width="90" align="center">
+                  <template #default="{ row }">{{ formatIntegerValue(row.qtyScrapped) }}</template>
+                </el-table-column>
+                <el-table-column label="报工结果" min-width="180" show-overflow-tooltip>
+                  <template #default="{ row }">
+                    <span v-if="row.reportResult" :class="reportMessageClass(row.reportResult)">{{ row.reportMessage || '' }}</span>
+                    <span v-else class="text-gray">-</span>
+                  </template>
+                </el-table-column>
+              </el-table>
             </div>
           </div>
         </el-card>
-
-    <el-card shadow="never" class="mt-[10px] records-card">
-      <template #header>
-        <div class="detail-header">
-          <span>查看详情</span>
-          <el-button link type="primary" icon="Refresh" :disabled="!podConfig.shopOrder" @click="loadPanelData">刷新</el-button>
-        </div>
-      </template>
-
-      <el-tabs v-model="activeName">
-        <el-tab-pane label="开工/完工记录" name="startRecord">
-          <el-table v-loading="loading" :data="reportList" highlight-current-row @current-change="handleReportCurrentChange">
-            <el-table-column label="工单号" prop="shopOrder" min-width="150" />
-            <el-table-column label="工作中心" prop="workCenter" min-width="130" />
-            <el-table-column label="班次" prop="productionShift" width="100" />
-            <el-table-column label="人数" prop="personNumber" width="90" />
-            <el-table-column label="开工时间" prop="startDateTime" min-width="170" />
-            <el-table-column label="完工时间" prop="endDateTime" min-width="170" />
-            <el-table-column label="良品数" prop="qtyReport" width="100" />
-            <el-table-column label="报废数" prop="qtyScrapped" width="100" />
-            <el-table-column label="状态" width="110">
-              <template #default="{ row }">
-                <el-tag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="120" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" :disabled="row.status !== 0" @click="completeReport(row)">完工</el-button>
-                <el-button link type="danger" @click="handleCancelReport(row)">撤销</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
-
-        <el-tab-pane label="员工上线情况" name="onlineEmployee">
-          <el-table v-loading="loading" :data="onlineEmployeeList" @selection-change="handleOnlineSelectionChange">
-            <el-table-column type="selection" width="55" />
-            <el-table-column label="上线ID" prop="id" width="110" />
-            <el-table-column label="工号" prop="employeeId" width="120" />
-            <el-table-column label="姓名" prop="employeeName" width="140" />
-            <el-table-column label="资源" prop="resrce" min-width="130" />
-            <el-table-column label="工作中心" prop="workCenter" min-width="130" />
-            <el-table-column label="工单号" prop="shopOrder" min-width="150" />
-            <el-table-column label="上线时间" prop="onLineTime" min-width="170" />
-          </el-table>
-        </el-tab-pane>
-
-        <el-tab-pane label="报工员工明细" name="reportEmployee">
-          <el-table v-loading="loading" :data="reportEmployeeList">
-            <el-table-column label="工号" prop="employeeId" width="120" />
-            <el-table-column label="姓名" prop="employeeName" width="140" />
-            <el-table-column label="工单号" prop="shopOrder" min-width="150" />
-            <el-table-column label="上线时间" prop="onLineTime" min-width="170" />
-            <el-table-column label="下线时间" prop="offLineTime" min-width="170" />
-            <el-table-column label="出勤时长(分钟)" prop="duration" width="140" />
-            <el-table-column label="有效时长(分钟)" prop="effectiveDuration" width="140" />
-          </el-table>
-        </el-tab-pane>
-      </el-tabs>
-    </el-card>
       </main>
     </div>
 
-    <el-dialog
-      v-model="employeeDialog.visible"
-      :title="employeeDialog.title"
-      width="1120px"
-      append-to-body
-      class="android-workpanel-dialog"
-      :close-on-click-modal="false"
-    >
-      <WorkPanelOperationPanel
+    <el-dialog v-model="employeeDialogVisible" :title="employeeDialogTitle" width="960px" class="workpanel-action-dialog" append-to-body destroy-on-close :close-on-click-modal="false">
+      <WorkStartPanel
         v-model:active-tab="employeePanelTab"
         v-model:employee-card-input="employeeCardInput"
         v-model:employee-mode="employeeDialog.mode"
         :shop-order="employeeDialogShopOrder"
         :operation-desc="podConfig.operationDesc || podConfig.operation"
-        :item="podConfig.item || podConfig.itemBo"
+        :planned-item="podConfig.plannedItem"
         :product-desc="podConfig.shopOrderDesc"
         :qty-to-build="podConfig.qtyToBuild"
         :qty-done="podConfig.qtyDone"
@@ -242,6 +199,7 @@
         :actual-person-number="workCenterOnlineEmployeeList.length"
         :production-shift="employeeDialogShift"
         :production-shift-list="productionShiftList"
+        :shift-loading="productionShiftLoading"
         :start-date-time="employeeDialogStartTime"
         :shop-order-online-employees="shopOrderOnlineEmployeeList"
         :work-center-online-employees="workCenterOnlineEmployeeList"
@@ -264,95 +222,31 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="employeeDialog.visible = false">取消</el-button>
+        <el-button @click="employeeDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitLoading" @click="submitEmployee">确定</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog
-      v-model="workStartDialogVisible"
-      title="开工登记"
-      width="1120px"
-      append-to-body
-      class="android-workpanel-dialog"
-      :close-on-click-modal="false"
-    >
-      <WorkPanelOperationPanel
-        v-model:active-tab="workStartPanelTab"
-        v-model:employee-card-input="workStartCardInput"
-        v-model:production-shift="quickForm.productionShift"
-        v-model:start-date-time="quickForm.startDateTime"
-        :shop-order="podConfig.shopOrder"
-        :operation-desc="podConfig.operationDesc || podConfig.operation"
-        :item="podConfig.item || podConfig.itemBo"
-        :product-desc="podConfig.shopOrderDesc"
-        :qty-to-build="podConfig.qtyToBuild"
-        :qty-done="podConfig.qtyDone"
-        :standard-person-number="workStartStandardPerson"
-        :actual-person-number="workCenterOnlineEmployeeList.length"
-        :production-shift-list="productionShiftList"
-        :shop-order-online-employees="shopOrderOnlineEmployeeList"
-        :work-center-online-employees="workCenterOnlineEmployeeList"
-        :employee-favorite-list="employeeFavoriteList"
-        :selected-employee-id="workStartCardInput"
-        editable-shift
-        editable-start-time
-        :show-mode-toggle="false"
-        :show-history-tab="false"
-        @update:production-shift="handleProductionShiftChange"
-        @favorite-select="applyWorkStartFavorite"
-        @add-favorite="addFavoriteFromWorkStartInput"
-      />
-      <template #footer>
-        <el-button @click="workStartDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleWorkStart">确定</el-button>
-      </template>
+    <el-dialog v-model="favoriteDialogVisible" title="员工收藏" width="640px" class="workpanel-action-dialog" append-to-body destroy-on-close>
+      <div class="favorite-toolbar">
+        <el-input v-model.trim="favoriteForm.employeeId" placeholder="员工工号" clearable />
+        <el-input v-model.trim="favoriteForm.employeeName" placeholder="姓名" clearable />
+        <el-button type="primary" @click="addFavoriteFromForm">添加</el-button>
+      </div>
+      <el-table :data="employeeFavoriteList" max-height="360">
+        <el-table-column label="员工工号" prop="employeeId" />
+        <el-table-column label="姓名" prop="employeeName" />
+        <el-table-column label="操作" width="90">
+          <template #default="{ row }">
+            <el-button link type="danger" @click="removeFavorite(row)">移除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
     </el-dialog>
 
-    <el-dialog
-      v-model="workCompleteDialogVisible"
-      title="完工登记"
-      width="1120px"
-      append-to-body
-      class="android-workpanel-dialog"
-      :close-on-click-modal="false"
-    >
-      <WorkPanelCompletePanel
-        v-model:active-tab="completePanelTab"
-        :data="completePrepare"
-        :loading="completePrepareLoading"
-        @update:qty-report="handleCompleteFieldChange('qtyReport', $event)"
-        @update:qty-scrapped="handleCompleteFieldChange('qtyScrapped', $event)"
-        @update:end-date-time="handleCompleteFieldChange('endDateTime', $event)"
-        @update:rest-duration="handleCompleteFieldChange('restDuration', $event)"
-        @toggle-barcode="handleBarcodeToggle"
-      />
-      <template #footer>
-        <el-button @click="workCompleteDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleWorkComplete">确定</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog
-      v-model="employeeConflictDialog.visible"
-      title="员工已在线，请选择需要下线的条目"
-      width="760px"
-      append-to-body
-      :close-on-click-modal="false"
-    >
-      <el-alert
-        type="warning"
-        :closable="false"
-        show-icon
-        class="mb-[12px]"
-        :title="employeeConflictDialog.status?.message || '员工已在其他位置上线，下线所选记录后可在当前工单重新上线'"
-      />
-      <el-table
-        ref="employeeConflictTableRef"
-        :data="employeeConflictDialog.status?.onlineBindingList || []"
-        max-height="320"
-        @selection-change="handleConflictSelectionChange"
-      >
+    <el-dialog v-model="employeeConflictDialog.visible" title="员工已在线，请选择需要下线的条目" width="760px" append-to-body :close-on-click-modal="false">
+      <el-alert type="warning" :closable="false" show-icon class="mb-[12px]" :title="employeeConflictDialog.status?.message || '员工已在其他位置上线，下线所选记录后可在当前工单重新上线'" />
+      <el-table ref="employeeConflictTableRef" :data="employeeConflictDialog.status?.onlineBindingList || []" max-height="320" @selection-change="handleConflictSelectionChange">
         <el-table-column type="selection" width="48" />
         <el-table-column label="上线说明" min-width="420">
           <template #default="{ row }">
@@ -369,82 +263,26 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="favoriteDialogVisible" title="员工收藏" width="620px" append-to-body>
-      <div class="favorite-toolbar">
-        <el-input v-model.trim="favoriteForm.employeeId" placeholder="员工工号" clearable />
-        <el-input v-model.trim="favoriteForm.employeeName" placeholder="姓名" clearable />
-        <el-button type="primary" @click="addFavoriteFromForm">添加</el-button>
-      </div>
-      <el-table :data="employeeFavoriteList" height="360">
-        <el-table-column label="员工工号" prop="employeeId" />
-        <el-table-column label="姓名" prop="employeeName" />
-        <el-table-column label="操作" width="90">
-          <template #default="{ row }">
-            <el-button link type="danger" @click="removeFavorite(row)">移除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-dialog>
-
-    <OperationDialog ref="operationDialogRef" @operation-call-back="operationCallBack" />
+    <ReleaseShopOrderDialog ref="releaseShopOrderDialogRef" :pod-config="podConfig" @closed="handleReleaseClosed" />
     <ResourceDialog ref="resourceDialogRef" @resource-call-back="resourceCallBack" />
     <ShopOrderDialog ref="shopOrderDialogRef" :podConfig="podConfig" @shop-order-call-back="shopOrderCallBack" />
-    <ReleaseShopOrderDialog ref="releaseShopOrderDialogRef" :podConfig="podConfig" @release-shop-order-call-back="releaseShopOrderCallBack" />
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  CircleCheck,
-  Close,
-  Cpu,
-  Document,
-  DocumentAdd,
-  Operation,
-  Search,
-  Star,
-  User,
-  UserFilled,
-  VideoPlay
-} from '@element-plus/icons-vue';
+import { CircleCheck, Cpu, DocumentAdd, Star, User, UserFilled, VideoPlay } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { useRouter } from 'vue-router';
 import type { ShopOrderReportVO } from '@/api/mes/shopOrderReport/types';
 import type { ShopOrderReportEmployeeVO } from '@/api/mes/shopOrderReportEmployee/types';
-import {
-  cancelWorkReport,
-  checkEmployeeOnlineStatus,
-  completeWork,
-  employeeOffline,
-  employeeOnline,
-  getProductionShiftList,
-  getShopOrderRouterStep,
-  getWorkPanelData,
-  listEmployeeFavorite,
-  prepareCompleteWork,
-  saveEmployeeFavorite,
-  deleteEmployeeFavorite,
-  startWork
-} from '@/api/mes/workpanel';
-import type {
-  WorkCenterEmployeeBindingVO,
-  WorkPanelCompletePrepareVO,
-  WorkPanelEmployeeFavoriteVO,
-  WorkPanelEmployeeForm,
-  WorkPanelEmployeeOnlineStatusVO,
-  WorkPanelProductionShiftVO,
-  WorkPanelRouterStepVO,
-  WorkPanelSfcSelectionForm
-} from '@/api/mes/workpanel/types';
+import { cancelWorkReport, checkEmployeeOnlineStatus, deleteEmployeeFavorite, employeeOffline, employeeOnline, getProductionShiftList, getShopOrderRouterStep, getWorkPanelData, listEmployeeFavorite, retryCancelWorkReport, saveEmployeeFavorite } from '@/api/mes/workpanel';
+import type { WorkCenterEmployeeBindingVO, WorkPanelEmployeeFavoriteVO, WorkPanelEmployeeForm, WorkPanelEmployeeOnlineStatusVO, WorkPanelProductionShiftVO, WorkPanelRouterStepVO } from '@/api/mes/workpanel/types';
 
-import OperationDialog from '@/views/mes/workpanel/components/operationDialog.vue';
 import ResourceDialog from '@/views/mes/workpanel/components/resourceDialog.vue';
 import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
 import ReleaseShopOrderDialog from '@/views/mes/workpanel/components/releaseShopOrderDialog.vue';
-import WorkPanelOperationPanel from '@/views/mes/workpanel/components/WorkPanelOperationPanel.vue';
-import WorkPanelCompletePanel from '@/views/mes/workpanel/components/WorkPanelCompletePanel.vue';
-import { formatShiftDetail } from '@/views/mes/workpanel/utils/workPanelShift';
-import { debounce } from '@/utils/index';
+import WorkStartPanel from './components/WorkStartPanel.vue';
+import { findProductionShiftByDateTime } from '@/views/mes/workpanel/utils/workPanelShift';
 
 defineProps({
   id: {
@@ -453,8 +291,8 @@ defineProps({
   }
 });
 
-const { currentRoute } = useRouter();
-const operationDialogRef = ref<InstanceType<typeof OperationDialog>>();
+const router = useRouter();
+const { currentRoute } = router;
 const resourceDialogRef = ref<InstanceType<typeof ResourceDialog>>();
 const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
 const releaseShopOrderDialogRef = ref<InstanceType<typeof ReleaseShopOrderDialog>>();
@@ -477,6 +315,8 @@ const mapEmployeeFavorite = (item: WorkPanelEmployeeFavoriteVO): EmployeeFavorit
 type WorkOrderFavorite = {
   shopOrder: string;
   shopOrderDesc?: string;
+  plannedItem?: string;
+  plannedItemBo?: string;
   item?: string;
   itemBo?: string;
   qtyToBuild?: number | string;
@@ -487,44 +327,38 @@ type WorkOrderFavorite = {
 };
 
 const podConfig = ref<Record<string, any>>({});
-const activeName = ref('startRecord');
 const loading = ref(false);
 const routeLoading = ref(false);
 const submitLoading = ref(false);
 const reportList = ref<ShopOrderReportVO[]>([]);
 const productionShiftList = ref<WorkPanelProductionShiftVO[]>([]);
+const productionShiftLoading = ref(false);
+const employeeDialogVisible = ref(false);
+const favoriteDialogVisible = ref(false);
 const onlineEmployeeList = ref<WorkCenterEmployeeBindingVO[]>([]);
 const workCenterOnlineEmployeeList = ref<WorkCenterEmployeeBindingVO[]>([]);
 const reportEmployeeList = ref<ShopOrderReportEmployeeVO[]>([]);
+/** 已报工数：ERP 集成消息 counted=true 累加 */
+const qtyReportedCounted = ref(0);
+/** 已报工待上传数：报工记录 status 非 3 且非 -1 累加 */
+const qtyPendingUpload = ref(0);
 const routeStepList = ref<WorkPanelRouterStepVO[]>([]);
 const selectedReport = ref<ShopOrderReportVO>();
 const selectedOnlineRows = ref<WorkCenterEmployeeBindingVO[]>([]);
 const employeeCardInput = ref('');
-const workStartCardInput = ref('');
 const employeePanelTab = ref<'shopOrder' | 'workCenter' | 'history'>('shopOrder');
-const workStartPanelTab = ref<'shopOrder' | 'workCenter' | 'history'>('shopOrder');
-const completePanelTab = ref<'barcode' | 'exception' | 'employee'>('barcode');
 const employeeFavoriteList = ref<EmployeeFavorite[]>([]);
 const workOrderFavoriteList = ref<WorkOrderFavorite[]>([]);
 const recentWorkOrderList = ref<WorkOrderFavorite[]>([]);
-const favoriteDialogVisible = ref(false);
-const workStartDialogVisible = ref(false);
-const workCompleteDialogVisible = ref(false);
-const completePrepareLoading = ref(false);
-const completePrepare = ref<WorkPanelCompletePrepareVO>({});
+const employeeDialogTitle = computed(() => (employeeDialog.mode === 'offline' ? '员工下线' : '员工刷卡上线'));
 
 const quickForm = reactive({
   productionShift: '',
-  qtyReport: 0,
-  qtyScrapped: 0,
-  startDateTime: '',
-  endDateTime: '',
-  restDuration: 0
+  startDateTime: ''
 });
 
-const employeeDialog = reactive<{ visible: boolean; title: string; mode: 'online' | 'offline' }>({
-  visible: false,
-  title: '员工上线',
+const employeeDialog = reactive<{ title: string; mode: 'online' | 'offline' }>({
+  title: '员工刷卡上线',
   mode: 'online'
 });
 
@@ -562,6 +396,12 @@ const now = () => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 };
 
+const formatIntegerValue = (value?: number | string) => {
+  if (value === undefined || value === null || value === '') return '-';
+  const numberValue = Number(value);
+  return Number.isNaN(numberValue) ? String(value) : numberValue.toFixed(0);
+};
+
 const requirePanelSelection = () => {
   if (!podConfig.value.resource) {
     ElMessage.warning('请先选择资源');
@@ -574,29 +414,19 @@ const requirePanelSelection = () => {
   return true;
 };
 
-const normalizeOperation = (operation?: string) =>
-  String(operation || '')
-    .trim()
-    .toUpperCase();
+const sumReportQty = (list: ShopOrderReportVO[], predicate: (row: ShopOrderReportVO) => boolean) => list.reduce((total, row) => (predicate(row) ? total + Number(row.qtyReport || 0) : total), 0);
 
-const routeTimelineSteps = computed(() => routeStepList.value);
-
-const getRouteStepTitle = (step: WorkPanelRouterStepVO) => step.operation || '-';
-
-const getRouteStepDesc = (step: WorkPanelRouterStepVO) =>
-  step.operationDesc || step.defaultResource || '-';
-
-const isActiveRouteStep = (step: WorkPanelRouterStepVO) => {
-  return normalizeOperation(step.operation) === normalizeOperation(podConfig.value.operation);
-};
-
-const loadPanelData = async () => {
+const loadPanelData = async (options?: { keepSelection?: boolean }) => {
   if (!podConfig.value.shopOrder) {
     reportList.value = [];
     onlineEmployeeList.value = [];
     reportEmployeeList.value = [];
+    qtyReportedCounted.value = 0;
+    qtyPendingUpload.value = 0;
+    selectedReport.value = undefined;
     return;
   }
+  const keepId = options?.keepSelection ? selectedReport.value?.id : undefined;
   loading.value = true;
   try {
     const res = await getWorkPanelData({
@@ -608,12 +438,22 @@ const loadPanelData = async () => {
     reportList.value = res.data?.reportList || [];
     onlineEmployeeList.value = res.data?.onlineEmployeeList || [];
     reportEmployeeList.value = res.data?.reportEmployeeList || [];
+    qtyReportedCounted.value = Number(res.data?.qtyReportedCounted ?? 0);
+    // 后端优先；若未返回则前端按 status 非 3 且非 -1 累加良品数
+    const pendingFromApi = res.data?.qtyPendingUpload;
+    qtyPendingUpload.value = pendingFromApi !== undefined && pendingFromApi !== null ? Number(pendingFromApi) : sumReportQty(reportList.value, (row) => row.status !== 3 && row.status !== -1);
+    if (keepId !== undefined && keepId !== null) {
+      const matched = reportList.value.find((item) => item.id === keepId);
+      selectedReport.value = matched && isReportSelectable(matched.status) ? matched : undefined;
+      nextTick(() => reportTableRef.value?.setCurrentRow?.(selectedReport.value));
+    } else if (!options?.keepSelection) {
+      selectedReport.value = undefined;
+    }
   } finally {
     loading.value = false;
   }
 };
 
-const openOperationDialog = () => operationDialogRef.value?.openDialog();
 const openResourceDialog = () => resourceDialogRef.value?.openDialog();
 const openShopOrderDialog = () => {
   if (!podConfig.value.resource) {
@@ -621,12 +461,6 @@ const openShopOrderDialog = () => {
     return;
   }
   shopOrderDialogRef.value?.openDialog();
-};
-
-const operationCallBack = (data: any) => {
-  podConfig.value.operation = data.operation;
-  podConfig.value.operationDesc = data.description;
-  saveRouteCache('workPanelOperation', { operation: data.operation, operationDesc: data.description });
 };
 
 const resourceCallBack = (data: any) => {
@@ -638,11 +472,23 @@ const resourceCallBack = (data: any) => {
   loadPanelData();
 };
 
+/** 从 ItemBO:SITE,ITEM,REV 解析品号，与后端 MesUtils.getRemoveBoAndVersion 一致 */
+const resolvePlannedItem = (plannedItem?: string, plannedItemBo?: string, fallbackItem?: string) => {
+  if (plannedItem) return plannedItem;
+  if (fallbackItem) return fallbackItem;
+  if (!plannedItemBo) return '';
+  const first = plannedItemBo.indexOf(',');
+  if (first < 0) return plannedItemBo;
+  const second = plannedItemBo.indexOf(',', first + 1);
+  if (second < 0) return plannedItemBo;
+  return plannedItemBo.substring(first + 1, second);
+};
+
 const shopOrderCallBack = async (data: any) => {
   podConfig.value.shopOrder = data.shopOrder;
   podConfig.value.shopOrderDesc = data.itemDesc;
-  podConfig.value.item = data.item;
-  podConfig.value.itemBo = data.itemBo;
+  podConfig.value.plannedItemBo = data.plannedItemBo;
+  podConfig.value.plannedItem = resolvePlannedItem(data.plannedItem, data.plannedItemBo, data.item);
   podConfig.value.qtyToBuild = data.qtyToBuild;
   podConfig.value.qtyDone = data.qtyDone;
   podConfig.value.qtyReleased = data.qtyReleased;
@@ -656,8 +502,8 @@ const shopOrderCallBack = async (data: any) => {
 const currentWorkOrderSnapshot = (): WorkOrderFavorite => ({
   shopOrder: podConfig.value.shopOrder || '',
   shopOrderDesc: podConfig.value.shopOrderDesc,
-  item: podConfig.value.item,
-  itemBo: podConfig.value.itemBo,
+  plannedItem: podConfig.value.plannedItem,
+  plannedItemBo: podConfig.value.plannedItemBo,
   qtyToBuild: podConfig.value.qtyToBuild,
   qtyDone: podConfig.value.qtyDone,
   qtyReleased: podConfig.value.qtyReleased,
@@ -666,11 +512,12 @@ const currentWorkOrderSnapshot = (): WorkOrderFavorite => ({
 });
 
 const applyWorkOrder = (data: WorkOrderFavorite) => {
+  const plannedItemBo = data.plannedItemBo ?? data.itemBo;
   Object.assign(podConfig.value, {
     shopOrder: data.shopOrder,
     shopOrderDesc: data.shopOrderDesc,
-    item: data.item,
-    itemBo: data.itemBo,
+    plannedItem: resolvePlannedItem(data.plannedItem, plannedItemBo, data.item),
+    plannedItemBo,
     qtyToBuild: data.qtyToBuild,
     qtyDone: data.qtyDone,
     qtyReleased: data.qtyReleased,
@@ -711,16 +558,13 @@ const applyRouteStep = (row: WorkPanelRouterStepVO) => {
   saveRouteCache('workPanelOperation', { operation: row.operation, operationDesc: row.operationDesc });
 };
 
-const handleRouteStepClick = (row: WorkPanelRouterStepVO) => {
-  applyRouteStep(row);
+const handleReleaseShopOrder = () => {
+  releaseShopOrderDialogRef.value?.openDialog();
 };
 
-const handleReleaseShopOrder = () => releaseShopOrderDialogRef.value?.openDialog();
-const releaseShopOrderCallBack = () => loadPanelData();
-
-const selectedProductionShift = computed(() =>
-  productionShiftList.value.find((item) => item.shiftId === quickForm.productionShift)
-);
+const handleReleaseClosed = async () => {
+  await loadPanelData();
+};
 
 const activeEmployeeReport = computed(() => {
   if (selectedReport.value?.status === 0) {
@@ -737,21 +581,11 @@ const shopOrderOnlineEmployeeList = computed(() => {
 
 const employeeDialogShopOrder = computed(() => employeeForm.shopOrder || podConfig.value.shopOrder);
 
-const employeeDialogShift = computed(
-  () => activeEmployeeReport.value?.productionShift || quickForm.productionShift || ''
-);
+const employeeDialogShift = computed(() => activeEmployeeReport.value?.productionShift || quickForm.productionShift || '');
 
-const employeeDialogStartTime = computed(
-  () => activeEmployeeReport.value?.startDateTime || quickForm.startDateTime || now()
-);
+const employeeDialogStartTime = computed(() => activeEmployeeReport.value?.startDateTime || quickForm.startDateTime || now());
 
-const employeeDialogStandardPerson = computed(
-  () => (activeEmployeeReport.value as ShopOrderReportVO & { standardPersonNumber?: number })?.standardPersonNumber ?? podConfig.value.standardPersonNumber
-);
-
-const workStartStandardPerson = computed(
-  () => (activeEmployeeReport.value as ShopOrderReportVO & { standardPersonNumber?: number })?.standardPersonNumber ?? podConfig.value.standardPersonNumber
-);
+const employeeDialogStandardPerson = computed(() => (activeEmployeeReport.value as ShopOrderReportVO & { standardPersonNumber?: number })?.standardPersonNumber ?? podConfig.value.standardPersonNumber);
 
 const loadWorkCenterOnlineEmployees = async () => {
   if (!podConfig.value.workCenter && !podConfig.value.resource) {
@@ -765,237 +599,62 @@ const loadWorkCenterOnlineEmployees = async () => {
   workCenterOnlineEmployeeList.value = res.data?.onlineEmployeeList || [];
 };
 
-const parseShiftTime = (value?: string) => {
-  if (!value) return null;
-  const parts = value.trim().split(':').map((part) => Number(part));
-  if (parts.length < 2 || parts.some((part) => Number.isNaN(part))) {
-    return null;
+const applyDefaultProductionShift = (referenceDateTime?: string) => {
+  if (quickForm.productionShift) {
+    return;
   }
-  return { hour: parts[0], minute: parts[1], second: parts[2] || 0 };
+  const cachedShift = localStorage.getItem(productionShiftCacheKey.value);
+  if (cachedShift && productionShiftList.value.some((item) => item.shiftId === cachedShift)) {
+    quickForm.productionShift = cachedShift;
+    return;
+  }
+  const referenceTime = referenceDateTime || quickForm.startDateTime || now();
+  const matched = findProductionShiftByDateTime(productionShiftList.value, referenceTime);
+  if (matched?.shiftId) {
+    quickForm.productionShift = matched.shiftId;
+  }
 };
 
-const isWithinShiftTime = (dateTime: string, startTime?: string, endTime?: string) => {
-  const start = parseShiftTime(startTime);
-  const end = parseShiftTime(endTime);
-  if (!start || !end) return true;
-  const current = new Date(dateTime.replace(/-/g, '/'));
-  if (Number.isNaN(current.getTime())) return true;
+const loadProductionShiftList = async (referenceDateTime?: string) => {
+  productionShiftLoading.value = true;
+  try {
+    const res = await getProductionShiftList();
+    productionShiftList.value = res.data || [];
+    applyDefaultProductionShift(referenceDateTime);
+  } finally {
+    productionShiftLoading.value = false;
+  }
+};
 
-  const buildRange = (offsetDay: number) => {
-    const rangeStart = new Date(current);
-    rangeStart.setDate(rangeStart.getDate() + offsetDay);
-    rangeStart.setHours(start.hour, start.minute, start.second, 0);
-    const rangeEnd = new Date(current);
-    rangeEnd.setDate(rangeEnd.getDate() + offsetDay);
-    rangeEnd.setHours(end.hour, end.minute, end.second, 0);
-    if (rangeEnd <= rangeStart) {
-      rangeEnd.setDate(rangeEnd.getDate() + 1);
-    }
-    return { rangeStart, rangeEnd };
-  };
-
-  return [-1, 0, 1].some((offset) => {
-    const { rangeStart, rangeEnd } = buildRange(offset);
-    return current >= rangeStart && current <= rangeEnd;
+const openWorkStartPage = () => {
+  if (!requirePanelSelection()) return;
+  // 进入开工页前刷新缓存，确保产品品号(plannedItem)等字段写入 workPanelShopOrder
+  saveRouteCache('workPanelShopOrder', currentWorkOrderSnapshot());
+  router.push({
+    path: '/mes/workpanel/work-start',
+    query: { from: currentRoute.value.fullPath }
   });
 };
 
-const loadProductionShiftList = async () => {
-  const res = await getProductionShiftList();
-  productionShiftList.value = res.data || [];
-  if (!quickForm.productionShift) {
-    const cachedShift = localStorage.getItem(productionShiftCacheKey.value);
-    if (cachedShift && productionShiftList.value.some((item) => item.shiftId === cachedShift)) {
-      quickForm.productionShift = cachedShift;
-    }
-  }
-};
+const canCompleteOrRetryReport = (status?: number) => status === 0 || status === 4 || status === 7;
 
-const handleProductionShiftChange = (shiftId: string) => {
-  if (shiftId) {
-    localStorage.setItem(productionShiftCacheKey.value, shiftId);
-  }
-};
-
-const validateStartShiftTime = () => {
-  const shift = selectedProductionShift.value;
-  if (!shift) {
-    ElMessage.warning('请先选择班别');
-    return false;
-  }
-  const startDateTime = quickForm.startDateTime || now();
-  if (!isWithinShiftTime(startDateTime, shift.startTime, shift.endTime)) {
-    ElMessage.warning(`开工时间不在班别时间(${shift.startTime || '-'}~${shift.endTime || '-'})之内`);
-    return false;
-  }
-  return true;
-};
-
-const openWorkStartDialog = async () => {
-  if (!requirePanelSelection()) return;
-  quickForm.startDateTime = now();
-  workStartPanelTab.value = 'shopOrder';
-  workStartCardInput.value = '';
-  await loadWorkCenterOnlineEmployees();
-  workStartDialogVisible.value = true;
-};
-
-const handleWorkStart = async () => {
-  if (!requirePanelSelection()) return;
-  if (!quickForm.productionShift) {
-    ElMessage.warning('请先选择班别');
-    return;
-  }
-  if (!validateStartShiftTime()) {
-    return;
-  }
-  submitLoading.value = true;
-  try {
-    await startWork({
-      workCenter: podConfig.value.workCenter || '',
-      resrce: podConfig.value.resource,
-      shopOrder: podConfig.value.shopOrder,
-      productionShift: quickForm.productionShift,
-      startDateTime: quickForm.startDateTime || now(),
-      personNumber: onlineEmployeeList.value.length,
-      machineNumber: 1,
-      moduleNumber: 1,
-      businessType: 1
-    });
-    ElMessage.success('开工登记成功');
-    workStartDialogVisible.value = false;
-    await loadPanelData();
-  } finally {
-    submitLoading.value = false;
-  }
-};
-
-const buildSfcSelections = (): WorkPanelSfcSelectionForm[] =>
-  (completePrepare.value.pendingBarcodeList || [])
-    .filter((item) => item.type !== undefined && item.type !== null)
-    .map((item) => ({
-      type: Number(item.type),
-      checked: Boolean(item.checked)
-    }));
-
-const loadCompletePrepare = async () => {
-  const report = selectedReport.value;
-  if (!report?.id) return;
-  completePrepareLoading.value = true;
-  try {
-    const isAssemblyReport = selectedReport.value?.businessType === 1 || completePrepare.value.businessType === 1;
-    const payload: Parameters<typeof prepareCompleteWork>[0] = {
-      reportId: report.id,
-      endDateTime: quickForm.endDateTime || now(),
-      qtyScrapped: quickForm.qtyScrapped,
-      restDuration: quickForm.restDuration,
-      sfcSelections: buildSfcSelections()
-    };
-    if (!isAssemblyReport) {
-      payload.qtyReport = quickForm.qtyReport;
-    }
-    const res = await prepareCompleteWork(payload);
-    completePrepare.value = res.data || {};
-    quickForm.endDateTime = completePrepare.value.endDateTime || quickForm.endDateTime;
-    quickForm.qtyReport = Number(completePrepare.value.qtyReport ?? 0);
-    quickForm.qtyScrapped = Number(completePrepare.value.qtyScrapped ?? quickForm.qtyScrapped);
-    quickForm.restDuration = Number(completePrepare.value.restDuration ?? quickForm.restDuration);
-  } finally {
-    completePrepareLoading.value = false;
-  }
-};
-
-const handleBarcodeToggle = (type: number | undefined, checked: boolean) => {
-  if (type === undefined || type === null) return;
-  const pendingBarcodeList = (completePrepare.value.pendingBarcodeList || []).map((item) =>
-    item.type === type ? { ...item, checked } : item
-  );
-  completePrepare.value = {
-    ...completePrepare.value,
-    pendingBarcodeList
-  };
-  debouncedLoadCompletePrepare();
-};
-
-const debouncedLoadCompletePrepare = debounce(loadCompletePrepare, 300, false);
-
-const handleCompleteFieldChange = (
-  field: 'qtyReport' | 'qtyScrapped' | 'endDateTime' | 'restDuration',
-  value: string | number
-) => {
-  if (field === 'endDateTime') {
-    quickForm.endDateTime = String(value || '');
-    completePrepare.value = { ...completePrepare.value, endDateTime: quickForm.endDateTime };
-  } else if (field === 'qtyReport') {
-    if (completePrepare.value.qtyReportReadOnly) {
-      return;
-    }
-    quickForm.qtyReport = Number(value || 0);
-    completePrepare.value = { ...completePrepare.value, qtyReport: quickForm.qtyReport };
-  } else if (field === 'qtyScrapped') {
-    quickForm.qtyScrapped = Number(value || 0);
-    completePrepare.value = { ...completePrepare.value, qtyScrapped: quickForm.qtyScrapped };
-  } else {
-    quickForm.restDuration = Number(value || 0);
-    completePrepare.value = { ...completePrepare.value, restDuration: quickForm.restDuration };
-  }
-  debouncedLoadCompletePrepare();
-};
-
-const openWorkCompleteDialog = async () => {
-  const report = selectedReport.value || reportList.value.find((item) => item.status === 0);
+const openWorkCompletePage = (targetReport?: ShopOrderReportVO) => {
+  const report = targetReport || (canCompleteOrRetryReport(selectedReport.value?.status) ? selectedReport.value : undefined) || reportList.value.find((item) => canCompleteOrRetryReport(item.status));
   if (!report) {
-    ElMessage.warning('请选择一条开工状态的记录');
+    ElMessage.warning('请选择一条可完工登记/重新报工的记录');
     return;
   }
-  selectedReport.value = report;
-  quickForm.endDateTime = now();
-  quickForm.qtyScrapped = 0;
-  quickForm.qtyReport = 0;
-  completePrepare.value = {};
-  completePanelTab.value = 'barcode';
-  workCompleteDialogVisible.value = true;
-  await loadCompletePrepare();
-};
-
-const handleWorkComplete = async () => {
-  const report = selectedReport.value || reportList.value.find((item) => item.status === 0);
-  if (!report) {
-    ElMessage.warning('请选择一条开工状态的记录');
+  if (!canCompleteOrRetryReport(report.status)) {
+    ElMessage.warning('当前状态不可完工登记或重新报工');
     return;
   }
-  await completeReport(report);
-};
-
-const completeReport = async (report: ShopOrderReportVO) => {
-  if (Number(completePrepare.value.qtyReport || quickForm.qtyReport) <= 0) {
-    ElMessage.warning('完工数必须大于0');
-    return;
-  }
-  const endDateTime = completePrepare.value.endDateTime || quickForm.endDateTime;
-  if (!endDateTime) {
-    ElMessage.warning('请先选择完工时间');
-    return;
-  }
-  submitLoading.value = true;
-  try {
-    await completeWork({
-      reportId: report.id,
-      endDateTime,
-      qtyReport: Number(completePrepare.value.qtyReport ?? quickForm.qtyReport),
-      qtyScrapped: Number(completePrepare.value.qtyScrapped ?? quickForm.qtyScrapped),
-      restDuration: Number(completePrepare.value.restDuration ?? quickForm.restDuration),
-      stopDuration: 0,
-      loadDuration: 0,
-      abnormalDuration: 0,
-      sfcSelections: buildSfcSelections()
-    });
-    ElMessage.success('完工汇报成功');
-    workCompleteDialogVisible.value = false;
-    await loadPanelData();
-  } finally {
-    submitLoading.value = false;
-  }
+  router.push({
+    path: '/mes/workpanel/work-complete',
+    query: {
+      reportId: String(report.id),
+      from: currentRoute.value.fullPath
+    }
+  });
 };
 
 const handleStaffOnline = () => openEmployeeDialog('online');
@@ -1021,8 +680,8 @@ const openEmployeeDialog = async (mode: 'online' | 'offline') => {
   employeeDialog.title = mode === 'online' ? '员工上下线（依工单）' : '员工上下线（依工单）';
   employeePanelTab.value = 'shopOrder';
   employeeCardInput.value = employeeForm.employeeId || '';
-  await Promise.all([loadWorkCenterOnlineEmployees(), loadEmployeeFavorites()]);
-  employeeDialog.visible = true;
+  await Promise.all([loadProductionShiftList(), loadWorkCenterOnlineEmployees(), loadEmployeeFavorites()]);
+  employeeDialogVisible.value = true;
 };
 
 const handleSelectOnlineEmployee = (row: WorkCenterEmployeeBindingVO) => {
@@ -1031,25 +690,6 @@ const handleSelectOnlineEmployee = (row: WorkCenterEmployeeBindingVO) => {
   employeeCardInput.value = row.employeeId;
   if (employeeDialog.mode === 'offline') {
     employeeForm.bindingIdList = [row.id];
-  }
-};
-
-const applyWorkStartFavorite = (row?: EmployeeFavorite) => {
-  if (!row) return;
-  workStartCardInput.value = row.employeeId;
-};
-
-const addFavoriteFromWorkStartInput = async () => {
-  const employeeId = workStartCardInput.value.trim();
-  if (!employeeId) {
-    ElMessage.warning('请先输入员工工号');
-    return;
-  }
-  try {
-    await addFavorite({ employeeId, employeeName: '' });
-    ElMessage.success('收藏成功');
-  } catch {
-    /* request 拦截器已提示 */
   }
 };
 
@@ -1080,7 +720,7 @@ const openEmployeeConflictDialog = (status: WorkPanelEmployeeOnlineStatusVO, pay
 const performEmployeeOnline = async (payload: WorkPanelEmployeeForm) => {
   await employeeOnline(payload);
   ElMessage.success('员工上线成功');
-  employeeDialog.visible = false;
+  employeeDialogVisible.value = false;
   employeeConflictDialog.visible = false;
   await loadPanelData();
 };
@@ -1131,7 +771,7 @@ const submitEmployee = () => {
       } else {
         await employeeOffline({ ...employeeForm });
         ElMessage.success('员工下线成功');
-        employeeDialog.visible = false;
+        employeeDialogVisible.value = false;
         await loadPanelData();
       }
     } finally {
@@ -1162,8 +802,8 @@ const handleSwipeCardEmployee = async () => {
 const openEmployeeFavoriteDialog = async () => {
   favoriteForm.employeeId = '';
   favoriteForm.employeeName = '';
-  favoriteDialogVisible.value = true;
   await loadEmployeeFavorites();
+  favoriteDialogVisible.value = true;
 };
 
 const productionShiftCacheKey = computed(() => `lineLeaderProductionShift:${currentRoute.value.fullPath}`);
@@ -1274,43 +914,102 @@ const removeWorkOrderFavorite = (shopOrder: string) => {
   saveWorkOrderFavorites();
 };
 
-const handleCancelReport = async (row: ShopOrderReportVO) => {
-  await ElMessageBox.confirm('撤销后该开工/完工记录不可继续操作，确定撤销吗？', '提示', { type: 'warning' });
+/** 对齐 Android：已删除/上传锁定/撤销锁定不可选 */
+const isReportSelectable = (status?: number) => status !== -1 && status !== 2 && status !== 5 && status !== 6;
+
+const reportTableRef = ref();
+
+const selectReport = (row?: ShopOrderReportVO) => {
+  if (row && !isReportSelectable(row.status)) {
+    ElMessage.warning('当前状态不可选中');
+    return;
+  }
+  selectedReport.value = row;
+  reportTableRef.value?.setCurrentRow?.(row);
+};
+
+/** 整行点击选中（单选仅展示状态） */
+const handleReportRowClick = (row: ShopOrderReportVO) => {
+  if (!isReportSelectable(row.status)) return;
+  selectReport(row);
+};
+
+const reportRowClassName = ({ row }: { row: ShopOrderReportVO }) => (isReportSelectable(row.status) ? '' : 'is-disabled-row');
+
+/** 按状态回退 */
+const handleReplayReport = async (row?: ShopOrderReportVO) => {
+  if (!row) {
+    ElMessage.warning('请选择一项需要取消的完工记录');
+    return;
+  }
+  const tipMap: Record<number, string> = {
+    0: '确定删除开工登记吗？',
+    1: '确定取消完工状态，恢复到开工状态吗？',
+    3: '确定取消SAP报工吗？',
+    4: '确定取消完工状态，恢复到开工状态吗？',
+    7: '确定取消完工状态，恢复到开工状态吗？',
+    8: '确定恢复报工吗？'
+  };
+  const tip = tipMap[row.status] || '确定执行该操作吗？';
+  await ElMessageBox.confirm(tip, '提示', { type: 'warning' });
   await cancelWorkReport(row.id);
-  ElMessage.success('撤销成功');
+  ElMessage.success('操作成功');
+  selectedReport.value = undefined;
   await loadPanelData();
 };
 
-const handleReportCurrentChange = (row?: ShopOrderReportVO) => {
-  selectedReport.value = row;
-  loadPanelData();
+/** SAP撤销失败(8)：重新取消 SAP 报工 */
+const handleRetryCancelReport = async (row?: ShopOrderReportVO) => {
+  if (!row) {
+    ElMessage.warning('请至少选择一项待报工项');
+    return;
+  }
+  await ElMessageBox.confirm('确认重新发起取消 SAP 报工吗？', '提示', { type: 'warning' });
+  await retryCancelWorkReport(row.id);
+  ElMessage.success('已提交重新取消 SAP 报工');
+  selectedReport.value = undefined;
+  await loadPanelData();
 };
 
-const handleOnlineSelectionChange = (selection: WorkCenterEmployeeBindingVO[]) => {
-  selectedOnlineRows.value = selection;
-};
-
+/** 主状态文案 */
 const statusLabel = (status: number) => {
   const map: Record<number, string> = {
-    [-1]: '已撤销',
-    0: '开工',
-    1: '完工',
-    2: '同步中',
-    3: 'SAP成功',
-    4: 'SAP失败',
-    5: '取消报工',
-    6: '取消同步中',
-    7: '取消成功',
-    8: '取消失败'
+    [-1]: 'MES已删除',
+    0: 'MES已开工',
+    1: 'MES已报工',
+    2: 'MES上传锁定',
+    3: 'SAP报工完成',
+    4: 'SAP报工失败',
+    5: 'MES撤销',
+    6: 'MES撤销锁定',
+    7: 'SAP已撤销',
+    8: 'SAP撤销失败'
   };
   return map[status] || `${status}`;
 };
 
-const statusTagType = (status: number) => {
-  if (status === 0) return 'warning';
-  if (status === 1 || status === 3) return 'success';
-  if (status < 0 || status === 4 || status === 8) return 'danger';
-  return 'info';
+/** 副状态文案 */
+const statusSubLabel = (status: number) => {
+  const map: Record<number, string> = {
+    [-1]: '不可操作',
+    0: '待MES报工',
+    1: '待上传SAP',
+    2: '待SAP回馈',
+    3: '任务结案',
+    4: '待MES处理',
+    5: '待SAP处理',
+    6: '待SAP回馈',
+    7: '待MES处理',
+    8: '待MES处理'
+  };
+  return map[status] || '';
+};
+
+/** S 绿 / F 红 / 其它灰 */
+const reportMessageClass = (reportResult?: string) => {
+  if (reportResult === 'S') return 'report-msg report-msg--success';
+  if (reportResult === 'F') return 'report-msg report-msg--fail';
+  return 'report-msg report-msg--muted';
 };
 
 const clearSelection = (type: string) => {
@@ -1355,7 +1054,7 @@ onMounted(async () => {
   findPodConfig();
   await loadEmployeeFavorites();
   loadWorkOrderCaches();
-  loadProductionShiftList();
+  await loadProductionShiftList();
   if (podConfig.value.shopOrder) {
     addRecentWorkOrder(currentWorkOrderSnapshot());
   }
@@ -1364,27 +1063,52 @@ onMounted(async () => {
     handleQueryRoute();
   }
 });
+
+onActivated(() => {
+  loadPanelData();
+});
 </script>
 
 <style scoped>
 .line-leader-page {
-  min-height: calc(100vh - 84px);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 84px);
+  min-height: 640px;
   background: #f3f4f6;
+}
+
+:deep(.workpanel-action-dialog .el-dialog__body) {
+  padding-top: 8px;
+  overflow: visible;
+}
+
+:deep(.workpanel-action-dialog .el-dialog__header) {
+  margin-right: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+:deep(.workpanel-action-dialog .el-dialog__footer) {
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
 }
 
 .workbench-shell {
   display: grid;
+  flex: 1;
   grid-template-columns: 280px minmax(0, 1fr);
   gap: 12px;
-  align-items: start;
+  align-items: stretch;
+  min-height: 0;
 }
 
 .workbench-side {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  position: sticky;
-  top: 8px;
+  min-height: 0;
+  height: 100%;
 }
 
 .side-section,
@@ -1393,6 +1117,34 @@ onMounted(async () => {
   border-radius: 8px;
   background: #fff;
   padding: 12px;
+}
+
+.side-section--grow {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.side-panel-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 140px;
+  overflow: auto;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  background: #fafafa;
+  padding: 8px;
+}
+
+.side-panel-body.is-empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.side-panel-body :deep(.el-empty) {
+  padding: 12px 8px;
 }
 
 .side-title {
@@ -1462,11 +1214,6 @@ onMounted(async () => {
   gap: 8px;
 }
 
-.order-list.compact {
-  max-height: 240px;
-  overflow: auto;
-}
-
 .order-list-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1481,7 +1228,25 @@ onMounted(async () => {
 }
 
 .workbench-main {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.main-panel-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.main-panel-card :deep(.el-card__body) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .work-order-head {
@@ -1608,30 +1373,74 @@ onMounted(async () => {
   color: #6b7280;
 }
 
-.records-card {
+.records-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.records-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 220px;
+  margin-top: 10px;
   overflow: hidden;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  background: #fafafa;
+}
 
-  :deep(.el-table:has(.el-table__empty-block)) {
-    .el-table__inner-wrapper,
-    .el-table__header-wrapper,
-    .el-table__body-wrapper {
-      overflow: hidden;
-    }
+.records-body.is-empty {
+  align-items: center;
+  justify-content: center;
+}
 
-    .el-table__empty-block,
-    .el-table__body,
-    .el-scrollbar__view {
-      width: 100% !important;
-    }
+.records-table {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
 
-    .el-scrollbar__wrap {
-      overflow: hidden !important;
-    }
+.status-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.3;
+}
 
-    .el-scrollbar__bar {
-      display: none !important;
-    }
-  }
+.status-cell small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.report-msg--success {
+  color: #16a34a;
+}
+
+.report-msg--fail {
+  color: #dc2626;
+}
+
+.report-msg--muted,
+.text-gray {
+  color: #9ca3af;
+}
+
+.records-body:not(.is-empty) {
+  background: #fff;
+  border-style: solid;
+  border-color: #e5e7eb;
+}
+
+.side-panel-body:not(.is-empty) {
+  background: #fff;
+  border-style: solid;
+  border-color: #e5e7eb;
 }
 
 .selector-bar {
@@ -1675,105 +1484,31 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
-.route-timeline {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0;
-  padding: 10px 6px 4px;
-}
-
-.route-step {
-  position: relative;
+.records-actions {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   align-items: center;
-  min-width: 0;
-  padding: 0 8px 8px;
-  border: 0;
-  background: transparent;
-  color: #6b7280;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.records-table :deep(.el-radio),
+.report-row-radio {
+  height: auto;
+  margin-right: 0;
+  pointer-events: none;
+}
+
+.records-table :deep(.el-table__row) {
   cursor: pointer;
 }
 
-.route-step-node {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 2px solid #d1d5db;
-  border-radius: 50%;
-  background: #fff;
-  color: #6b7280;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.route-step-line {
-  position: absolute;
-  top: 14px;
-  left: 50%;
-  right: -50%;
-  height: 2px;
-  background: #d1d5db;
-}
-
-.route-step:last-child .route-step-line {
-  display: none;
-}
-
-.route-step-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 0;
-  margin-top: 8px;
-  text-align: center;
-}
-
-.route-step-title {
-  max-width: 100%;
-  color: #111827;
-  font-size: 14px;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.route-step-desc {
-  max-width: 100%;
-  min-height: 18px;
-  margin-top: 2px;
-  color: #6b7280;
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.route-step-tag {
-  margin-top: 5px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: #ecfdf5;
-  color: #059669;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.route-step.is-active .route-step-node {
-  border-color: #409eff;
-  background: #409eff;
-  color: #fff;
-}
-
-.route-step.is-active .route-step-title {
-  color: #409eff;
+.records-table :deep(.is-disabled-row) {
+  color: #9ca3af;
+  cursor: not-allowed;
 }
 
 .hidden-employee-form {
@@ -1792,12 +1527,21 @@ onMounted(async () => {
 }
 
 @media (max-width: 900px) {
+  .line-leader-page {
+    height: auto;
+    min-height: calc(100vh - 84px);
+  }
+
   .workbench-shell {
     grid-template-columns: 1fr;
   }
 
   .workbench-side {
-    position: static;
+    height: auto;
+  }
+
+  .side-section--grow {
+    flex: none;
   }
 
   .metric-grid {

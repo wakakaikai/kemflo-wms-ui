@@ -430,6 +430,7 @@ import type { CheckboxValueType, FormInstance } from 'element-plus';
 import { Monitor } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 import { getToken } from '@/utils/auth';
+import { randomUUID } from '@/utils/randomUUID';
 import { createManagedEventSource } from '@/utils/managedEventSource';
 import { listDevice, getDevice, addDevice, updateDevice, copyDevice, delDevice, testDeviceConnection, readDevicePoints, readDeviceTcpPoints } from '@/api/iot/device';
 import type { PointReadItem, TcpMessageItem } from '@/api/iot/device';
@@ -1675,17 +1676,26 @@ const toggleCardSelect = (row: DeviceVO, checked: boolean) => {
   multiple.value = !ids.value.length;
 };
 
+/** 列表请求去重，避免 onMounted / onActivated 竞态重复打 listDevice */
+let getListTask: Promise<void> | undefined;
+
 const getList = async () => {
-  loading.value = true;
-  try {
-    const res = await listDevice(queryParams.value);
-    deviceList.value = (res as any).rows ?? [];
-    total.value = (res as any).total ?? 0;
-    ids.value = [];
-    multiple.value = true;
-  } finally {
-    loading.value = false;
-  }
+  if (getListTask) return getListTask;
+  getListTask = (async () => {
+    loading.value = true;
+    try {
+      const res = await listDevice(queryParams.value);
+      deviceList.value = (res as any).rows ?? [];
+      total.value = (res as any).total ?? 0;
+      ids.value = [];
+      multiple.value = true;
+      syncDeviceStatusSse();
+    } finally {
+      loading.value = false;
+      getListTask = undefined;
+    }
+  })();
+  return getListTask;
 };
 
 const handleSelectionChange = (selection: DeviceVO[]) => {
@@ -1898,12 +1908,16 @@ const refreshTcpCollectResult = async (deviceId: string | number) => {
   }
 };
 
+const deviceStatusPageActive = ref(false);
+/** 仅启用设备需要状态推送；全部停用时关闭 SSE，避免空连接反复重试 */
+const hasEnabledDevice = computed(() => deviceList.value.some((item) => String(item.status ?? '0') === '0'));
+
 const connectDeviceStatusSse = () => {
-  cleanupDeviceStatusSse?.();
+  if (cleanupDeviceStatusSse) return;
   const params = new URLSearchParams({
     Authorization: `Bearer ${getToken() || ''}`,
     clientid: import.meta.env.VITE_APP_CLIENT_ID,
-    connectionId: crypto.randomUUID()
+    connectionId: randomUUID()
   });
   cleanupDeviceStatusSse = createManagedEventSource(`${import.meta.env.VITE_APP_BASE_API}/iot/device/status/sse?${params.toString()}`, {
     onMessage(event) {
@@ -1923,6 +1937,7 @@ const connectDeviceStatusSse = () => {
     },
     onFailed(error) {
       console.error('数采设备状态 SSE 连接失败，已停止重连', error);
+      cleanupDeviceStatusSse = undefined;
     }
   });
 };
@@ -1932,17 +1947,43 @@ const disconnectDeviceStatusSse = () => {
   cleanupDeviceStatusSse = undefined;
 };
 
-onMounted(() => {
-  connectDeviceStatusSse();
-  getList();
+const syncDeviceStatusSse = () => {
+  if (deviceStatusPageActive.value && hasEnabledDevice.value) {
+    connectDeviceStatusSse();
+    return;
+  }
+  disconnectDeviceStatusSse();
+};
+
+/** 与 onMounted 同一次进入时跳过 onActivated，避免刷新/首次进入重复拉列表 */
+let skipNextDeviceActivate = true;
+
+onMounted(async () => {
+  skipNextDeviceActivate = true;
+  deviceStatusPageActive.value = true;
+  await getList();
+  syncDeviceStatusSse();
 });
 
-onActivated(() => {
-  if (!cleanupDeviceStatusSse) connectDeviceStatusSse();
+onActivated(async () => {
+  deviceStatusPageActive.value = true;
+  if (skipNextDeviceActivate) {
+    skipNextDeviceActivate = false;
+    syncDeviceStatusSse();
+    return;
+  }
+  await getList();
+  syncDeviceStatusSse();
 });
 
-onDeactivated(disconnectDeviceStatusSse);
-onBeforeUnmount(disconnectDeviceStatusSse);
+onDeactivated(() => {
+  deviceStatusPageActive.value = false;
+  disconnectDeviceStatusSse();
+});
+onBeforeUnmount(() => {
+  deviceStatusPageActive.value = false;
+  disconnectDeviceStatusSse();
+});
 </script>
 
 <style scoped lang="scss">

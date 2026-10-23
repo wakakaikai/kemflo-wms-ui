@@ -449,6 +449,7 @@ import type { ElFormInstance } from 'element-plus';
 import { Coin } from '@element-plus/icons-vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getToken } from '@/utils/auth';
+import { randomUUID } from '@/utils/randomUUID';
 import { createManagedEventSource } from '@/utils/managedEventSource';
 import { listPoint, getPoint, addPoint, updatePoint, getPointDisplayConfig, savePointDisplayConfig, delPoint } from '@/api/iot/point';
 import { PointDisplayConfigForm, PointForm, PointQuery, PointVO } from '@/api/iot/point/types';
@@ -1578,7 +1579,10 @@ const resolveDeviceName = (row: PointVO) => {
   return matched?.deviceName || toIdStr(row.deviceId) || '—';
 };
 
-const resolveDeviceProtocol = async (deviceId?: string | number) => {
+/** 同一设备详情请求去重，避免 bootstrap / 弹窗重复打 getDevice */
+let resolveDeviceProtocolTask: { id: string; promise: Promise<void> } | undefined;
+
+const resolveDeviceProtocol = async (deviceId?: string | number, force = false) => {
   const id = toIdStr(deviceId);
   if (!id) {
     selectedProtocol.value = '';
@@ -1586,25 +1590,40 @@ const resolveDeviceProtocol = async (deviceId?: string | number) => {
     return;
   }
   const cached = deviceOptions.value.find((item) => toIdStr(item.id) === id);
-  if (cached?.protocol) {
+  // 列表已加载到设备时优先用缓存，避免 /iot/device/{id} 重复请求
+  if (!force && cached?.protocol) {
     selectedProtocol.value = normalizeProtocolValue(cached.protocol);
+    currentDevice.value = cached;
+    return;
   }
-  try {
-    const res = await getDevice(id);
-    selectedProtocol.value = normalizeProtocolValue(res.data?.protocol);
-    currentDevice.value = res.data || null;
-    if (res.data) {
-      const idx = deviceOptions.value.findIndex((item) => toIdStr(item.id) === id);
-      if (idx >= 0) {
-        deviceOptions.value[idx] = { ...deviceOptions.value[idx], ...res.data };
-      } else {
-        deviceOptions.value.push(res.data);
+  if (!force && resolveDeviceProtocolTask?.id === id) {
+    await resolveDeviceProtocolTask.promise;
+    return;
+  }
+  const promise = (async () => {
+    try {
+      const res = await getDevice(id);
+      selectedProtocol.value = normalizeProtocolValue(res.data?.protocol);
+      currentDevice.value = res.data || null;
+      if (res.data) {
+        const idx = deviceOptions.value.findIndex((item) => toIdStr(item.id) === id);
+        if (idx >= 0) {
+          deviceOptions.value[idx] = { ...deviceOptions.value[idx], ...res.data };
+        } else {
+          deviceOptions.value.push(res.data);
+        }
+      }
+    } catch {
+      if (!cached?.protocol) selectedProtocol.value = '';
+      currentDevice.value = cached || null;
+    } finally {
+      if (resolveDeviceProtocolTask?.id === id) {
+        resolveDeviceProtocolTask = undefined;
       }
     }
-  } catch {
-    if (!cached?.protocol) selectedProtocol.value = '';
-    currentDevice.value = cached || null;
-  }
+  })();
+  resolveDeviceProtocolTask = { id, promise };
+  await promise;
 };
 
 const syncModbusAddress = () => {
@@ -1736,6 +1755,7 @@ const handleAdd = async () => {
 
 const handleUpdate = async (row: PointVO) => {
   await reset();
+  const prevDeviceId = toIdStr(form.value.deviceId);
   const res = await getPoint(row.id);
   form.value = {
     ...res.data,
@@ -1744,7 +1764,10 @@ const handleUpdate = async (row: PointVO) => {
     displayEnabled: res.data?.displayEnabled || '1',
     byteOrder: res.data?.byteOrder || defaultByteOrder(res.data?.dataType)
   };
-  await resolveDeviceProtocol(form.value.deviceId);
+  // reset() 已解析过设备；仅当点位所属设备不同时再解析
+  if (toIdStr(form.value.deviceId) !== prevDeviceId) {
+    await resolveDeviceProtocol(form.value.deviceId);
+  }
   resetAddressBuilder(form.value.tagAddress);
   addrAutoGenerate.value = false;
   syncPlcFormatFromForm();
@@ -1867,15 +1890,27 @@ const handleRead = async () => {
 
 let listBootstrapped = false;
 let skipNextActivate = true;
+/** bootstrap 去重，避免 mount/activate/路由监听并发重复请求 */
+let bootstrapPointListTask: Promise<void> | undefined;
 
 const bootstrapPointList = async () => {
-  if (!listBootstrapped) {
-    await loadDevices();
-    listBootstrapped = true;
-  }
-  syncDeviceIdFromRoute();
-  if (routeDeviceId.value) await resolveDeviceProtocol(routeDeviceId.value);
-  await getList();
+  if (bootstrapPointListTask) return bootstrapPointListTask;
+  bootstrapPointListTask = (async () => {
+    if (!listBootstrapped) {
+      await loadDevices();
+      listBootstrapped = true;
+    }
+    syncDeviceIdFromRoute();
+    const routeId = toIdStr(routeDeviceId.value);
+    // 当前设备已解析过则跳过，避免激活/路由监听重复打 getDevice
+    if (routeId && toIdStr(currentDevice.value?.id) !== routeId) {
+      await resolveDeviceProtocol(routeId);
+    }
+    await getList();
+  })().finally(() => {
+    bootstrapPointListTask = undefined;
+  });
+  return bootstrapPointListTask;
 };
 
 const appendTcpMessage = (message: TcpMessageEvent) => {
@@ -1908,11 +1943,13 @@ const refreshTcpCollectResult = async (deviceId: string | number) => {
 };
 
 const connectTcpMessageSse = () => {
-  cleanupTcpMessageSse?.();
+  if (cleanupTcpMessageSse) return;
+  // 设备已停用时不建立 SSE
+  if (String(currentDevice.value?.status ?? '0') === '1') return;
   const params = new URLSearchParams({
     Authorization: `Bearer ${getToken() || ''}`,
     clientid: import.meta.env.VITE_APP_CLIENT_ID,
-    connectionId: crypto.randomUUID()
+    connectionId: randomUUID()
   });
   cleanupTcpMessageSse = createManagedEventSource(`${import.meta.env.VITE_APP_BASE_API}/iot/device/status/sse?${params.toString()}`, {
     onMessage(event) {
@@ -1930,6 +1967,7 @@ const connectTcpMessageSse = () => {
     },
     onFailed(error) {
       console.error('TCP实时报文 SSE 连接失败，已停止重连', error);
+      cleanupTcpMessageSse = undefined;
     }
   });
 };
@@ -1939,8 +1977,21 @@ const disconnectTcpMessageSse = () => {
   cleanupTcpMessageSse = undefined;
 };
 
+/** TCP 采集弹窗打开时才订阅实时报文，关闭即断开，避免停用设备后仍占用 SSE */
+watch(
+  () => tcpReadDialog.visible,
+  (visible) => {
+    if (visible) {
+      connectTcpMessageSse();
+      return;
+    }
+    disconnectTcpMessageSse();
+  }
+);
+
 onMounted(async () => {
-  connectTcpMessageSse();
+  // 每次挂载重置，避免销毁重建后 onMounted + onActivated 各跑一遍 bootstrap
+  skipNextActivate = true;
   await bootstrapPointList();
 });
 
@@ -1948,7 +1999,6 @@ onDeactivated(disconnectTcpMessageSse);
 onBeforeUnmount(disconnectTcpMessageSse);
 
 onActivated(async () => {
-  if (!cleanupTcpMessageSse) connectTcpMessageSse();
   // 与 onMounted 同一次进入时跳过，避免重复请求
   if (skipNextActivate) {
     skipNextActivate = false;
@@ -1965,6 +2015,7 @@ watch(
     if (!toIdStr(deviceId as string)) {
       queryParams.value.deviceId = undefined;
       selectedProtocol.value = '';
+      currentDevice.value = null;
     }
     await bootstrapPointList();
   }

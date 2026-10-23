@@ -193,7 +193,6 @@
 
 <script setup name="WorkOrderSummaryTab" lang="ts">
 import { WorkOrderVO, WorkOrderQuery, WorkOrderForm } from '@/api/wms/workOrder/types';
-import { TableColumns } from '@/api/types';
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_production_mode, wms_work_order_check_enable } = toRefs<any>(proxy?.useDict('wms_production_mode', 'wms_work_order_check_enable'));
 import WorkCenterDialog from '@/views/report/workOrderData/components/workCenterDialog.vue';
@@ -265,7 +264,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '工单号', visible: true },
   { key: 2, label: '产品料号', visible: true },
   { key: 3, label: '产品描述', visible: true },

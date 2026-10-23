@@ -1,4 +1,5 @@
 import { createBlankTemplate, type PrintTemplate, type PrintTemplateItem, type WidgetOption } from '@/components/print-designer';
+import { randomUUID } from '@/utils/randomUUID';
 import { canvasPxFromPaper } from '@/components/print-designer/const/paperPresets';
 
 type JsonObject = Record<string, any>;
@@ -22,8 +23,7 @@ function parseJson(raw: unknown): unknown {
 }
 
 function uid(prefix: string) {
-  const suffix = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(16).slice(2);
-  return prefix + '-' + suffix;
+  return prefix + '-' + randomUUID();
 }
 
 export function isLocalTemplate(value: unknown): value is PrintTemplate {

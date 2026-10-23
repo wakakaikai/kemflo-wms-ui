@@ -176,13 +176,12 @@
 <script setup name="CustomerProfile" lang="ts">
 import { listCustomerProfile, getCustomerProfile, delCustomerProfile, addCustomerProfile, updateCustomerProfile } from '@/api/wms/customerProfile';
 import { CustomerProfileVO, CustomerProfileQuery, CustomerProfileForm } from '@/api/wms/customerProfile/types';
-import { TableColumns } from '@/api/types';
 import { ref } from 'vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const tableKey = ref(1);
 // 创建响应式数组对象
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '公司', visible: true },
   { key: 2, label: '客户代码', visible: true },
   { key: 3, label: '名称', visible: true },

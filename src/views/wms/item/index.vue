@@ -209,7 +209,6 @@
 <script setup name="Item" lang="ts">
 import { listItem, getItem, delItem, addItem, updateItem } from '@/api/wms/item';
 import { ItemVO, ItemQuery, ItemForm } from '@/api/wms/item/types';
-import { TableColumns } from '@/api/types';
 import { ArrowDown, ArrowUp } from '@element-plus/icons-vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -235,7 +234,7 @@ const dialog = reactive<DialogOption>({
 });
 
 // 创建响应式数组对象
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '物料', visible: true },
   { key: 2, label: '描述', visible: true },
   { key: 3, label: '旧料号', visible: false },
@@ -270,6 +269,7 @@ const initFormData: ItemForm = {
   oldItem: undefined,
   itemGroup: undefined,
   unit: undefined,
+  sfcRegular: undefined,
   sizeCategory: undefined,
   receiptInspectionFlag: undefined,
   outboundInspectionCheck: undefined,
@@ -311,7 +311,6 @@ const { queryParams, form, rules } = toRefs(data);
 const toggleAdvancedSearch = () => {
   showAdvancedSearch.value = !showAdvancedSearch.value;
 };
-
 
 /** 查询物料列表 */
 const getList = async () => {

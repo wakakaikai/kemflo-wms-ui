@@ -94,8 +94,8 @@
                   <div class="mi-print-sn-template" ref="printContent">
                     <!-- 标签顶部：项目描述及颜色 -->
                     <div class="top-section">
-                      <span>{{ workOrderInfo.productDesc }}</span>
-                      <span>颜色：{{ workOrderInfo.color }}</span>
+                      <span class="product-description">{{ workOrderInfo.productDesc }}</span>
+                      <span class="product-color">颜色：{{ workOrderInfo.color }}</span>
                     </div>
 
                     <!-- 条形码区域 -->
@@ -113,7 +113,16 @@
 
                     <!-- 69码区域 -->
                     <div class="sixty-nine-barcode-section" v-if="workOrderInfo.ean">
-                      <svg ref="sixtyNineBarcodeSvg"></svg>
+                      <svg ref="sixtyNineBarcodeSvg" class="ean-bars"></svg>
+                      <div class="ean-readable">
+                        <span class="ean-leading-digit">{{ workOrderInfo.ean.slice(0, 1) }}</span>
+                        <span class="ean-left-digits">
+                          <span v-for="(digit, index) in workOrderInfo.ean.slice(1, 7)" :key="`left-${index}`">{{ digit }}</span>
+                        </span>
+                        <span class="ean-right-digits">
+                          <span v-for="(digit, index) in workOrderInfo.ean.slice(7, 13)" :key="`right-${index}`">{{ digit }}</span>
+                        </span>
+                      </div>
                     </div>
 
                     <div class="footer-row">
@@ -150,7 +159,7 @@
                   <el-descriptions-item label="标签尺寸">47mm × 30mm</el-descriptions-item>
                   <el-descriptions-item label="打印份数">{{ copies }} 份</el-descriptions-item>
                   <el-descriptions-item label="当前缩放">{{ (zoom * 100).toFixed(0) }}%</el-descriptions-item>
-                  <el-descriptions-item label="当前打印机" :span="2">{{ selectedPrinter || '未选择' }} </el-descriptions-item>
+                  <el-descriptions-item label="当前打印机" :span="2">{{ selectedPrinter || '未选择' }}</el-descriptions-item>
                 </el-descriptions>
               </div>
             </div>
@@ -164,16 +173,17 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from 'vue';
+import { nextTick, onMounted, ref } from 'vue';
 import html2canvas from 'html2canvas';
-
-const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 import { listShopOrder } from '@/api/mes/shopOrder';
 import JsBarcode from 'jsbarcode';
+import { Refresh } from '@element-plus/icons-vue';
 import { getLodop } from '@/utils/LodopFuncs';
 import { savePrintHistory } from '@/api/mes/shopOrderSfcPrintHistory';
 import { HttpStatus } from '@/enums/RespEnum';
 import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
+
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const settingFormRef = ref();
 const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
@@ -289,6 +299,7 @@ const getPrintersFromLodop = (): Array<{ name: string; isDefault: boolean }> => 
     return printers;
   } catch (error) {
     console.error('获取打印机列表失败:', error);
+    return [];
   }
 };
 
@@ -352,7 +363,10 @@ const getPaperList = (printerName: string) => {
       LODOP.PRINT_INIT('');
 
       return papers;
-    } catch (error) {}
+    } catch (error) {
+      console.error('获取纸张列表失败:', error);
+      return [];
+    }
   } catch (error) {
     console.error('获取纸张列表失败:', error);
     return [];
@@ -370,15 +384,18 @@ const refreshPapers = async () => {
   paperList.value = papers;
 
   if (papers.length > 0) {
-    if (!selectedPaper.value) {
-      selectedPaper.value = papers[0].value;
-    }
+    const paperStillExists = papers.some((paper) => paper.value === selectedPaper.value);
+    const preferredPaper = papers.find((paper) => /小米\s*-?\s*SN69/i.test(`${paper.label} ${paper.value}`));
+    if (!paperStillExists) selectedPaper.value = preferredPaper?.value ?? papers[0].value;
+  } else {
+    selectedPaper.value = '';
   }
 };
 
 // 打印机变更事件
-const onPrinterChange = () => {
-  refreshPapers(); // 打印机变更时自动刷新纸张列表
+const onPrinterChange = async () => {
+  selectedPaper.value = '';
+  await refreshPapers(); // 打印机变更时自动刷新纸张列表
 };
 
 // 纸张变更事件
@@ -429,45 +446,171 @@ const generateBarcode = () => {
   }
 };
 
-// 生成69码
+const EAN_L_CODES = ['0001101', '0011001', '0010011', '0111101', '0100011', '0110001', '0101111', '0111011', '0110111', '0001011'];
+const EAN_G_CODES = ['0100111', '0110011', '0011011', '0100001', '0011101', '0111001', '0000101', '0010001', '0001001', '0010111'];
+const EAN_R_CODES = ['1110010', '1100110', '1101100', '1000010', '1011100', '1001110', '1010000', '1000100', '1001000', '1110100'];
+const EAN_PARITY = ['LLLLLL', 'LLGLGG', 'LLGGLG', 'LLGGGL', 'LGLLGG', 'LGGLLG', 'LGGGLL', 'LGLGLG', 'LGLGGL', 'LGGLGL'];
+const EAN_GUARD_MODULES = new Set([0, 2, 46, 48, 92, 94]);
+
+const buildEan13Modules = (content: string) => {
+  if (!/^\d{13}$/.test(content)) throw new Error('69码必须是13位数字');
+  const digits = [...content].map(Number);
+  const parity = EAN_PARITY[digits[0]];
+  let modules = '101';
+  for (let index = 1; index <= 6; index++) {
+    modules += parity[index - 1] === 'L' ? EAN_L_CODES[digits[index]] : EAN_G_CODES[digits[index]];
+  }
+  modules += '01010';
+  for (let index = 7; index <= 12; index++) modules += EAN_R_CODES[digits[index]];
+  return `${modules}101`;
+};
+
+// 生成固定为 95 个模块的 EAN-13 条线，文字由 HTML 单独定位
 const generateSixtyNineBarcode = () => {
   const content = workOrderInfo.value.ean;
   if (!content || !sixtyNineBarcodeSvg.value) {
     return;
   }
   sixtyNineBarcodeSvg.value.innerHTML = '';
-  try {
-    JsBarcode(sixtyNineBarcodeSvg.value, content, {
-      format: 'EAN13',
-      displayValue: true,
-      height: 90,
-      width: 5,
-      margin: 0,
-      fontSize: 40
+  if (!/^\d{13}$/.test(content)) {
+    console.error('69码生成失败: EAN-13 必须是13位数字');
+    return;
+  }
+
+  const modules = buildEan13Modules(content);
+
+  const bars = [...modules].map((module, index) => (module === '1' ? `<rect x="${index}" y="0" width="1" height="${EAN_GUARD_MODULES.has(index) ? 103 : 80}" />` : '')).join('');
+  const svg = sixtyNineBarcodeSvg.value;
+  svg.setAttribute('viewBox', '0 0 95 103');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.innerHTML = bars;
+};
+
+const TX610_DPI = 600;
+const CSS_DPI = 96;
+const LABEL_FONT = "'MiSans Regular', sans-serif";
+
+// 合格证单独用 MiSans Regular 重绘。网页截图会把 0.12mm 外框放大成粗黑线，小字也会发糊。
+const paintCertificate = (canvas: HTMLCanvasElement, clone: HTMLElement, bounds: DOMRect) => {
+  const certBox = clone.querySelector('.cert-box') as HTMLElement | null;
+  const context = canvas.getContext('2d');
+  if (!certBox || !context) return;
+  const boxRect = certBox.getBoundingClientRect();
+  if (boxRect.width <= 0 || boxRect.height <= 0) return;
+
+  const scaleX = canvas.width / bounds.width;
+  const scaleY = canvas.height / bounds.height;
+  const x = Math.round((boxRect.left - bounds.left) * scaleX);
+  const y = Math.round((boxRect.top - bounds.top) * scaleY);
+  const w = Math.max(1, Math.round(boxRect.width * scaleX));
+  const h = Math.max(1, Math.round(boxRect.height * scaleY));
+  const borderPx = 1;
+
+  context.fillStyle = '#ffffff';
+  context.fillRect(x - 4, y - 4, w + 8, h + 8);
+  context.fillStyle = '#000000';
+  context.fillRect(x, y, w, borderPx);
+  context.fillRect(x, y + h - borderPx, w, borderPx);
+  context.fillRect(x, y, borderPx, h);
+  context.fillRect(x + w - borderPx, y, borderPx, h);
+
+  const fontPx = (3.5 * TX610_DPI) / 72;
+  context.font = `${fontPx}px ${LABEL_FONT}`;
+  context.fillStyle = '#000000';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  const innerX = x + borderPx;
+  const innerY = y + borderPx;
+  const innerW = Math.max(1, w - borderPx * 2);
+  const innerH = Math.max(1, h - borderPx * 2);
+  context.save();
+  context.beginPath();
+  context.rect(innerX, innerY, innerW, innerH);
+  context.clip();
+  context.fillText('合格证 已检验', x + w / 2, y + h / 2);
+  context.restore();
+
+  const pixels = context.getImageData(innerX, innerY, innerW, innerH);
+  const data = pixels.data;
+  for (let index = 0; index < data.length; index += 4) {
+    const luminance = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
+    const color = luminance < 128 ? 0 : 255;
+    data[index] = color;
+    data[index + 1] = color;
+    data[index + 2] = color;
+    data[index + 3] = 255;
+  }
+  context.putImageData(pixels, innerX, innerY);
+};
+
+// 按打印机原生分辨率截取网页模板，再转成纯黑白图，保证实物布局与网页预览一致。
+const renderPrintImage = async () => {
+  if (!printContent.value) throw new Error('标签模板尚未加载');
+
+  await nextTick();
+  const clone = printContent.value.cloneNode(true) as HTMLElement;
+  Object.assign(clone.style, {
+    position: 'fixed',
+    top: '0',
+    left: '-10000px',
+    margin: '0',
+    transform: 'none',
+    transformOrigin: 'top left',
+    boxShadow: 'none'
+  });
+  const clonedEanBars = clone.querySelector('.ean-bars') as SVGElement | null;
+  if (clonedEanBars) {
+    const modules = buildEan13Modules(workOrderInfo.value.ean);
+    const barcodeCanvas = document.createElement('canvas');
+    barcodeCanvas.width = Math.round((38.5 * TX610_DPI) / 25.4);
+    barcodeCanvas.height = Math.round((10.3 * TX610_DPI) / 25.4);
+    barcodeCanvas.setAttribute('style', 'position:absolute;top:0;left:5.1mm;display:block;width:38.5mm;height:10.3mm;');
+    const barcodeContext = barcodeCanvas.getContext('2d');
+    if (!barcodeContext) throw new Error('无法创建69码图像');
+    const moduleWidth = barcodeCanvas.width / 95;
+    barcodeContext.fillStyle = '#000000';
+    [...modules].forEach((module, index) => {
+      if (module !== '1') return;
+      const left = Math.round(index * moduleWidth);
+      const right = Math.round((index + 1) * moduleWidth);
+      const height = EAN_GUARD_MODULES.has(index) ? barcodeCanvas.height : Math.round((8 / 10.3) * barcodeCanvas.height);
+      barcodeContext.fillRect(left, 0, Math.max(1, right - left), height);
     });
-    setTimeout(() => {
-      const svg = sixtyNineBarcodeSvg.value;
-      svg.setAttribute('width', '100%');
-      svg.setAttribute('height', '100%');
-      svg.setAttribute('preserveAspectRatio', 'none');
+    clonedEanBars.replaceWith(barcodeCanvas);
+  }
+  const clonedCertBox = clone.querySelector('.cert-box') as HTMLElement | null;
+  if (clonedCertBox) clonedCertBox.style.borderColor = 'transparent';
+  document.body.appendChild(clone);
+  await Promise.all([document.fonts.load(`${(4 * TX610_DPI) / 72}px "MiSans Regular"`), document.fonts.load(`${(3.5 * TX610_DPI) / 72}px "MiSans Regular"`)]);
 
-      sixtyNineBarcodeSvg.value.querySelectorAll('text').forEach((t, idx) => {
-        t.style.letterSpacing = '0.3em';
-        t.style.fontFamily = 'MiSans Medium';
-        // t.style.fontSize = '10pt';
+  try {
+    const bounds = clone.getBoundingClientRect();
+    const canvas = await html2canvas(clone, {
+      scale: TX610_DPI / CSS_DPI,
+      logging: false,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      width: bounds.width,
+      height: bounds.height
+    });
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) throw new Error('无法创建标签图像');
 
-        // 获取当前 x 坐标并增加偏移量
-        const currentX = t.getAttribute('x');
-        if (currentX && idx == 0) {
-          t.setAttribute('x', parseFloat(currentX) + 20); // 向右移动15像素
-        }
-        if (currentX && idx > 0) {
-          t.setAttribute('x', parseFloat(currentX) + 8); // 向右移动15像素
-        }
-      });
-    }, 50);
-  } catch (error) {
-    console.error('69码生成失败:', error);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+    for (let index = 0; index < pixels.data.length; index += 4) {
+      const luminance = pixels.data[index] * 0.299 + pixels.data[index + 1] * 0.587 + pixels.data[index + 2] * 0.114;
+      const color = luminance < 128 ? 0 : 255;
+      pixels.data[index] = color;
+      pixels.data[index + 1] = color;
+      pixels.data[index + 2] = color;
+      pixels.data[index + 3] = 255;
+    }
+    context.putImageData(pixels, 0, 0);
+    await document.fonts.load(`${(3.5 * TX610_DPI) / 72}px "MiSans Regular"`);
+    paintCertificate(canvas, clone, bounds);
+    return canvas.toDataURL('image/png');
+  } finally {
+    clone.remove();
   }
 };
 
@@ -516,127 +659,22 @@ const keyDownTab = async () => {
       proxy.$modal.msgError('未检测到Lodop打印服务，请安装Lodop插件');
       return;
     }
-    // 初始化打印任务
-    LODOP.PRINT_INIT('小米汽车YU7标签');
+    // 按标签实际尺寸初始化任务，避免沿用 A4 画布后再由驱动缩放
+    LODOP.PRINT_INITA('0mm', '0mm', '47mm', '30mm', '小米汽车SN69标签');
     // 设置打印机
     LODOP.SET_PRINTER_INDEX(selectedPrinter.value);
 
-    // 设置纸张大小 47mm × 30mm
-    // 如果选择了纸张，则设置纸张类型
+    // 选择驱动中已有的 47x30 标签纸；已有纸张只传名称，不能再次传宽高。
     if (selectedPaper.value) {
-      LODOP.SET_PRINT_PAGESIZE(1, '', '', selectedPaper.value);
+      LODOP.SET_PRINT_PAGESIZE(0, 0, 0, selectedPaper.value);
     } else {
-      // 设置默认纸张大小
-      LODOP.SET_PRINT_PAGESIZE(0, 0, 0, '47mm 30mm'); // 设置纸张大小
+      LODOP.SET_PRINT_PAGESIZE(1, 470, 300, '');
     }
-    // 设置打印模式
-    // LODOP.SET_PRINT_MODE('PRINT_PAGE_PERCENT', 1);
-    // LODOP.SET_PRINT_MODE('RESOLUTION', 600);
-    // LODOP.SET_PRINT_STYLE('FontSmoothing', 2);
-
-    // 开启字体平滑
-    // LODOP.SET_PRINT_STYLE('FontSmoothing', 2); // 2=开启字体平滑
-
-    // ========== 标题：小米汽车车顶平台行李架 ==========
-    LODOP.ADD_PRINT_TEXT('2mm', '3.00mm', '43mm', '2mm', workOrderInfo.value.productDesc);
-    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
-    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4.5);
-    LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.14);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.14);
-
-    // ========== 颜色：锖灰色 ==========
-    LODOP.ADD_PRINT_TEXT('2.01mm', '35.51mm', '14mm', '2.01mm', `颜色：${workOrderInfo.value.color}`);
-    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
-    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4.5);
-    LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.14);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.14);
-
-    // ========== SN条码 ==========
-    const tempCanvas = document.createElement('canvas');
-    JsBarcode(tempCanvas, workOrderInfo.value.sfcContent, {
-      format: 'CODE128',
-      displayValue: false,
-      height: 28,
-      width: 1,
-      margin: 0
-    });
-    // 使用图片方式打印条形码
-    LODOP.ADD_PRINT_IMAGE('4.4mm', '3.00mm', '42.41mm', '5mm', tempCanvas.toDataURL('image/png'));
-    LODOP.SET_PRINT_STYLEA(0, 'Stretch', 1); // 扩展缩放模式
-    // LODOP.ADD_PRINT_BARCODE('4.4mm', '2.01mm', '43mm', '5mm', '128Auto', workOrderInfo.value.sfcContent);
-    // LODOP.SET_PRINT_STYLEA(0, 'ShowBarText', 0);
-    // LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.04);
-
-    // ========== SN文字 ==========
-    LODOP.ADD_PRINT_TEXT('9.7mm', '3.00mm', '35mm', '2.49mm', `SN: ${workOrderInfo.value.sfcContent}`);
-    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
-    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4);
-    LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.14);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.14);
-
-    // ========== SKU文字 ==========
-    LODOP.ADD_PRINT_TEXT('9.7mm', '31.6mm', '20mm', '2.49mm', `SKU: ${workOrderInfo.value.sku}`);
-    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
-    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4);
-    LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.14);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.14);
-
-    // ========== EAN13 条码 ==========
-    LODOP.ADD_PRINT_BARCODE('12.00mm', '6mm', '41.00mm', '10.8mm', 'EAN13', workOrderInfo.value.ean);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.08);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.1);
-    LODOP.SET_PRINT_STYLEA(0, 'ShowBarText', 0);
-
-    // ========== EAN13 分段：第1位 ==========
-    const ean = workOrderInfo.value.ean || '';
-    const first = ean.substring(0, 1);
-    const middle = ean.substring(1, 7);
-    const last = ean.substring(7, 13);
-
-    LODOP.ADD_PRINT_TEXT('19.7mm', '3.00mm', '8.99mm', '5mm', first);
-    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
-    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.1);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.1);
-
-    // ========== EAN13 分段：中间6位 ==========
-    LODOP.ADD_PRINT_TEXT('19.7mm', '8.41mm', '20mm', '5mm', middle);
-    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
-    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10);
-    LODOP.SET_PRINT_STYLEA(0, 'LetterSpacing', '0.6mm');
-    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.1);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.1);
-
-    // ========== EAN13 分段：最后6位 ==========
-    LODOP.ADD_PRINT_TEXT('19.7mm', '27.00mm', '20mm', '5mm', last);
-    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
-    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10);
-    LODOP.SET_PRINT_STYLEA(0, 'LetterSpacing', '0.6mm');
-    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.1);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.1);
-
-    // ========== 生产日期 ==========
-    LODOP.ADD_PRINT_TEXT('25.61mm', '3.00mm', '25mm', '2.01mm', `生产日期：${res.data[0]?.productDate}`);
-    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
-    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 4);
-    LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.05);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.05);
-
-    // ========== 边框 ==========
-    LODOP.ADD_PRINT_RECT('25mm', '36.7mm', '8.39mm', '2.41mm', 0, 0);
-
-    // ========== 合格证已检验 ==========
-    LODOP.ADD_PRINT_TEXT('25.51mm', '37.2mm', '14mm', '2.8mm', '合格证 已检验');
-    LODOP.SET_PRINT_STYLEA(0, 'FontName', 'MiSans VF Regular');
-    LODOP.SET_PRINT_STYLEA(0, 'FontSize', 3);
-    LODOP.SET_PRINT_STYLEA(0, 'Bold', 1);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalX', 1.14);
-    LODOP.SET_PRINT_STYLEA(0, 'ScalY', 1.14);
+    // 固定为原始比例，禁止继承预览或其他任务的自适应缩放。
+    LODOP.SET_PRINT_MODE('PRINT_PAGE_PERCENT', '100%');
+    const image = await renderPrintImage();
+    LODOP.ADD_PRINT_IMAGE('0mm', '0mm', '47mm', '30mm', image);
+    LODOP.SET_PRINT_STYLEA(0, 'Stretch', 1);
 
     // ========== 预览或打印 ==========
     // LODOP.PRINT_DESIGN(); // 设计模式，调试时使用
@@ -708,7 +746,6 @@ onMounted(() => {
 }
 
 .card-header span {
-  font-weight: 600;
   font-size: 14px;
   color: #303133;
 }
@@ -771,7 +808,6 @@ onMounted(() => {
 
 .header-left h3 {
   font-size: 16px;
-  font-weight: 600;
   margin: 0;
   color: #333;
 }
@@ -812,9 +848,7 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   padding: 20px;
-  background:
-    linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
-    linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
+  background: linear-gradient(45deg, #f5f5f5 25%, transparent 25%), linear-gradient(-45deg, #f5f5f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f5f5f5 75%), linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
   background-size: 20px 20px;
   background-position:
     0 0,
@@ -841,7 +875,6 @@ onMounted(() => {
 .history-header h4 {
   margin: 0;
   font-size: 14px;
-  font-weight: 600;
   color: #333;
 }
 
@@ -864,7 +897,6 @@ onMounted(() => {
 
 .history-content {
   font-size: 13px;
-  font-weight: 500;
   color: #333;
   word-break: break-all;
   margin-bottom: 4px;
@@ -893,44 +925,129 @@ onMounted(() => {
 .mi-print-sn-template {
   width: 47mm;
   height: 30mm;
-  padding: 2mm 2mm;
   background: white;
-  display: flex;
-  flex-direction: column;
   box-sizing: border-box;
   position: relative;
-  border: 1px solid #e6e6e6;
+  overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .top-section {
-  font-weight: bold;
+  position: absolute;
+  top: 2mm;
+  left: 2mm;
+  width: 43mm;
+  height: 2.2mm;
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-family: 'MiSans Regular', sans-serif;
   font-size: 4pt;
-  margin-bottom: 0.5mm;
+  line-height: 2.2mm;
+  white-space: nowrap;
+}
+
+.product-description {
+  width: 31.5mm;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-color {
+  width: 11.5mm;
+  text-align: right;
 }
 
 .barcode-section {
+  position: absolute;
+  top: 4.4mm;
+  left: 2mm;
+  width: 43mm;
+  height: 5mm;
   display: flex;
   justify-content: center;
   align-items: center;
-  max-height: 7mm;
+}
+
+.barcode-section svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .sixty-nine-barcode-section {
-  margin-left: -5px;
+  position: absolute;
+  top: 12mm;
+  left: 0;
+  width: 47mm;
+  height: 10.3mm;
+}
+
+.ean-bars {
+  position: absolute;
+  top: 0;
+  left: 5.1mm;
+  display: block;
+  width: 38.5mm;
+  height: 10.3mm;
+  fill: #000;
+}
+
+.ean-readable {
+  position: absolute;
+  top: 8.5mm;
+  left: 0;
+  width: 47mm;
+  height: 3.55mm;
+  overflow: visible;
+  color: #000;
+  font-family: Arial, sans-serif;
+  font-size: 10pt;
+  line-height: 3.55mm;
+}
+
+.ean-leading-digit,
+.ean-left-digits,
+.ean-right-digits {
+  position: absolute;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 3.55mm;
+}
+
+.ean-leading-digit {
+  top: 0.3mm;
+  left: 1.8mm;
+  width: 3mm;
+  justify-content: center;
+}
+
+.ean-left-digits {
+  top: 0.3mm;
+  left: 6.3158mm;
+  width: 17.0211mm;
+}
+
+.ean-right-digits {
+  top: 0.3mm;
+  left: 25.3632mm;
+  width: 17.0211mm;
 }
 
 .info-section {
+  position: absolute;
+  top: 9.56mm;
+  left: 2mm;
+  width: 43mm;
+  height: 2.3mm;
   display: flex;
   justify-content: space-between;
-  font-family: 'MiSans Regular', sans-serif;
+  font-family: Arial, sans-serif;
   font-size: 4.5pt;
-  margin: -1px 0 2px 0;
-  max-height: 5mm;
+  line-height: 2.3mm;
+  white-space: nowrap;
 }
 
 .sn-sku-row {
@@ -938,13 +1055,28 @@ onMounted(() => {
   width: 100%;
   justify-content: space-between;
   align-items: center;
-  margin-top: 2px;
+}
+
+.sn-value {
+  width: 25.5mm;
+  overflow: hidden;
+}
+
+.sku-value {
+  width: 17.5mm;
+  overflow: hidden;
+  text-align: right;
 }
 
 .footer-row {
+  position: absolute;
+  top: 25mm;
+  left: 2mm;
+  width: 43mm;
+  height: 2.8mm;
   display: flex;
   justify-content: space-between;
-  margin-top: 2px;
+  align-items: center;
 }
 
 .footer-left {
@@ -958,33 +1090,60 @@ onMounted(() => {
   color: #000;
   display: flex;
   align-items: center;
-  margin-bottom: 2px;
-  font-weight: bold;
+  line-height: 2.3mm;
 }
 
 .cert-box {
+  position: relative;
+  width: max-content;
+  height: 2.6mm;
+  box-sizing: border-box;
   display: flex;
   justify-content: center;
   align-items: center;
-  border: 0.5pt solid #000;
-  padding: 0 1px;
-  font-weight: bold;
+  border: 0.12mm solid #000;
+  padding: 0 0.45mm;
 }
 
 .cert-text {
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: 'MiSans Regular', 'MiSans VF', sans-serif;
-  font-size: 3.18pt;
+  font-family: 'MiSans Regular', sans-serif;
+  font-size: 3.5pt;
+  line-height: 1;
   color: #000;
+  white-space: nowrap;
 }
 
-/* 屏幕显示时放大200% */
+/* 屏幕显示时放大200%。0.12mm 边框会先变成 1px 再被放大，合格证外框会显得过黑。 */
 @media screen {
   .mi-print-sn-template {
     transform: scale(2);
     /*    transform-origin: top center;*/
   }
+
+  .cert-box {
+    border-width: 0;
+  }
+
+  .cert-box::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 200%;
+    height: 200%;
+    box-sizing: border-box;
+    border: 1px solid #000;
+    transform: scale(0.5);
+    transform-origin: top left;
+    pointer-events: none;
+  }
+}
+
+/* 只挪页面预览。截图克隆不在 .preview-wrapper 里，base64 仍按框中线重绘。 */
+.preview-wrapper .cert-text {
+  transform: translateY(0.38mm);
 }
 </style>

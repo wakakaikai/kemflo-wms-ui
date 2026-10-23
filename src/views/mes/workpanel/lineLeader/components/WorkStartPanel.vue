@@ -1,5 +1,5 @@
 <template>
-  <div class="android-panel-dialog">
+  <div class="android-panel-dialog" :class="{ 'is-page-layout': layout === 'page' }">
     <aside class="android-panel-left">
       <div class="info-row">
         <span class="info-label">工单单号</span>
@@ -11,7 +11,7 @@
       </div>
       <div class="info-row">
         <span class="info-label">产品品号</span>
-        <span class="info-value">{{ item || '-' }}</span>
+        <span class="info-value">{{ plannedItem || '-' }}</span>
       </div>
       <div class="info-row">
         <span class="info-label">产品描述</span>
@@ -20,11 +20,11 @@
       <div class="info-row info-row-split">
         <div class="info-split-item">
           <span class="info-label">计划数量</span>
-          <span class="info-value">{{ qtyToBuild ?? '-' }}</span>
+          <span class="info-value">{{ formatIntegerQty(qtyToBuild) }}</span>
         </div>
         <div class="info-split-item">
-          <span class="info-label">已完成数量</span>
-          <span class="info-value">{{ qtyDone ?? '-' }}</span>
+          <span class="info-label">已报工数量</span>
+          <span class="info-value">{{ formatIntegerQty(qtyDone) }}</span>
         </div>
       </div>
       <div class="info-row info-row-split">
@@ -40,36 +40,16 @@
       <div class="info-row">
         <span class="info-label">班别班次</span>
         <div class="info-value info-value-block">
-          <el-select
-            v-if="editableShift"
-            :model-value="productionShift"
-            placeholder="请选择班别班次"
-            clearable
-            filterable
-            class="shift-select-full"
-            @update:model-value="emit('update:productionShift', $event)"
-          >
-            <el-option
-              v-for="shift in productionShiftList"
-              :key="shift.shiftId"
-              :label="formatShiftDetail(shift)"
-              :value="shift.shiftId"
-            />
+          <el-select v-if="editableShift" :model-value="productionShift" placeholder="请选择班别班次" clearable filterable :loading="shiftLoading" class="shift-select-full" @update:model-value="emit('update:productionShift', $event)">
+            <el-option v-for="shift in productionShiftList" :key="shift.shiftId" :label="formatShiftDetail(shift)" :value="shift.shiftId" />
           </el-select>
           <span v-else class="shift-display">{{ shiftDisplayText }}</span>
         </div>
       </div>
       <div class="info-row">
-        <span class="info-label">开始时间</span>
+        <span class="info-label">开工时间</span>
         <div class="info-value info-value-inline">
-          <el-date-picker
-            v-if="editableStartTime"
-            :model-value="startDateTime"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            class="start-time-picker"
-            @update:model-value="emit('update:startDateTime', $event)"
-          />
+          <el-date-picker v-if="editableStartTime" :model-value="startDateTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" :clearable="false" :disabled-date="disabledStartDate" class="start-time-picker" @update:model-value="emit('update:startDateTime', $event)" />
           <span v-else>{{ startDateTime || '-' }}</span>
         </div>
       </div>
@@ -85,34 +65,20 @@
       <div v-if="innerTab !== 'history'" class="employee-work-area">
         <div class="employee-main">
           <div class="employee-input-row">
-            <el-input
-              :model-value="employeeCardInput"
-              placeholder="刷卡或输入员工工号后回车"
-              clearable
-              @update:model-value="emit('update:employeeCardInput', $event)"
-              @keyup.enter="emit('swipe-employee')"
-            >
+            <el-input :model-value="employeeCardInput" placeholder="刷卡或输入员工工号后回车" clearable @update:model-value="emit('update:employeeCardInput', $event)" @keyup.enter="emit('swipe-employee')">
               <template #prepend>员工工号</template>
             </el-input>
             <div v-if="showModeToggle" class="mode-toggle">
-              <button
-                type="button"
-                class="mode-btn"
-                :class="{ 'is-active': employeeMode === 'online' }"
-                title="上线模式"
-                @click="emit('update:employeeMode', 'online')"
-              >
-                <el-icon><CirclePlusFilled /></el-icon>
+              <button type="button" class="mode-btn" :class="{ 'is-active': employeeMode === 'online' }" title="上线模式" @click="emit('update:employeeMode', 'online')">
+                <el-icon>
+                  <CirclePlusFilled />
+                </el-icon>
                 <span>上线</span>
               </button>
-              <button
-                type="button"
-                class="mode-btn mode-btn-offline"
-                :class="{ 'is-active': employeeMode === 'offline' }"
-                title="下线模式"
-                @click="emit('update:employeeMode', 'offline')"
-              >
-                <el-icon><RemoveFilled /></el-icon>
+              <button type="button" class="mode-btn mode-btn-offline" :class="{ 'is-active': employeeMode === 'offline' }" title="下线模式" @click="emit('update:employeeMode', 'offline')">
+                <el-icon>
+                  <RemoveFilled />
+                </el-icon>
                 <span>下线</span>
               </button>
             </div>
@@ -120,19 +86,18 @@
 
           <div class="online-employee-list">
             <el-empty v-if="!displayOnlineEmployees.length" description="暂无在线员工" :image-size="48" />
-            <button
-              v-for="item in displayOnlineEmployees"
-              :key="item.id"
-              type="button"
-              class="online-employee-card"
-              @click="emit('select-online-employee', item)"
-            >
-              <el-icon><UserFilled /></el-icon>
+            <button v-for="item in displayOnlineEmployees" :key="item.id" type="button" class="online-employee-card" :class="{ 'is-pending': item.remark === '待开工上线' }" @click="emit('select-online-employee', item)">
+              <el-icon>
+                <UserFilled />
+              </el-icon>
               <div class="online-employee-meta">
                 <strong>{{ item.employeeId }}</strong>
                 <span>{{ item.employeeName || '-' }}</span>
-                <small>{{ formatOnlineTime(item.onLineTime) }}</small>
+                <small>{{ item.remark === '待开工上线' ? item.remark : formatOnlineTime(item.onLineTime) }}</small>
               </div>
+              <span v-if="showPendingEmployeeRemove && item.remark === '待开工上线'" class="pending-employee-remove" title="移出待上线列表" @click.stop="emit('remove-pending-employee', item)">
+                <el-icon><CloseBold /></el-icon>
+              </span>
             </button>
           </div>
         </div>
@@ -140,15 +105,14 @@
         <div class="employee-favorites">
           <div class="panel-title">
             <span>收藏员工</span>
-            <el-button link type="primary" icon="Plus" @click="emit('add-favorite')">收藏</el-button>
+            <div class="favorite-actions">
+              <el-button v-if="favoriteMultiple" link type="primary" :loading="favoriteActionLoading" :disabled="!selectedFavoriteRows.length" @click="emit('favorite-add', selectedFavoriteRows)"> 加入在线</el-button>
+              <el-button link type="primary" icon="Plus" @click="emit('add-favorite')">收藏</el-button>
+            </div>
           </div>
-          <el-table
-            :data="employeeFavoriteList"
-            height="280"
-            highlight-current-row
-            @current-change="(row: EmployeeFavorite | undefined) => emit('favorite-select', row)"
-          >
-            <el-table-column width="48">
+          <el-table :data="employeeFavoriteList" :height="favoriteTableHeight" :highlight-current-row="!favoriteMultiple" @current-change="handleFavoriteCurrentChange" @selection-change="handleFavoriteSelectionChange">
+            <el-table-column v-if="favoriteMultiple" type="selection" width="48" />
+            <el-table-column v-else width="48">
               <template #default="{ row }">
                 <el-radio :model-value="selectedEmployeeId" :label="row.employeeId" @change="emit('favorite-select', row)">&nbsp;</el-radio>
               </template>
@@ -165,6 +129,7 @@
           <el-table-column label="姓名" prop="employeeName" width="100" />
           <el-table-column label="上线时间" prop="onLineTime" min-width="150" />
           <el-table-column label="下线时间" prop="offLineTime" min-width="150" />
+          <el-table-column label="操作时长(分钟)" prop="operationDuration" width="130" />
           <el-table-column label="有效时长(分钟)" prop="effectiveDuration" width="130" />
         </el-table>
       </div>
@@ -173,11 +138,11 @@
 </template>
 
 <script setup lang="ts">
-import { CirclePlusFilled, RemoveFilled, UserFilled } from '@element-plus/icons-vue';
-import { computed } from 'vue';
+import { CirclePlusFilled, CloseBold, RemoveFilled, UserFilled } from '@element-plus/icons-vue';
+import { computed, ref } from 'vue';
 import type { ShopOrderReportEmployeeVO } from '@/api/mes/shopOrderReportEmployee/types';
 import type { WorkCenterEmployeeBindingVO, WorkPanelProductionShiftVO } from '@/api/mes/workpanel/types';
-import { formatShiftDetail } from '@/views/mes/workpanel/utils/workPanelShift';
+import { createStartDateDisabledFn, formatShiftDetail } from '@/views/mes/workpanel/utils/workPanelShift';
 
 type EmployeeFavorite = {
   employeeId: string;
@@ -188,7 +153,7 @@ const props = withDefaults(
   defineProps<{
     shopOrder?: string;
     operationDesc?: string;
-    item?: string;
+    plannedItem?: string;
     productDesc?: string;
     qtyToBuild?: number | string;
     qtyDone?: number | string;
@@ -197,6 +162,8 @@ const props = withDefaults(
     productionShift?: string;
     productionShiftList: WorkPanelProductionShiftVO[];
     startDateTime?: string;
+    minStartDateTime?: string;
+    maxStartDateTime?: string;
     editableShift?: boolean;
     editableStartTime?: boolean;
     shopOrderOnlineEmployees: WorkCenterEmployeeBindingVO[];
@@ -205,19 +172,26 @@ const props = withDefaults(
     employeeFavoriteList: EmployeeFavorite[];
     employeeCardInput?: string;
     selectedEmployeeId?: string;
+    favoriteMultiple?: boolean;
+    favoriteActionLoading?: boolean;
+    showPendingEmployeeRemove?: boolean;
     employeeMode?: 'online' | 'offline';
     showModeToggle?: boolean;
     showHistoryTab?: boolean;
     activeTab?: 'shopOrder' | 'workCenter' | 'history';
+    shiftLoading?: boolean;
+    layout?: 'dialog' | 'page';
   }>(),
   {
     shopOrder: '',
     operationDesc: '',
-    item: '',
+    plannedItem: '',
     productDesc: '',
     productionShift: '',
     productionShiftList: () => [],
     startDateTime: '',
+    minStartDateTime: '',
+    maxStartDateTime: '',
     editableShift: false,
     editableStartTime: false,
     shopOrderOnlineEmployees: () => [],
@@ -226,12 +200,21 @@ const props = withDefaults(
     employeeFavoriteList: () => [],
     employeeCardInput: '',
     selectedEmployeeId: '',
+    favoriteMultiple: false,
+    favoriteActionLoading: false,
+    showPendingEmployeeRemove: false,
     employeeMode: 'online',
     showModeToggle: true,
     showHistoryTab: true,
-    activeTab: 'shopOrder'
+    activeTab: 'shopOrder',
+    shiftLoading: false,
+    layout: 'dialog'
   }
 );
+
+const favoriteTableHeight = computed(() => (props.layout === 'page' ? 'calc(100vh - 380px)' : 280));
+
+const disabledStartDate = computed(() => createStartDateDisabledFn(props.minStartDateTime, props.maxStartDateTime));
 
 const emit = defineEmits<{
   'update:productionShift': [value: string];
@@ -241,9 +224,25 @@ const emit = defineEmits<{
   'update:activeTab': [value: 'shopOrder' | 'workCenter' | 'history'];
   'swipe-employee': [];
   'favorite-select': [row?: EmployeeFavorite];
+  'favorite-add': [rows: EmployeeFavorite[]];
   'add-favorite': [];
   'select-online-employee': [row: WorkCenterEmployeeBindingVO];
+  'remove-pending-employee': [row: WorkCenterEmployeeBindingVO];
 }>();
+
+const selectedFavoriteRows = ref<EmployeeFavorite[]>([]);
+
+const handleFavoriteCurrentChange = (row?: EmployeeFavorite) => {
+  if (!props.favoriteMultiple) {
+    emit('favorite-select', row);
+  }
+};
+
+const handleFavoriteSelectionChange = (rows: EmployeeFavorite[]) => {
+  if (props.favoriteMultiple) {
+    selectedFavoriteRows.value = rows;
+  }
+};
 
 const innerTab = computed({
   get: () => props.activeTab,
@@ -261,16 +260,20 @@ const shiftDisplayText = computed(() => {
 
 const shopOrderOnlineCount = computed(() => `${props.shopOrderOnlineEmployees.length}`);
 
-const workCenterOnlineCount = computed(() => props.workCenterOnlineEmployees.length.toFixed(2));
+const workCenterOnlineCount = computed(() => `${props.workCenterOnlineEmployees.length}`);
 
-const displayOnlineEmployees = computed(() =>
-  innerTab.value === 'workCenter' ? props.workCenterOnlineEmployees : props.shopOrderOnlineEmployees
-);
+const displayOnlineEmployees = computed(() => (innerTab.value === 'workCenter' ? props.workCenterOnlineEmployees : props.shopOrderOnlineEmployees));
 
 const formatCount = (value?: number | string) => {
   if (value === undefined || value === null || value === '') return '-';
   const num = Number(value);
   return Number.isNaN(num) ? String(value) : num.toFixed(2);
+};
+
+const formatIntegerQty = (value?: number | string) => {
+  if (value === undefined || value === null || value === '') return '-';
+  const num = Number(value);
+  return Number.isNaN(num) ? String(value) : num.toFixed(0);
 };
 
 const formatOnlineTime = (value?: string) => {
@@ -368,15 +371,16 @@ const formatOnlineTime = (value?: string) => {
 
 .employee-work-area {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 200px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
   gap: 12px;
   min-height: 320px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .employee-favorites {
   min-width: 0;
-  max-width: 200px;
+  display: flex;
+  flex-direction: column;
 }
 
 .employee-main {
@@ -444,6 +448,7 @@ const formatOnlineTime = (value?: string) => {
 }
 
 .online-employee-card {
+  position: relative;
   display: flex;
   gap: 8px;
   min-width: 0;
@@ -454,6 +459,27 @@ const formatOnlineTime = (value?: string) => {
   color: #15803d;
   text-align: left;
   cursor: pointer;
+}
+
+.online-employee-card.is-pending {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.pending-employee-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 50%;
+  color: #94a3b8;
+}
+
+.pending-employee-remove:hover {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .online-employee-card .el-icon {
@@ -499,6 +525,50 @@ const formatOnlineTime = (value?: string) => {
   font-weight: 600;
 }
 
+.favorite-actions {
+  display: flex;
+  align-items: center;
+}
+
+.android-panel-dialog.is-page-layout {
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(320px, 38%) minmax(0, 62%);
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.is-page-layout .android-panel-right {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 16px;
+  overflow: hidden;
+}
+
+.is-page-layout .employee-work-area {
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 32%);
+  overflow: hidden;
+}
+
+.is-page-layout .online-employee-list {
+  min-height: 0;
+  max-height: calc(100vh - 440px);
+  overflow-y: auto;
+}
+
+.is-page-layout .employee-favorites :deep(.el-table) {
+  flex: 1;
+}
+
+.is-page-layout .employee-main,
+.is-page-layout .employee-favorites {
+  min-height: 0;
+  overflow: hidden;
+}
+
 @media (max-width: 960px) {
   .android-panel-dialog {
     grid-template-columns: 1fr;
@@ -511,6 +581,10 @@ const formatOnlineTime = (value?: string) => {
 
   .employee-work-area {
     grid-template-columns: 1fr;
+  }
+
+  .is-page-layout .employee-work-area {
+    min-height: auto;
   }
 }
 </style>

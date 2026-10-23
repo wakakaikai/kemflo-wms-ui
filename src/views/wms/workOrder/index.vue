@@ -407,7 +407,6 @@
 import WorkOrderProcessDialog from '@/views/wms/workOrderProcess/components/workOrderProcessDialog.vue';
 import { listWorkOrder, getWorkOrder, delWorkOrder, addWorkOrder, updateWorkOrder } from '@/api/wms/workOrder';
 import { WorkOrderVO, WorkOrderQuery, WorkOrderForm } from '@/api/wms/workOrder/types';
-import { TableColumns } from '@/api/types';
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_production_mode, wms_work_order_check_enable, wms_work_order_status } = toRefs<any>(proxy?.useDict('wms_production_mode', 'wms_work_order_check_enable', 'wms_work_order_status'));
 import QRCode from 'qrcode';
@@ -494,7 +493,7 @@ const data = reactive<PageData<WorkOrderForm, WorkOrderQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 
-const columns = ref<TableColumns[]>([
+const columns = ref<FieldOption[]>([
   { key: 1, label: '工单号', visible: true },
   { key: 2, label: '状态', visible: true },
   { key: 3, label: '产品料号', visible: true },

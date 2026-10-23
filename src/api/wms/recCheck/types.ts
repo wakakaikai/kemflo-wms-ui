@@ -124,12 +124,12 @@ export interface RecCheckForm extends BaseEntity {
   /**
    * 检验批数量
    */
-  checkQuantity?: number | string;
+  checkQuantity?: number;
 
   /**
    * 抽样数量
    */
-  samplingQuantity?: number | string;
+  samplingQuantity?: number;
 
   /**
    * 质检结果

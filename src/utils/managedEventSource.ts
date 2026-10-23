@@ -6,6 +6,8 @@ export interface ManagedEventSourceOptions {
   maxRetries?: number;
   retryDelay?: number;
   maxRetryDelay?: number;
+  /** 连接稳定超过该时长后，错误重试计数是否清零。默认 false，避免代理断线导致无限重连 */
+  resetRetryOnStable?: boolean;
   stableConnectionMs?: number;
 }
 
@@ -17,6 +19,7 @@ export const createManagedEventSource = (url: string, options: ManagedEventSourc
   const maxRetries = options.maxRetries ?? 5;
   const retryDelay = options.retryDelay ?? 3000;
   const maxRetryDelay = options.maxRetryDelay ?? 30000;
+  const resetRetryOnStable = options.resetRetryOnStable ?? false;
   const stableConnectionMs = options.stableConnectionMs ?? 60000;
 
   let source: EventSource | undefined;
@@ -49,7 +52,7 @@ export const createManagedEventSource = (url: string, options: ManagedEventSourc
       currentSource.close();
       source = undefined;
       openedAt = 0;
-      if (stableConnection) retryCount = 0;
+      if (resetRetryOnStable && stableConnection) retryCount = 0;
 
       if (retryCount >= maxRetries) {
         options.onFailed?.(event);

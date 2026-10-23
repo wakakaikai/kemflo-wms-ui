@@ -186,8 +186,8 @@
                 <el-table-column label="工号" prop="employeeId" width="105" fixed />
                 <el-table-column label="姓名" prop="employeeName" width="100" fixed />
                 <el-table-column label="部门" prop="departmentName" min-width="150" show-overflow-tooltip />
-                <el-table-column label="成本中心编码" prop="costCenterCode" width="130" />
-                <el-table-column label="成本中心描述" prop="costCenterName" min-width="170" show-overflow-tooltip />
+                <el-table-column label="员工成本中心编码" prop="costCenterCode" width="145" />
+                <el-table-column label="员工成本中心描述" prop="costCenterName" min-width="180" show-overflow-tooltip />
                 <el-table-column label="上线时间" prop="mesBeginTime" width="165" />
                 <el-table-column label="下线时间" prop="mesEndTime" width="165" />
                 <el-table-column label="报工工时(h)" prop="reportHours" width="115" align="right">
@@ -199,6 +199,10 @@
                 <el-table-column label="日期" prop="reportDate" width="110" fixed />
                 <el-table-column label="报工ID" prop="reportId" width="150" />
                 <el-table-column label="工作中心" prop="workCenter" width="125" />
+                <el-table-column label="工单工作中心" prop="shopOrderWorkCenter" width="130" />
+                <el-table-column label="工单成本中心" prop="shopOrderCostCenter" width="130" />
+                <el-table-column label="工单成本中心描述" prop="shopOrderCostCenterName" min-width="170" show-overflow-tooltip />
+                <el-table-column label="负责人" prop="shopOrderManager" width="110" />
                 <el-table-column label="工单号" prop="shopOrder" min-width="150" show-overflow-tooltip />
                 <el-table-column label="停机开始" prop="shutdownStartTime" width="165" />
                 <el-table-column label="停机结束" prop="shutdownEndTime" width="165" />
@@ -207,8 +211,8 @@
                 </el-table-column>
                 <el-table-column label="停机时长(h)" prop="shutdownHours" width="125" align="right" />
                 <el-table-column label="有效异常(h)" prop="effectiveShutdownHours" width="125" align="right" />
-                <el-table-column label="成本中心编码" prop="costCenterCode" width="130" />
-                <el-table-column label="成本中心描述" prop="costCenterName" min-width="170" show-overflow-tooltip />
+                <el-table-column label="员工成本中心编码" prop="costCenterCode" width="145" />
+                <el-table-column label="员工成本中心描述" prop="costCenterName" min-width="180" show-overflow-tooltip />
               </el-table>
               <pagination v-show="reportDetailType === 'abnormal' && abnormalTimeRows.length > 0" v-model:page="abnormalTimePageNum" v-model:limit="abnormalTimePageSize" :total="abnormalTimeRows.length" />
             </div>

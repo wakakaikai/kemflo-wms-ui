@@ -171,7 +171,6 @@ import {
   updateWorkOrderScadaPrintHistory
 } from '@/api/wms/workOrderScadaPrintHistory';
 import { WorkOrderScadaPrintHistoryVO, WorkOrderScadaPrintHistoryQuery, WorkOrderScadaPrintHistoryForm } from '@/api/wms/workOrderScadaPrintHistory/types';
-import { TableColumns } from '@/api/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
