@@ -1,117 +1,106 @@
 <template>
   <div ref="reportFullscreenRef" class="report-fullscreen-root" :class="{ 'is-fullscreen': isFullscreen }">
     <div class="p-2 report-fullscreen-content">
-    <el-card ref="reportCardRef" class="report-employee-card" :class="{ 'is-fullscreen': isFullscreen }" shadow="never">
-      <template #header>
-        <div class="flex items-center justify-between">
-          <span>报工成功员工报表统计</span>
-          <el-button :icon="isFullscreen ? 'Close' : 'FullScreen'" text @click="toggleFullscreen">
-            {{ isFullscreen ? '退出全屏' : '全屏' }}
-          </el-button>
-        </div>
-      </template>
+      <el-card ref="reportCardRef" class="report-employee-card" :class="{ 'is-fullscreen': isFullscreen }" shadow="never">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <span>报工成功员工报表统计</span>
+            <el-button :icon="isFullscreen ? 'Close' : 'FullScreen'" text @click="toggleFullscreen">
+              {{ isFullscreen ? '退出全屏' : '全屏' }}
+            </el-button>
+          </div>
+        </template>
 
-      <el-form ref="queryFormRef" :model="queryParams" :rules="rules" :inline="true" label-width="auto">
-        <!--        <el-form-item label="工作中心" prop="workCenterList">
+        <el-form ref="queryFormRef" :model="queryParams" :rules="rules" :inline="true" label-width="auto">
+          <!--        <el-form-item label="工作中心" prop="workCenterList">
           <el-select v-model="queryParams.workCenterList" multiple filterable allow-create default-first-option clearable placeholder="请输入工作中心" style="width: 260px" />
         </el-form-item>-->
-        <!--        <el-form-item label="班别" prop="shiftTimeRange">
+          <!--        <el-form-item label="班别" prop="shiftTimeRange">
           <el-input v-model="queryParams.shiftTimeRange" placeholder="08:00~20:30" clearable style="width: 160px" @keyup.enter="handleQuery" />
         </el-form-item>-->
-        <el-form-item label="工号" prop="employeeIdStr">
-          <el-input v-model="queryParams.employeeIdStr" placeholder="请输入工号" clearable style="width: 220px" @keyup.enter="handleQuery">
-            <template #append>
-              <el-button icon="CopyDocument" title="批量录入工号" @click="openBatchInputDialog" />
-            </template>
-          </el-input>
-        </el-form-item>
-        <el-form-item label="报工时间" prop="reportTimeRange">
-          <el-date-picker
-            v-model="queryParams.reportTimeRange"
-            type="datetimerange"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            range-separator="至"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
-            :default-time="defaultReportTime"
-            :shortcuts="shortcuts"
-            :append-to="popperAppendTo"
-            clearable
-          />
-        </el-form-item>
-        <el-form-item label="单位">
-          <el-radio-group v-model="displayUnit">
-            <el-radio-button label="hour">小时</el-radio-button>
-            <el-radio-button label="minute">分钟</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item>
-          <el-button class="mr-2" icon="Download" @click="handleExport">导出</el-button>
-          <el-button type="primary" icon="Search" :loading="chartLoading || summaryLoading || detailLoading || duplicateLoading" @click="handleQuery">查询统计</el-button>
-          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
+          <el-form-item label="工号" prop="employeeIdStr">
+            <el-input v-model="queryParams.employeeIdStr" placeholder="请输入工号" clearable style="width: 220px" @keyup.enter="handleQuery">
+              <template #append>
+                <el-button icon="CopyDocument" title="批量录入工号" @click="openBatchInputDialog" />
+              </template>
+            </el-input>
+          </el-form-item>
+          <el-form-item label="报工时间" prop="reportTimeRange">
+            <el-date-picker v-model="queryParams.reportTimeRange" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间" :default-time="defaultReportTime" :shortcuts="shortcuts" :append-to="popperAppendTo" clearable />
+          </el-form-item>
+          <el-form-item label="单位">
+            <el-radio-group v-model="displayUnit">
+              <el-radio-button label="hour">小时</el-radio-button>
+              <el-radio-button label="minute">分钟</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item>
+            <el-button class="mr-2" icon="Download" @click="handleExport">导出</el-button>
+            <el-button type="primary" icon="Search" :loading="chartLoading || summaryLoading || detailLoading || duplicateLoading" @click="handleQuery">查询统计</el-button>
+            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
 
-      <el-tabs v-model="activeTab">
-        <el-tab-pane label="图表分析" name="charts">
-          <employee-duration-charts ref="employeeDurationChartsRef" :chart-data="chartData" :employee-id="chartEmployeeId" :display-unit="displayUnit" :fill-height="isFullscreen" />
-        </el-tab-pane>
-        <el-tab-pane label="员工每日汇总" name="summary">
-          <div class="table-pane">
-            <el-table v-loading="summaryLoading" :data="summaryDisplayList" border fit :height="tableHeight">
-            <el-table-column label="日期" align="center" prop="reportDate" />
-            <el-table-column label="工号" align="center" prop="employeeId" />
-            <el-table-column label="姓名" align="center" prop="employeeName" />
-            <el-table-column :label="`总出勤时长(${unitLabel})`" align="right" prop="totalDuration" />
-            <el-table-column :label="`总操作时长(${unitLabel})`" align="right" prop="operationDuration" />
-            <el-table-column :label="`总有效时长(${unitLabel})`" align="right" prop="effectiveDuration" />
-            <el-table-column label="上线记录数" align="right" prop="onlineRecordCount" />
-          </el-table>
-          </div>
-        </el-tab-pane>
-        <el-tab-pane label="员工每日明细" name="detail">
-          <div class="table-pane is-detail">
-            <el-table v-loading="detailLoading" :data="detailDisplayList" border fit :height="detailTableHeight">
-            <el-table-column label="日期" align="center" prop="reportDate" />
-            <el-table-column label="工作中心" align="center" prop="workCenter" />
-            <el-table-column label="工单号" align="center" prop="shopOrder" />
-            <el-table-column label="工号" align="center" prop="employeeId" />
-            <el-table-column label="姓名" align="center" prop="employeeName" />
-            <el-table-column label="上线时间" align="center" prop="onLineTime">
-              <template #default="scope">{{ parseTime(scope.row.onLineTime) }}</template>
-            </el-table-column>
-            <el-table-column label="下线时间" align="center" prop="offLineTime">
-              <template #default="scope">{{ parseTime(scope.row.offLineTime) }}</template>
-            </el-table-column>
-            <el-table-column :label="`出勤时长(${unitLabel})`" align="right" prop="duration" />
-            <el-table-column :label="`操作时长(${unitLabel})`" align="right" prop="operationDuration" />
-            <el-table-column :label="`有效时长(${unitLabel})`" align="right" prop="effectiveDuration" />
-          </el-table>
-            <pagination v-show="detailTotal > 0" :total="detailTotal" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getDetail" />
-          </div>
-        </el-tab-pane>
-        <el-tab-pane label="重复上线统计" name="duplicate">
-          <div class="table-pane">
-            <el-table v-loading="duplicateLoading" :data="duplicateDisplayList" border fit :height="tableHeight">
-            <el-table-column label="日期" align="center" prop="reportDate" />
-            <el-table-column label="工号" align="center" prop="employeeId" />
-            <el-table-column label="姓名" align="center" prop="employeeName" />
-            <el-table-column :label="`重复上线总时长(${unitLabel})`" align="right" prop="duplicateDuration" />
-            <el-table-column label="上线记录数" align="right" prop="onlineRecordCount" />
-          </el-table>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
-    </el-card>
+        <el-tabs v-model="activeTab">
+          <el-tab-pane label="图表分析" name="charts">
+            <employee-duration-charts ref="employeeDurationChartsRef" :chart-data="chartData" :employee-id="chartEmployeeId" :display-unit="displayUnit" :fill-height="isFullscreen" />
+          </el-tab-pane>
+          <el-tab-pane label="员工每日汇总" name="summary">
+            <div class="table-pane">
+              <el-table v-loading="summaryLoading" :data="summaryDisplayList" border fit :height="tableHeight">
+                <el-table-column label="日期" align="center" prop="reportDate" />
+                <el-table-column label="工号" align="center" prop="employeeId" />
+                <el-table-column label="姓名" align="center" prop="employeeName" />
+                <el-table-column :label="`总出勤时长(${unitLabel})`" align="right" prop="totalDuration" />
+                <el-table-column :label="`总操作时长(${unitLabel})`" align="right" prop="operationDuration" />
+                <el-table-column :label="`总有效时长(${unitLabel})`" align="right" prop="effectiveDuration" />
+                <el-table-column label="上线记录数" align="right" prop="onlineRecordCount" />
+              </el-table>
+            </div>
+          </el-tab-pane>
+          <el-tab-pane label="员工每日明细" name="detail">
+            <div class="table-pane is-detail">
+              <el-table v-loading="detailLoading" :data="detailDisplayList" border fit :height="detailTableHeight">
+                <el-table-column label="日期" align="center" prop="reportDate" />
+                <el-table-column label="工作中心" align="center" prop="workCenter" />
+                <el-table-column label="工单号" align="center" prop="shopOrder" />
+                <el-table-column label="工号" align="center" prop="employeeId" />
+                <el-table-column label="姓名" align="center" prop="employeeName" />
+                <el-table-column label="上线时间" align="center" prop="onLineTime">
+                  <template #default="scope">{{ parseTime(scope.row.onLineTime) }}</template>
+                </el-table-column>
+                <el-table-column label="下线时间" align="center" prop="offLineTime">
+                  <template #default="scope">{{ parseTime(scope.row.offLineTime) }}</template>
+                </el-table-column>
+                <el-table-column :label="`出勤时长(${unitLabel})`" align="right" prop="duration" />
+                <el-table-column :label="`操作时长(${unitLabel})`" align="right" prop="operationDuration" />
+                <el-table-column :label="`有效时长(${unitLabel})`" align="right" prop="effectiveDuration" />
+              </el-table>
+              <pagination v-show="detailTotal > 0" :total="detailTotal" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getDetail" />
+            </div>
+          </el-tab-pane>
+          <el-tab-pane label="重复上线统计" name="duplicate">
+            <div class="table-pane">
+              <el-table v-loading="duplicateLoading" :data="duplicateDisplayList" border fit :height="tableHeight">
+                <el-table-column label="日期" align="center" prop="reportDate" />
+                <el-table-column label="工号" align="center" prop="employeeId" />
+                <el-table-column label="姓名" align="center" prop="employeeName" />
+                <el-table-column :label="`重复上线总时长(${unitLabel})`" align="right" prop="duplicateDuration" />
+                <el-table-column label="上线记录数" align="right" prop="onlineRecordCount" />
+              </el-table>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
+      </el-card>
 
-    <BatchInputDialog ref="batchInputDialogRef" v-model="batchInputDialogVisible" title="批量录入工号" placeholder="请输入工号，支持多行粘贴" :append-to-body="!isFullscreen" @confirm="handleBatchInputConfirm" />
+      <BatchInputDialog ref="batchInputDialogRef" v-model="batchInputDialogVisible" title="批量录入工号" placeholder="请输入工号，支持多行粘贴" :append-to-body="!isFullscreen" @confirm="handleBatchInputConfirm" />
     </div>
   </div>
 </template>
 
 <script setup name="MesReportData" lang="ts">
-import { getEmployeeDurationChart, listEmployeeDurationSummary, listEmployeeDurationDetail, listEmployeeDurationDuplicate } from '@/api/mes/shopOrderReport';
-import type { ShopOrderReportEmployeeDurationChartVO, ShopOrderReportEmployeeDurationQuery, ShopOrderReportEmployeeDurationSummaryVO, ShopOrderReportEmployeeDurationDetailVO, ShopOrderReportEmployeeDurationDuplicateVO } from '@/api/mes/shopOrderReport/types';
+import { getEmployeeDurationChart, listEmployeeDurationDetail, listEmployeeDurationDuplicate, listEmployeeDurationSummary } from '@/api/mes/shopOrderReport';
+import type { ShopOrderReportEmployeeDurationChartVO, ShopOrderReportEmployeeDurationDetailVO, ShopOrderReportEmployeeDurationDuplicateVO, ShopOrderReportEmployeeDurationQuery, ShopOrderReportEmployeeDurationSummaryVO } from '@/api/mes/shopOrderReport/types';
 import BatchInputDialog from '@/components/BatchInputDialog/index.vue';
 import EmployeeDurationCharts from './components/EmployeeDurationCharts.vue';
 
@@ -283,7 +272,14 @@ const parseEmployeeIdList = (str?: string): string[] => {
   if (!str?.trim()) {
     return [];
   }
-  return [...new Set(str.split(/[,;，；\s]+/).map((item) => item.trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      str
+        .split(/[,;，；\s]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  ];
 };
 
 const syncEmployeeIdFilter = () => {
@@ -467,16 +463,9 @@ const calcTableHeight = () => {
   const form = card.querySelector('.el-form') as HTMLElement | null;
   const tabsHeader = card.querySelector('.el-tabs__header') as HTMLElement | null;
   const pagination = card.querySelector('.pagination-container') as HTMLElement | null;
-  const available =
-    card.clientHeight -
-    (header?.offsetHeight || 0) -
-    getBoxExtra(body, ['paddingTop', 'paddingBottom']) -
-    (form?.offsetHeight || 0) -
-    (tabsHeader?.offsetHeight || 0) -
-    getBoxExtra(tabsHeader, ['marginBottom']);
+  const available = card.clientHeight - (header?.offsetHeight || 0) - getBoxExtra(body, ['paddingTop', 'paddingBottom']) - (form?.offsetHeight || 0) - (tabsHeader?.offsetHeight || 0) - getBoxExtra(tabsHeader, ['marginBottom']);
   tableHeight.value = Math.max(Math.floor(available), 240);
-  const paginationH =
-    pagination && pagination.offsetHeight > 0 ? pagination.offsetHeight + getBoxExtra(pagination, ['marginTop', 'marginBottom']) : 52;
+  const paginationH = pagination && pagination.offsetHeight > 0 ? pagination.offsetHeight + getBoxExtra(pagination, ['marginTop', 'marginBottom']) : 52;
   detailTableHeight.value = Math.max(Math.floor(available - paginationH), 200);
 };
 

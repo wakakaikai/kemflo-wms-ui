@@ -196,7 +196,7 @@ export interface AttendanceShopOrderAnalysisVO {
 export interface MesReportHRDifferenceDataChartVO {
   /** 当前筛选范围内不分页的差异明细。 */
   rows: MesReportHRDifferenceDataVO[];
-  /** 有HR考勤数据的员工人数，按工号去重。 */
+  /** HR应计工时大于0的员工人数，按工号去重。 */
   hrEmployeeCount: number;
   /** 有MES成功报工记录的员工人数，按工号去重。 */
   mesReportEmployeeCount: number;

@@ -1,4 +1,5 @@
 import request from '@/utils/request';
+import { listInventoryDetailAll } from '@/api/wms/inventoryDetail/index';
 import { getDicts } from '@/api/system/dict/data';
 import { useDictStore } from '@/store/modules/dict';
 import { mapLocationSourceToRecommendationSource, PREP_LOCATION_REC_SYSTEM_RECOMMENDED } from '@/api/wms/workOrderPrepDemand/locationSource';
@@ -122,11 +123,12 @@ export function generateAllocationCompat(data: AllocationRequest) {
 export const confirmAllocation = confirmAllocationPlan;
 export const executeAllocation = executeAllocationPlan;
 
-export function getMaterialInventory(materialCode: string) {
-  return request({
-    url: `/wms/inventoryDetail/materialInventory/${materialCode}`,
-    method: 'get'
-  });
+export function getMaterialInventory(materialCode: string | string[]) {
+  const itemCodeList = (Array.isArray(materialCode) ? materialCode : [materialCode]).map((code) => String(code ?? '').trim()).filter(Boolean);
+  if (!itemCodeList.length) {
+    return Promise.resolve({ code: 200, data: [], msg: '操作成功' });
+  }
+  return listInventoryDetailAll({ itemCodeList });
 }
 
 export function getMaterialLocations(materialCode: string) {
@@ -298,7 +300,7 @@ function splitStockQty(raw: Record<string, unknown>, availableQuantity: number) 
   return { unrestricted: availableQuantity, inspection: 0, blocked: 0 };
 }
 
-/** 从 /materialInventory 等响应中提取库位列表 */
+/** 从库存明细全量查询等响应中提取库位列表 */
 export function extractMaterialInventoryList(data: unknown): unknown[] {
   if (Array.isArray(data)) return data;
   if (!data || typeof data !== 'object') return [];

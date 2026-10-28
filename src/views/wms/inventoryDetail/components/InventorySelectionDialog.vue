@@ -15,7 +15,9 @@
         </el-descriptions>
       </div>
 
-      <el-alert type="info" :closable="false" show-icon class="tip-alert"> 各库位库存明细如下，勾选并填写「本次数量」后点击确认 </el-alert>
+      <el-alert type="info" :closable="false" show-icon class="tip-alert">
+        {{ selectionTip }}
+      </el-alert>
 
       <!-- 工具栏 -->
       <div class="toolbar">
@@ -31,10 +33,13 @@
       <!-- 库存表格 -->
       <el-table ref="tableRef" :data="inventoryRows" row-key="rowKey" border stripe size="small" max-height="420" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="46" :selectable="isRowSelectable" />
-        <el-table-column prop="warehouseCode" label="仓库" min-width="100" show-overflow-tooltip />
-        <el-table-column prop="locationCode" label="库位" min-width="120" show-overflow-tooltip />
+        <el-table-column v-if="showWarehouseLocation" prop="warehouseCode" label="仓库" min-width="100" show-overflow-tooltip />
+        <el-table-column v-if="showWarehouseLocation" prop="locationCode" label="库位" min-width="120" show-overflow-tooltip />
         <el-table-column prop="batchCode" label="批次号" min-width="110" show-overflow-tooltip>
           <template #default="{ row }">{{ row.batchCode || '-' }}</template>
+        </el-table-column>
+        <el-table-column v-if="props.autoRecommendFifo" prop="receivedDate" label="接收日期" min-width="155" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.receivedDate || '-' }}</template>
         </el-table-column>
         <el-table-column label="非限制数量" min-width="110" align="right">
           <template #default="{ row }">{{ formatQty(row.availableQuantity) }}</template>
@@ -44,6 +49,9 @@
         </el-table-column>
         <el-table-column label="冻结数量" min-width="110" align="right">
           <template #default="{ row }">{{ formatQty(row.blockedQty) }}</template>
+        </el-table-column>
+        <el-table-column label="可用数量" min-width="110" align="right">
+          <template #default="{ row }">{{ formatQty(row.usableQuantity) }}</template>
         </el-table-column>
         <el-table-column label="本次数量" min-width="150" align="right">
           <template #default="{ row }">
@@ -95,7 +103,9 @@ interface InventoryPickRow {
   areaCode: string;
   locationCode: string;
   batchCode: string;
+  receivedDate: string;
   availableQuantity: number;
+  usableQuantity: number;
   inspectionQty: number;
   blockedQty: number;
   specialInventoryFlag: string;
@@ -103,6 +113,15 @@ interface InventoryPickRow {
   businessName: string;
   unit: string;
   pickQty: number;
+}
+
+export interface InventorySelectionPick {
+  id?: string | number;
+  batchCode?: string;
+  locationCode?: string;
+  warehouseCode?: string;
+  pickQty?: number;
+  quantity?: number;
 }
 
 interface Props {
@@ -116,6 +135,14 @@ interface Props {
   specialInventoryFlag?: string;
   /** 可选：仅展示指定业务伙伴编码 */
   businessCode?: string;
+  /** 是否按批次接收日期先进先出自动推荐 */
+  autoRecommendFifo?: boolean;
+  /** 当前行已选批次。有值时只勾选这些批次，列表仍展示全部批次 */
+  initialPicks?: InventorySelectionPick[];
+  /** 其他行已占用的数量，从同一库存池的可用数量中扣除，不改非限制数量 */
+  reservedPicks?: InventorySelectionPick[];
+  /** 543 扣料不展示仓库和库位 */
+  showWarehouseLocation?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -123,7 +150,11 @@ const props = withDefaults(defineProps<Props>(), {
   unit: '',
   generalOnly: true,
   specialInventoryFlag: '',
-  businessCode: ''
+  businessCode: '',
+  autoRecommendFifo: false,
+  initialPicks: () => [],
+  reservedPicks: () => [],
+  showWarehouseLocation: true
 });
 
 const emit = defineEmits<{
@@ -137,10 +168,22 @@ const tableRef = ref<TableInstance>();
 const inventoryRows = ref<InventoryPickRow[]>([]);
 const selectedRowKeys = ref<Set<string>>(new Set());
 const applyingSelection = ref(false);
+const appliedInitialPicks = ref(false);
+const initialPickBlocked = ref(false);
+
+const selectionTip = computed(() => {
+  if (initialPickBlocked.value) {
+    return '当前批次剩余库存已被其他行占用，请改选仍有剩余的批次';
+  }
+  if (appliedInitialPicks.value) {
+    return '已勾选当前行批次。非限制数量是库存总量，可用数量已扣除其他行占用，本次数量不能超过可用数量';
+  }
+  return props.autoRecommendFifo ? '已按批次接收日期先进先出自动推荐，可手动调整后确认' : '各库位库存明细如下，勾选并填写「本次数量」后点击确认';
+});
 
 const dialogTitle = computed(() => `库存选择 - ${props.materialCode}`);
 
-const totalAvailable = computed(() => inventoryRows.value.reduce((s, r) => s + r.availableQuantity, 0));
+const totalAvailable = computed(() => inventoryRows.value.reduce((s, r) => s + r.usableQuantity, 0));
 
 const selectedRows = computed(() => inventoryRows.value.filter((r) => selectedRowKeys.value.has(r.rowKey) && r.pickQty > 0));
 
@@ -164,7 +207,7 @@ const isGeneralInventory = (flag?: string) => {
   return !value || value === 'N';
 };
 
-const isRowSelectable = (row: InventoryPickRow) => row.availableQuantity > 0;
+const isRowSelectable = (row: InventoryPickRow) => row.usableQuantity > 0;
 
 const isRowSelected = (row: InventoryPickRow) => selectedRowKeys.value.has(row.rowKey);
 
@@ -176,10 +219,10 @@ const getOtherPickedQty = (row: InventoryPickRow) => selectedRows.value.reduce((
 
 const getPickQtyMax = (row: InventoryPickRow) => {
   if (!hasDemandCap.value) {
-    return row.availableQuantity;
+    return row.usableQuantity;
   }
   const remainByDemand = Math.max(0, Number((demandQty.value - getOtherPickedQty(row)).toFixed(3)));
-  return Math.min(row.availableQuantity, remainByDemand);
+  return Math.min(row.usableQuantity, remainByDemand);
 };
 
 const onSelectionChange = (rows: InventoryPickRow[]) => {
@@ -195,8 +238,8 @@ const onSelectionChange = (rows: InventoryPickRow[]) => {
   let allocated = totalPicked.value;
   for (const row of rows) {
     if (!selectedRowKeys.value.has(row.rowKey) && row.pickQty <= 0) {
-      const remainByDemand = hasDemandCap.value ? Math.max(0, Number((demandQty.value - allocated).toFixed(3))) : row.availableQuantity;
-      row.pickQty = Math.min(row.availableQuantity, remainByDemand);
+      const remainByDemand = hasDemandCap.value ? Math.max(0, Number((demandQty.value - allocated).toFixed(3))) : row.usableQuantity;
+      row.pickQty = Math.min(row.usableQuantity, remainByDemand);
       allocated = Number((allocated + row.pickQty).toFixed(3));
     }
   }
@@ -232,6 +275,108 @@ const matchesSpecialInventoryFlag = (itemFlag?: string, expected?: string) => {
   );
 };
 
+const compareByReceivedDate = (left: InventoryPickRow, right: InventoryPickRow) => {
+  const leftDate = left.receivedDate || '9999-12-31 23:59:59';
+  const rightDate = right.receivedDate || '9999-12-31 23:59:59';
+  return leftDate.localeCompare(rightDate) || left.batchCode.localeCompare(right.batchCode) || left.rowKey.localeCompare(right.rowKey);
+};
+
+const sameText = (left?: string, right?: string) => String(left ?? '').trim() === String(right ?? '').trim();
+
+const matchesInventoryPick = (row: InventoryPickRow, pick: InventorySelectionPick) => {
+  if (pick.id !== undefined && pick.id !== null && String(pick.id) !== '') {
+    return String(row.id) === String(pick.id);
+  }
+  if (!sameText(row.batchCode, pick.batchCode) || !pick.batchCode) {
+    return false;
+  }
+  if (pick.locationCode && !sameText(row.locationCode, pick.locationCode)) {
+    return false;
+  }
+  if (pick.warehouseCode && !sameText(row.warehouseCode, pick.warehouseCode)) {
+    return false;
+  }
+  return true;
+};
+
+const buildReservedQuantityMap = () => {
+  const reserved = new Map<string, number>();
+  (props.reservedPicks || []).forEach((pick) => {
+    if (pick.id === undefined || pick.id === null || String(pick.id) === '') {
+      return;
+    }
+    const key = String(pick.id);
+    const quantity = Number(pick.quantity ?? pick.pickQty ?? 0);
+    reserved.set(key, Number(((reserved.get(key) || 0) + quantity).toFixed(3)));
+  });
+  return reserved;
+};
+
+const selectRows = async (rows: InventoryPickRow[]) => {
+  selectedRowKeys.value = new Set(rows.map((row) => row.rowKey));
+  await nextTick();
+  rows.forEach((row) => tableRef.value?.toggleRowSelection(row, true));
+};
+
+const applyFifoRecommendation = async () => {
+  applyingSelection.value = true;
+  appliedInitialPicks.value = false;
+  initialPickBlocked.value = false;
+  try {
+    tableRef.value?.clearSelection();
+    selectedRowKeys.value = new Set();
+    inventoryRows.value.forEach((row) => (row.pickQty = 0));
+
+    const initialPicks = (props.initialPicks || []).filter((pick) => Number(pick.pickQty ?? pick.quantity ?? 0) > 0 || pick.id || pick.batchCode);
+    if (initialPicks.length) {
+      let remaining = hasDemandCap.value ? demandQty.value : Number.POSITIVE_INFINITY;
+      const selectedRows: InventoryPickRow[] = [];
+      for (const pick of initialPicks) {
+        if (remaining <= 0.001) {
+          break;
+        }
+        const row =
+          inventoryRows.value.find((item) => pick.id !== undefined && pick.id !== null && String(pick.id) !== '' && String(item.id) === String(pick.id) && !selectedRows.includes(item)) ||
+          inventoryRows.value.find((item) => matchesInventoryPick({ ...item, id: '' }, { ...pick, id: undefined }) && !selectedRows.includes(item));
+        if (!row || row.usableQuantity <= 0) {
+          continue;
+        }
+        const requested = Number(pick.pickQty ?? pick.quantity ?? remaining);
+        row.pickQty = Math.min(row.usableQuantity, requested > 0 ? requested : remaining, remaining);
+        if (row.pickQty > 0) {
+          selectedRows.push(row);
+          remaining = Math.max(0, Number((remaining - row.pickQty).toFixed(3)));
+        }
+      }
+      if (selectedRows.length) {
+        appliedInitialPicks.value = true;
+        await selectRows(selectedRows);
+      } else {
+        initialPickBlocked.value = true;
+      }
+      return;
+    }
+
+    if (!props.autoRecommendFifo || !hasDemandCap.value) {
+      return;
+    }
+
+    let remaining = demandQty.value;
+    const recommendedRows: InventoryPickRow[] = [];
+    for (const row of inventoryRows.value) {
+      if (remaining <= 0) break;
+      row.pickQty = Math.min(row.usableQuantity, remaining);
+      if (row.pickQty > 0) {
+        recommendedRows.push(row);
+        remaining = Math.max(0, Number((remaining - row.pickQty).toFixed(3)));
+      }
+    }
+    await selectRows(recommendedRows);
+  } finally {
+    applyingSelection.value = false;
+  }
+};
+
 const loadData = async () => {
   if (!props.materialCode) return;
   loading.value = true;
@@ -245,6 +390,7 @@ const loadData = async () => {
       params: {}
     });
     const list = (res as any).rows ?? res ?? [];
+    const reservedById = buildReservedQuantityMap();
     inventoryRows.value = list
       .filter((item: InventoryDetailVO) => {
         if (!matchesSpecialInventoryFlag(item.specialInventoryFlag, props.specialInventoryFlag)) {
@@ -255,22 +401,33 @@ const loadData = async () => {
         }
         return (!props.generalOnly || isGeneralInventory(item.specialInventoryFlag)) && Number(item.availableQuantity ?? 0) > 0;
       })
-      .map((item: InventoryDetailVO, index: number) => ({
-        rowKey: `inv_${item.id ?? index}`,
-        id: item.id,
-        warehouseCode: item.warehouseCode ?? '',
-        areaCode: item.areaCode ?? '',
-        locationCode: item.locationCode ?? '',
-        batchCode: item.batchCode ?? '',
-        availableQuantity: Number(item.availableQuantity ?? 0),
-        inspectionQty: Number(item.inspectionQuantity ?? 0),
-        blockedQty: Number(item.blockedQuantity ?? 0),
-        specialInventoryFlag: item.specialInventoryFlag ?? '',
-        businessCode: item.businessCode ?? '',
-        businessName: item.businessName ?? '',
-        unit: item.unit ?? props.unit ?? '',
-        pickQty: 0
-      }));
+      .map((item: InventoryDetailVO, index: number) => {
+        const id = item.id ?? `inv_${index}`;
+        const warehouseQuantity = Number(item.availableQuantity ?? 0);
+        const reservedQty = reservedById.get(String(id)) || 0;
+        const consumedReservation = Math.min(warehouseQuantity, reservedQty);
+        reservedById.set(String(id), Number(Math.max(0, reservedQty - consumedReservation).toFixed(3)));
+        return {
+          rowKey: `inv_${id}`,
+          id,
+          warehouseCode: item.warehouseCode ?? '',
+          areaCode: item.areaCode ?? '',
+          locationCode: item.locationCode ?? '',
+          batchCode: item.batchCode ?? '',
+          receivedDate: item.receivedDate ?? '',
+          availableQuantity: Number(warehouseQuantity.toFixed(3)),
+          usableQuantity: Number(Math.max(0, warehouseQuantity - consumedReservation).toFixed(3)),
+          inspectionQty: Number(item.inspectionQuantity ?? 0),
+          blockedQty: Number(item.blockedQuantity ?? 0),
+          specialInventoryFlag: item.specialInventoryFlag ?? '',
+          businessCode: item.businessCode ?? '',
+          businessName: item.businessName ?? '',
+          unit: item.unit ?? props.unit ?? '',
+          pickQty: 0
+        };
+      })
+      .sort(props.autoRecommendFifo ? compareByReceivedDate : () => 0);
+    await applyFifoRecommendation();
   } catch (error) {
     ElMessage.error('查询库存失败');
     inventoryRows.value = [];
@@ -313,6 +470,8 @@ const handleClose = () => {
   visible.value = false;
   inventoryRows.value = [];
   selectedRowKeys.value = new Set();
+  appliedInitialPicks.value = false;
+  initialPickBlocked.value = false;
   tableRef.value?.clearSelection();
 };
 </script>

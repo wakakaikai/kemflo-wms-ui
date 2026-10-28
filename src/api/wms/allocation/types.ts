@@ -212,7 +212,7 @@ export interface AllocationGenerateResult {
   inventoryCheck?: unknown;
 }
 
-/** 物料库存查询返回（/wms/inventoryDetail/materialInventory/{materialCode}） */
+/** 物料库存查询返回（/wms/inventoryDetail/listAll） */
 export interface MaterialInventoryResultVO {
   locations?: unknown[];
   batches?: unknown[];

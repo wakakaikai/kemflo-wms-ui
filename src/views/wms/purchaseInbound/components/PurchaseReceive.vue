@@ -72,7 +72,9 @@
 
     <div style="margin: 20px 0; text-align: center; width: 100%">
       <el-button type="primary" @click="addSelectedToInboundList" circle class="rotate-button">
-        <el-icon><Switch /></el-icon>
+        <el-icon>
+          <Switch />
+        </el-icon>
       </el-button>
     </div>
 
@@ -135,6 +137,16 @@
               <div class="submit-result-text">{{ resultMessage }}</div>
             </el-alert>
           </div>
+          <div v-if="batchErrorMessage" class="m-y-2">
+            <el-alert type="error" show-icon closable @close="batchErrorMessage = ''">
+              <div class="submit-result-text">{{ batchErrorMessage }}</div>
+            </el-alert>
+          </div>
+          <div v-if="batchWarningMessage" class="m-y-2">
+            <el-alert type="warning" show-icon closable @close="batchWarningMessage = ''">
+              <div class="submit-result-text">{{ batchWarningMessage }}</div>
+            </el-alert>
+          </div>
 
           <PurchaseOrderDetailTreeTable :rows="inboundList" mode="operation" :selectable="false" :default-expand-all="true" max-height="400" :loading="tableLoading">
             <template #columns>
@@ -170,7 +182,7 @@
                   <div v-if="!isPoDetailParentRow(scope.row)" class="inventory-source-cell">
                     <span v-if="scope.row.batchCode" class="batch-code-text">{{ scope.row.batchCode }}</span>
                     <el-tag v-else type="warning" size="small">未选择批次</el-tag>
-                    <el-button type="primary" link icon="Search" @click="openBomInventoryDialog(findOperationParentRow(inboundList, scope.row), scope.row)" />
+                    <el-button type="primary" link icon="Search" title="调整批次" @click="openBomInventoryDialog(findOperationParentRow(inboundList, scope.row), scope.row)" />
                   </div>
                 </template>
               </el-table-column>
@@ -226,7 +238,7 @@
 
   <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
   <UserCollectionsDialog ref="userCollectionsDialogRef" @user-collections-call-back="userCollectionsSelectCallBack" />
-  <InventorySelectionDialog v-model="bomInventoryDialog.visible" :material-code="bomInventoryDialog.materialCode" :material-desc="bomInventoryDialog.materialDesc" :issue-qty="bomInventoryDialog.issueQty" :unit="bomInventoryDialog.unit" :general-only="false" special-inventory-flag="O" :business-code="bomInventoryDialog.supplierCode" @confirm="applyBomInventorySelection" />
+  <InventorySelectionDialog v-model="bomInventoryDialog.visible" :material-code="bomInventoryDialog.materialCode" :material-desc="bomInventoryDialog.materialDesc" :issue-qty="bomInventoryDialog.issueQty" :unit="bomInventoryDialog.unit" :general-only="false" special-inventory-flag="O" :business-code="bomInventoryDialog.supplierCode" :initial-picks="bomInventoryDialog.initialPicks" :reserved-picks="bomInventoryDialog.reservedPicks" :show-warehouse-location="false" auto-recommend-fifo @confirm="applyBomInventorySelection" />
 
   <el-dialog v-model="stagingDialogVisible" title="持有数据（供应商编码 + 过账日期）" width="80%" append-to-body destroy-on-close>
     <el-table :data="stagingSummaries" border max-height="360" empty-text="暂无暂存数据">
@@ -249,13 +261,13 @@
 
 <script setup name="PurchaseReceive" lang="ts">
 import { addPurchaseInbound, listPurchaseOrderDetail } from '@/api/wms/purchaseOrderDetail';
-import { PurchaseOrderBomVO, PurchaseOrderDetailVO, PurchaseOrderDetailQuery, PurchaseOrderDetailForm } from '@/api/wms/purchaseOrderDetail/types';
+import { PurchaseOrderBomVO, PurchaseOrderDetailForm, PurchaseOrderDetailQuery, PurchaseOrderDetailVO } from '@/api/wms/purchaseOrderDetail/types';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
 import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
 import InventorySelectionDialog from '@/views/wms/inventoryDetail/components/InventorySelectionDialog.vue';
-import { ArrowDown, ArrowRight, ArrowUp, Bell, Switch } from '@element-plus/icons-vue';
+import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
@@ -264,6 +276,7 @@ import { buildPurchaseInboundStagingKey, listPurchaseInboundStagings, loadPurcha
 import { formatApiErrorMessage } from '@/utils/formatApiErrorMessage';
 import PurchaseOrderDetailTreeTable from '@/views/wms/purchaseOrderDetail/components/PurchaseOrderDetailTreeTable.vue';
 import { cloneInboundListForPersist, findOperationParentRow, inheritPoItemNumberOnBom, isOutsourcingCategory, isPoDetailParentRow, normalizeInboundListAfterLoad, PoDetailTreeRow } from '@/views/wms/purchaseOrderDetail/utils/purchaseOrderDetailTree';
+import { assignMissingSubcontractBatches, collectSubcontractDialogPicks, formatSubcontractBatchShortageMessage, hasPendingSubcontractBatch } from '@/views/wms/purchaseInbound/utils/subcontractFifoAllocation';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_purchase_category } = toRefs<any>(proxy?.useDict('wms_purchase_category'));
@@ -283,6 +296,8 @@ const total = ref(0);
 const currenIndex = ref(0);
 const resultMessage = ref('');
 const resultStatus = ref(false);
+const batchErrorMessage = ref('');
+const batchWarningMessage = ref('');
 const buttonLoading = ref(false);
 const stagingLoading = ref(false);
 const stagingDialogVisible = ref(false);
@@ -309,7 +324,9 @@ const bomInventoryDialog = reactive({
   materialDesc: '',
   issueQty: 0,
   unit: '',
-  supplierCode: ''
+  supplierCode: '',
+  initialPicks: [] as ReturnType<typeof collectSubcontractDialogPicks>['initialPicks'],
+  reservedPicks: [] as ReturnType<typeof collectSubcontractDialogPicks>['reservedPicks']
 });
 
 const toNumber = (value: unknown, fallback = 0) => {
@@ -552,14 +569,50 @@ const clearBomInventorySelection = (bom: PurchaseOrderBomVO) => {
   bom.inventorySplitKey = undefined;
 };
 
-const syncBomConsumeQuantity = (row: any) => {
-  (row.purchaseOrderBomScheduleVoList || []).forEach((bom: PurchaseOrderBomVO) => {
-    if (bom.inventoryDetailId || bom.batchCode) {
+const getPurchaseBomOriginKey = (bom: PurchaseOrderBomVO, index = 0) => bom.originBomKey || `${bom.scheduleNumber || ''}_${bom.componentMaterial || ''}_${bom.id ?? index}`;
+
+/** 收货数量变化后按组件重新计算扣料，已拆出的批次行合并回组件再重新分配。 */
+const collapsePurchaseBomRows = (row: any) => {
+  const seen = new Set<string>();
+  const collapsed: PurchaseOrderBomVO[] = [];
+  (row.purchaseOrderBomScheduleVoList || []).forEach((bom: PurchaseOrderBomVO, index: number) => {
+    const originBomKey = getPurchaseBomOriginKey(bom, index);
+    if (seen.has(originBomKey)) {
       return;
     }
-    bom.consumeQuantity = getBomConsumptionQuantity(row, bom);
-    calculateBomInventoryQuantity(bom);
+    seen.add(originBomKey);
+    const fresh: PurchaseOrderBomVO = { ...bom, originBomKey };
+    clearBomInventorySelection(fresh);
+    fresh.consumeQuantity = getBomConsumptionQuantity(row, fresh);
+    calculateBomInventoryQuantity(fresh);
+    collapsed.push(fresh);
   });
+  row.purchaseOrderBomScheduleVoList = collapsed;
+};
+
+const warnBatchShortages = (shortages: Awaited<ReturnType<typeof assignMissingSubcontractBatches>>) => {
+  const errors = shortages.filter((item) => item.reason !== 'shortage');
+  const warnings = shortages.filter((item) => item.reason === 'shortage');
+  batchErrorMessage.value = errors.length ? formatSubcontractBatchShortageMessage(errors) : '';
+  batchWarningMessage.value = warnings.length ? formatSubcontractBatchShortageMessage(warnings) : '';
+};
+
+let batchAllocatingCount = 0;
+
+const allocatePendingBomBatches = async () => {
+  if (!hasPendingSubcontractBatch(inboundList.value)) {
+    return [];
+  }
+  batchAllocatingCount += 1;
+  tableLoading.value = true;
+  try {
+    return await assignMissingSubcontractBatches(inboundList.value);
+  } finally {
+    batchAllocatingCount = Math.max(0, batchAllocatingCount - 1);
+    if (batchAllocatingCount === 0) {
+      tableLoading.value = false;
+    }
+  }
 };
 
 const openBomInventoryDialog = (parentRow: any, bomRow: PurchaseOrderBomVO) => {
@@ -587,6 +640,9 @@ const openBomInventoryDialog = (parentRow: any, bomRow: PurchaseOrderBomVO) => {
   bomInventoryDialog.supplierCode = parentRow.supplierCode || '';
   const demand = roundQty(toNumber(bomRow.inventoryQuantity));
   bomInventoryDialog.issueQty = demand > 0 ? demand : roundQty(toNumber(bomRow.openQuantity));
+  const picks = collectSubcontractDialogPicks(inboundList.value, bomRow);
+  bomInventoryDialog.initialPicks = picks.initialPicks;
+  bomInventoryDialog.reservedPicks = picks.reservedPicks;
   bomInventoryDialog.visible = true;
 };
 
@@ -647,7 +703,7 @@ const applyBomInventorySelection = ({ locations }: { locations: any[] }) => {
   bomInventoryDialog.issueQty = 0;
 };
 
-const handleBomConsumeQuantityChange = (bom: PurchaseOrderBomVO) => {
+const handleBomConsumeQuantityChange = async (bom: PurchaseOrderBomVO) => {
   if (bom.consumeQuantity === null || bom.consumeQuantity === undefined) {
     bom.consumeQuantity = 0;
   }
@@ -655,15 +711,17 @@ const handleBomConsumeQuantityChange = (bom: PurchaseOrderBomVO) => {
   if (bom.inventoryDetailId || bom.batchCode) {
     clearBomInventorySelection(bom);
   }
+  warnBatchShortages(await allocatePendingBomBatches());
 };
 
-const handleReceivePoQuantityChange = (row) => {
+const handleReceivePoQuantityChange = async (row) => {
   if (row.receivePoQuantity === null || row.receivePoQuantity === undefined || row.receivePoQuantity === '') {
     row.inventoryQuantity = 0;
   } else {
     calculateInventoryQuantity(row);
   }
-  syncBomConsumeQuantity(row);
+  collapsePurchaseBomRows(row);
+  warnBatchShortages(await allocatePendingBomBatches());
 };
 
 const handleQuery = () => {
@@ -700,7 +758,9 @@ const normalizePurchaseLineNo = (value: unknown) => {
 };
 
 const getPurchaseScheduleKey = (item: Pick<PurchaseOrderDetailVO, 'poNumber' | 'itemNumber' | 'scheduleNumber'>) => {
-  const poNumber = String(item.poNumber ?? '').trim().toUpperCase();
+  const poNumber = String(item.poNumber ?? '')
+    .trim()
+    .toUpperCase();
   return `${poNumber}|${normalizePurchaseLineNo(item.itemNumber)}|${normalizePurchaseLineNo(item.scheduleNumber)}`;
 };
 
@@ -714,7 +774,7 @@ const isPurchaseDetailSelectable = (item: PoDetailTreeRow) => {
   return !inboundPurchaseScheduleKeys.value.has(getPurchaseScheduleKey(item as PurchaseOrderDetailVO));
 };
 
-const addSelectedToInboundList = () => {
+const addSelectedToInboundList = async () => {
   if (selectedSearchItems.value.length === 0) {
     proxy?.$modal.msgWarning('请先选择要添加的采购订单明细');
     return;
@@ -766,7 +826,9 @@ const addSelectedToInboundList = () => {
     };
   });
   inboundList.value.push(...newItems);
+  const shortages = await allocatePendingBomBatches();
   proxy?.$modal.msgSuccess(`成功添加${newItems.length}条记录到入库列表`);
+  warnBatchShortages(shortages);
   purchaseTableRef.value?.clearSelection();
 };
 
@@ -780,6 +842,8 @@ const clearInboundList = () => {
   fixedInboundForm.value.lfsnr = '';
   fixedInboundForm.value.bktxt = '';
   fixedInboundForm.value.postingDate = null;
+  batchErrorMessage.value = '';
+  batchWarningMessage.value = '';
 };
 
 const showStorageLocationDialog = (index: number) => {
@@ -907,6 +971,7 @@ const handleLoadStaging = async (row: PurchaseInboundStagingSummary) => {
   stagingDialogVisible.value = false;
   transferExpanded.value = true;
   proxy?.$modal.msgSuccess('已加载暂存数据');
+  warnBatchShortages(await allocatePendingBomBatches());
 };
 
 const handleDeleteStaging = async (row: PurchaseInboundStagingSummary) => {
@@ -1047,38 +1112,47 @@ onMounted(() => {
   height: 100%;
   min-height: 300px;
 }
+
 .po-search-form :deep(.el-col) {
   min-width: 0;
 }
+
 .po-search-form :deep(.el-form-item) {
   width: 100%;
   margin-right: 0;
   margin-bottom: 12px;
 }
+
 .po-search-form :deep(.el-form-item__content) {
   flex: 1;
   min-width: 0;
 }
+
 .po-search-form :deep(.el-input),
 .po-search-form :deep(.el-select) {
   width: 100%;
 }
+
 .po-search-form .po-search-actions :deep(.el-form-item__content) {
   flex-wrap: nowrap;
 }
+
 .history-card.is-history-collapsed :deep(.el-card__body),
 .transfer-main-card.is-transfer-collapsed :deep(.el-card__body) {
   display: none;
 }
+
 .history-card.is-history-collapsed {
   min-height: 0;
 }
+
 .history-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
+
 .history-header-left {
   display: inline-flex;
   align-items: center;
@@ -1086,26 +1160,32 @@ onMounted(() => {
   cursor: pointer;
   user-select: none;
 }
+
 .history-collapse-icon {
   font-size: 16px;
   color: var(--el-text-color-secondary);
   transition: transform 0.2s;
 }
+
 .history-collapse-icon.is-expanded {
   transform: rotate(90deg);
 }
+
 .history-header-title {
   font-size: 16px;
   font-weight: 600;
 }
+
 .search-result {
   flex: 1;
   overflow: auto;
   min-height: 200px;
 }
+
 .transfer-card-body {
   padding: 0;
 }
+
 .transfer-header {
   display: flex;
   justify-content: space-between;
@@ -1113,32 +1193,39 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 10px;
 }
+
 .header-title {
   font-size: 16px;
   font-weight: 600;
 }
+
 .header-actions {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
 }
+
 .posting-date-toggle-col {
   display: flex;
   align-items: center;
 }
+
 .posting-date-toggle-item {
   margin: 0 0 20px 0;
 }
+
 .posting-date-toggle-item :deep(.el-form-item__content) {
   margin-left: 0 !important;
   line-height: 32px;
 }
+
 .posting-date-toggle-icon {
   color: var(--el-color-primary);
   cursor: pointer;
   font-size: 16px;
 }
+
 .inbound-submit-bar {
   display: flex;
   justify-content: center;

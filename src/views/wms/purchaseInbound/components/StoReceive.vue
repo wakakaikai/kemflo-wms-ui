@@ -127,6 +127,16 @@
               </template>
             </el-alert>
           </div>
+          <div v-if="batchErrorMessage" class="m-y-2">
+            <el-alert type="error" show-icon closable @close="batchErrorMessage = ''">
+              <div class="batch-alert-text">{{ batchErrorMessage }}</div>
+            </el-alert>
+          </div>
+          <div v-if="batchWarningMessage" class="m-y-2">
+            <el-alert type="warning" show-icon closable @close="batchWarningMessage = ''">
+              <div class="batch-alert-text">{{ batchWarningMessage }}</div>
+            </el-alert>
+          </div>
 
           <PurchaseOrderDetailTreeTable :rows="stoInboundList" mode="operation" :selectable="false" :default-expand-all="true" max-height="400" :loading="stoTableLoading">
             <template #columns>
@@ -159,7 +169,7 @@
                   <div v-if="!isPoDetailParentRow(scope.row)" class="inventory-source-cell">
                     <span v-if="scope.row.batchCode" class="batch-code-text">{{ scope.row.batchCode }}</span>
                     <el-tag v-else type="warning" size="small">未选择批次</el-tag>
-                    <el-button type="primary" link icon="Search" @click="openBomInventoryDialog(findOperationParentRow(stoInboundList, scope.row), scope.row)" />
+                    <el-button type="primary" link icon="Search" title="调整批次" @click="openBomInventoryDialog(findOperationParentRow(stoInboundList, scope.row), scope.row)" />
                   </div>
                 </template>
               </el-table-column>
@@ -214,7 +224,7 @@
   </el-row>
 
   <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
-  <InventorySelectionDialog v-model="bomInventoryDialog.visible" :material-code="bomInventoryDialog.materialCode" :material-desc="bomInventoryDialog.materialDesc" :issue-qty="bomInventoryDialog.issueQty" :unit="bomInventoryDialog.unit" :general-only="false" special-inventory-flag="O" :business-code="bomInventoryDialog.supplierCode" @confirm="applyBomInventorySelection" />
+  <InventorySelectionDialog v-model="bomInventoryDialog.visible" :material-code="bomInventoryDialog.materialCode" :material-desc="bomInventoryDialog.materialDesc" :issue-qty="bomInventoryDialog.issueQty" :unit="bomInventoryDialog.unit" :general-only="false" special-inventory-flag="O" :business-code="bomInventoryDialog.supplierCode" :initial-picks="bomInventoryDialog.initialPicks" :reserved-picks="bomInventoryDialog.reservedPicks" :show-warehouse-location="false" auto-recommend-fifo @confirm="applyBomInventorySelection" />
 
   <el-dialog v-model="stoStagingDialogVisible" title="持有数据（交货单号 + 过账日期）" width="80%" append-to-body destroy-on-close>
     <el-table :data="stoStagingSummaries" border max-height="360" empty-text="暂无暂存数据">
@@ -245,6 +255,7 @@ import StorageLocationDialog from '@/views/wms/packing/components/storageLocatio
 import InventorySelectionDialog from '@/views/wms/inventoryDetail/components/InventorySelectionDialog.vue';
 import PurchaseOrderDetailTreeTable from '@/views/wms/purchaseOrderDetail/components/PurchaseOrderDetailTreeTable.vue';
 import { cloneInboundListForPersist, findOperationParentRow, inheritPoItemNumberOnBom, isOutsourcingCategory, isPoDetailParentRow, normalizeInboundListAfterLoad } from '@/views/wms/purchaseOrderDetail/utils/purchaseOrderDetailTree';
+import { assignMissingSubcontractBatches, collectSubcontractDialogPicks, formatSubcontractBatchShortageMessage, hasPendingSubcontractBatch } from '@/views/wms/purchaseInbound/utils/subcontractFifoAllocation';
 import { buildStoInboundStagingKey, listStoInboundStagings, loadStoInboundStaging, normalizeStoStagingPostingDate, removeStoInboundStaging, resolveStoStagingDeliveryOrder, saveStoInboundStaging, type StoInboundStagingPayload, type StoInboundStagingSummary } from '@/views/wms/purchaseInbound/utils/stoInboundStaging';
 import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
@@ -266,6 +277,8 @@ const stoSelectedItems = ref<DeliveryOrderDetailVO[]>([]);
 const stoInboundList = ref<any[]>([]);
 const stoInboundMode = ref<'fixed' | 'multiple'>('fixed');
 const stoResultMessage = ref('');
+const batchErrorMessage = ref('');
+const batchWarningMessage = ref('');
 const stoResultStatus = ref(false);
 const stoButtonLoading = ref(false);
 const stoStagingLoading = ref(false);
@@ -282,7 +295,9 @@ const bomInventoryDialog = reactive({
   materialDesc: '',
   issueQty: 0,
   unit: '',
-  supplierCode: ''
+  supplierCode: '',
+  initialPicks: [] as ReturnType<typeof collectSubcontractDialogPicks>['initialPicks'],
+  reservedPicks: [] as ReturnType<typeof collectSubcontractDialogPicks>['reservedPicks']
 });
 const stoFixedInboundForm = ref<StoInboundStagingPayload['fixedInboundForm']>({
   locationCode: '',
@@ -574,13 +589,13 @@ const syncAllStoBomAllocations = () => {
   });
 };
 
-const handleReceivePoQuantityChange = (row) => {
+const handleReceivePoQuantityChange = async (row) => {
   if (row.receivePoQuantity === null || row.receivePoQuantity === undefined || row.receivePoQuantity === '') {
     row.inventoryQuantity = 0;
   } else {
     calculateInventoryQuantity(row);
   }
-  syncAllStoBomAllocations();
+  warnBatchShortages(await refreshStoBomBatches());
 };
 
 const calculateBomInventoryQuantity = (bom: PurchaseOrderBomVO) => {
@@ -598,10 +613,37 @@ const clearBomInventorySelection = (bom: PurchaseOrderBomVO) => {
   bom.inventorySplitKey = undefined;
 };
 
-const handleBomConsumeQuantityChange = (bom: PurchaseOrderBomVO) => {
+const warnBatchShortages = (shortages: Awaited<ReturnType<typeof assignMissingSubcontractBatches>>) => {
+  const errors = shortages.filter((item) => item.reason !== 'shortage');
+  const warnings = shortages.filter((item) => item.reason === 'shortage');
+  batchErrorMessage.value = errors.length ? formatSubcontractBatchShortageMessage(errors) : '';
+  batchWarningMessage.value = warnings.length ? formatSubcontractBatchShortageMessage(warnings) : '';
+};
+
+let batchAllocatingCount = 0;
+
+const allocatePendingBomBatches = async () => {
+  if (!hasPendingSubcontractBatch(stoInboundList.value)) return [];
+  batchAllocatingCount += 1;
+  stoTableLoading.value = true;
+  try {
+    return await assignMissingSubcontractBatches(stoInboundList.value);
+  } finally {
+    batchAllocatingCount = Math.max(0, batchAllocatingCount - 1);
+    if (batchAllocatingCount === 0) stoTableLoading.value = false;
+  }
+};
+
+const refreshStoBomBatches = async () => {
+  syncAllStoBomAllocations();
+  return allocatePendingBomBatches();
+};
+
+const handleBomConsumeQuantityChange = async (bom: PurchaseOrderBomVO) => {
   bom.consumeQuantity = toNumber(bom.consumeQuantity);
   calculateBomInventoryQuantity(bom);
   if (bom.inventoryDetailId || bom.batchCode) clearBomInventorySelection(bom);
+  warnBatchShortages(await allocatePendingBomBatches());
 };
 
 const openBomInventoryDialog = (parentRow: any, bomRow: PurchaseOrderBomVO) => {
@@ -617,6 +659,7 @@ const openBomInventoryDialog = (parentRow: any, bomRow: PurchaseOrderBomVO) => {
     proxy?.$modal.msgWarning('缺少供应商代码，无法选择转包库存');
     return;
   }
+  const picks = collectSubcontractDialogPicks(stoInboundList.value, bomRow);
   Object.assign(bomInventoryDialog, {
     visible: true,
     inboundIndex,
@@ -625,7 +668,9 @@ const openBomInventoryDialog = (parentRow: any, bomRow: PurchaseOrderBomVO) => {
     materialDesc: bomRow.componentDesc || '',
     issueQty: toNumber(bomRow.inventoryQuantity) || toNumber(bomRow.openQuantity),
     unit: bomRow.inventoryUnit || '',
-    supplierCode: parentRow.supplierCode || ''
+    supplierCode: parentRow.supplierCode || '',
+    initialPicks: picks.initialPicks,
+    reservedPicks: picks.reservedPicks
   });
 };
 
@@ -746,7 +791,7 @@ const isStoDetailSelectable = (item: DeliveryOrderDetailVO) => {
   return !stoInboundDeliveryItemKeys.value.has(getStoDeliveryItemKey(item));
 };
 
-const addSelectedToStoInboundList = () => {
+const addSelectedToStoInboundList = async () => {
   if (stoSelectedItems.value.length === 0) {
     proxy?.$modal.msgWarning('请先选择要添加的STO订单明细');
     return;
@@ -793,16 +838,17 @@ const addSelectedToStoInboundList = () => {
     };
   });
   stoInboundList.value.push(...newItems);
-  syncAllStoBomAllocations();
+  const shortages = await refreshStoBomBatches();
   proxy?.$modal.msgSuccess(`成功添加${newItems.length}条记录到STO入库列表`);
+  warnBatchShortages(shortages);
   stoTableRef.value?.clearSelection();
 };
 
-const removeFromStoInboundList = (inboundRowKey: string) => {
+const removeFromStoInboundList = async (inboundRowKey: string) => {
   const index = stoInboundList.value.findIndex((item) => item.inboundRowKey === inboundRowKey);
   if (index < 0) return;
   stoInboundList.value.splice(index, 1);
-  syncAllStoBomAllocations();
+  warnBatchShortages(await refreshStoBomBatches());
 };
 
 const clearStoInboundList = () => {
@@ -811,6 +857,8 @@ const clearStoInboundList = () => {
   stoFixedInboundForm.value.lfsnr = '';
   stoFixedInboundForm.value.bktxt = '';
   stoFixedInboundForm.value.postingDate = null;
+  batchErrorMessage.value = '';
+  batchWarningMessage.value = '';
 };
 
 const showStorageLocationDialog = (index: number) => {
@@ -912,6 +960,7 @@ const handleLoadStoStaging = async (row: StoInboundStagingSummary) => {
   applyStoStagingPayload(payload);
   stoStagingDialogVisible.value = false;
   proxy?.$modal.msgSuccess('已加载暂存数据');
+  warnBatchShortages(await allocatePendingBomBatches());
 };
 
 const handleDeleteStoStaging = async (row: StoInboundStagingSummary) => {
@@ -1165,5 +1214,11 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.batch-alert-text {
+  white-space: pre-line;
+  text-align: left;
+  line-height: 1.6;
+  word-break: break-word;
 }
 </style>

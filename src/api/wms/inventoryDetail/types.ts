@@ -25,6 +25,11 @@ export interface InventoryDetailVO {
   batchCode: string;
 
   /**
+   * 批次接收日期，用于库存先进先出推荐
+   */
+  receivedDate?: string;
+
+  /**
    * 数量-非限制
    */
   availableQuantity: number;
@@ -197,6 +202,14 @@ export interface InventoryDetailForm extends BaseEntity {
   remark?: string;
 }
 
+/** 库存明细按物料维度的查询条件 */
+export interface InventoryDetailItemQuery {
+  itemCode: string;
+  specialInventoryFlag?: string;
+  businessCode?: string;
+  businessName?: string;
+}
+
 export interface InventoryDetailQuery extends PageQuery {
   /**
    * 材料类型: 1-物料, 2-设备
@@ -217,6 +230,11 @@ export interface InventoryDetailQuery extends PageQuery {
    * 批量物料编码列表
    */
   itemCodeList?: string[];
+
+  /**
+   * 按物料维度的查询条件（物料 + 特殊库存 + 业务伙伴），与 itemCodeList / specialInventoryFlag / businessCode 互斥
+   */
+  itemQueryList?: InventoryDetailItemQuery[];
 
   /**
    * 物料名称/设备名称

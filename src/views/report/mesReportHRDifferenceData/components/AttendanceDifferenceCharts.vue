@@ -118,7 +118,7 @@ const props = defineProps<{
   shopOrderAnalysisRows?: AttendanceShopOrderAnalysisVO[];
   /** mes_shutdown_reason字典选项。 */
   shutdownReasonOptions?: Array<{ label?: string; value?: string }>;
-  /** 当前查询范围内HR侧员工数，按工号去重。 */
+  /** 当前查询范围内HR应计工时大于0的员工数，按工号去重。 */
   hrEmployeeCount?: number;
   /** 当前查询范围内MES侧报工人数，按工号去重。 */
   mesReportEmployeeCount?: number;

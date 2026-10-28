@@ -20,16 +20,6 @@ export interface WorkCenterVO {
   costCenter: string;
 
   /**
-   * 部门编码
-   */
-  deptCode: string;
-
-  /**
-   * 部门名称
-   */
-  deptName: string;
-
-  /**
    * 负责人
    */
   manager: string;
@@ -67,16 +57,6 @@ export interface WorkCenterForm extends BaseEntity {
   costCenter?: string;
 
   /**
-   * 部门编码
-   */
-  deptCode?: string;
-
-  /**
-   * 部门名称
-   */
-  deptName?: string;
-
-  /**
    * 负责人
    */
   manager?: string;
@@ -107,16 +87,6 @@ export interface WorkCenterQuery extends PageQuery {
    * 成本中心
    */
   costCenter?: string;
-
-  /**
-   * 部门编码
-   */
-  deptCode?: string;
-
-  /**
-   * 部门名称
-   */
-  deptName?: string;
 
   /**
    * 负责人

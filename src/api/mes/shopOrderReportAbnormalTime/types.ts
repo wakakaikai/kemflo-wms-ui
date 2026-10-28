@@ -132,6 +132,16 @@ export interface ShopOrderReportAbnormalTimeQuery extends PageQuery {
   reportId?: string | number;
 
   /**
+   * 报工时间范围起（关联报工完工时间）
+   */
+  reportBeginTime?: string;
+
+  /**
+   * 报工时间范围止（关联报工完工时间）
+   */
+  reportEndTime?: string;
+
+  /**
    * 工作中心
    */
   workCenter?: string;

@@ -637,6 +637,16 @@ export interface ShopOrderReportQuery extends PageQuery {
   shopOrder?: string;
 
   /**
+   * 报工时间范围起（完工时间）
+   */
+  reportBeginTime?: string;
+
+  /**
+   * 报工时间范围止（完工时间）
+   */
+  reportEndTime?: string;
+
+  /**
    * 工作中心
    */
   workCenter?: string;

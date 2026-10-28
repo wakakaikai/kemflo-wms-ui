@@ -17,6 +17,19 @@ export const listInventoryDetail = (query?: InventoryDetailQuery): AxiosPromise<
 };
 
 /**
+ * 查询库存明细记录（不分页）。
+ * 物料编码放在请求体中，避免编码较多时 GET 参数长度超限。
+ * 多组特殊库存/业务伙伴组合请使用 itemQueryList。
+ */
+export const listInventoryDetailAll = (data?: Omit<InventoryDetailQuery, 'pageNum' | 'pageSize'> & Partial<Pick<PageQuery, 'pageNum' | 'pageSize'>>): AxiosPromise<InventoryDetailVO[]> => {
+  return request({
+    url: '/wms/inventoryDetail/listAll',
+    method: 'post',
+    data
+  });
+};
+
+/**
  * 查询库存明细记录详细
  * @param id
  */

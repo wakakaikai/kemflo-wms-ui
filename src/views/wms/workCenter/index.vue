@@ -13,12 +13,6 @@
             <el-form-item label="成本中心" prop="costCenter">
               <el-input v-model="queryParams.costCenter" placeholder="请输入成本中心" clearable @keyup.enter="handleQuery" />
             </el-form-item>
-            <el-form-item label="部门编码" prop="deptCode">
-              <el-input v-model="queryParams.deptCode" placeholder="请输入部门编码" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="部门名称" prop="deptName">
-              <el-input v-model="queryParams.deptName" placeholder="请输入部门名称" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
             <el-form-item label="负责人" prop="manager">
               <el-input v-model="queryParams.manager" placeholder="请输入负责人" clearable @keyup.enter="handleQuery" />
             </el-form-item>
@@ -61,8 +55,6 @@
         <el-table-column label="工作中心" align="center" prop="workCenter" />
         <el-table-column label="描述" align="center" prop="description" />
         <el-table-column label="成本中心" align="center" prop="costCenter" />
-        <el-table-column label="部门编码" align="center" prop="deptCode" />
-        <el-table-column label="部门名称" align="center" prop="deptName" />
         <el-table-column label="负责人" align="center" prop="manager" />
         <el-table-column label="状态" align="center" prop="status">
           <template #default="scope">
@@ -95,12 +87,6 @@
         </el-form-item>
         <el-form-item label="成本中心" prop="costCenter">
           <el-input v-model="form.costCenter" placeholder="请输入成本中心" />
-        </el-form-item>
-        <el-form-item label="部门编码" prop="deptCode">
-          <el-input v-model="form.deptCode" placeholder="请输入部门编码" />
-        </el-form-item>
-        <el-form-item label="部门名称" prop="deptName">
-          <el-input v-model="form.deptName" placeholder="请输入部门名称" />
         </el-form-item>
         <el-form-item label="负责人" prop="manager">
           <el-input v-model="form.manager" placeholder="请输入负责人" />
@@ -153,8 +139,6 @@ const initFormData: WorkCenterForm = {
   workCenter: undefined,
   description: undefined,
   costCenter: undefined,
-  deptCode: undefined,
-  deptName: undefined,
   manager: undefined,
   status: undefined,
   remark: undefined
@@ -167,8 +151,6 @@ const data = reactive<PageData<WorkCenterForm, WorkCenterQuery>>({
     workCenter: undefined,
     description: undefined,
     costCenter: undefined,
-    deptCode: undefined,
-    deptName: undefined,
     manager: undefined,
     status: undefined,
     params: {}
@@ -178,8 +160,6 @@ const data = reactive<PageData<WorkCenterForm, WorkCenterQuery>>({
     workCenter: [{ required: true, message: '工作中心不能为空', trigger: 'blur' }],
     description: [{ required: true, message: '描述不能为空', trigger: 'blur' }],
     costCenter: [{ required: true, message: '成本中心不能为空', trigger: 'blur' }],
-    deptCode: [{ required: true, message: '部门编码不能为空', trigger: 'blur' }],
-    deptName: [{ required: true, message: '部门名称不能为空', trigger: 'blur' }],
     manager: [{ required: true, message: '负责人不能为空', trigger: 'blur' }],
     status: [{ required: true, message: '状态不能为空', trigger: 'change' }]
   }
