@@ -4,30 +4,58 @@
       <el-card shadow="never" class="issue-card">
         <template #header>
           <div class="issue-card-header">
-            <span class="header-title">物料+供应商发料</span>
-            <el-button type="danger" @click="clearIssueList" :disabled="issueList.length === 0">清空列表</el-button>
+            <div>
+              <div class="header-title">物料 + 供应商发料</div>
+              <div class="header-subtitle">先确定目标供应商，再从一般库存选择物料进行 541 转包发料</div>
+            </div>
+            <el-button type="danger" plain @click="clearIssueList" :disabled="!hasPageData">清空</el-button>
           </div>
         </template>
 
-        <el-form :model="fixedIssueForm" label-width="auto" :inline="true">
-          <el-row :gutter="20">
-            <el-col :sm="24" :md="8" :lg="8">
-              <el-form-item label="物料单" prop="mtsnr">
-                <HistoryInput v-model="fixedIssueForm.mtsnr" :config="mtsnrConfig" placeholder="请输入物料单" />
-              </el-form-item>
-            </el-col>
-            <el-col :sm="24" :md="8" :lg="8">
-              <el-form-item label="抬头文本" prop="bktxt">
-                <HistoryInput v-model="fixedIssueForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
-              </el-form-item>
-            </el-col>
-            <el-col :sm="24" :md="8" :lg="8">
-              <el-form-item label="过账日期" prop="postingDate">
-                <el-date-picker clearable v-model="fixedIssueForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择过账日期" />
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-form>
+        <section class="supplier-panel" :class="{ 'is-selected': hasSelectedSupplier }">
+          <div class="step-badge">1</div>
+          <div class="supplier-panel-content">
+            <div class="section-title">选择发料供应商</div>
+            <div class="section-tip">本次发料只能转入同一个供应商的转包库存</div>
+            <div v-if="hasSelectedSupplier" class="supplier-value">
+              <el-tag type="primary" effect="dark">{{ selectedSupplier.supplierCode }}</el-tag>
+              <span>{{ selectedSupplier.supplierName }}</span>
+            </div>
+            <div v-else class="supplier-empty">尚未选择供应商</div>
+          </div>
+          <el-button type="primary" @click="openSupplierDialog">
+            {{ hasSelectedSupplier ? '更换供应商' : '选择供应商' }}
+          </el-button>
+        </section>
+
+        <section class="form-section">
+          <div class="section-heading">
+            <span class="step-badge">2</span>
+            <div>
+              <div class="section-title">填写凭证信息</div>
+              <div class="section-tip">以下信息将应用于本次全部发料明细</div>
+            </div>
+          </div>
+          <el-form :model="fixedIssueForm" label-width="auto">
+            <el-row :gutter="20">
+              <el-col :sm="24" :md="8" :lg="8">
+                <el-form-item label="物料单" prop="mtsnr">
+                  <HistoryInput v-model="fixedIssueForm.mtsnr" :config="mtsnrConfig" placeholder="请输入物料单" />
+                </el-form-item>
+              </el-col>
+              <el-col :sm="24" :md="8" :lg="8">
+                <el-form-item label="抬头文本" prop="bktxt">
+                  <HistoryInput v-model="fixedIssueForm.bktxt" :config="bktxtConfig" placeholder="请输入抬头文本" />
+                </el-form-item>
+              </el-col>
+              <el-col :sm="24" :md="8" :lg="8">
+                <el-form-item label="过账日期" prop="postingDate">
+                  <el-date-picker clearable v-model="fixedIssueForm.postingDate" type="date" :disabled-date="disabledFutureDate" value-format="YYYY-MM-DD" placeholder="请选择过账日期" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
+        </section>
 
         <div v-if="resultMessage" class="m-y-2">
           <el-alert show-icon center :title="resultMessage" :type="resultStatus ? 'success' : 'error'">
@@ -37,58 +65,66 @@
           </el-alert>
         </div>
 
-        <el-table :data="issueList" border style="width: 100%" max-height="420">
-          <el-table-column type="index" width="50" align="center" />
-          <el-table-column label="物料编码" min-width="135">
-            <template #default="scope">
-              <el-link type="primary" :underline="false" @click="openItemDialog(scope.row)">
-                {{ scope.row.materialCode || '选择物料' }}
-              </el-link>
-            </template>
-          </el-table-column>
-          <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip min-width="160" />
-          <el-table-column label="供应商代码" min-width="120">
-            <template #default="scope">
-              <el-link type="primary" :underline="false" @click="openSupplierDialog(scope.row)">
-                {{ scope.row.supplierCode || '选择供应商' }}
-              </el-link>
-            </template>
-          </el-table-column>
-          <el-table-column label="供应商名称" prop="supplierName" show-overflow-tooltip min-width="140" />
-          <el-table-column label="库存来源" min-width="200">
-            <template #default="scope">
-              <div class="inventory-source-cell">
-                <div v-if="scope.row.locationCode">
-                  <div>仓库: {{ scope.row.warehouseCode || '-' }}</div>
-                  <div>库位: {{ scope.row.locationCode || '-' }}</div>
-                  <div>批次: {{ scope.row.batchCode || '-' }}</div>
+        <section class="detail-section">
+          <div class="detail-toolbar">
+            <div class="section-heading">
+              <span class="step-badge">3</span>
+              <div>
+                <div class="section-title">选择物料与库存</div>
+                <div class="section-tip">库存来源固定查询一般库存，不按供应商过滤</div>
+              </div>
+            </div>
+            <div class="toolbar-actions">
+              <span class="row-count">共 {{ issueList.length }} 行</span>
+              <el-button type="primary" icon="Plus" :disabled="!hasSelectedSupplier" @click="addManualIssueRow">添加物料</el-button>
+            </div>
+          </div>
+
+          <el-empty v-if="issueList.length === 0" :image-size="72" description="请先选择供应商，再添加发料物料" />
+          <el-table v-else :data="issueList" border stripe style="width: 100%" max-height="420">
+            <el-table-column type="index" width="50" align="center" />
+            <el-table-column label="物料编码" min-width="135">
+              <template #default="scope">
+                <el-link type="primary" :underline="false" @click="openItemDialog(scope.row)">
+                  {{ scope.row.materialCode || '选择物料' }}
+                </el-link>
+              </template>
+            </el-table-column>
+            <el-table-column label="物料描述" prop="materialDesc" show-overflow-tooltip min-width="160" />
+            <el-table-column label="库存来源" min-width="250">
+              <template #default="scope">
+                <div class="inventory-source-cell">
+                  <div v-if="scope.row.locationCode">
+                    <span>库位：{{ scope.row.locationCode || '-' }}</span>
+                    <span class="inventory-batch">批次：{{ scope.row.batchCode || '-' }}</span>
+                  </div>
+                  <el-tag v-else type="warning" size="small">未选择库存</el-tag>
+                  <el-button type="primary" link icon="Search" @click="openInventoryDialog(scope.$index, scope.row)"></el-button>
                 </div>
-                <el-tag v-else type="warning" size="small">未选择库存</el-tag>
-                <el-button type="primary" link icon="Search" @click="openInventoryDialog(scope.$index, scope.row)"></el-button>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="发料数量" align="center" min-width="200">
-            <template #default="scope">
-              <div class="issue-qty-cell">
-                <el-input-number v-model="scope.row.issueQuantity" :min="0" :max="resolveIssueQuantityMax(scope.row)" :precision="3" size="small" controls-position="right" @change="handleIssueQuantityChange(scope.row)" />
-                <span class="issue-qty-unit">{{ scope.row.unit || '' }}</span>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="80" align="center">
-            <template #default="scope">
-              <el-button type="danger" link icon="Delete" @click="removeFromIssueList(scope.$index)"></el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+              </template>
+            </el-table-column>
+            <el-table-column label="发料数量" align="center" min-width="200">
+              <template #default="scope">
+                <div class="issue-qty-cell">
+                  <el-input-number v-model="scope.row.issueQuantity" :min="0" :max="resolveIssueQuantityMax(scope.row)" :precision="3" size="small" controls-position="right" @change="handleIssueQuantityChange(scope.row)" />
+                  <span class="issue-qty-unit">{{ scope.row.unit || '' }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="80" align="center">
+              <template #default="scope">
+                <el-button type="danger" link icon="Delete" @click="removeFromIssueList(scope.$index)"></el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </section>
 
-        <div class="list-footer-actions">
-          <el-button type="primary" circle icon="Plus" @click="addManualIssueRow" />
-        </div>
-
-        <div style="margin-top: 20px; text-align: center">
-          <el-button :loading="buttonLoading" type="primary" @click="submitForm" :disabled="issueList.length === 0" v-hasPermi="['wms:purchaseOrder:subcontractIssue']">541发料</el-button>
+        <div class="submit-area">
+          <div class="submit-summary">
+            <span>供应商：{{ selectedSupplier.supplierCode || '未选择' }}</span>
+            <span>明细：{{ issueList.length }} 行</span>
+          </div>
+          <el-button :loading="buttonLoading" type="primary" size="large" @click="submitForm" :disabled="!hasSelectedSupplier || issueList.length === 0" v-hasPermi="['wms:purchaseOrder:subcontractIssue']"> 541 发料 </el-button>
         </div>
       </el-card>
     </el-col>
@@ -96,14 +132,7 @@
 
   <ItemDialog ref="itemDialogRef" @item-select-call-back="itemSelectCallBack" />
   <SupplierDialog ref="supplierDialogRef" @supplier-select-call-back="supplierSelectCallBack" />
-  <InventorySelectionDialog
-    v-model="inventoryDialogVisible"
-    :material-code="inventoryDialogMaterial.materialCode"
-    :material-desc="inventoryDialogMaterial.materialDesc"
-    :issue-qty="inventoryDialogMaterial.issueQty"
-    :unit="inventoryDialogMaterial.unit"
-    @confirm="handleInventoryConfirm"
-  />
+  <InventorySelectionDialog v-model="inventoryDialogVisible" :material-code="inventoryDialogMaterial.materialCode" :material-desc="inventoryDialogMaterial.materialDesc" :issue-qty="inventoryDialogMaterial.issueQty" :unit="inventoryDialogMaterial.unit" special-inventory-flag="N" business-code="" @confirm="handleInventoryConfirm" />
 </template>
 
 <script setup name="MaterialSupplierSubcontractIssue" lang="ts">
@@ -121,7 +150,6 @@ const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const itemDialogRef = ref<InstanceType<typeof ItemDialog>>();
 const supplierDialogRef = ref<InstanceType<typeof SupplierDialog>>();
 const currentItemRow = ref<any>(null);
-const currentSupplierRow = ref<any>(null);
 const resultMessage = ref('');
 const resultStatus = ref(false);
 const buttonLoading = ref(false);
@@ -139,6 +167,12 @@ const fixedIssueForm = ref({
   postingDate: null as string | null,
   mtsnr: ''
 });
+const selectedSupplier = reactive({
+  supplierCode: '',
+  supplierName: ''
+});
+const hasSelectedSupplier = computed(() => Boolean(selectedSupplier.supplierCode.trim()));
+const hasPageData = computed(() => issueList.value.length > 0 || hasSelectedSupplier.value || Boolean(fixedIssueForm.value.mtsnr || fixedIssueForm.value.bktxt || fixedIssueForm.value.postingDate));
 
 const bktxtConfig: HistoryConfig = {
   key: 'bktxt',
@@ -176,18 +210,26 @@ const createEmptyIssueRow = () => ({
   manualAdd: true,
   materialCode: '',
   materialDesc: '',
-  supplierCode: '',
-  supplierName: '',
+  supplierCode: selectedSupplier.supplierCode,
+  supplierName: selectedSupplier.supplierName,
   issueQuantity: undefined,
   openQuantity: undefined,
   unit: ''
 });
 
 const addManualIssueRow = () => {
+  if (!hasSelectedSupplier.value) {
+    proxy?.$modal.msgWarning('请先选择发料供应商');
+    return;
+  }
   issueList.value.push(createEmptyIssueRow());
 };
 
 const openItemDialog = (row: any) => {
+  if (!hasSelectedSupplier.value) {
+    proxy?.$modal.msgWarning('请先选择发料供应商');
+    return;
+  }
   currentItemRow.value = row;
   itemDialogRef.value?.openDialog();
   itemDialogRef.value?.handleQuery();
@@ -198,26 +240,60 @@ const itemSelectCallBack = (record: any) => {
   if (!row || !record) {
     return;
   }
-  row.materialCode = record.item || '';
+  const nextMaterialCode = record.item || '';
+  if (row.materialCode && row.materialCode !== nextMaterialCode) {
+    clearInventorySelection(row);
+  }
+  row.materialCode = nextMaterialCode;
   row.materialDesc = record.itemDesc || '';
   row.unit = record.unit || '';
+  row.supplierCode = selectedSupplier.supplierCode;
+  row.supplierName = selectedSupplier.supplierName;
   currentItemRow.value = null;
 };
 
-const openSupplierDialog = (row: any) => {
-  currentSupplierRow.value = row;
+const openSupplierDialog = () => {
   supplierDialogRef.value?.openDialog();
   supplierDialogRef.value?.handleQuery();
 };
 
+const normalizeCode = (value: unknown) =>
+  String(value ?? '')
+    .trim()
+    .toUpperCase();
+
+const clearInventorySelection = (row: any) => {
+  row.warehouseCode = undefined;
+  row.areaCode = undefined;
+  row.locationCode = undefined;
+  row.batchCode = undefined;
+  row.specialInventoryFlag = undefined;
+  row.businessCode = undefined;
+  row.inventoryAvailableQuantity = undefined;
+  row.inventoryRowId = undefined;
+  row.inventorySplitKey = undefined;
+};
+
 const supplierSelectCallBack = (record: any) => {
-  const row = currentSupplierRow.value;
-  if (!row || !record) {
+  if (!record) {
     return;
   }
-  row.supplierCode = record.supplierCode || '';
-  row.supplierName = record.supplierName || '';
-  currentSupplierRow.value = null;
+  const nextSupplierCode = String(record.supplierCode || '').trim();
+  const nextSupplierName = String(record.supplierName || '').trim();
+  if (!nextSupplierCode) {
+    proxy?.$modal.msgWarning('供应商代码不能为空');
+    return;
+  }
+
+  selectedSupplier.supplierCode = nextSupplierCode;
+  selectedSupplier.supplierName = nextSupplierName;
+  issueList.value.forEach((row) => {
+    row.supplierCode = nextSupplierCode;
+    row.supplierName = nextSupplierName;
+  });
+  inventoryDialogVisible.value = false;
+  inventoryDialogIndex.value = -1;
+  resultMessage.value = '';
 };
 
 const removeFromIssueList = (index: number) => {
@@ -234,6 +310,10 @@ const resolveIssueQuantityMax = (row: any) => {
 };
 
 const openInventoryDialog = (index: number, row: any) => {
+  if (!hasSelectedSupplier.value) {
+    proxy?.$modal.msgWarning('请先选择发料供应商');
+    return;
+  }
   if (!String(row.materialCode || '').trim()) {
     proxy?.$modal.msgWarning('请先选择物料');
     return;
@@ -257,6 +337,8 @@ const handleInventoryConfirm = ({ locations }: { locations: any[] }) => {
 
   const splitRows = locations.map((location, locationIndex) => ({
     ...source,
+    supplierCode: selectedSupplier.supplierCode,
+    supplierName: selectedSupplier.supplierName,
     issueQuantity: Number(location.pickQty ?? 0),
     openQuantity: Number(location.pickQty ?? 0),
     unit: location.unit || source.unit,
@@ -265,6 +347,7 @@ const handleInventoryConfirm = ({ locations }: { locations: any[] }) => {
     locationCode: location.locationCode,
     batchCode: location.batchCode,
     specialInventoryFlag: location.specialInventoryFlag || 'N',
+    businessCode: undefined,
     inventoryAvailableQuantity: Number(location.availableQuantity ?? 0),
     inventoryRowId: location.id,
     inventorySplitKey: `${source.materialCode || ''}_${source.supplierCode || ''}_${location.rowKey || locationIndex}`
@@ -279,12 +362,21 @@ const clearIssueList = () => {
   fixedIssueForm.value.bktxt = '';
   fixedIssueForm.value.postingDate = null;
   fixedIssueForm.value.mtsnr = '';
+  selectedSupplier.supplierCode = '';
+  selectedSupplier.supplierName = '';
+  inventoryDialogVisible.value = false;
+  inventoryDialogIndex.value = -1;
 };
 
 const submitForm = async () => {
   const validList = issueList.value.filter((item) => Number(item.issueQuantity) > 0);
   resultStatus.value = true;
   resultMessage.value = '';
+  if (!hasSelectedSupplier.value) {
+    resultMessage.value = '请先选择发料供应商';
+    resultStatus.value = false;
+    return;
+  }
   if (validList.length === 0) {
     resultMessage.value = '发料数量必须大于 0';
     resultStatus.value = false;
@@ -296,9 +388,9 @@ const submitForm = async () => {
     resultStatus.value = false;
     return;
   }
-  const missingSupplier = validList.filter((item) => !String(item.supplierCode || '').trim());
-  if (missingSupplier.length > 0) {
-    resultMessage.value = '请先为所有发料明细选择供应商';
+  const inconsistentSupplier = validList.filter((item) => normalizeCode(item.supplierCode) !== normalizeCode(selectedSupplier.supplierCode));
+  if (inconsistentSupplier.length > 0) {
+    resultMessage.value = '发料明细中存在与当前供应商不一致的数据，请重新选择';
     resultStatus.value = false;
     return;
   }
@@ -316,6 +408,8 @@ const submitForm = async () => {
   }
   const submitList = validList.map((item) => ({
     ...item,
+    supplierCode: selectedSupplier.supplierCode,
+    supplierName: selectedSupplier.supplierName,
     postingDate: formatPostingDate(fixedIssueForm.value.postingDate)
   }));
 
@@ -347,6 +441,7 @@ const submitForm = async () => {
 <style scoped>
 .issue-card {
   width: 100%;
+  border-radius: 10px;
 }
 .issue-card-header {
   display: flex;
@@ -354,17 +449,119 @@ const submitForm = async () => {
   align-items: center;
 }
 .header-title {
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--el-text-color-primary);
+}
+.header-subtitle,
+.section-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.supplier-panel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 86px;
+  margin-bottom: 16px;
+  padding: 16px 20px;
+  border: 1px dashed var(--el-border-color);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--el-fill-color-light), var(--el-bg-color));
+  transition: all 0.2s ease;
+}
+.supplier-panel.is-selected {
+  border-style: solid;
+  border-color: var(--el-color-primary-light-5);
+  background: linear-gradient(135deg, var(--el-color-primary-light-9), var(--el-bg-color));
+}
+.supplier-panel-content {
+  flex: 1;
+  min-width: 0;
+}
+.step-badge {
+  display: inline-flex;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 50%;
+  background: var(--el-color-primary);
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+.supplier-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 15px;
   font-weight: 600;
 }
+.supplier-empty {
+  margin-top: 10px;
+  color: var(--el-text-color-placeholder);
+}
+.form-section,
+.detail-section {
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 10px;
+  background: var(--el-bg-color);
+}
+.form-section :deep(.el-form) {
+  margin-top: 16px;
+}
+.form-section :deep(.el-form-item) {
+  width: 100%;
+  margin-bottom: 0;
+}
+.form-section :deep(.el-form-item__content),
+.form-section :deep(.el-date-editor) {
+  width: 100%;
+}
+.section-heading,
+.detail-toolbar,
+.toolbar-actions,
+.submit-summary {
+  display: flex;
+  align-items: center;
+}
+.section-heading {
+  gap: 12px;
+}
+.detail-toolbar {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.toolbar-actions {
+  gap: 12px;
+}
+.row-count {
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
+}
 .m-y-2 {
-  margin: 8px 0;
+  margin: 0 0 16px;
 }
 .inventory-source-cell {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  line-height: 1.65;
+}
+.inventory-batch {
+  margin-left: 12px;
 }
 .issue-qty-cell {
   display: inline-flex;
@@ -376,9 +573,33 @@ const submitForm = async () => {
   color: var(--el-text-color-regular);
   white-space: nowrap;
 }
-.list-footer-actions {
+.submit-area {
   display: flex;
-  justify-content: center;
-  padding-top: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: var(--el-fill-color-light);
+}
+.submit-summary {
+  gap: 24px;
+  color: var(--el-text-color-regular);
+}
+.submit-area .el-button {
+  min-width: 132px;
+}
+
+@media (max-width: 768px) {
+  .supplier-panel,
+  .detail-toolbar,
+  .submit-area {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .toolbar-actions,
+  .submit-summary {
+    justify-content: space-between;
+  }
 }
 </style>

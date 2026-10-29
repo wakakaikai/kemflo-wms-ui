@@ -262,6 +262,7 @@ import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
 import { formatQty, parseTime } from '@/utils/ruoyi';
+import { formatApiErrorMessage } from '@/utils/formatApiErrorMessage';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_purchase_category, wms_boolean_type } = toRefs<any>(proxy?.useDict('wms_purchase_category', 'wms_boolean_type'));
@@ -666,7 +667,7 @@ const openBomInventoryDialog = (parentRow: any, bomRow: PurchaseOrderBomVO) => {
     bomIndex,
     materialCode: bomRow.componentMaterial || '',
     materialDesc: bomRow.componentDesc || '',
-    issueQty: toNumber(bomRow.inventoryQuantity) || toNumber(bomRow.openQuantity),
+    issueQty: toNumber(picks.demandQty) || toNumber(bomRow.openQuantity),
     unit: bomRow.inventoryUnit || '',
     supplierCode: parentRow.supplierCode || '',
     initialPicks: picks.initialPicks,
@@ -675,13 +676,22 @@ const openBomInventoryDialog = (parentRow: any, bomRow: PurchaseOrderBomVO) => {
 };
 
 const applyBomInventorySelection = ({ locations }: { locations: any[] }) => {
+  const bomIndex = bomInventoryDialog.bomIndex;
   const parent = stoInboundList.value[bomInventoryDialog.inboundIndex];
-  const source = parent?.purchaseOrderBomScheduleVoList?.[bomInventoryDialog.bomIndex];
+  const source = parent?.purchaseOrderBomScheduleVoList?.[bomIndex];
   if (!parent || !source || !locations?.length) return;
 
+  const bomRows = parent.purchaseOrderBomScheduleVoList as PurchaseOrderBomVO[];
+  const sourceOriginBomKey = String(source.originBomKey || '').trim();
+  const isSourceGroupRow = (bom: PurchaseOrderBomVO, index: number) => bom === source || index === bomIndex || (!!sourceOriginBomKey && String(bom.originBomKey || '').trim() === sourceOriginBomKey);
+  const sourceGroupIndexes = bomRows.reduce<number[]>((indexes, bom, index) => {
+    if (isSourceGroupRow(bom, index)) indexes.push(index);
+    return indexes;
+  }, []);
+  const replaceIndex = sourceGroupIndexes.length ? Math.min(...sourceGroupIndexes) : bomIndex;
   const conversionRatio = getBomConversionRatio(source);
-  let remainingDemand = roundQty(toNumber(source.inventoryQuantity) || toNumber(source.openQuantity));
-  const originBomKey = getBomOriginKey(source, bomInventoryDialog.bomIndex);
+  let remainingDemand = roundQty(toNumber(bomInventoryDialog.issueQty) || toNumber(source.openQuantity));
+  const originBomKey = getBomOriginKey(source, bomIndex);
   const splitRows = locations
     .map((location, index) => {
       const inventoryQuantity = roundQty(Math.max(0, Math.min(toNumber(location.pickQty), toNumber(location.availableQuantity), remainingDemand)));
@@ -710,7 +720,10 @@ const applyBomInventorySelection = ({ locations }: { locations: any[] }) => {
     proxy?.$modal.msgWarning(remainingDemand > 0.001 ? `所选批次还差 ${remainingDemand}` : '扣料数量必须大于0');
     return;
   }
-  parent.purchaseOrderBomScheduleVoList.splice(bomInventoryDialog.bomIndex, 1, ...splitRows);
+  // STO重新选择批次时替换整个原始 BOM 拆分组，旧的多个 FIFO 推荐批次一次性全部移除。
+  const retainedRows = bomRows.filter((bom, index) => !isSourceGroupRow(bom, index));
+  retainedRows.splice(replaceIndex, 0, ...splitRows);
+  parent.purchaseOrderBomScheduleVoList.splice(0, bomRows.length, ...retainedRows);
   Object.assign(bomInventoryDialog, { visible: false, inboundIndex: -1, bomIndex: -1, issueQty: 0 });
 };
 
@@ -777,7 +790,9 @@ const normalizeDeliveryItemNo = (value: unknown) => {
 };
 
 const getStoDeliveryItemKey = (item: Pick<DeliveryOrderDetailVO, 'deliveryOrderNo' | 'deliveryItemNo'>) => {
-  const deliveryOrderNo = String(item.deliveryOrderNo ?? '').trim().toUpperCase();
+  const deliveryOrderNo = String(item.deliveryOrderNo ?? '')
+    .trim()
+    .toUpperCase();
   return `${deliveryOrderNo}|${normalizeDeliveryItemNo(item.deliveryItemNo)}`;
 };
 
@@ -1086,8 +1101,9 @@ const submitStoForm = async () => {
     if (stoQueryParams.value.deliveryOrderNo) {
       getStoList(false);
     }
-  } catch (error) {
-    stoResultMessage.value = error.message || '入库失败';
+  } catch (error: any) {
+    const raw = typeof error === 'string' ? error : error?.message;
+    stoResultMessage.value = formatApiErrorMessage(raw) || '入库失败';
     stoResultStatus.value = false;
   } finally {
     stoButtonLoading.value = false;

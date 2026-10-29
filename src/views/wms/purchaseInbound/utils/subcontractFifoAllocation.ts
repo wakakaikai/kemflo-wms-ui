@@ -387,28 +387,36 @@ export interface SubcontractDialogPick {
   quantity?: number;
 }
 
-/** 手动打开批次弹框时，带入当前行批次，并扣掉其他行已占用的同一库存。 */
+/**
+ * 手动打开批次弹框时，同一原始 BOM 拆出的全部批次作为一个编辑组带入。
+ * 编辑组以外的行才作为已占用库存，确保用户可以取消任意一个系统推荐批次。
+ */
 export const collectSubcontractDialogPicks = (parents: SubcontractBatchParent[], currentBom: PurchaseOrderBomVO) => {
   const owner = parents.find((parent) => (parent.purchaseOrderBomScheduleVoList || []).includes(currentBom));
   const supplierCode = normalizeCode(owner?.supplierCode);
   const materialCode = normalizeCode(currentBom.componentMaterial);
+  const originBomKey = normalizeCode(currentBom.originBomKey);
+  const isCurrentGroup = (bom: PurchaseOrderBomVO) => bom === currentBom || (!!originBomKey && normalizeCode(bom.originBomKey) === originBomKey);
+  const currentGroup = (owner?.purchaseOrderBomScheduleVoList || []).filter(isCurrentGroup);
   const initialPicks: SubcontractDialogPick[] = [];
-  if (currentBom.inventoryDetailId || normalizeCode(currentBom.batchCode)) {
-    initialPicks.push({
-      id: currentBom.inventoryDetailId,
-      batchCode: currentBom.batchCode,
-      locationCode: currentBom.locationCode,
-      warehouseCode: currentBom.warehouseCode,
-      pickQty: getDemandQty(currentBom)
-    });
-  }
+  currentGroup.forEach((bom) => {
+    if (bom.inventoryDetailId || normalizeCode(bom.batchCode)) {
+      initialPicks.push({
+        id: bom.inventoryDetailId,
+        batchCode: bom.batchCode,
+        locationCode: bom.locationCode,
+        warehouseCode: bom.warehouseCode,
+        pickQty: getDemandQty(bom)
+      });
+    }
+  });
   const reservedPicks: SubcontractDialogPick[] = [];
   parents.forEach((parent) => {
     if (normalizeCode(parent.supplierCode) !== supplierCode) {
       return;
     }
     (parent.purchaseOrderBomScheduleVoList || []).forEach((bom) => {
-      if (bom === currentBom || normalizeCode(bom.componentMaterial) !== materialCode) {
+      if ((parent === owner && isCurrentGroup(bom)) || normalizeCode(bom.componentMaterial) !== materialCode) {
         return;
       }
       if (!bom.inventoryDetailId && !normalizeCode(bom.batchCode)) {
@@ -423,5 +431,6 @@ export const collectSubcontractDialogPicks = (parents: SubcontractBatchParent[],
       });
     });
   });
-  return { initialPicks, reservedPicks };
+  const demandQty = roundQty((currentGroup.length ? currentGroup : [currentBom]).reduce((sum, bom) => sum + getDemandQty(bom), 0));
+  return { initialPicks, reservedPicks, demandQty };
 };

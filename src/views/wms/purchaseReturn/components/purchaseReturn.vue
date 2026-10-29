@@ -102,26 +102,15 @@
           </el-alert>
         </div>
 
-        <el-table
-          ref="transferTableRef"
-          :data="transferTreeData"
-          row-key="rowKey"
-          border
-          style="width: 100%"
-          v-loading="tableLoading"
-          max-height="400"
-          default-expand-all
-          :tree-props="{ children: 'children' }"
-          :row-class-name="resolveTransferRowClassName"
-        >
-<!--          <el-table-column width="50" align="center">
+        <el-table ref="transferTableRef" :data="transferTreeData" row-key="rowKey" border style="width: 100%" v-loading="tableLoading" max-height="400" default-expand-all :tree-props="{ children: 'children' }" :row-class-name="resolveTransferRowClassName">
+          <!--          <el-table-column width="50" align="center">
             <template #default="scope">
               <span v-if="isTreeParentRow(scope.row)">{{ transferList.findIndex((item) => item.transferRowKey === scope.row.transferRowKey) + 1 || '' }}</span>
             </template>
           </el-table-column>-->
           <!--            <el-table-column label="物料凭证号" prop="sapMaterialOrderNo" />
             <el-table-column label="凭证项次" prop="sapMaterialItem" />-->
-<!--          <el-table-column label="移动类型" prop="moveType" width="88" align="center" />-->
+          <!--          <el-table-column label="移动类型" prop="moveType" width="88" align="center" />-->
           <el-table-column v-if="transferColumns[0].visible" label="采购单号" prop="sourceDocCode" min-width="120" />
           <el-table-column v-if="transferColumns[1].visible" label="采购项次" prop="poItemNo" width="88" align="center">
             <template #default="scope">
@@ -215,7 +204,7 @@
     </el-card>
     <!-- 库位选择对话框 -->
     <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
-    <InventorySelectionDialog v-model="inventoryDialog.visible" :material-code="inventoryDialog.row?.itemCode || inventoryDialog.row?.materialCode || ''" :material-desc="inventoryDialog.row?.itemName || inventoryDialog.row?.materialName || ''" :issue-qty="inventoryDialog.issueQty" :unit="inventoryDialog.row?.inventoryUnit || inventoryDialog.row?.unit || inventoryDialog.row?.poUnit || inventoryDialog.row?.orderUnit || ''" :general-only="false" @confirm="applyInventorySelection" />
+    <InventorySelectionDialog v-model="inventoryDialog.visible" :material-code="inventoryDialog.row?.itemCode || inventoryDialog.row?.materialCode || ''" :material-desc="inventoryDialog.row?.itemName || inventoryDialog.row?.materialName || ''" :issue-qty="inventoryDialog.issueQty" :unit="inventoryDialog.row?.inventoryUnit || inventoryDialog.row?.unit || inventoryDialog.row?.poUnit || inventoryDialog.row?.orderUnit || ''" :general-only="false" :special-inventory-flag="inventoryDialog.row?.specialInventoryFlag || 'N'" :business-code="resolveInventoryBusinessCode(inventoryDialog.row)" @confirm="applyInventorySelection" />
   </div>
 </template>
 
@@ -223,16 +212,7 @@
 import { computed, ref, reactive, onMounted } from 'vue';
 import { listInventoryMovement } from '@/api/wms/inventoryMovement';
 import ReverseMovementTreeTable from '@/views/wms/inventoryReverse/components/ReverseMovementTreeTable.vue';
-import {
-  buildMovementDisplayGroups,
-  buildPrimaryReceiptGroupKey,
-  buildReverseTreeTableData,
-  enrichPrimaryReceiptGroupWithSubcontractChildren,
-  isTreeParentRow,
-  MovementExpandRow,
-  resolvePurchaseReturnSubmitMoveType,
-  ReverseTreeRow
-} from '@/views/wms/inventoryReverse/utils/reverseMovement';
+import { buildMovementDisplayGroups, buildPrimaryReceiptGroupKey, buildReverseTreeTableData, enrichPrimaryReceiptGroupWithSubcontractChildren, isTreeParentRow, MovementExpandRow, resolvePurchaseReturnSubmitMoveType, ReverseTreeRow } from '@/views/wms/inventoryReverse/utils/reverseMovement';
 import { createReverseColumnOptions } from '@/views/wms/inventoryReverse/utils/reverseTableLayout';
 import { syncSapMaterialOrderNoEmptyFilter } from '@/api/wms/inventoryMovement/query';
 import { InventoryMovementVO, InventoryMovementQuery, InventoryMovementForm } from '@/api/wms/inventoryMovement/types';
@@ -323,9 +303,7 @@ const resolveTransferRowRef = (displayRow: ReverseTreeRow | any) => {
   }
   const parent = transferList.value[parentIndex];
   const originId = displayRow.originId ?? displayRow.id;
-  const child = (parent.childMovementList || []).find(
-    (item: any) => item === displayRow || item.originId === originId || item.id === originId
-  );
+  const child = (parent.childMovementList || []).find((item: any) => item === displayRow || item.originId === originId || item.id === originId);
   return child || displayRow;
 };
 
@@ -387,6 +365,19 @@ const inventoryDialog = reactive<{
   row: null,
   issueQty: 0
 });
+
+const resolveInventoryBusinessCode = (row: any) => {
+  const specialInventoryFlag = String(row?.specialInventoryFlag || 'N')
+    .trim()
+    .toUpperCase();
+  if (specialInventoryFlag === 'N') {
+    return '';
+  }
+  if (specialInventoryFlag === 'W') {
+    return row?.businessCode || row?.customerCode || '';
+  }
+  return row?.businessCode || row?.supplierCode || '';
+};
 
 const initFormData: InventoryMovementForm = {
   id: undefined,
@@ -729,9 +720,7 @@ const addSelectedToTransferList = async () => {
 
   let addedCount = 0;
   for (const item of selectedSearchItems.value) {
-    const group =
-      inventoryDetailList.value.find((g) => g.groupKey && g.groupKey === item.groupKey) ||
-      inventoryDetailList.value.find((g) => String(g.mainMovement?.id ?? g.id) === String(item.mainMovement?.id ?? item.id));
+    const group = inventoryDetailList.value.find((g) => g.groupKey && g.groupKey === item.groupKey) || inventoryDetailList.value.find((g) => String(g.mainMovement?.id ?? g.id) === String(item.mainMovement?.id ?? item.id));
     const enriched = group ? await enrichPrimaryReceiptGroupWithSubcontractChildren(group) : item;
     const mainMovement = (enriched.mainMovement ?? enriched) as InventoryMovementVO;
     const transferRowKey = enriched.groupKey || buildPrimaryReceiptGroupKey(mainMovement.id!);

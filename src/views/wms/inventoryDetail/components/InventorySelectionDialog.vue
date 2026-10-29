@@ -90,7 +90,7 @@
 import { ref, computed, watch, nextTick, getCurrentInstance, toRefs } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { TableInstance } from 'element-plus';
-import { listInventoryDetail } from '@/api/wms/inventoryDetail/index';
+import { listInventoryDetailAll } from '@/api/wms/inventoryDetail/index';
 import type { InventoryDetailVO } from '@/api/wms/inventoryDetail/types';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -131,8 +131,8 @@ interface Props {
   issueQty: number;
   unit?: string;
   generalOnly?: boolean;
-  /** 可选：仅展示指定特殊库存标识 */
-  specialInventoryFlag?: string;
+  /** 由调用页面明确传入需要查询的特殊库存标识 */
+  specialInventoryFlag: string;
   /** 可选：仅展示指定业务伙伴编码 */
   businessCode?: string;
   /** 是否按批次接收日期先进先出自动推荐 */
@@ -149,7 +149,6 @@ const props = withDefaults(defineProps<Props>(), {
   materialDesc: '',
   unit: '',
   generalOnly: true,
-  specialInventoryFlag: '',
   businessCode: '',
   autoRecommendFifo: false,
   initialPicks: () => [],
@@ -198,13 +197,6 @@ const canConfirm = computed(() => selectedCount.value > 0 && totalPicked.value >
 const formatQty = (val?: number | string) => {
   const n = Number(val ?? 0);
   return Number.isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: 3 }) : '0';
-};
-
-const isGeneralInventory = (flag?: string) => {
-  const value = String(flag ?? '')
-    .trim()
-    .toUpperCase();
-  return !value || value === 'N';
 };
 
 const isRowSelectable = (row: InventoryPickRow) => row.usableQuantity > 0;
@@ -257,11 +249,8 @@ const onPickQtyChange = (row: InventoryPickRow, val: number | undefined) => {
 };
 
 const resolveQuerySpecialInventoryFlag = () => {
-  const explicit = String(props.specialInventoryFlag ?? '').trim();
-  if (explicit) {
-    return explicit;
-  }
-  return props.generalOnly ? 'N' : undefined;
+  const value = String(props.specialInventoryFlag ?? '').trim();
+  return value || undefined;
 };
 
 const matchesSpecialInventoryFlag = (itemFlag?: string, expected?: string) => {
@@ -335,9 +324,7 @@ const applyFifoRecommendation = async () => {
         if (remaining <= 0.001) {
           break;
         }
-        const row =
-          inventoryRows.value.find((item) => pick.id !== undefined && pick.id !== null && String(pick.id) !== '' && String(item.id) === String(pick.id) && !selectedRows.includes(item)) ||
-          inventoryRows.value.find((item) => matchesInventoryPick({ ...item, id: '' }, { ...pick, id: undefined }) && !selectedRows.includes(item));
+        const row = inventoryRows.value.find((item) => pick.id !== undefined && pick.id !== null && String(pick.id) !== '' && String(item.id) === String(pick.id) && !selectedRows.includes(item)) || inventoryRows.value.find((item) => matchesInventoryPick({ ...item, id: '' }, { ...pick, id: undefined }) && !selectedRows.includes(item));
         if (!row || row.usableQuantity <= 0) {
           continue;
         }
@@ -379,27 +366,39 @@ const applyFifoRecommendation = async () => {
 
 const loadData = async () => {
   if (!props.materialCode) return;
+  const specialInventoryFlag = resolveQuerySpecialInventoryFlag();
+  if (!specialInventoryFlag) {
+    ElMessage.warning('调用页面未指定库存类型，无法查询库存');
+    inventoryRows.value = [];
+    return;
+  }
+  if (['O', 'K', 'W'].includes(specialInventoryFlag.toUpperCase()) && !String(props.businessCode || '').trim()) {
+    ElMessage.warning(`特殊库存 ${specialInventoryFlag} 必须指定业务伙伴`);
+    inventoryRows.value = [];
+    return;
+  }
   loading.value = true;
   try {
-    const res = await listInventoryDetail({
-      itemCode: props.materialCode,
-      specialInventoryFlag: resolveQuerySpecialInventoryFlag(),
-      businessCode: props.businessCode || undefined,
-      pageNum: 1,
-      pageSize: 99999,
-      params: {}
+    const res = await listInventoryDetailAll({
+      itemQueryList: [
+        {
+          itemCode: props.materialCode,
+          specialInventoryFlag,
+          businessCode: props.businessCode || undefined
+        }
+      ]
     });
-    const list = (res as any).rows ?? res ?? [];
+    const list = (res as any).data ?? (res as any).rows ?? [];
     const reservedById = buildReservedQuantityMap();
     inventoryRows.value = list
       .filter((item: InventoryDetailVO) => {
         if (!matchesSpecialInventoryFlag(item.specialInventoryFlag, props.specialInventoryFlag)) {
           return false;
         }
-        if (props.businessCode && item.businessCode !== props.businessCode) {
+        if (props.businessCode && !sameText(item.businessCode, props.businessCode)) {
           return false;
         }
-        return (!props.generalOnly || isGeneralInventory(item.specialInventoryFlag)) && Number(item.availableQuantity ?? 0) > 0;
+        return Number(item.availableQuantity ?? 0) > 0;
       })
       .map((item: InventoryDetailVO, index: number) => {
         const id = item.id ?? `inv_${index}`;

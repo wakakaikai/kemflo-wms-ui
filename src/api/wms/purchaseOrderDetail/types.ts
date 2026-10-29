@@ -390,6 +390,11 @@ export interface PurchaseOrderDetailQuery extends PageQuery {
   receiveType?: string;
 
   /**
+   * 显示已收货（未清数量为 0）
+   */
+  showOpenQuantityZero?: boolean;
+
+  /**
    * 日期范围参数
    */
   params?: any;

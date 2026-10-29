@@ -62,7 +62,9 @@
 
     <div style="margin: 20px 0; text-align: center; width: 100%">
       <el-button type="primary" @click="addSelectedToIssueList" circle class="rotate-button">
-        <el-icon><Switch /></el-icon>
+        <el-icon>
+          <Switch />
+        </el-icon>
       </el-button>
     </div>
 
@@ -121,7 +123,6 @@
               <template #default="scope">
                 <div class="inventory-source-cell">
                   <div v-if="scope.row.locationCode">
-                    <div>仓库: {{ scope.row.warehouseCode || '-' }}</div>
                     <div>库位: {{ scope.row.locationCode || '-' }}</div>
                     <div>批次: {{ scope.row.batchCode || '-' }}</div>
                   </div>
@@ -130,14 +131,9 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="未清数量（发料单位）" min-width="155" align="right">
+            <el-table-column label="未清数量" min-width="155" align="right">
               <template #default="scope">
                 {{ formatQtyWithUnit(scope.row.orderOpenQuantity, scope.row.orderUnit) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="未清数量（库存单位）" min-width="155" align="right">
-              <template #default="scope">
-                {{ formatQtyWithUnit(scope.row.openQuantity, scope.row.unit) }}
               </template>
             </el-table-column>
             <el-table-column label="发料数量" align="center" min-width="200">
@@ -163,20 +159,12 @@
     </el-col>
   </el-row>
 
-  <InventorySelectionDialog
-    v-model="inventoryDialogVisible"
-    :material-code="inventoryDialogMaterial.materialCode"
-    :material-desc="inventoryDialogMaterial.materialDesc"
-    :issue-qty="inventoryDialogMaterial.issueQty"
-    :unit="inventoryDialogMaterial.unit"
-    @confirm="handleInventoryConfirm"
-  />
-
+  <InventorySelectionDialog v-model="inventoryDialogVisible" :material-code="inventoryDialogMaterial.materialCode" :material-desc="inventoryDialogMaterial.materialDesc" :issue-qty="inventoryDialogMaterial.issueQty" :unit="inventoryDialogMaterial.unit" special-inventory-flag="N" business-code="" @confirm="handleInventoryConfirm" />
 </template>
 
 <script setup name="PoSubcontractIssue" lang="ts">
 import { queryPoItemBomPageList, subcontractIssue } from '@/api/wms/purchaseOrderSubcontractIssue';
-import { PurchaseOrderBomVO, PurchaseOrderBomQuery } from '@/api/wms/purchaseOrderSubcontractIssue/types';
+import { PurchaseOrderBomQuery, PurchaseOrderBomVO } from '@/api/wms/purchaseOrderSubcontractIssue/types';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import InventorySelectionDialog from '@/views/wms/inventoryDetail/components/InventorySelectionDialog.vue';
 import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
@@ -532,12 +520,14 @@ onMounted(() => {
 .transfer-main-card.is-transfer-collapsed :deep(.el-card__body) {
   display: none;
 }
+
 .history-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
+
 .history-header-left {
   display: inline-flex;
   align-items: center;
@@ -545,46 +535,56 @@ onMounted(() => {
   cursor: pointer;
   user-select: none;
 }
+
 .history-collapse-icon {
   font-size: 14px;
   color: var(--el-text-color-secondary);
   transition: transform 0.2s;
 }
+
 .history-collapse-icon.is-expanded {
   transform: rotate(90deg);
 }
+
 .history-header-title {
   font-size: 14px;
   font-weight: 600;
 }
+
 .transfer-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
+
 .header-actions {
   display: flex;
   gap: 12px;
   align-items: center;
 }
+
 .rotate-button {
   transform: rotate(90deg);
 }
+
 .m-y-2 {
   margin: 8px 0;
 }
+
 .inventory-source-cell {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
+
 .issue-qty-cell {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
 }
+
 .issue-qty-unit {
   color: var(--el-text-color-regular);
   white-space: nowrap;

@@ -92,7 +92,7 @@
         <div class="query-panel">
           <el-form :model="fixedTransferForm" ref="fixedTransferFormRef" label-width="auto" :inline="true">
             <el-row :gutter="20">
-<!--              <el-col :sm="24" :md="8" :lg="8">
+              <!--              <el-col :sm="24" :md="8" :lg="8">
                 <el-form-item label="交货单">
                   <HistoryInput v-model="fixedTransferForm.lfsnr" :config="lfsnrConfig" placeholder="请输入交货单" />
                 </el-form-item>
@@ -195,15 +195,7 @@
       </div>
     </el-card>
 
-    <InventorySelectionDialog
-      v-model="inventoryDialog.visible"
-      :material-code="inventoryDialog.row?.materialCode || inventoryDialog.row?.itemCode || ''"
-      :material-desc="inventoryDialog.row?.materialName || inventoryDialog.row?.itemName || ''"
-      :issue-qty="inventoryDialog.issueQty"
-      :unit="inventoryDialog.row?.unit || inventoryDialog.row?.inventoryUnit || ''"
-      :general-only="false"
-      @confirm="applyInventorySelection"
-    />
+    <InventorySelectionDialog v-model="inventoryDialog.visible" :material-code="inventoryDialog.row?.materialCode || inventoryDialog.row?.itemCode || ''" :material-desc="inventoryDialog.row?.materialName || inventoryDialog.row?.itemName || ''" :issue-qty="inventoryDialog.issueQty" :unit="inventoryDialog.row?.unit || inventoryDialog.row?.inventoryUnit || ''" :general-only="false" :special-inventory-flag="inventoryDialog.row?.specialInventoryFlag || 'N'" :business-code="resolveInventoryBusinessCode(inventoryDialog.row)" @confirm="applyInventorySelection" />
     <WorkOrderSelectionDialog v-model="workOrderDialog.visible" :selected-orders="[]" :show-bom-action="false" :single-select="true" @confirm="handleWorkOrderSelection" />
     <ItemDialog ref="itemDialogRef" @item-select-call-back="itemSelectCallBack" />
     <el-dialog v-model="bomDialogVisible" :title="`选择BOM物料 - ${materialEditRow?.workOrderNo || materialEditRow?.sourceDocCode || ''}`" width="860px" destroy-on-close append-to-body>
@@ -355,6 +347,19 @@ const inventoryDialog = reactive<{
   row: null,
   issueQty: 0
 });
+
+const resolveInventoryBusinessCode = (row: any) => {
+  const specialInventoryFlag = String(row?.specialInventoryFlag || 'N')
+    .trim()
+    .toUpperCase();
+  if (specialInventoryFlag === 'N') {
+    return '';
+  }
+  if (specialInventoryFlag === 'W') {
+    return row?.businessCode || row?.customerCode || '';
+  }
+  return row?.businessCode || row?.supplierCode || '';
+};
 
 const workOrderDialog = reactive<{
   visible: boolean;
@@ -778,12 +783,7 @@ const openBomMaterialDialog = async (row: any) => {
   materialEditRow.value = row;
   bomKeyword.value = '';
   await loadBomList(workOrderNo);
-  const selectedBom = bomList.value.find(
-    (bom) =>
-      bom.componentMaterial === (row.itemCode || row.materialCode) &&
-      (!row.reserveNo || bom.reserveNo === row.reserveNo) &&
-      (!row.reserveItemNo || bom.reserveItemNo === row.reserveItemNo)
-  );
+  const selectedBom = bomList.value.find((bom) => bom.componentMaterial === (row.itemCode || row.materialCode) && (!row.reserveNo || bom.reserveNo === row.reserveNo) && (!row.reserveItemNo || bom.reserveItemNo === row.reserveItemNo));
   bomDialogSelectedId.value = selectedBom?.id;
   bomDialogVisible.value = true;
 };
@@ -917,8 +917,7 @@ const toNumber = (value: unknown, fallback = 0) => {
 
 const roundQty = (value: number) => Number(value.toFixed(3));
 
-const resolveDemandKey = (row: any) =>
-  String(row.originId || row.id || `${row.workOrderNo || row.sourceDocCode || ''}_${row.itemCode || row.materialCode || ''}`);
+const resolveDemandKey = (row: any) => String(row.originId || row.id || `${row.workOrderNo || row.sourceDocCode || ''}_${row.itemCode || row.materialCode || ''}`);
 
 const resolveAllocatedReturnQuantity = (row: any, excludeIndex?: number) => {
   const key = resolveDemandKey(row);
@@ -976,9 +975,7 @@ const applyInventorySelection = (payload: { locations: any[] }) => {
   const unlimitedDemand = isUnlimitedReturnDemand(source);
   const originId = source.originId || source.id;
   const originQuantity = toNumber(source.originQuantity ?? source.quantity);
-  let remainDemand = unlimitedDemand
-    ? Number.POSITIVE_INFINITY
-    : resolveRemainingReturnQuantity(source, index) || toNumber(source.returnQuantity || source.quantity);
+  let remainDemand = unlimitedDemand ? Number.POSITIVE_INFINITY : resolveRemainingReturnQuantity(source, index) || toNumber(source.returnQuantity || source.quantity);
 
   const splitRows = locations
     .map((location, locationIndex) => {

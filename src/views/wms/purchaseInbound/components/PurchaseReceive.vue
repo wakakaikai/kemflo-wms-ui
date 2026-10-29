@@ -272,7 +272,7 @@ import { HttpStatus } from '@/enums/RespEnum';
 import { listStorageLocation } from '@/api/wms/storageLocation';
 import { HistoryConfig } from '@/types/history';
 import { formatQty, parseTime } from '@/utils/ruoyi';
-import { buildPurchaseInboundStagingKey, listPurchaseInboundStagings, loadPurchaseInboundStaging, normalizeStagingPostingDate, PurchaseInboundStagingSummary, removePurchaseInboundStaging, resolveInboundStagingSupplier, savePurchaseInboundStaging } from '@/views/wms/purchaseInbound/utils/purchaseInboundStaging';
+import { buildPurchaseInboundStagingKey, listPurchaseInboundStagings, loadPurchaseInboundStaging, normalizeStagingPostingDate, PurchaseInboundStagingPayload, PurchaseInboundStagingSummary, removePurchaseInboundStaging, resolveInboundStagingSupplier, savePurchaseInboundStaging } from '@/views/wms/purchaseInbound/utils/purchaseInboundStaging';
 import { formatApiErrorMessage } from '@/utils/formatApiErrorMessage';
 import PurchaseOrderDetailTreeTable from '@/views/wms/purchaseOrderDetail/components/PurchaseOrderDetailTreeTable.vue';
 import { cloneInboundListForPersist, findOperationParentRow, inheritPoItemNumberOnBom, isOutsourcingCategory, isPoDetailParentRow, normalizeInboundListAfterLoad, PoDetailTreeRow } from '@/views/wms/purchaseOrderDetail/utils/purchaseOrderDetailTree';
@@ -288,7 +288,6 @@ const loading = ref(false);
 const showSearch = ref(true);
 const historyExpanded = ref(true);
 const transferExpanded = ref(true);
-const postingDateVisible = ref(false);
 const ids = ref<Array<string | number>>([]);
 const single = ref(true);
 const multiple = ref(true);
@@ -307,7 +306,7 @@ const selectedSearchItems = ref<PurchaseOrderDetailVO[]>([]);
 const inboundList = ref<any[]>([]);
 let inboundRowKeySeq = 0;
 const inboundMode = ref<'fixed' | 'multiple'>('fixed');
-const fixedInboundForm = ref({
+const fixedInboundForm = ref<PurchaseInboundStagingPayload['fixedInboundForm']>({
   locationCode: '',
   lfsnr: '',
   bktxt: '',
@@ -350,7 +349,6 @@ const initFormData: PurchaseOrderDetailForm = {
   itemDeleteFlag: undefined,
   completedFlag: undefined,
   enableSapSync: true,
-  showOpenQuantityZero: false,
   receiveType: '1',
   remark: undefined
 };
@@ -638,9 +636,9 @@ const openBomInventoryDialog = (parentRow: any, bomRow: PurchaseOrderBomVO) => {
   bomInventoryDialog.materialDesc = bomRow.componentDesc || '';
   bomInventoryDialog.unit = bomRow.inventoryUnit || '';
   bomInventoryDialog.supplierCode = parentRow.supplierCode || '';
-  const demand = roundQty(toNumber(bomRow.inventoryQuantity));
-  bomInventoryDialog.issueQty = demand > 0 ? demand : roundQty(toNumber(bomRow.openQuantity));
   const picks = collectSubcontractDialogPicks(inboundList.value, bomRow);
+  const demand = roundQty(toNumber(picks.demandQty));
+  bomInventoryDialog.issueQty = demand > 0 ? demand : roundQty(toNumber(bomRow.openQuantity));
   bomInventoryDialog.initialPicks = picks.initialPicks;
   bomInventoryDialog.reservedPicks = picks.reservedPicks;
   bomInventoryDialog.visible = true;
@@ -655,8 +653,18 @@ const applyBomInventorySelection = ({ locations }: { locations: any[] }) => {
     return;
   }
 
+  const bomRows = parent.purchaseOrderBomScheduleVoList as PurchaseOrderBomVO[];
+  const sourceOriginBomKey = String(source.originBomKey || '').trim();
+  const isSourceGroupRow = (bom: PurchaseOrderBomVO, index: number) => bom === source || index === bomIndex || (!!sourceOriginBomKey && String(bom.originBomKey || '').trim() === sourceOriginBomKey);
+  const sourceGroupIndexes = bomRows.reduce<number[]>((indexes, bom, index) => {
+    if (isSourceGroupRow(bom, index)) {
+      indexes.push(index);
+    }
+    return indexes;
+  }, []);
+  const replaceIndex = sourceGroupIndexes.length ? Math.min(...sourceGroupIndexes) : bomIndex;
   const ratio = getBomConversionRatio(source);
-  let remainDemandInv = roundQty(toNumber(source.inventoryQuantity));
+  let remainDemandInv = roundQty(toNumber(bomInventoryDialog.issueQty));
   if (remainDemandInv <= 0) {
     remainDemandInv = roundQty(toNumber(source.openQuantity));
   }
@@ -696,7 +704,10 @@ const applyBomInventorySelection = ({ locations }: { locations: any[] }) => {
     return;
   }
 
-  parent.purchaseOrderBomScheduleVoList.splice(bomIndex, 1, ...splitRows);
+  // 重新选择批次时替换整个原始 BOM 拆分组，旧的多个 FIFO 推荐批次必须一次性全部移除。
+  const retainedRows = bomRows.filter((bom, index) => !isSourceGroupRow(bom, index));
+  retainedRows.splice(replaceIndex, 0, ...splitRows);
+  parent.purchaseOrderBomScheduleVoList.splice(0, bomRows.length, ...retainedRows);
   bomInventoryDialog.visible = false;
   bomInventoryDialog.inboundIndex = -1;
   bomInventoryDialog.bomIndex = -1;
@@ -863,12 +874,6 @@ const storageLocationSelectCallBack = (record: any) => {
   }
 };
 
-const showUserCollectionsDialog = (index: number) => {
-  userCollectionsDialogRef.value?.openDialog();
-  userCollectionsDialogRef.value?.handleQuery();
-  currenIndex.value = index;
-};
-
 const userCollectionsSelectCallBack = (record: any) => {
   if (inboundMode.value === 'fixed') {
     fixedInboundForm.value.lfsnr = record.nickName;
@@ -906,7 +911,7 @@ const openStagingDialog = async () => {
   stagingDialogVisible.value = true;
 };
 
-const applyStagingPayload = (payload: ReturnType<typeof loadPurchaseInboundStaging>) => {
+const applyStagingPayload = (payload: PurchaseInboundStagingPayload | null) => {
   if (!payload) {
     return false;
   }

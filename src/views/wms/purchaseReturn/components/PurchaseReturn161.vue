@@ -196,7 +196,7 @@
     </el-col>
   </el-row>
 
-  <InventorySelectionDialog v-model="inventoryDialog.visible" :material-code="inventoryDialog.row?.materialCode || ''" :material-desc="inventoryDialog.row?.materialDesc || ''" :issue-qty="Number(inventoryDialog.row?.returnQuantity || inventoryDialog.row?.openQuantity || 0)" :unit="inventoryDialog.row?.orderUnit || inventoryDialog.row?.inventoryUnit || ''" :general-only="false" @confirm="applyInventorySelection" />
+  <InventorySelectionDialog v-model="inventoryDialog.visible" :material-code="inventoryDialog.row?.materialCode || ''" :material-desc="inventoryDialog.row?.materialDesc || ''" :issue-qty="Number(inventoryDialog.row?.returnQuantity || inventoryDialog.row?.openQuantity || 0)" :unit="inventoryDialog.row?.orderUnit || inventoryDialog.row?.inventoryUnit || ''" :general-only="false" :special-inventory-flag="inventoryDialog.row?.specialInventoryFlag || 'N'" :business-code="resolveInventoryBusinessCode(inventoryDialog.row)" @confirm="applyInventorySelection" />
 </template>
 
 <script setup name="PurchaseReturn161" lang="ts">
@@ -206,13 +206,7 @@ import { returnPurchaseInventory } from '@/api/wms/inventoryDetail';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import InventorySelectionDialog from '@/views/wms/inventoryDetail/components/InventorySelectionDialog.vue';
 import PurchaseOrderDetailTreeTable from '@/views/wms/purchaseOrderDetail/components/PurchaseOrderDetailTreeTable.vue';
-import {
-  formatBomOpenOrderQuantity,
-  inheritPoItemNumberOnBom,
-  isOutsourcingCategory,
-  isPoDetailParentRow,
-  PoDetailTreeRow
-} from '@/views/wms/purchaseOrderDetail/utils/purchaseOrderDetailTree';
+import { formatBomOpenOrderQuantity, inheritPoItemNumberOnBom, isOutsourcingCategory, isPoDetailParentRow, PoDetailTreeRow } from '@/views/wms/purchaseOrderDetail/utils/purchaseOrderDetailTree';
 import { formatQtyWithUnit } from '@/utils/ruoyi';
 import { ArrowRight, Bell, QuestionFilled, Switch } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
@@ -247,6 +241,19 @@ const inventoryDialog = reactive<{ visible: boolean; row: any | null }>({
   visible: false,
   row: null
 });
+
+const resolveInventoryBusinessCode = (row: any) => {
+  const specialInventoryFlag = String(row?.specialInventoryFlag || 'N')
+    .trim()
+    .toUpperCase();
+  if (specialInventoryFlag === 'N') {
+    return '';
+  }
+  if (specialInventoryFlag === 'W') {
+    return row?.businessCode || row?.customerCode || '';
+  }
+  return row?.businessCode || row?.supplierCode || '';
+};
 
 const initFormData: PurchaseOrderDetailForm = {
   id: undefined,
