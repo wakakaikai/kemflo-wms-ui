@@ -26,6 +26,9 @@
               <el-form-item label="栈板检查" prop="palletCheckFlag">
                 <DictRadio v-model="queryParams.palletCheckFlag" :radio-data="wms_boolean_type" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
               </el-form-item>
+              <el-form-item label="栈板SN检查" prop="palletSnCheck">
+                <DictRadio v-model="queryParams.palletSnCheck" :radio-data="wms_boolean_type" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
+              </el-form-item>
               <el-form-item label="尺寸分类" prop="sizeCategory">
                 <DictRadio v-model="queryParams.sizeCategory" :radio-data="wms_item_size_category" :show-all="'all'" size="small" @change="handleQuery"></DictRadio>
               </el-form-item>
@@ -110,7 +113,7 @@
             <dict-tag :options="wms_boolean_type" :value="scope.row.receiptInspectionFlag" />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[11].visible" label="出货质检结果检查" align="center" prop="outboundInspectionCheck">
+        <el-table-column v-if="columns[11].visible" label="出货质检检查" align="center" prop="outboundInspectionCheck">
           <template #default="scope">
             <dict-tag :options="wms_boolean_type" :value="scope.row.outboundInspectionCheck" />
           </template>
@@ -120,18 +123,23 @@
             <dict-tag :options="wms_boolean_type" :value="scope.row.palletCheckFlag" />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[13].visible" label="出货数量校验" align="center" prop="outboundQuantityCheck">
+        <el-table-column v-if="columns[13].visible" label="栈板SN检查" align="center" prop="palletSnCheck">
+          <template #default="scope">
+            <dict-tag :options="wms_boolean_type" :value="scope.row.palletSnCheck" />
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columns[14].visible" label="出货数量校验" align="center" prop="outboundQuantityCheck">
           <template #default="scope">
             <dict-tag :options="wms_boolean_type" :value="scope.row.outboundQuantityCheck" />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[14].visible" label="客户参考检查" align="center" prop="customerRefCheck">
+        <el-table-column v-if="columns[15].visible" label="客户参考检查" align="center" prop="customerRefCheck">
           <template #default="scope">
             <dict-tag :options="wms_boolean_type" :value="scope.row.customerRefCheck" />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[15].visible" label="反冲标识" align="center" prop="backFlush" />
-        <el-table-column v-if="columns[16].visible" label="备注" align="center" prop="remark" />
+        <el-table-column v-if="columns[16].visible" label="反冲标识" align="center" prop="backFlush" />
+        <el-table-column v-if="columns[17].visible" label="备注" align="center" prop="remark" />
         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="修改" placement="top">
@@ -182,6 +190,11 @@
             <el-radio v-for="dict in wms_boolean_type" :key="dict.value" :value="dict.value == 'true'">{{ dict.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="栈板SN检查" prop="palletSnCheck">
+          <el-radio-group v-model="form.palletSnCheck">
+            <el-radio v-for="dict in wms_boolean_type" :key="dict.value" :value="dict.value == 'true'">{{ dict.label }}</el-radio>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item label="出货数量校验" prop="outboundQuantityCheck">
           <el-radio-group v-model="form.outboundQuantityCheck">
             <el-radio v-for="dict in wms_boolean_type" :key="dict.value" :value="dict.value == 'true'">{{ dict.label }}</el-radio>
@@ -207,8 +220,8 @@
 </template>
 
 <script setup name="Item" lang="ts">
-import { listItem, getItem, delItem, addItem, updateItem } from '@/api/wms/item';
-import { ItemVO, ItemQuery, ItemForm } from '@/api/wms/item/types';
+import { addItem, delItem, getItem, listItem, updateItem } from '@/api/wms/item';
+import { ItemForm, ItemQuery, ItemVO } from '@/api/wms/item/types';
 import { ArrowDown, ArrowUp } from '@element-plus/icons-vue';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -248,10 +261,11 @@ const columns = ref<FieldOption[]>([
   { key: 11, label: '质检标识', visible: true },
   { key: 12, label: '质检检查', visible: true },
   { key: 13, label: '栈板检查', visible: true },
-  { key: 14, label: '出货数量校验', visible: true },
-  { key: 15, label: '客户参考检查', visible: true },
-  { key: 16, label: '反冲标识', visible: true },
-  { key: 17, label: '备注', visible: true }
+  { key: 14, label: '栈板SN检查', visible: true },
+  { key: 15, label: '出货数量校验', visible: true },
+  { key: 16, label: '客户参考检查', visible: true },
+  { key: 17, label: '反冲标识', visible: true },
+  { key: 18, label: '备注', visible: true }
 ]);
 
 watch(
@@ -274,6 +288,7 @@ const initFormData: ItemForm = {
   receiptInspectionFlag: undefined,
   outboundInspectionCheck: undefined,
   palletCheckFlag: undefined,
+  palletSnCheck: undefined,
   outboundQuantityCheck: undefined,
   customerRefCheck: undefined,
   remark: undefined
@@ -292,6 +307,7 @@ const data = reactive<PageData<ItemForm, ItemQuery>>({
     receiptInspectionFlag: null,
     outboundInspectionCheck: null,
     palletCheckFlag: null,
+    palletSnCheck: null,
     outboundQuantityCheck: null,
     customerRefCheck: null,
     params: {}

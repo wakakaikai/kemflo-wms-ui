@@ -15,17 +15,17 @@
           <el-badge v-if="employeeList.length" :value="employeeList.length" :max="999" class="tab-badge" />
         </template>
         <el-table v-loading="loading" :data="employeeList" border fit height="calc(100vh - 280px)" empty-text="暂无数据">
-          <el-table-column label="员工工号" align="center" prop="employeeId" width="110" />
-          <el-table-column label="员工姓名" align="center" prop="employeeName" width="100" />
-          <el-table-column label="上线时间" align="center" prop="onLineTime" width="170">
+          <el-table-column label="员工工号" align="center" prop="employeeId" min-width="120" />
+          <el-table-column label="员工姓名" align="center" prop="employeeName" min-width="120" />
+          <el-table-column label="上线时间" align="center" prop="onLineTime" min-width="170">
             <template #default="scope">{{ parseTime(scope.row.onLineTime) }}</template>
           </el-table-column>
-          <el-table-column label="下线时间" align="center" prop="offLineTime" width="170">
+          <el-table-column label="下线时间" align="center" prop="offLineTime" min-width="170">
             <template #default="scope">{{ parseTime(scope.row.offLineTime) }}</template>
           </el-table-column>
-          <el-table-column label="出勤时长" align="right" prop="duration" width="100" />
-          <el-table-column label="有效时长" align="right" prop="effectiveDuration" width="100" />
-          <el-table-column label="操作时长" align="right" prop="operationDuration" width="100" />
+          <el-table-column label="出勤时长" align="right" prop="duration" min-width="120" />
+          <el-table-column label="有效时长" align="right" prop="effectiveDuration" min-width="120" />
+          <el-table-column label="操作时长" align="right" prop="operationDuration" min-width="120" />
         </el-table>
       </el-tab-pane>
 
@@ -35,21 +35,19 @@
           <el-badge v-if="abnormalList.length" :value="abnormalList.length" :max="999" class="tab-badge" />
         </template>
         <el-table v-loading="loading" :data="abnormalList" border fit height="calc(100vh - 280px)" empty-text="暂无数据">
-          <el-table-column label="停机开始" align="center" prop="shutdownStartTime" width="170">
+          <el-table-column label="停机开始" align="center" prop="shutdownStartTime" min-width="170">
             <template #default="scope">{{ parseTime(scope.row.shutdownStartTime) }}</template>
           </el-table-column>
-          <el-table-column label="停机结束" align="center" prop="shutdownEndTime" width="170">
+          <el-table-column label="停机结束" align="center" prop="shutdownEndTime" min-width="170">
             <template #default="scope">{{ parseTime(scope.row.shutdownEndTime) }}</template>
           </el-table-column>
-          <el-table-column label="停机大类" align="center" prop="abnormalClass" width="100" />
-          <el-table-column label="停机类型" align="center" prop="abnormalType" width="100" />
           <el-table-column label="停机原因" align="center" prop="shutdownReason" min-width="120">
             <template #default="scope">
               <dict-tag :options="mes_shutdown_reason" :value="scope.row.shutdownReason" />
             </template>
           </el-table-column>
-          <el-table-column label="停机时长" align="right" prop="shutdownDuration" width="100" />
-          <el-table-column label="有效停机时长" align="right" prop="effectiveShutdownDuration" width="120" />
+          <el-table-column label="停机时长" align="right" prop="shutdownDuration" min-width="120" />
+          <el-table-column label="有效停机时长" align="right" prop="effectiveShutdownDuration" min-width="120" />
         </el-table>
       </el-tab-pane>
     </el-tabs>
@@ -57,11 +55,8 @@
 </template>
 
 <script setup lang="ts">
-import {
-  listMesShopOrderReportDataAbnormalTime,
-  listMesShopOrderReportDataEmployee
-} from '@/api/report/mesShopOrderReportData';
 import type { ShopOrderReportAbnormalTimeVO, ShopOrderReportEmployeeVO } from '@/api/report/mesShopOrderReportData';
+import { listMesShopOrderReportDataAbnormalTime, listMesShopOrderReportDataEmployee } from '@/api/report/mesShopOrderReportData';
 
 const props = defineProps<{
   reportId: string | number;
@@ -85,10 +80,7 @@ const loadDetail = async () => {
   }
   loading.value = true;
   try {
-    const [employeeRes, abnormalRes] = await Promise.all([
-      listMesShopOrderReportDataEmployee({ reportId: props.reportId }),
-      listMesShopOrderReportDataAbnormalTime({ reportId: props.reportId })
-    ]);
+    const [employeeRes, abnormalRes] = await Promise.all([listMesShopOrderReportDataEmployee({ reportId: props.reportId }), listMesShopOrderReportDataAbnormalTime({ reportId: props.reportId })]);
     employeeList.value = employeeRes.data || [];
     abnormalList.value = abnormalRes.data || [];
   } finally {
