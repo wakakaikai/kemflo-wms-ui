@@ -192,6 +192,11 @@ export interface DeliveryOrderDetailQuery extends PageQuery {
   deliveryItemNo?: string;
 
   /**
+   * 供应商代码
+   */
+  supplierCode?: string;
+
+  /**
    * 交货项目类别
    */
   itemCategory?: string;

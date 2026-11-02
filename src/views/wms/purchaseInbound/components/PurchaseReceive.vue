@@ -27,6 +27,15 @@
                   <HistoryInput v-model="queryParams.itemNumber" :config="itemNoConfig" placeholder="请输入项次" @keyup.enter="handleQuery" />
                 </el-form-item>
               </el-col>
+              <el-col :xs="24" :sm="6" :md="6" :lg="6" :xl="4">
+                <el-form-item label="供应商代码" prop="supplierCode">
+                  <el-input :model-value="supplierQueryLabel" placeholder="请选择供应商" readonly clearable @clear="clearSupplierQuery">
+                    <template #append>
+                      <el-button icon="Search" @click="openSupplierDialog" />
+                    </template>
+                  </el-input>
+                </el-form-item>
+              </el-col>
               <el-col :xs="24" :sm="4" :md="4" :lg="4" :xl="4">
                 <el-form-item label="采购类别" prop="poCategory">
                   <el-select v-model="queryParams.poCategory" placeholder="请选择采购类别" clearable>
@@ -237,6 +246,7 @@
   </el-row>
 
   <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
+  <SupplierDialog ref="supplierDialogRef" @supplier-select-call-back="supplierSelectCallBack" />
   <UserCollectionsDialog ref="userCollectionsDialogRef" @user-collections-call-back="userCollectionsSelectCallBack" />
   <InventorySelectionDialog v-model="bomInventoryDialog.visible" :material-code="bomInventoryDialog.materialCode" :material-desc="bomInventoryDialog.materialDesc" :issue-qty="bomInventoryDialog.issueQty" :unit="bomInventoryDialog.unit" :general-only="false" special-inventory-flag="O" :business-code="bomInventoryDialog.supplierCode" :initial-picks="bomInventoryDialog.initialPicks" :reserved-picks="bomInventoryDialog.reservedPicks" :show-warehouse-location="false" auto-recommend-fifo @confirm="applyBomInventorySelection" />
 
@@ -265,6 +275,7 @@ import { PurchaseOrderBomVO, PurchaseOrderDetailForm, PurchaseOrderDetailQuery, 
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
+import SupplierDialog from '@/views/wms/supplier/components/SupplierDialog.vue';
 import UserCollectionsDialog from '@/views/wms/userCollections/components/userCollectionsDialog.vue';
 import InventorySelectionDialog from '@/views/wms/inventoryDetail/components/InventorySelectionDialog.vue';
 import { ArrowRight, Bell, Switch } from '@element-plus/icons-vue';
@@ -282,6 +293,8 @@ const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_purchase_category } = toRefs<any>(proxy?.useDict('wms_purchase_category'));
 
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
+const supplierDialogRef = ref<InstanceType<typeof SupplierDialog>>();
+const supplierQueryName = ref('');
 const userCollectionsDialogRef = ref<InstanceType<typeof UserCollectionsDialog>>();
 const purchaseOrderDetailList = ref<PurchaseOrderDetailVO[]>([]);
 const loading = ref(false);
@@ -360,6 +373,8 @@ const data = reactive<PageData<PurchaseOrderDetailForm, PurchaseOrderDetailQuery
     pageSize: 10,
     poNumber: undefined,
     itemNumber: undefined,
+    supplierCode: undefined,
+    supplierName: undefined,
     poCategory: undefined,
     materialCode: undefined,
     materialDesc: undefined,
@@ -380,8 +395,37 @@ const data = reactive<PageData<PurchaseOrderDetailForm, PurchaseOrderDetailQuery
 
 const { queryParams } = toRefs(data);
 
-const queryRules = {
-  poNumber: [{ required: true, message: '采购单不能为空', trigger: [] }]
+const queryRules = {};
+
+const supplierQueryLabel = computed(() => {
+  const code = String(queryParams.value.supplierCode || '').trim();
+  const name = supplierQueryName.value.trim();
+  if (code && name) {
+    return `${code} ${name}`;
+  }
+  return code;
+});
+
+const openSupplierDialog = () => {
+  supplierDialogRef.value?.openDialog();
+  supplierDialogRef.value?.handleQuery();
+};
+
+const clearSupplierQuery = () => {
+  queryParams.value.supplierCode = undefined;
+  queryParams.value.supplierName = undefined;
+  supplierQueryName.value = '';
+};
+
+const supplierSelectCallBack = (record: { supplierCode?: string; supplierName?: string }) => {
+  const supplierCode = String(record?.supplierCode || '').trim();
+  if (!supplierCode) {
+    proxy?.$modal.msgWarning('供应商代码不能为空');
+    return;
+  }
+  queryParams.value.supplierCode = supplierCode;
+  queryParams.value.supplierName = undefined;
+  supplierQueryName.value = String(record?.supplierName || '').trim();
 };
 
 const poNumberConfig: HistoryConfig = {
@@ -493,13 +537,6 @@ const isEarlyDeliveryForbidden = (row) => {
 };
 
 const getList = async (needValidate = false) => {
-  const poNumber = String(queryParams.value.poNumber ?? '').trim();
-  if (!poNumber) {
-    if (needValidate) {
-      await queryFormRef.value?.validate().catch(() => false);
-    }
-    return;
-  }
   if (needValidate) {
     const valid = await queryFormRef.value?.validate().catch(() => false);
     if (!valid) {
@@ -741,15 +778,13 @@ const handleQuery = () => {
 };
 
 const handleShowReceivedChange = () => {
-  if (!queryParams.value.poNumber) {
-    return;
-  }
   handleQuery();
 };
 
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
   queryFormRef.value?.clearValidate();
+  supplierQueryName.value = '';
   purchaseTableRef.value?.clearSelection();
   purchaseOrderDetailList.value = [];
   total.value = 0;
@@ -1093,9 +1128,7 @@ const submitForm = async () => {
     fixedInboundForm.value.lfsnr = '';
     fixedInboundForm.value.bktxt = '';
     fixedInboundForm.value.postingDate = null;
-    if (queryParams.value.poNumber) {
-      getList(false);
-    }
+    getList(false);
   } catch (error: any) {
     const raw = typeof error === 'string' ? error : error?.message;
     resultMessage.value = formatApiErrorMessage(raw) || '入库失败';

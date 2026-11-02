@@ -285,6 +285,16 @@ export interface PurchaseOrderDetailQuery extends PageQuery {
   poNumber?: string;
 
   /**
+   * 供应商代码，对应采购订单主表
+   */
+  supplierCode?: string;
+
+  /**
+   * 供应商名称，对应采购订单主表
+   */
+  supplierName?: string;
+
+  /**
    * 行项目号
    */
   itemNumber?: string;

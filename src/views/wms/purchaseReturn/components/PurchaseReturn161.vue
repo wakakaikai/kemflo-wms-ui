@@ -22,6 +22,12 @@
             <el-form-item label="项次" prop="itemNumber">
               <HistoryInput v-model="queryParams.itemNumber" :config="itemNoConfig" placeholder="请输入项次" @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="供应商代码" prop="supplierCode">
+              <el-input v-model="queryParams.supplierCode" placeholder="请输入供应商代码" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="供应商名称" prop="supplierName">
+              <el-input v-model="queryParams.supplierName" placeholder="请输入供应商名称" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="采购类别" prop="poCategory">
               <el-select v-model="queryParams.poCategory" placeholder="请选择采购类别" clearable>
                 <el-option v-for="dict in wms_purchase_category" :key="dict.value" :label="dict.value + ' - ' + dict.label" :value="dict.value" />
@@ -280,6 +286,8 @@ const data = reactive<PageData<PurchaseOrderDetailForm, PurchaseOrderDetailQuery
     pageSize: 10,
     poNumber: undefined,
     itemNumber: undefined,
+    supplierCode: undefined,
+    supplierName: undefined,
     poCategory: undefined,
     materialCode: undefined,
     materialDesc: undefined,

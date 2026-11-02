@@ -22,6 +22,13 @@
             <el-form-item label="交货单项次" prop="deliveryItemNo">
               <HistoryInput v-model="stoQueryParams.deliveryItemNo" :config="deliveryItemNoConfig" placeholder="请输入交货单项次" @keydown.tab.prevent="handleStoQuery" @keydown.enter.prevent="handleStoQuery" />
             </el-form-item>
+            <el-form-item label="供应商代码" prop="supplierCode">
+              <el-input :model-value="supplierQueryLabel" placeholder="请选择供应商" readonly clearable @clear="clearSupplierQuery">
+                <template #append>
+                  <el-button icon="Search" @click="openSupplierDialog" />
+                </template>
+              </el-input>
+            </el-form-item>
             <el-form-item label="显示已收货" prop="showOpenQuantityZero">
               <el-checkbox v-model="stoQueryParams.showOpenQuantityZero" @change="handleShowReceivedChange" />
             </el-form-item>
@@ -224,6 +231,7 @@
   </el-row>
 
   <StorageLocationDialog ref="storageLocationDialogRef" @storage-location-select-call-back="storageLocationSelectCallBack" />
+  <SupplierDialog ref="supplierDialogRef" @supplier-select-call-back="supplierSelectCallBack" />
   <InventorySelectionDialog v-model="bomInventoryDialog.visible" :material-code="bomInventoryDialog.materialCode" :material-desc="bomInventoryDialog.materialDesc" :issue-qty="bomInventoryDialog.issueQty" :unit="bomInventoryDialog.unit" :general-only="false" special-inventory-flag="O" :business-code="bomInventoryDialog.supplierCode" :initial-picks="bomInventoryDialog.initialPicks" :reserved-picks="bomInventoryDialog.reservedPicks" :show-warehouse-location="false" auto-recommend-fifo @confirm="applyBomInventorySelection" />
 
   <el-dialog v-model="stoStagingDialogVisible" title="持有数据（交货单号 + 过账日期）" width="80%" append-to-body destroy-on-close>
@@ -252,6 +260,7 @@ import type { PurchaseOrderBomVO } from '@/api/wms/purchaseOrderDetail/types';
 import HistoryInput from '@/components/HistoryInput/index.vue';
 import TableHistoryInput from '@/components/TableHistoryInput/index.vue';
 import StorageLocationDialog from '@/views/wms/packing/components/storageLocationDialog.vue';
+import SupplierDialog from '@/views/wms/supplier/components/SupplierDialog.vue';
 import InventorySelectionDialog from '@/views/wms/inventoryDetail/components/InventorySelectionDialog.vue';
 import PurchaseOrderDetailTreeTable from '@/views/wms/purchaseOrderDetail/components/PurchaseOrderDetailTreeTable.vue';
 import { cloneInboundListForPersist, findOperationParentRow, inheritPoItemNumberOnBom, isOutsourcingCategory, isPoDetailParentRow, normalizeInboundListAfterLoad } from '@/views/wms/purchaseOrderDetail/utils/purchaseOrderDetailTree';
@@ -268,6 +277,8 @@ const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const { wms_purchase_category, wms_boolean_type } = toRefs<any>(proxy?.useDict('wms_purchase_category', 'wms_boolean_type'));
 
 const storageLocationDialogRef = ref<InstanceType<typeof StorageLocationDialog>>();
+const supplierDialogRef = ref<InstanceType<typeof SupplierDialog>>();
+const supplierQueryName = ref('');
 const stoOrderDetailList = ref<DeliveryOrderDetailVO[]>([]);
 const stoLoading = ref(false);
 const showStoSearch = ref(true);
@@ -313,6 +324,7 @@ const stoQueryParams = ref({
   pageSize: 1000,
   deliveryOrderNo: undefined as string | undefined,
   deliveryItemNo: undefined as string | undefined,
+  supplierCode: undefined as string | undefined,
   poNumber: undefined,
   itemNumber: undefined,
   materialCode: undefined,
@@ -322,6 +334,35 @@ const stoQueryParams = ref({
 });
 const stoRules = {
   deliveryOrderNo: [{ required: true, message: '交货单号不能为空', trigger: [] }]
+};
+
+const supplierQueryLabel = computed(() => {
+  const code = String(stoQueryParams.value.supplierCode || '').trim();
+  const name = supplierQueryName.value.trim();
+  if (code && name) {
+    return `${code} ${name}`;
+  }
+  return code;
+});
+
+const openSupplierDialog = () => {
+  supplierDialogRef.value?.openDialog();
+  supplierDialogRef.value?.handleQuery();
+};
+
+const clearSupplierQuery = () => {
+  stoQueryParams.value.supplierCode = undefined;
+  supplierQueryName.value = '';
+};
+
+const supplierSelectCallBack = (record: { supplierCode?: string; supplierName?: string }) => {
+  const supplierCode = String(record?.supplierCode || '').trim();
+  if (!supplierCode) {
+    proxy?.$modal.msgWarning('供应商代码不能为空');
+    return;
+  }
+  stoQueryParams.value.supplierCode = supplierCode;
+  supplierQueryName.value = String(record?.supplierName || '').trim();
 };
 
 const locationCodeConfig: HistoryConfig = {
@@ -775,6 +816,7 @@ const handleShowReceivedChange = () => {
 const resetStoQuery = () => {
   stoQueryFormRef.value?.resetFields();
   stoQueryFormRef.value?.clearValidate();
+  supplierQueryName.value = '';
   stoTableRef.value?.clearSelection();
   stoOrderDetailList.value = [];
   stoTotal.value = 0;

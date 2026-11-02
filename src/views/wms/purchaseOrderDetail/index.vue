@@ -16,6 +16,12 @@
             <el-form-item label="物料描述" prop="materialDesc">
               <el-input v-model="queryParams.materialDesc" placeholder="请输入物料描述" clearable @keyup.enter="handleQuery" />
             </el-form-item>
+            <el-form-item label="供应商代码" prop="supplierCode">
+              <el-input v-model="queryParams.supplierCode" placeholder="请输入供应商代码" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="供应商名称" prop="supplierName">
+              <el-input v-model="queryParams.supplierName" placeholder="请输入供应商名称" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
             <el-form-item label="交货日期" prop="deliveryDate">
               <el-date-picker
                 v-model="queryParams.dateTimeRange"
@@ -59,6 +65,8 @@
       <el-table v-loading="loading" :data="purchaseOrderDetailList" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="采购单" align="center" prop="poNumber" min-width="120" />
+        <el-table-column label="供应商代码" align="center" prop="supplierCode" min-width="120" />
+        <el-table-column label="供应商名称" align="center" prop="supplierName" min-width="160" show-overflow-tooltip />
         <el-table-column label="交货状态" align="center" width="100">
           <template #default="scope">
             <el-tooltip :content="getEarlyDeliveryTooltip(scope.row)" placement="top">
@@ -215,6 +223,8 @@ const data = reactive<PageData<PurchaseOrderDetailForm, PurchaseOrderDetailQuery
     itemNumber: undefined,
     materialCode: undefined,
     materialDesc: undefined,
+    supplierCode: undefined,
+    supplierName: undefined,
     shortText: undefined,
     deliveryDate: undefined,
     orderQuantity: undefined,
