@@ -10,10 +10,14 @@
                           </el-select>
                         </el-form-item>-->
             <el-form-item label="工单号" prop="shopOrder">
-              <el-input v-model="queryParams.shopOrder" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
+              <el-input v-model="queryParams.shopOrder" placeholder="请输入工单号" clearable @keyup.enter="handleQuery">
+                <template #append>
+                  <el-button icon="Search" @click="openShopOrderDialog" />
+                </template>
+              </el-input>
             </el-form-item>
             <el-form-item label="物料" prop="item">
-              <el-input v-model="queryParams.item" placeholder="请输入物料" clearable @keyup.enter="handleQuery" />
+              <el-input v-model="queryParams.item" placeholder="仅物料查询需配合扫码时间（最多90天）" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="产品条码" prop="sfcStr">
               <el-input v-model="queryParams.sfcStr" placeholder="请输入产品条码" clearable @keyup.enter="handleQuery">
@@ -23,7 +27,7 @@
               </el-input>
             </el-form-item>
             <el-form-item label="扫码时间" prop="dateTimeRange">
-              <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" :shortcuts="shortcuts" value-format="YYYY-MM-DD HH:mm:ss" range-separator="-" start-placeholder="请选择开始日期" end-placeholder="请选择结束日期" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]" />
+              <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" :shortcuts="shortcuts" value-format="YYYY-MM-DD HH:mm:ss" range-separator="-" start-placeholder="开始时间" end-placeholder="结束时间（仅物料查询必选，最多90天）" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]" />
             </el-form-item>
 
             <el-form-item>
@@ -98,6 +102,7 @@
         </el-table-column>
       </el-table>
     </el-dialog>
+    <ShopOrderDialog ref="shopOrderDialogRef" :pod-config="podConfig" @shop-order-call-back="shopOrderCallBack" />
   </div>
 </template>
 
@@ -105,7 +110,11 @@
 import type { TabsPaneContext } from 'element-plus';
 import { listMesProductData } from '@/api/report/mesProductData';
 import { MesProductDataForm, MesProductDataQuery } from '@/api/report/mesProductData/types';
+import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
 import { ref } from 'vue';
+
+const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
+const podConfig = ref<Record<string, unknown>>({});
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 const route = useRoute();
@@ -212,17 +221,56 @@ const shortcuts = [
     }
   },
   {
-    text: '近三月',
+    text: '近90天',
     value: () => {
       const end = new Date();
       const start = new Date();
-      start.setMonth(start.getMonth() - 3);
+      start.setDate(start.getDate() - 89);
       start.setHours(0, 0, 0, 0);
       end.setHours(23, 59, 59, 999);
       return [start, end];
     }
   }
 ];
+
+const ITEM_ONLY_MAX_DAYS = 90;
+
+const isItemOnlyQuery = () => {
+  const q = queryParams.value;
+  const hasItem = !!String(q.item ?? '').trim();
+  const hasShopOrder = !!String(q.shopOrder ?? '').trim();
+  const hasSfc = !!String(q.sfcStr ?? '').trim() || (q.sfcList?.length ?? 0) > 0;
+  const hasShipping = q.shippingCustomerNoticeId != null && q.shippingCustomerNoticeId !== '';
+  return hasItem && !hasShopOrder && !hasSfc && !hasShipping;
+};
+
+const scanTimeRangeDays = (start: string, end: string) => {
+  const s = new Date(start.replace(/-/g, '/'));
+  const e = new Date(end.replace(/-/g, '/'));
+  return Math.floor((e.getTime() - s.getTime()) / 86400000);
+};
+
+/** 仅按物料查询：必须选择扫码时间，且跨度不超过 90 天 */
+const validateItemOnlyScanTimeRange = (): boolean => {
+  if (!isItemOnlyQuery()) {
+    return true;
+  }
+  const range = queryParams.value.dateTimeRange;
+  if (!range || range.length !== 2 || !range[0] || !range[1]) {
+    proxy?.$modal.msgWarning('仅按物料查询时，请选择扫码时间范围（最多90天）');
+    return false;
+  }
+  const days = scanTimeRangeDays(range[0], range[1]);
+  if (days < 0) {
+    proxy?.$modal.msgWarning('扫码时间范围无效');
+    return false;
+  }
+  if (days > ITEM_ONLY_MAX_DAYS) {
+    proxy?.$modal.msgWarning('仅按物料查询时，扫码时间范围不能超过90天');
+    return false;
+  }
+  return true;
+};
 const initFormData: MesProductDataForm = {
   item: undefined,
   sfcStr: undefined,
@@ -233,6 +281,9 @@ const data = reactive<PageData<MesProductDataForm, MesProductDataQuery>>({
   queryParams: {
     pageNum: 1,
     pageSize: 20,
+    shopOrder: undefined,
+    item: undefined,
+    dateTimeRange: undefined,
     shippingCustomerNoticeId: undefined,
     customerCode: undefined,
     sfcStr: undefined,
@@ -240,7 +291,31 @@ const data = reactive<PageData<MesProductDataForm, MesProductDataQuery>>({
     params: {}
   },
   rules: {
-    site: [{ required: true, message: '工厂不能为空', trigger: 'change' }]
+    dateTimeRange: [
+      {
+        validator: (_rule, value, callback) => {
+          if (!isItemOnlyQuery()) {
+            callback();
+            return;
+          }
+          if (!value || value.length !== 2 || !value[0] || !value[1]) {
+            callback(new Error('仅按物料查询时，请选择扫码时间范围（最多90天）'));
+            return;
+          }
+          const days = scanTimeRangeDays(value[0], value[1]);
+          if (days < 0) {
+            callback(new Error('扫码时间范围无效'));
+            return;
+          }
+          if (days > ITEM_ONLY_MAX_DAYS) {
+            callback(new Error('扫码时间范围不能超过90天'));
+            return;
+          }
+          callback();
+        },
+        trigger: 'change'
+      }
+    ]
   }
 });
 
@@ -285,6 +360,20 @@ const handleAddSfc = () => {
 const getSfcList = () => {
   dialog.visible = true;
   dialog.title = 'Excel批量粘贴条码';
+};
+
+const openShopOrderDialog = () => {
+  podConfig.value = {
+    shopOrderTypeList: ['PRODUCTION', 'PRODUCTION-ZZ']
+  };
+  shopOrderDialogRef.value?.openDialog();
+};
+
+const shopOrderCallBack = (data: { shopOrder?: string; plannedItem?: string }) => {
+  queryParams.value.shopOrder = data?.shopOrder || '';
+  if (data?.plannedItem) {
+    queryParams.value.item = data.plannedItem;
+  }
 };
 /** 提交按钮 */
 const submitForm = (ignoreError: number) => {
@@ -347,7 +436,7 @@ const reset = () => {
 /** 搜索按钮操作 */
 const handleQuery = () => {
   queryFormRef.value?.validate(async (valid: boolean) => {
-    if (valid) {
+    if (valid && validateItemOnlyScanTimeRange()) {
       queryParams.value.pageNum = 1;
       if (queryParams.value.sfcStr) {
         if (sfcTableData.value.length > 0) {
@@ -376,6 +465,9 @@ const handleView = (row: OperLogVO) => {
 };
 /** 导出按钮操作 */
 const handleExport = () => {
+  if (!validateItemOnlyScanTimeRange()) {
+    return;
+  }
   if (route.query && (route.query.shippingCustomerNoticeId as string)) {
     queryParams.value.shippingCustomerNoticeId = route.query.shippingCustomerNoticeId;
   }

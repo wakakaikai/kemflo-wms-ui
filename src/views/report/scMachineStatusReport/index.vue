@@ -20,7 +20,7 @@
         </template>
         <el-option v-for="machine in filteredMachineOptions" :key="machine" :label="machine" :value="machine" />
       </el-select>
-      <el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" unlink-panels :clearable="false" start-placeholder="开始日期" end-placeholder="结束日期" class="date-range-picker" @change="handleDateRangeChange" />
+      <el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" unlink-panels :clearable="false" :disabled-date="disableDateRangeDate" start-placeholder="开始日期" end-placeholder="结束日期" class="date-range-picker" @calendar-change="handleDateCalendarChange" @visible-change="handleDatePickerVisibleChange" @change="handleDateRangeChange" />
       <div class="filter-spacer"></div>
       <el-button type="success" icon="Download" @click="handleDownload">导出</el-button>
       <el-button type="primary" icon="Camera" @click="handlePrint">截图</el-button>
@@ -32,15 +32,7 @@
         <div class="chart-body">
           <div ref="reasonChartRef" class="chart-canvas"></div>
           <ul class="chart-legend">
-            <li
-              v-for="item in reasonChartItems"
-              :key="item.name"
-              :class="{ 'is-disabled': reasonLegendSelected[item.name] === false }"
-              :title="`${item.name} ${Number(item.minutes).toFixed(2)} 分钟`"
-              @click="toggleChartLegend('reason', item.name)"
-              @mouseenter="highlightChartItem('reason', item.name)"
-              @mouseleave="downplayChartItem('reason', item.name)"
-            >
+            <li v-for="item in reasonChartItems" :key="item.name" :class="{ 'is-disabled': reasonLegendSelected[item.name] === false }" :title="`${item.name} ${Number(item.minutes).toFixed(2)} 分钟`" @click="toggleChartLegend('reason', item.name)" @mouseenter="highlightChartItem('reason', item.name)" @mouseleave="downplayChartItem('reason', item.name)">
               <i :style="{ backgroundColor: item.color }"></i>
               <span>{{ item.name }}</span>
             </li>
@@ -54,15 +46,7 @@
         <div class="chart-body">
           <div ref="statusChartRef" class="chart-canvas"></div>
           <ul class="chart-legend">
-            <li
-              v-for="item in dashboard.statusDistribution"
-              :key="item.name"
-              :class="{ 'is-disabled': statusLegendSelected[item.name] === false }"
-              :title="`${item.name} ${Number(item.minutes).toFixed(2)} 分钟`"
-              @click="toggleChartLegend('status', item.name)"
-              @mouseenter="highlightChartItem('status', item.name)"
-              @mouseleave="downplayChartItem('status', item.name)"
-            >
+            <li v-for="item in dashboard.statusDistribution" :key="item.name" :class="{ 'is-disabled': statusLegendSelected[item.name] === false }" :title="`${item.name} ${Number(item.minutes).toFixed(2)} 分钟`" @click="toggleChartLegend('status', item.name)" @mouseenter="highlightChartItem('status', item.name)" @mouseleave="downplayChartItem('status', item.name)">
               <i :style="{ backgroundColor: item.color }"></i>
               <span>{{ item.name }}</span>
             </li>
@@ -108,11 +92,7 @@
           </div>
 
           <div v-for="timeline in timelineRows" :key="timeline.rowKey" class="machine-row table-grid">
-            <div
-              :class="['machine-cell', 'ellipsis', { 'is-clickable': !singleMachineMode }]"
-              :title="timeline.rowLabel"
-              @click="handleTimelineMachineClick(timeline.machine)"
-            >
+            <div :class="['machine-cell', 'ellipsis', { 'is-clickable': !singleMachineMode }]" :title="timeline.rowLabel" @click="handleTimelineMachineClick(timeline.machine)">
               {{ timeline.rowLabel }}
             </div>
             <div class="status-track">
@@ -156,8 +136,10 @@ import { getMachineNames, getMachineStatusDashboard } from '@/api/inject/machine
 import type { MachineStatusDashboardVO, MachineStatusDistributionVO, MachineStatusSegmentVO, MachineTimelineVO } from '@/api/inject/machineStatus/types';
 
 const DAY_SECONDS = 86400;
+const MAX_DATE_RANGE_DAYS = 62;
 const FILTER_CACHE_KEY = 'inject-machine-status-filter';
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const pickingDate = ref<Date | null>(null);
 const pageRef = ref<HTMLElement>();
 const reasonChartRef = ref<HTMLElement>();
 const statusChartRef = ref<HTMLElement>();
@@ -219,9 +201,7 @@ const timelineRows = computed(() => {
     const selectedMachine = selectedMachines.value[0];
     const timeline = (dashboard.value.timelines || []).find((item) => item.machine === selectedMachine);
     if (!timeline) return [];
-    return dateValues(dashboard.value.startDate || dateRange.value[0], dashboard.value.endDate || dateRange.value[1]).map((date, dayIndex) =>
-      buildTimelineDisplayRow(timeline, dayIndex * DAY_SECONDS, date, `${timeline.machine}-${date}`)
-    );
+    return dateValues(dashboard.value.startDate || dateRange.value[0], dashboard.value.endDate || dateRange.value[1]).map((date, dayIndex) => buildTimelineDisplayRow(timeline, dayIndex * DAY_SECONDS, date, `${timeline.machine}-${date}`));
   }
   const dayStart = timelineDayOffset.value;
   return (dashboard.value.timelines || []).map((timeline) => buildTimelineDisplayRow(timeline, dayStart, timeline.machine, timeline.machine));
@@ -264,6 +244,55 @@ function dateValues(startDate: string, endDate: string) {
   return result;
 }
 
+function getDateRangeDays(startDate: string, endDate: string) {
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return -1;
+  }
+  return Math.round((end.getTime() - start.getTime()) / 86400000);
+}
+
+function isDateRangeWithinLimit(startDate: string, endDate: string) {
+  const days = getDateRangeDays(startDate, endDate);
+  return days >= 0 && days <= MAX_DATE_RANGE_DAYS;
+}
+
+function clampDateRange(range: [string, string]): [string, string] {
+  const [startDate, endDate] = range;
+  if (isDateRangeWithinLimit(startDate, endDate)) {
+    return range;
+  }
+  const clampedEnd = parseLocalDate(startDate);
+  clampedEnd.setDate(clampedEnd.getDate() + MAX_DATE_RANGE_DAYS);
+  return [startDate, formatLocalDate(clampedEnd)];
+}
+
+function handleDateCalendarChange(dates: [Date, Date] | null) {
+  pickingDate.value = dates?.[0] ?? null;
+}
+
+function handleDatePickerVisibleChange(visible: boolean) {
+  if (!visible) {
+    pickingDate.value = null;
+  }
+}
+
+function disableDateRangeDate(date: Date) {
+  if (!pickingDate.value) {
+    return false;
+  }
+  const min = new Date(pickingDate.value);
+  min.setHours(0, 0, 0, 0);
+  min.setDate(min.getDate() - MAX_DATE_RANGE_DAYS);
+  const max = new Date(pickingDate.value);
+  max.setHours(0, 0, 0, 0);
+  max.setDate(max.getDate() + MAX_DATE_RANGE_DAYS);
+  const current = new Date(date);
+  current.setHours(0, 0, 0, 0);
+  return current.getTime() < min.getTime() || current.getTime() > max.getTime();
+}
+
 function buildQuery() {
   const allSelected = selectedMachines.value.length === machineOptions.value.length;
   const [startDate, endDate] = dateRange.value;
@@ -297,14 +326,8 @@ function restoreFilterState() {
       hasCachedMachineSelection = true;
       cachedSelectAllMachines = cached.allMachinesSelected === true;
     }
-    if (
-      Array.isArray(cached.dateRange) &&
-      cached.dateRange.length === 2 &&
-      typeof cached.dateRange[0] === 'string' &&
-      typeof cached.dateRange[1] === 'string' &&
-      cached.dateRange[0] <= cached.dateRange[1]
-    ) {
-      dateRange.value = [cached.dateRange[0], cached.dateRange[1]];
+    if (Array.isArray(cached.dateRange) && cached.dateRange.length === 2 && typeof cached.dateRange[0] === 'string' && typeof cached.dateRange[1] === 'string' && cached.dateRange[0] <= cached.dateRange[1]) {
+      dateRange.value = clampDateRange([cached.dateRange[0], cached.dateRange[1]]);
     }
     if (typeof cached.timelineDate === 'string') {
       timelineDate.value = cached.timelineDate;
@@ -387,9 +410,13 @@ function handleTimelineMachineClick(machine: string) {
 }
 
 function handleDateRangeChange() {
+  pickingDate.value = null;
   if (!dateRange.value || dateRange.value.length !== 2) {
     const fallback = getDefaultDate();
     dateRange.value = [fallback, fallback];
+  } else if (!isDateRangeWithinLimit(dateRange.value[0], dateRange.value[1])) {
+    dateRange.value = clampDateRange(dateRange.value);
+    proxy?.$modal.msgWarning(`时间范围最长不超过${MAX_DATE_RANGE_DAYS}天`);
   }
   syncTimelineDate();
   handleFilterChange();
@@ -673,6 +700,10 @@ async function handlePrint() {
 
 function handleDownload() {
   const [startDate, endDate] = dateRange.value;
+  if (!isDateRangeWithinLimit(startDate, endDate)) {
+    proxy?.$modal.msgWarning(`时间范围最长不超过${MAX_DATE_RANGE_DAYS}天`);
+    return;
+  }
   const rangeName = startDate === endDate ? startDate : `${startDate}_${endDate}`;
   proxy?.download('/inject/machine-status/export', buildQuery(), `机器状态_${rangeName}_${Date.now()}.xlsx`);
 }
@@ -1150,7 +1181,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1100px) {
-
   .table-grid {
     grid-template-columns: 88px minmax(0, 1fr) 72px 64px 64px;
   }

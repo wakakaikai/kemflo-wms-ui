@@ -75,6 +75,15 @@ div:focus {
   outline: none;
 }
 
+// Element Plus 会给 :focus-visible 添加蓝色轮廓。指针点击时去除，键盘 Tab 导航时保留。
+html:not(.is-keyboard-navigation) {
+  .el-button:focus-visible,
+  .el-link:focus-visible,
+  a:focus-visible {
+    outline: none;
+  }
+}
+
 .fr {
   float: right;
 }

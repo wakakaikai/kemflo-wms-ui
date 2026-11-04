@@ -42,6 +42,19 @@ VXETable.setConfig({
 import { ElDialog } from 'element-plus';
 ElDialog.props.closeOnClickModal.default = false;
 
+// 区分指针点击和键盘导航：鼠标点击后的链接不保留焦点框，Tab 导航仍保留可见焦点。
+const keyboardNavigationClass = 'is-keyboard-navigation';
+window.addEventListener(
+  'keydown',
+  (event) => {
+    if (event.key === 'Tab') {
+      document.documentElement.classList.add(keyboardNavigationClass);
+    }
+  },
+  true
+);
+window.addEventListener('pointerdown', () => document.documentElement.classList.remove(keyboardNavigationClass), true);
+
 const app = createApp(App);
 
 app.use(HighLight);

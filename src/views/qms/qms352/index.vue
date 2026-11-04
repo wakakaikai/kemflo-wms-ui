@@ -154,8 +154,7 @@
               <el-table-column label="文件" prop="fileName" min-width="220">
                 <template #default="scope">
                   <div class="file-cell">
-                    <span class="file-icon"><i-ep-document /></span
-                    ><span
+                    <QmsFileTypeIcon class="file-icon" :file-name="scope.row.fileName" /><span
                       ><strong>{{ scope.row.fileName }}</strong
                       ><small>{{ scope.row.fileModule }}</small></span
                     >
@@ -183,6 +182,7 @@
 
 <script setup name="Qms352Upload" lang="ts">
 import { UploadFile, UploadRawFile } from 'element-plus';
+import QmsFileTypeIcon from '@/components/QmsFileTypeIcon/index.vue';
 import { globalHeaders } from '@/utils/request';
 import { Qms352AttachmentRecord, Qms352ExcelBizType } from '@/api/qms/qms352/types';
 
@@ -234,6 +234,17 @@ const onDataProgress = () => {
   dataUploading.value = true;
 };
 
+const QMS_REMOTE_SUCCESS_CODE = '2000';
+
+const isQmsPassthroughFailure = (payload: unknown): payload is { code: string; data: unknown } => {
+  if (!payload || typeof payload !== 'object') {
+    return false;
+  }
+  const record = payload as Record<string, unknown>;
+  const code = record.code;
+  return typeof code === 'string' && code !== '' && code !== QMS_REMOTE_SUCCESS_CODE;
+};
+
 const readUploadMessage = (payload: unknown, fallback: string) => {
   if (payload == null) {
     return fallback;
@@ -251,6 +262,17 @@ const readUploadMessage = (payload: unknown, fallback: string) => {
   }
   if (typeof payload === 'object') {
     const record = payload as Record<string, unknown>;
+    if (isQmsPassthroughFailure(record.data)) {
+      const qms = record.data as { data: unknown };
+      if (qms.data != null && String(qms.data).trim()) {
+        return String(qms.data).trim();
+      }
+    }
+    if (isQmsPassthroughFailure(record)) {
+      if (record.data != null && String(record.data).trim()) {
+        return String(record.data).trim();
+      }
+    }
     const message = record.msg ?? record.message ?? record.data;
     if (typeof message === 'string' && message.trim()) {
       return message.trim();
@@ -262,8 +284,9 @@ const readUploadMessage = (payload: unknown, fallback: string) => {
 const onDataSuccess = (response: any, file: UploadFile) => {
   dataUploading.value = false;
   dataUploadRef.value?.handleRemove(file);
+  const qmsFail = isQmsPassthroughFailure(response?.data) ? response.data : null;
   const message = readUploadMessage(response, '导入完成');
-  const success = response?.code === 200 && !message.includes('失败');
+  const success = response?.code === 200 && !qmsFail && !message.includes('失败');
   dataResultType.value = success ? 'success' : 'error';
   dataResultMessage.value = message;
 };
@@ -1042,18 +1065,12 @@ const copyId = async (id: string) => {
 }
 
 .file-icon {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 9px;
-  color: #4384c8;
-  background: #eaf3fc;
-}
+  flex: 0 0 22px;
 
-.file-icon svg {
-  width: 16px;
+  :deep(.qms-file-type-icon) {
+    width: 22px;
+    height: 22px;
+  }
 }
 
 .file-cell > span:last-child {
