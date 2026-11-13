@@ -63,3 +63,24 @@ export interface PalletSnQuery extends PageQuery {
    */
   params?: any;
 }
+
+/** 小米栈板标签查询参数 */
+export interface MiPalletSnPrintQuery {
+  palletNo?: string;
+  sfc?: string;
+}
+
+/** 小米栈板标签打印数据 */
+export interface MiPalletSnPrintVO {
+  palletNo: string;
+  customerPo?: string;
+  item?: string;
+  productId?: string;
+  sku?: string;
+  productName?: string;
+  productTime?: string;
+  palletNumber?: number;
+  palletGrossWeight?: number;
+  snList: string[];
+  total: number;
+}

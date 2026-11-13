@@ -76,15 +76,12 @@
       <AssembleComponent :pod-config="podConfig" />
     </div>
 
-    <!-- 固定在右侧的呼叫按钮组 -->
-    <ContactUs @material-call="handleMaterialCall" @equipment-call="handleEquipmentCall" @quality-call="handleQualityCall" @other-call="handleOtherCall" @cancel="handleCancel"></ContactUs>
-
     <!-- 弹框 -->
     <OperationDialog ref="operationDialogRef" @operation-call-back="operationCallBack" />
     <ResourceDialog ref="resourceDialogRef" @resource-call-back="resourceCallBack" />
     <WorkCenterDialog ref="workCenterDialogRef" @work-center-call-back="workCenterCallBack" />
-    <ShopOrderDialog ref="shopOrderDialogRef" @shop-order-call-back="shopOrderCallBack" />
-    <ReleaseShopOrderDialog ref="releaseShopOrderDialogRef" @release-shop-order-call-back="releaseShopOrderCallBack" />
+    <ShopOrderDialog ref="shopOrderDialogRef" :pod-config="podConfig" @shop-order-call-back="shopOrderCallBack" />
+    <ReleaseShopOrderDialog ref="releaseShopOrderDialogRef" :pod-config="podConfig" @shop-order-call-back="assembleCallBack" />
   </div>
 </template>
 
@@ -102,8 +99,6 @@ import WorkCenterDialog from '@/views/mes/workpanel/components/workCenterDialog.
 import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
 import ReleaseShopOrderDialog from '@/views/mes/workpanel/components/releaseShopOrderDialog.vue';
 import AssembleComponent from '@/views/mes/workpanel/assemble/components/assembleComponents.vue';
-
-import ContactUs from '@/views/mes/workpanel/components/contact-us.vue';
 
 const operationDialogRef = ref<InstanceType<typeof OperationDialog>>();
 const resourceDialogRef = ref<InstanceType<typeof ResourceDialog>>();
@@ -306,31 +301,6 @@ const getShopOrderFromLocalStorage = () => {
 
 const removeShopOrderInLocalStorage = () => {
   saveShopOrderToLocalStorage(null);
-};
-
-const handleMaterialCall = () => {
-  console.log('物料呼叫');
-  // 处理物料呼叫逻辑
-};
-
-const handleEquipmentCall = () => {
-  console.log('设备呼叫');
-  // 处理设备呼叫逻辑
-};
-
-const handleQualityCall = () => {
-  console.log('品质呼叫');
-  // 处理品质呼叫逻辑
-};
-
-const handleOtherCall = () => {
-  console.log('其他呼叫');
-  // 处理其他呼叫逻辑
-};
-
-const handleCancel = () => {
-  console.log('取消');
-  // 处理取消逻辑
 };
 
 onMounted(() => {

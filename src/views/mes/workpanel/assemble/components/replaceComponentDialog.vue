@@ -3,8 +3,23 @@ import useDialog from '@/hooks/useDialog';
 import { nextTick, onMounted, reactive, ref } from 'vue';
 import { AssembleForm, AssembleQuery } from '@/api/mes/workpanel/assemble/types';
 import * as services from '@/api/mes/workpanel';
+import { audioPlayer } from '@/utils/audioPlayer';
+
+/** 替换弹窗表单：含 AssembleForm 与 BOM 行字段 */
+type ReplaceComponentForm = AssembleForm &
+  Partial<{
+    bomItem: string;
+    bomItemDesc: string;
+    bomItemSfc: string;
+    sfcItemRule: string;
+    sfcItemGroupRule: string;
+    itemSfcLength: number;
+  }>;
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+
+const warnVoice = () => audioPlayer.playWarning();
+const successVoice = () => audioPlayer.playSuccess();
 
 const { title, visible, openDialog, closeDialog } = useDialog({
   title: '替换关键件'
@@ -15,7 +30,7 @@ const validateResult = ref<{ [key: string]: any }>({});
 const queryFormRef = ref<ElFormInstance>();
 const newBomItemSfcRef = ref<HTMLInputElement | null>(null);
 const podConfig = ref<{ [key: string]: any }>({});
-const initFormData: AssembleForm = {
+const initFormData: ReplaceComponentForm = {
   sfc: '',
   steps: [],
   stepActive: 0,
@@ -23,12 +38,12 @@ const initFormData: AssembleForm = {
   bomComponentVo: {},
   bomComponentVoList: [],
   canAssembleComponents: false,
-  assembleId: null,
+  assembleId: 0,
   newBomItemSfc: '',
   itemNeedValid: false,
   itemNeedCheck: false
 };
-const data = reactive<PageData<AssembleForm, AssembleQuery>>({
+const data = reactive<PageData<ReplaceComponentForm, AssembleQuery>>({
   form: { ...initFormData },
   queryParams: {
     pageNum: 1,
@@ -40,7 +55,7 @@ const data = reactive<PageData<AssembleForm, AssembleQuery>>({
     bomComponentVo: {},
     bomComponentVoList: [],
     canAssembleComponents: false,
-    assembleId: null,
+    assembleId: 0,
     newBomItemSfc: '',
     itemNeedValid: false,
     itemNeedCheck: false
@@ -114,7 +129,10 @@ const handleChange = async (record: any) => {
 /** 键盘回车事件 */
 const keyDownTab = async () => {
   const validateStatus = await handleChange(form.value);
-  if (validateStatus == 'error') return;
+  if (validateStatus == 'error') {
+    warnVoice();
+    return;
+  }
   submitForm();
 };
 
@@ -144,12 +162,14 @@ const submitForm = () => {
       loading.value = true;
       const res: any = await services.replaceSfcBomComponent(params).finally(() => (loading.value = false));
       if (res.success) {
+        successVoice();
         proxy?.$modal.msgSuccess('替换关键件成功');
         proxy.$emit('replaceComponentCallBack', null);
 
         form.value.newBomItemSfc = '';
         closeDialog();
       } else {
+        warnVoice();
         validateResult.value = res.data;
       }
     }

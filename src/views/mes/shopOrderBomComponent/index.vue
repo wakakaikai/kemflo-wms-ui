@@ -1,8 +1,8 @@
 <template>
   <div class="p-2">
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
-      <div v-show="showSearch" class="mb-[10px]">
-        <el-card shadow="hover">
+      <div v-show="showSearch" class="mb-[10px] search-container">
+        <el-card shadow="hover" class="search-card">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="工单号" prop="shopOrder">
               <HistoryInput v-model.trim="queryParams.shopOrder" :config="shopOrderConfig" placeholder="请输入工单号" clearable @keyup.enter="handleQuery" />
@@ -355,11 +355,17 @@ onMounted(() => {
 });
 </script>
 <style lang="scss" scoped>
+.search-container {
+  position: relative;
+  z-index: 10;
+}
+
 /* 解决搜索区使用历史记录功能时被遮挡问题 */
 .search-card {
   overflow: visible !important;
 }
 
+.search-card :deep(.el-card__body),
 :deep(.el-card) {
   overflow: visible !important;
 }

@@ -83,6 +83,20 @@ export interface ItemBomComponentVO {
    * 是否是新增
    */
   isNew: boolean;
+
+  /** SN一致性校验规则（组件类型2） */
+  barcodeCheckRuleList?: BarcodeCheckRule[];
+}
+
+export interface BarcodeCheckRule {
+  id?: string | number;
+  item?: string;
+  checkType: 'PRODUCT' | 'INNER_BOX' | 'COLOR_BOX' | 'OUTER_BOX' | string;
+  checkName: string;
+  sequence: number;
+  requiredFlag: number;
+  enabledFlag: number;
+  remark?: string;
 }
 
 export interface ItemBomComponentForm extends BaseEntity {
@@ -160,6 +174,9 @@ export interface ItemBomComponentForm extends BaseEntity {
    * 租户组织ID
    */
   tenantOrgId?: string | number;
+
+  /** SN一致性校验规则（组件类型2） */
+  barcodeCheckRuleList?: BarcodeCheckRule[];
 }
 
 export interface ItemBomComponentQuery extends PageQuery {

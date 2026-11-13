@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import * as services from '@/api/mes/workpanel';
-const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 import { AssembleForm, AssembleQuery } from '@/api/mes/workpanel/assemble/types';
 import { HttpStatus } from '@/enums/RespEnum';
+import { audioPlayer } from '@/utils/audioPlayer';
 
 import ReplaceComponentDialog from '@/views/mes/workpanel/assemble/components/replaceComponentDialog.vue';
+
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+
 const replaceComponentDialogDialogRef = ref<InstanceType<typeof ReplaceComponentDialog>>();
 const props = defineProps<{
   podConfig: Record<string, any>;
@@ -21,7 +24,11 @@ const initFormData: AssembleForm = {
   stepName: '',
   bomComponentVo: {},
   bomComponentVoList: [],
-  canAssembleComponents: false
+  canAssembleComponents: false,
+  assembleId: 0,
+  newBomItemSfc: '',
+  itemNeedValid: false,
+  itemNeedCheck: false
 };
 const data = reactive<PageData<AssembleForm, AssembleQuery>>({
   form: { ...initFormData },
@@ -34,7 +41,11 @@ const data = reactive<PageData<AssembleForm, AssembleQuery>>({
     stepName: '',
     bomComponentVo: {},
     bomComponentVoList: [],
-    canAssembleComponents: false
+    canAssembleComponents: false,
+    assembleId: 0,
+    newBomItemSfc: '',
+    itemNeedValid: false,
+    itemNeedCheck: false
   },
   rules: {
     sfc: [{ required: true, message: '产品条码不能为空' }]
@@ -42,6 +53,9 @@ const data = reactive<PageData<AssembleForm, AssembleQuery>>({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+/** 仅当至少一条组件记录可执行替换时显示操作列 */
+const showOperationColumn = computed(() => (form.value.bomComponentVoList || []).some((row: any) => row.componentSnType !== 2 && !!row.bomItemSfc));
 
 const loading = ref(false);
 const sfcInputRef = ref<HTMLInputElement | null>(null);
@@ -53,6 +67,12 @@ const disassemblyLoading = ref(false);
 
 const replaceInventoryIdRef = ref();
 const assembleInfo = ref<{ [key: string]: any }>({});
+const sfcAlertMessage = ref('');
+
+const isApiSuccess = (res: any) => res?.code === HttpStatus.SUCCESS || res?.success === true;
+
+const warnVoice = () => audioPlayer.playWarning();
+const successVoice = () => audioPlayer.playSuccess();
 
 const querySfcProcessList = async () => {
   const res: any = await services.querySfcProcessList({
@@ -77,50 +97,88 @@ const querySfcBomComponentList = async () => {
     activityId: ''
   });
   if (res.code == HttpStatus.SUCCESS) {
-    if (res.data.length !== 0) {
-      form.value.bomComponentVoList = res.data?.map((item: any, index: any) => ({
-        ...item,
-        [`bomItemSfc${index}`]: item.bomItemSfc,
-        validateStatus: '',
-        validateMsg: ''
-      }));
-
-      await nextTick(() => {
-        if (sfcInputRef.value) {
-          sfcInputRef.value.focus();
-          sfcInputRef.value.select();
-        }
-        for (let i = 0; i < res.data.length; i++) {
-          if (!res.data[i].bomItemSfc && inputRefs.value[i]) {
-            inputRefs.value[i].focus();
-            inputRefs.value[i].select();
-            form.value.canAssembleComponents = true;
-            break;
-          }
-        }
-      });
-    } else {
-      proxy?.$modal.msgError(res.msg || '待装配列表为空，请检查工序是否正确或联系IE检查关键件BOM。');
+    if (res.data.length == 0) {
+      sfcAlertMessage.value = `条码${form.value.sfc || ''}，待装配列表为空，请检查工序是否正确或联系IE检查关键件BOM。`;
+      form.value.bomComponentVoList = [];
+      warnVoice();
+      return;
     }
+    form.value.bomComponentVoList = res.data?.map((item: any, index: any) => ({
+      ...item,
+      [`bomItemSfc${index}`]: item.bomItemSfc,
+      validateStatus: '',
+      validateMsg: ''
+    }));
+
+    await nextTick(() => {
+      if (sfcInputRef.value) {
+        sfcInputRef.value.focus();
+        sfcInputRef.value.select();
+      }
+      for (let i = 0; i < res.data.length; i++) {
+        if (!res.data[i].bomItemSfc && res.data[i].requiredFlag !== 0 && inputRefs.value[i]) {
+          inputRefs.value[i].focus();
+          inputRefs.value[i].select();
+          form.value.canAssembleComponents = true;
+          break;
+        }
+      }
+    });
   }
 };
 
-const querySfcQueueInfo = async () => {
+const setSfcQueryError = (sfc: string, err?: { msg?: string; message?: string }) => {
+  const raw = err?.msg || err?.message;
+  sfcAlertMessage.value = raw && String(raw).trim() ? String(raw) : `条码${sfc}在MES中不存在`;
+  warnVoice();
+  nextTick(() => {
+    sfcInputRef.value?.focus();
+    sfcInputRef.value?.select();
+  });
+};
+
+const querySfcQueueInfo = async (): Promise<boolean> => {
   assembleInfo.value = {};
   form.value.bomComponentVoList = [];
   form.value.steps = [];
-  const res: any = await services.querySfcQueueInfo({
-    sfc: form.value.sfc
+  const sfc = form.value.sfc?.trim() || '';
+  if (!sfc) {
+    sfcAlertMessage.value = '请输入产品条码';
+    warnVoice();
+    return false;
+  }
+  const res: any = await services.querySfcQueueInfo({ sfc }, { headers: { isShowError: false } }).catch((err: any) => {
+    setSfcQueryError(sfc, err);
+    return null;
   });
-  assembleInfo.value = res.data || {};
+  if (!res || !isApiSuccess(res)) {
+    if (!sfcAlertMessage.value) {
+      setSfcQueryError(sfc, res);
+    }
+    return false;
+  }
+  const queueInfo = res.data || {};
+  if (!queueInfo.sfc) {
+    setSfcQueryError(sfc, res);
+    return false;
+  }
+  sfcAlertMessage.value = '';
+  assembleInfo.value = queueInfo;
   form.value.sfc = assembleInfo.value.sfc;
+  return true;
 };
 
-const querySfcInfo = async () => {
+const querySfcInfo = async (options?: { playListSuccessSound?: boolean }) => {
   try {
     loading.value = true;
-    await querySfcQueueInfo();
+    const queueOk = await querySfcQueueInfo();
+    if (!queueOk) {
+      return;
+    }
     await Promise.all([querySfcProcessList(), querySfcBomComponentList()]);
+    if (options?.playListSuccessSound && (form.value.bomComponentVoList?.length ?? 0) > 0) {
+      successVoice();
+    }
   } finally {
     loading.value = false;
   }
@@ -143,6 +201,7 @@ const saveSfcBomComponents = async () => {
     })
     .finally(() => (loading.value = false));
   if (res.data?.passResult) {
+    successVoice();
     await nextTick(() => {
       querySfcInfo();
       if (sfcInputRef.value) {
@@ -151,6 +210,7 @@ const saveSfcBomComponents = async () => {
       }
     });
   } else if (!res.data?.passResult) {
+    warnVoice();
     const tableData = form.value?.bomComponentVoList || [];
     for (const i in tableData) {
       if (tableData[i].id === res.data.id) {
@@ -202,6 +262,7 @@ const handlModalOK = async () => {
   disassemblyLoading.value = false;
   if (!res.success) {
     ElMessage.warning(res.msg || res.message || '拆解失败');
+    warnVoice();
     return;
   }
   modalVisibleDisassemble.value = false;
@@ -219,7 +280,8 @@ const handleReplaceModalCancel = () => {
 
 const keyDownTab = async () => {
   form.value.sfc = form.value.sfc.trim();
-  await querySfcInfo();
+  sfcAlertMessage.value = '';
+  await querySfcInfo({ playListSuccessSound: true });
 };
 
 const validateSfc = (value: any): { validateStatus: string; validateMsg: string } => {
@@ -290,7 +352,10 @@ const checkRepeat = (content: any) => {
 
 const keyDownTableTab = async (record: any, index: any) => {
   const validateResult = await handleChange(record, index);
-  if (validateResult == 'error') return;
+  if (validateResult == 'error') {
+    warnVoice();
+    return;
+  }
 
   loading.value = true;
   const bomComponentList = [
@@ -318,6 +383,7 @@ const keyDownTableTab = async (record: any, index: any) => {
       }
     });
   } else {
+    warnVoice();
     const tableData = form.value?.bomComponentVoList || [];
     for (const i in tableData) {
       if (tableData[i].id === res.data.id) {
@@ -337,8 +403,11 @@ const keyDownTableTab = async (record: any, index: any) => {
   await nextTick(() => {
     if (index < inputRefs.value.length - 1) {
       for (let i = index + 1; i < inputRefs.value.length; i++) {
-        if (!record[`bomItemSfc${i}`] && inputRefs.value[i]) {
+        const nextRow = (form.value.bomComponentVoList || [])[i];
+        const nextSfc = nextRow?.[`bomItemSfc${i}`] || nextRow?.bomItemSfc;
+        if (!nextSfc && nextRow?.requiredFlag !== 0 && inputRefs.value[i]) {
           existNotSfcComponent = true;
+          successVoice();
           inputRefs.value[i].focus();
           inputRefs.value[i].select();
           break;
@@ -392,6 +461,11 @@ defineExpose({});
           </el-form-item>
         </el-col>
       </el-row>
+      <el-row v-if="sfcAlertMessage" :gutter="24" class="sfc-alert-row">
+        <el-col :span="24">
+          <el-alert show-icon :title="sfcAlertMessage" type="error" :closable="true" class="sfc-alert-full" />
+        </el-col>
+      </el-row>
     </el-form>
     <el-steps :active="form.stepActive" finish-status="success">
       <el-step v-for="item in form.steps" :key="item.stepId" :title="item.operation" :description="item.operationDesc" />
@@ -404,40 +478,34 @@ defineExpose({});
       <el-table-column prop="sequence" label="顺序" width="60" align="center" />
       <el-table-column prop="bomItem" label="组件" width="140" align="center" />
       <el-table-column prop="bomItemDesc" label="描述" min-width="200" align="center" />
-      <el-table-column prop="assembleOperation" label="工序" width="100" align="center" />
-      <el-table-column prop="itemNeedValid" label="料号校验" width="110" align="center">
-        <template #default="{ row }">
-          {{ row.itemNeedValid }}
+      <el-table-column label="组件类型" width="110" align="center">
+        <template #default="scope">
+          <span v-if="scope.row.componentSnType === 2">SN校验</span>
+          <span v-else>{{ scope.row.componentSnType === 1 ? '固定码' : '唯一码' }}</span>
         </template>
       </el-table-column>
+      <el-table-column prop="assembleOperation" label="工序" width="100" align="center" />
+      <!--      <el-table-column prop="itemNeedValid" label="料号校验" width="110" align="center">
+              <template #default="{ row }">
+                {{ row.itemNeedValid }}
+              </template>
+            </el-table-column>-->
       <el-table-column prop="itemSfcLength" label="条码位数" width="80" align="center" />
       <el-table-column prop="sfcItemRule" label="物料正则" width="150" align="center" />
       <el-table-column prop="bomItemSfc" label="组件条码" min-width="300" align="center">
         <template #default="{ row, $index }">
           <div class="table-cell-wrapper">
-            <el-form-item
-              :prop="`bomItemSfc${$index}`"
-              :error="row.validateMsg"
-              :class="['dynamic-error-item', { 'has-error': !!row.validateMsg }]"
-              :style="{ '--error-height': row.validateMsg ? `${Math.ceil(row.validateMsg.length / 30) * 15}px` : '0' }"
-            >
-              <el-input
-                :ref="(el) => setInputRef(el, $index)"
-                v-model="row[`bomItemSfc${$index}`]"
-                :disabled="!!row.bomItemSfc"
-                autocomplete="off"
-                @keydown.tab.prevent="keyDownTableTab(row, $index)"
-                @keydown.enter.prevent="keyDownTableTab(row, $index)"
-              />
+            <el-form-item :prop="`bomItemSfc${$index}`" :error="row.validateMsg" :class="['dynamic-error-item', { 'has-error': !!row.validateMsg }]" :style="{ '--error-height': row.validateMsg ? `${Math.ceil(row.validateMsg.length / 30) * 15}px` : '0' }">
+              <el-input :ref="(el) => setInputRef(el, $index)" v-model="row[`bomItemSfc${$index}`]" :placeholder="`请扫描${row.checkName || '组件条码'}`" :disabled="!!row.bomItemSfc" autocomplete="off" @keydown.tab.prevent="keyDownTableTab(row, $index)" @keydown.enter.prevent="keyDownTableTab(row, $index)" />
             </el-form-item>
           </div>
         </template>
       </el-table-column>
 
       <!-- 操作列 -->
-      <el-table-column label="操作" width="120" align="center">
+      <el-table-column v-if="showOperationColumn" label="操作" width="120" align="center">
         <template #default="{ row }">
-          <el-button v-if="row.bomItemSfc" type="danger" size="small" @click="onReplace(row)"> 替换 </el-button>
+          <el-button v-if="row.componentSnType !== 2 && row.bomItemSfc" type="danger" size="small" @click="onReplace(row)"> 替换</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -445,15 +513,14 @@ defineExpose({});
     <el-dialog v-model="modalVisibleDisassemble" title="拆解" width="80%" :close-on-click-modal="false" @close="handleModalCancel">
       <el-skeleton :spinning="disassemblyLoading">
         <div style="text-align: center">
-          组件条码：{{ publicRecord.inventoryId }}, 物料：{{ `${publicRecord.componentAndRevision}` }}
-          <div>{{ `${publicRecord.componentDesc}` }}</div>
+          组件条码：{{ rowRecord.bomItemSfc || rowRecord.inventoryId }}, 物料：{{ rowRecord.bomItem || rowRecord.componentAndRevision }}
+          <div>{{ rowRecord.bomItemDesc || rowRecord.componentDesc }}</div>
         </div>
-
-        <template #footer>
-          <el-button @click="handleModalCancel">取消</el-button>
-          <el-button type="primary" @click="handlModalOK">确定</el-button>
-        </template>
       </el-skeleton>
+      <template #footer>
+        <el-button @click="handleModalCancel">取消</el-button>
+        <el-button type="primary" @click="handlModalOK">确定</el-button>
+      </template>
     </el-dialog>
 
     <ReplaceComponentDialog ref="replaceComponentDialogDialogRef" @replace-component-call-back="replaceComponentCallBack" />
@@ -461,6 +528,14 @@ defineExpose({});
 </template>
 
 <style scoped>
+.sfc-alert-row {
+  margin-top: 0;
+}
+
+.sfc-alert-full {
+  width: 100%;
+}
+
 .dashed-blue-btn {
   border: 1px dashed #3b82f6 !important;
   color: #3b82f6 !important;

@@ -31,11 +31,12 @@ export const getPalletSnCheck = (id: string | number): AxiosPromise<PalletSnChec
  * 新增栈板SN核对结果
  * @param data
  */
-export const addPalletSnCheck = (data: PalletSnCheckForm) => {
+export const addPalletSnCheck = (data: PalletSnCheckForm, silent = false) => {
   return request({
     url: '/mes/palletSnCheck',
     method: 'post',
-    data: data
+    data: data,
+    headers: silent ? { isShowError: false } : undefined
   });
 };
 

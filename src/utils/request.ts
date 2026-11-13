@@ -126,6 +126,7 @@ service.interceptors.response.use(
     // 获取错误信息
     const rawMsg = errorCode[code] || res.data.msg || errorCode['default'];
     const msg = formatApiErrorMessage(rawMsg) || errorCode['default'];
+    const showError = (res.config.headers as Record<string, unknown>)?.isShowError !== false;
     // 二进制数据则直接返回
     if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
       return res.data;
@@ -154,21 +155,28 @@ service.interceptors.response.use(
       }
       return Promise.reject('无效的会话，或者会话已过期，请重新登录。');
     } else if (code === HttpStatus.SERVER_ERROR) {
-      ElMessage({ message: msg, type: 'error' });
-      return Promise.reject(new Error(msg));
+      if (showError) {
+        ElMessage({ message: msg, type: 'error' });
+      }
+      return Promise.reject({ msg, code });
     } else if (code === HttpStatus.WARN) {
-      ElMessage({ message: msg, type: 'warning' });
-      return Promise.reject(new Error(msg));
+      if (showError) {
+        ElMessage({ message: msg, type: 'warning' });
+      }
+      return Promise.reject({ msg, code });
     } else if (code == HttpStatus.PARAM_ERROR) {
       return Promise.resolve(res.data);
     } else if (code !== HttpStatus.SUCCESS) {
-      ElNotification.error({ title: msg });
-      return Promise.reject('error');
+      if (showError) {
+        ElNotification.error({ title: msg });
+      }
+      return Promise.reject({ msg, code });
     } else {
       return Promise.resolve(res.data);
     }
   },
   (error: any) => {
+    const showError = (error?.config?.headers as Record<string, unknown> | undefined)?.isShowError !== false;
     let { message } = error;
     if (message == 'Network Error') {
       message = '后端接口连接异常';
@@ -177,7 +185,9 @@ service.interceptors.response.use(
     } else if (message.includes('Request failed with status code')) {
       message = '系统接口' + message.substr(message.length - 3) + '异常';
     }
-    ElMessage({ message: formatApiErrorMessage(message) || message, type: 'error', duration: 5 * 1000 });
+    if (showError) {
+      ElMessage({ message: formatApiErrorMessage(message) || message, type: 'error', duration: 5 * 1000 });
+    }
     return Promise.reject(error);
   }
 );

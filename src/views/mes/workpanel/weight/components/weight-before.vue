@@ -45,26 +45,23 @@
       </div>
     </transition>
 
-    <el-card shadow="hover" class="mb-[10px] barcode-input-card">
-      <el-form @submit.prevent>
-        <el-form-item label="条码" label-width="80px" class="barcode-form-item">
-          <el-input ref="sfcInputRef" v-model="sfcInput" placeholder="请扫描或输入产品条码后回车" clearable class="barcode-input-sn" @keydown.tab.prevent="handleSfcEnter" @keydown.enter.prevent="handleSfcEnter" />
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <span>测试前称重采集</span>
-          <el-tag :type="isConnected ? 'success' : 'info'" size="small">
-            {{ isConnected ? '已连接' : '未连接' }}
-          </el-tag>
-          <div class="dc-btn-group">
-            <el-button :type="isConnected ? 'danger' : 'info'" size="small" @click="handleConnect" :loading="connecting">
-              {{ isConnected ? '关闭串口' : '打开串口' }}
-            </el-button>
-            <el-button size="small" @click="clearFormData">清空</el-button>
+    <el-card shadow="hover" class="barcode-input-card">
+      <div class="weight-toolbar mb-3">
+        <div class="weight-toolbar-row">
+          <el-form @submit.prevent class="barcode-scan-form">
+            <el-form-item label="条码" label-width="80px" class="barcode-form-item">
+              <el-input ref="sfcInputRef" v-model="sfcInput" placeholder="请扫描或输入产品条码后回车" clearable class="barcode-input-sn" @keydown.tab.prevent="handleSfcEnter" @keydown.enter.prevent="handleSfcEnter" />
+            </el-form-item>
+          </el-form>
+          <button type="button" class="serial-port-switch" :class="{ 'is-connected': isConnected, 'is-connecting': connecting }" :disabled="connecting" @click="handleConnect">
+            <span class="serial-led" aria-hidden="true" />
+            <span class="serial-status-label">
+              <span class="serial-status-title">{{ connecting ? '连接中' : isConnected ? '已连接' : '未连接' }}</span>
+              <span class="serial-status-hint">{{ connecting ? '请稍候' : isConnected ? '点击断开' : '点击连接' }}</span>
+            </span>
+          </button>
+          <div class="weight-toolbar-actions">
+            <button type="button" class="weight-toolbar-chip weight-toolbar-chip-warning" @click="clearFormData">清空</button>
             <label class="mode-chip" :class="{ 'is-on': scanBeforeWeight }">
               <el-checkbox v-model="scanBeforeWeight" />
               <span class="mode-chip-flow">
@@ -77,10 +74,20 @@
             </label>
           </div>
         </div>
-      </template>
+        <div v-if="frontendMessage">
+          <el-alert show-icon center :title="frontendMessage" type="error" :closable="false" />
+        </div>
+        <div v-if="resultMessage">
+          <el-alert show-icon center :title="resultMessage" :type="resultStatus ? 'success' : 'error'" :closable="false">
+            <template #icon>
+              <Bell />
+            </template>
+          </el-alert>
+        </div>
+      </div>
 
-      <el-steps v-show="steps.length" :active="stepActive" finish-status="success" class="py-2">
-        <el-step v-for="item in steps" :key="item.stepId" :title="item.operation" :description="item.operationDesc" />
+      <el-steps v-show="steps.length" :active="stepActive" finish-status="success" simple class="compact-process-steps">
+        <el-step v-for="item in steps" :key="item.stepId" :title="[item.operation, item.operationDesc].filter(Boolean).join(' ')" />
       </el-steps>
 
       <el-form ref="queryFormRef" :model="formData" label-width="auto">
@@ -109,7 +116,7 @@
 
           <el-col :lg="12" :md="12" :sm="24">
             <el-form-item label="条码" prop="sfc">
-              <el-button class="dashed-blue-btn highlight-field w-[100%]" title="点击复制" @click="copyText(formData.sfc)">
+              <el-button class="dashed-blue-btn w-[100%]" title="点击复制" @click="copyText(formData.sfc)">
                 {{ formData.sfc || '' }}
               </el-button>
             </el-form-item>
@@ -124,67 +131,89 @@
 
           <el-col :lg="8" :md="8" :sm="24">
             <el-form-item label="重量" prop="actualWeight">
-              <el-button class="dashed-blue-btn highlight-field w-[100%]" title="点击复制" @click="copyText(formData.actualWeight)">
-                <strong>{{ formData.actualWeight || '' }}</strong>
+              <el-button class="dashed-blue-btn w-[100%]" title="点击复制" @click="copyText(formData.actualWeight)">
+                <span class="font-semibold">{{ formData.actualWeight || '' }}</span>
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="8" :md="8" :sm="24">
             <el-form-item label="下限" prop="lowLimit">
               <el-button class="dashed-blue-btn w-[100%]" title="点击复制" @click="copyText(formData.lowLimit)">
-                {{ formData.lowLimit !== undefined && formData.lowLimit !== null && formData.lowLimit !== '' ? parseFloat(formData.lowLimit) : '' }}
+                {{ formatNumber(formData.lowLimit) }}
               </el-button>
             </el-form-item>
           </el-col>
           <el-col :lg="8" :md="8" :sm="24">
             <el-form-item label="上限" prop="hightLimit">
               <el-button class="dashed-blue-btn w-[100%]" title="点击复制" @click="copyText(formData.hightLimit)">
-                {{ formData.hightLimit !== undefined && formData.hightLimit !== null && formData.hightLimit !== '' ? parseFloat(formData.hightLimit) : '' }}
+                {{ formatNumber(formData.hightLimit) }}
               </el-button>
             </el-form-item>
           </el-col>
 
-          <el-col :lg="24" :md="24" :sm="24">
-            <div v-if="resultMessage">
-              <el-alert show-icon center :title="resultMessage" :type="resultStatus ? 'success' : 'error'" :closable="false">
-                <template #icon>
-                  <Bell />
-                </template>
-              </el-alert>
+          <el-col v-if="latestHistoryRow" :lg="24" :md="24" :sm="24">
+            <div
+              class="latest-history-summary"
+              :class="{
+                'is-pass': latestHistoryRow.result === 'PASS',
+                'is-fail': latestHistoryRow.result === 'FAIL',
+                'is-pending': latestHistoryRow.result !== 'PASS' && latestHistoryRow.result !== 'FAIL'
+              }"
+            >
+              <span class="summary-title">最新称重结果</span>
+              <span class="summary-time">{{ latestHistoryRow.timestamp }}</span>
+              <span class="summary-sep" aria-hidden="true" />
+              <span class="summary-inline-label">条码</span>
+              <span class="hero-sfc" title="点击复制" @click="copyText(latestHistoryRow.sfc)">{{ latestHistoryRow.sfc }}</span>
+              <span class="summary-sep" aria-hidden="true" />
+              <span class="summary-inline-label">重量</span>
+              <span class="hero-weight">{{ latestHistoryRow.actualWeight }}</span>
+              <span class="summary-meta">
+                下限 <span class="limit-num">{{ latestHistoryRow.lowLimit }}</span> 上限 <span class="limit-num">{{ latestHistoryRow.hightLimit }}</span>
+              </span>
+              <el-tag class="summary-result-tag" size="small" :type="latestHistoryRow.result === 'PASS' ? 'success' : latestHistoryRow.result === 'FAIL' ? 'danger' : 'warning'">
+                {{ latestHistoryRow.result === 'PASS' ? '成功' : latestHistoryRow.result === 'FAIL' ? '失败' : latestHistoryRow.result }}
+              </el-tag>
             </div>
           </el-col>
         </el-row>
       </el-form>
     </el-card>
 
-    <el-card shadow="never" class="mt-2">
+    <el-card shadow="never" class="mt-2 history-card">
       <template #header>
-        <div class="card-header">
-          <span>历史数据</span>
-          <div>
-            <el-button type="info" size="small" @click="clearHistoryData">清空历史</el-button>
+        <div class="history-card-header">
+          <div class="history-header-left" @click="historyExpanded = !historyExpanded">
+            <el-icon class="history-collapse-icon" :class="{ 'is-expanded': historyExpanded }">
+              <ArrowRight />
+            </el-icon>
+            <span class="history-header-title">历史数据</span>
+            <span v-if="pagination.total" class="text-gray-400 text-sm font-normal">（{{ pagination.total }} 条）</span>
           </div>
+          <el-button type="info" size="small" @click.stop="clearHistoryData">清空历史</el-button>
         </div>
       </template>
 
-      <el-table :data="paginatedHistoryData" style="width: 100%" size="small" max-height="300" border>
-        <el-table-column prop="timestamp" label="时间" min-width="160" />
-        <el-table-column prop="sfc" label="条码" min-width="140" />
-        <el-table-column prop="item" label="产品编码" min-width="120" />
-        <el-table-column prop="itemDesc" label="物料描述" min-width="150" />
-        <el-table-column prop="actualWeight" label="重量" min-width="90" />
-        <el-table-column prop="lowLimit" label="下限" min-width="80" />
-        <el-table-column prop="hightLimit" label="上限" min-width="80" />
-        <el-table-column label="结果" min-width="80">
-          <template #default="scope">
-            <el-tag :type="scope.row.result === 'PASS' ? 'success' : scope.row.result === 'FAIL' ? 'danger' : 'warning'">
-              {{ scope.row.result === 'PASS' ? '成功' : scope.row.result === 'FAIL' ? '失败' : scope.row.result }}
-            </el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div v-show="historyExpanded" class="history-card-body">
+        <el-table :data="paginatedHistoryData" style="width: 100%" size="small" max-height="300" border>
+          <el-table-column prop="timestamp" label="时间" min-width="160" />
+          <el-table-column prop="sfc" label="条码" min-width="140" />
+          <el-table-column prop="item" label="产品编码" min-width="120" />
+          <el-table-column prop="itemDesc" label="物料描述" min-width="150" />
+          <el-table-column prop="actualWeight" label="重量" min-width="90" />
+          <el-table-column prop="lowLimit" label="下限" min-width="80" />
+          <el-table-column prop="hightLimit" label="上限" min-width="80" />
+          <el-table-column label="结果" min-width="80">
+            <template #default="scope">
+              <el-tag :type="scope.row.result === 'PASS' ? 'success' : scope.row.result === 'FAIL' ? 'danger' : 'warning'">
+                {{ scope.row.result === 'PASS' ? '成功' : scope.row.result === 'FAIL' ? '失败' : scope.row.result }}
+              </el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
 
-      <el-pagination v-model:current-page="pagination.currentPage" v-model:page-size="pagination.pageSize" :page-sizes="[10, 20, 50, 100]" :total="pagination.total" layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange" @current-change="handleCurrentChange" style="margin-top: 10px; justify-content: flex-end" />
+        <el-pagination v-model:current-page="pagination.currentPage" v-model:page-size="pagination.pageSize" :page-sizes="[10, 20, 50, 100]" :total="pagination.total" layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange" @current-change="handleCurrentChange" style="margin-top: 10px; justify-content: flex-end" />
+      </div>
     </el-card>
 
     <ResourceDialog ref="resourceDialogRef" @resource-call-back="resourceCallBack" />
@@ -192,12 +221,11 @@
 </template>
 
 <script lang="ts" setup>
-import { ElMessage } from 'element-plus';
 import type { OperationObj, ResourceObj } from '@/components/common-type';
 import ResourceDialog from '@/views/mes/workpanel/components/resourceDialog.vue';
-import { Bell, Close, Cpu, Operation } from '@element-plus/icons-vue';
-import { queryDataCollectionBySfc, querySfcQueueInfo, querySfcProcessList, dataCollectPassSfc } from '@/api/mes/workpanel';
-import { buildDataCollectPassPayload, formatWeightValue, findWeightDcParameter } from '@/api/mes/workpanel/dataCollection/weight-pass';
+import { ArrowRight, Bell, Close, Cpu, Operation } from '@element-plus/icons-vue';
+import { dataCollectPassSfc, queryDataCollectionBySfc, querySfcProcessList, querySfcQueueInfo } from '@/api/mes/workpanel';
+import { buildDataCollectPassPayload, findWeightDcParameter, formatWeightValue } from '@/api/mes/workpanel/dataCollection/weight-pass';
 import { parseTime } from '@/utils/ruoyi';
 import { copyText } from '@/utils/copy';
 import { weightHistoryDB } from '@/utils/indexedDB';
@@ -214,6 +242,7 @@ const queryFormRef = ref<ElFormInstance>();
 
 const resultMessage = ref('');
 const resultStatus = ref(false);
+const frontendMessage = ref('');
 const loading = ref(false);
 const scanBeforeWeight = ref(true);
 const sfcInput = ref('');
@@ -258,6 +287,13 @@ interface HistoryRow {
 }
 
 const historyData = ref<HistoryRow[]>([]);
+/** 历史明细展开状态，默认收起 */
+const historyExpanded = ref(false);
+
+const latestHistoryRow = computed(() => {
+  const list = historyData.value;
+  return list.length ? list[list.length - 1] : null;
+});
 
 const pagination = ref({
   currentPage: 1,
@@ -319,7 +355,7 @@ const clearFormData = () => {
   sfcInput.value = '';
   resultMessage.value = '';
   resultStatus.value = false;
-  focusSfcInput();
+  void focusSfcInput();
 };
 
 const RESOURCE_TYPE = 'WGT-BF';
@@ -426,18 +462,18 @@ watch(scanBeforeWeight, () => {
   formData.value.actualWeight = undefined;
   formData.value.weightUnit = undefined;
   lastAutoSubmitKey = '';
-  if (resultMessage.value === '请先扫描条码再称重') {
-    resultMessage.value = '';
-    resultStatus.value = true;
-  }
+  frontendMessage.value = '';
 });
 
 const isApiSuccess = (res: any) => res?.code === 200 || res?.success === true;
+
+const formatNumber = (val: string | number | undefined | null) => formatWeightValue(val);
 
 /** 扫描条码后查询工单信息与数据收集组 */
 const handleSfcEnter = async () => {
   const sfc = (sfcInput.value || '').trim();
   sfcInput.value = sfc;
+  frontendMessage.value = '';
   resultMessage.value = '';
   resultStatus.value = true;
   pendingRangeFail = false;
@@ -477,6 +513,12 @@ const handleSfcEnter = async () => {
   }
   if (!sfc) {
     resultMessage.value = '请输入产品条码';
+    resultStatus.value = false;
+    warnVoice();
+    return;
+  }
+  if (!isConnected.value) {
+    resultMessage.value = '串口未连接，请先打开串口';
     resultStatus.value = false;
     warnVoice();
     return;
@@ -546,7 +588,7 @@ const handleSfcEnter = async () => {
     }
 
     if (queueInfo.status === 'DONE') {
-      resultMessage.value = '条码已完工';
+      resultMessage.value = `条码${formData.value.sfc || sfc}已完工`;
       resultStatus.value = false;
       warnVoice();
       return;
@@ -596,7 +638,7 @@ const handleSfcEnter = async () => {
     warnVoice();
   } finally {
     loading.value = false;
-    focusSfcInput();
+    void focusSfcInput();
   }
 };
 
@@ -699,7 +741,7 @@ const resetAfterCycle = (clearForm = true) => {
   resultStatus.value = status;
 };
 
-const submitForm = async (auto = false) => {
+const submitForm = async (_auto = false) => {
   if (submitting) {
     return;
   }
@@ -708,7 +750,7 @@ const submitForm = async (auto = false) => {
     warnVoice();
     // 校验失败保留页面属性，方便比对数量
     resetAfterCycle(false);
-    focusSfcInput();
+    void focusSfcInput();
     return;
   }
 
@@ -767,12 +809,12 @@ const submitForm = async (auto = false) => {
   } finally {
     loading.value = false;
     submitting = false;
-    focusSfcInput();
+    void focusSfcInput();
   }
 };
 
 const processDataPacket = (packet: string) => {
-  let processedWeight = '';
+  let processedWeight: string;
   let unit = '';
   const trimmedData = packet.trim();
 
@@ -799,12 +841,7 @@ const processDataPacket = (packet: string) => {
     // 先扫码再称重开启时收到重量：清空残留读数，避免未扫码却展示重量
     formData.value.actualWeight = undefined;
     formData.value.weightUnit = undefined;
-    const msg = '请先扫描条码再称重';
-    if (resultMessage.value !== msg) {
-      resultMessage.value = msg;
-      resultStatus.value = false;
-      warnVoice();
-    }
+    frontendMessage.value = '请先扫描条码再称重';
     return;
   }
 
@@ -869,7 +906,7 @@ onMounted(() => {
   disconnect(true);
   checkBrowserSupport();
   setupListeners();
-  focusSfcInput();
+  void focusSfcInput();
 });
 
 onBeforeUnmount(async () => {
@@ -877,12 +914,16 @@ onBeforeUnmount(async () => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../styles/latest-history-summary.scss';
+@use '../styles/weight-toolbar.scss';
+
 .dashed-blue-btn.text-ellipsis {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .dashed-blue-btn {
   border: 1px dashed #3b82f6 !important;
   color: #3b82f6 !important;
@@ -913,11 +954,55 @@ onBeforeUnmount(async () => {
   align-items: center;
 }
 
-.dc-btn-group {
+.history-card :deep(.el-card__body) {
+  padding: 0;
+}
+
+.history-card-header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-header-left {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.history-collapse-icon {
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+  transition: transform 0.2s;
+}
+
+.history-collapse-icon.is-expanded {
+  transform: rotate(90deg);
+}
+
+.history-header-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.history-card-body {
+  padding: 0 0 12px;
+}
+
+.compact-process-steps {
+  margin-bottom: 10px;
+  padding: 6px 12px !important;
+}
+
+.compact-process-steps :deep(.el-step__title) {
+  overflow: hidden;
+  font-size: 13px !important;
+  line-height: 22px !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mode-chip {
@@ -933,7 +1018,10 @@ onBeforeUnmount(async () => {
   cursor: pointer;
   user-select: none;
   color: var(--el-text-color-regular);
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .mode-chip.is-on {
@@ -989,18 +1077,5 @@ onBeforeUnmount(async () => {
 
 .text-white {
   color: white !important;
-}
-
-.barcode-input :deep(.el-input__wrapper) {
-  min-height: 42px;
-  background-color: #fff8dc;
-}
-
-.barcode-input-sn :deep(.el-input__wrapper) {
-  min-height: 42px;
-}
-
-.barcode-input-card :deep(.barcode-form-item.el-form-item) {
-  margin-bottom: 0;
 }
 </style>

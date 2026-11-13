@@ -51,23 +51,23 @@
             </div>
           </div>
 
-<!--          <div class="flex flex-wrap items-center mt-[10px] py-4 px-0 bg-gray-50 rounded-lg transition-all duration-300">
-            <div class="flex flex-1 md:flex-none ml-[10px]">
-              <el-button color="#10b981" class="min-w-[100px] text-white flex-1">
-                <el-icon class="mr-1 text-white">
-                  <User />
-                </el-icon>
-                <span class="truncate">网址参数校验</span>
-              </el-button>
+          <!--          <div class="flex flex-wrap items-center mt-[10px] py-4 px-0 bg-gray-50 rounded-lg transition-all duration-300">
+                      <div class="flex flex-1 md:flex-none ml-[10px]">
+                        <el-button color="#10b981" class="min-w-[100px] text-white flex-1">
+                          <el-icon class="mr-1 text-white">
+                            <User />
+                          </el-icon>
+                          <span class="truncate">网址参数校验</span>
+                        </el-button>
 
-              <el-button color="#ef4444" class="min-w-[100px] text-white flex-1">
-                <el-icon class="mr-1 text-white">
-                  <UserFilled />
-                </el-icon>
-                <span class="truncate">不合格记录选择</span>
-              </el-button>
-            </div>
-          </div>-->
+                        <el-button color="#ef4444" class="min-w-[100px] text-white flex-1">
+                          <el-icon class="mr-1 text-white">
+                            <UserFilled />
+                          </el-icon>
+                          <span class="truncate">不合格记录选择</span>
+                        </el-button>
+                      </div>
+                    </div>-->
         </el-card>
       </div>
     </transition>
@@ -76,22 +76,16 @@
       <AssembleComponentV2 :pod-config="podConfig" />
     </div>
 
-    <!-- 固定在右侧的呼叫按钮组 -->
-    <ContactUs @material-call="handleMaterialCall" @equipment-call="handleEquipmentCall" @quality-call="handleQualityCall" @other-call="handleOtherCall" @cancel="handleCancel"></ContactUs>
-
     <!-- 弹框 -->
     <OperationDialog ref="operationDialogRef" @operation-call-back="operationCallBack" />
     <ResourceDialog ref="resourceDialogRef" @resource-call-back="resourceCallBack" />
     <WorkCenterDialog ref="workCenterDialogRef" @work-center-call-back="workCenterCallBack" />
-    <ShopOrderDialog ref="shopOrderDialogRef" @shop-order-call-back="shopOrderCallBack" />
-    <ReleaseShopOrderDialog ref="releaseShopOrderDialogRef" @release-shop-order-call-back="releaseShopOrderCallBack" />
+    <ShopOrderDialog ref="shopOrderDialogRef" :pod-config="podConfig" @shop-order-call-back="shopOrderCallBack" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { DocumentAdd, User, UserFilled, Operation, Cpu, Close } from '@element-plus/icons-vue';
-
-const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+import { Close, Cpu, Operation } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 
 import type { OperationObj, ResourceObj, ShopOrderObj, WorkCenterObj } from '@/components/common-type';
@@ -103,7 +97,7 @@ import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vu
 import ReleaseShopOrderDialog from '@/views/mes/workpanel/components/releaseShopOrderDialog.vue';
 import AssembleComponentV2 from '@/views/mes/workpanel/assembleV2/components/assembleComponentV2.vue';
 
-import ContactUs from '@/views/mes/workpanel/components/contact-us.vue';
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const operationDialogRef = ref<InstanceType<typeof OperationDialog>>();
 const resourceDialogRef = ref<InstanceType<typeof ResourceDialog>>();
@@ -305,31 +299,6 @@ const getShopOrderFromLocalStorage = () => {
 
 const removeShopOrderInLocalStorage = () => {
   saveShopOrderToLocalStorage(null);
-};
-
-const handleMaterialCall = () => {
-  console.log('物料呼叫');
-  // 处理物料呼叫逻辑
-};
-
-const handleEquipmentCall = () => {
-  console.log('设备呼叫');
-  // 处理设备呼叫逻辑
-};
-
-const handleQualityCall = () => {
-  console.log('品质呼叫');
-  // 处理品质呼叫逻辑
-};
-
-const handleOtherCall = () => {
-  console.log('其他呼叫');
-  // 处理其他呼叫逻辑
-};
-
-const handleCancel = () => {
-  console.log('取消');
-  // 处理取消逻辑
 };
 
 onMounted(() => {

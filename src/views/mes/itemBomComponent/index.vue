@@ -1,8 +1,8 @@
 <template>
-  <div class="p-2">
+  <div class="p-2 item-bom-page">
     <transition :enter-active-class="proxy?.animate.searchAnimate.enter" :leave-active-class="proxy?.animate.searchAnimate.leave">
-      <div v-show="showSearch" class="mb-[10px]">
-        <el-card shadow="never">
+      <div v-show="showSearch" class="mb-[10px] search-container">
+        <el-card shadow="never" class="search-card">
           <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
             <el-form-item label="BOM料号" prop="bomItem" :rules="[{ required: true, message: 'BOM料号不能为空', trigger: 'blur' }]">
               <HistoryInput v-model.trim="queryParams.bomItem" :config="bomItemConfig" placeholder="请输入BOM料号" clearable @keyup.enter="handleQuery" />
@@ -19,92 +19,91 @@
       </div>
     </transition>
 
-    <el-card shadow="never">
+    <el-card shadow="never" class="bom-main-card">
       <template #header>
-        <el-row :gutter="10" class="mb8">
-          <el-col :span="1.5">
-            <el-col :span="1.5">
-              <el-button :type="isEditMode ? 'warning' : 'primary'" plain :icon="isEditMode ? 'Close' : 'Edit'" @click="toggleEditMode">
-                {{ isEditMode ? '取消编辑模式' : '开启编辑模式' }}
-              </el-button>
-            </el-col>
-          </el-col>
+        <el-row :gutter="12" class="mb8 bom-toolbar-row">
+          <!--          <el-col :span="1.5">
+                      <el-button :type="isEditMode ? 'warning' : 'primary'" plain :icon="isEditMode ? 'Close' : 'Edit'" @click="toggleEditMode">
+                        {{ isEditMode ? '取消编辑模式' : '开启编辑模式' }}
+                      </el-button>
+                    </el-col>-->
           <el-col :span="1.5">
             <el-button type="success" plain icon="Check" :loading="buttonLoading" @click="saveInlineEdit" v-hasPermi="['mes:itemBomComponent:save']">保存</el-button>
           </el-col>
-          <el-col :span="1.5">
-            <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['mes:itemBomComponent:edit']">修改</el-button>
-          </el-col>
+          <!--          <el-col :span="1.5">
+                      <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate()" v-hasPermi="['mes:itemBomComponent:edit']">修改</el-button>
+                    </el-col>-->
           <el-col :span="1.5">
             <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete()" v-hasPermi="['mes:itemBomComponent:remove']">删除</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['mes:itemBomComponent:export']">导出</el-button>
+            <el-button type="info" plain icon="CircleCheck" @click="openSnRegexTestDialog">正则测试</el-button>
           </el-col>
           <el-col :span="1.5">
-            <el-button :type="isSort ? 'info' : ''" @click="handleSort" :icon="Sort" :color="isSort ? '' : '#9c27b0'" class="min-w-[100px] text-white flex-1" plain>
-              {{ !isSort ? '开始排序' : '关闭排序' }}
-            </el-button>
+            <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['mes:itemBomComponent:export']">导出</el-button>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
         </el-row>
       </template>
 
-      <el-table v-loading="loading" :data="displayTableData" @selection-change="handleSelectionChange" row-key="id" :row-class-name="tableRowClassName" id="bomItemComponentTable">
-        <el-table-column type="selection" width="55" align="center" />
-        <!--        <el-table-column label="拖拽" width="60" align="center">
-          <template #default>
-            <el-tag class="move cursor-pointer" style="cursor: move;">⋮⋮</el-tag>
+      <el-table v-loading="loading" class="bom-component-table" :class="{ 'bom-row-sortable': isEditMode }" border :data="displayTableData" table-layout="fixed" style="width: 100%" @selection-change="handleSelectionChange" row-key="id" :row-class-name="tableRowClassName" id="bomItemComponentTable">
+        <el-table-column v-if="isEditMode" width="44" align="center" class-name="bom-drag-column">
+          <template #header>
+            <span class="text-gray-400 text-xs"></span>
           </template>
-        </el-table-column>-->
-        <el-table-column v-if="columns[2].visible" label="顺序号" align="center" prop="sequence" width="80">
+          <template #default>
+            <span class="bom-row-drag-handle" title="拖拽排序" aria-label="拖拽排序">⠿</span>
+          </template>
+        </el-table-column>
+        <el-table-column type="selection" width="55" align="center" />
+        <el-table-column v-if="columns[2].visible" label="顺序号" align="center" prop="sequence" width="88">
           <template #default="scope">
-            <el-input v-if="scope.row.isEditing" v-model.trim="scope.row.sequence" placeholder="请输入顺序号" size="small" />
+            <el-input v-if="isEditMode" v-model.trim="scope.row.sequence" class="bom-cell-input" placeholder="顺序号" />
             <span v-else>{{ scope.row.sequence }}</span>
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[0].visible" label="BOM料号" align="center" prop="bomItem">
-          <!--          <template #default="scope">
-            <el-input v-if="scope.row.isEditing" v-model="scope.row.bomItem" placeholder="请输入BOM料号" size="small" />
-            <span v-else>{{ scope.row.bomItem }}</span>
-          </template>-->
-        </el-table-column>
-        <el-table-column v-if="columns[1].visible" label="组件料号" align="center" prop="componentItem">
+        <el-table-column v-if="columns[0].visible" label="BOM料号" align="center" prop="bomItem" width="120" show-overflow-tooltip />
+        <el-table-column v-if="columns[1].visible" label="组件料号" align="center" prop="componentItem" min-width="120" show-overflow-tooltip>
           <template #default="scope">
-            <el-input v-if="scope.row.isEditing" v-model.trim="scope.row.componentItem" placeholder="请输入组件料号" size="small" />
-            <span v-else>{{ scope.row.componentItem }}</span>
+            <el-input v-if="isEditMode" v-model.trim="scope.row.componentItem" class="bom-cell-input" placeholder="组件料号" />
+            <span v-else class="bom-ellipsis">{{ scope.row.componentItem }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column v-if="columns[3].visible" label="组件类型" align="center" prop="type">
+        <el-table-column v-if="columns[3].visible" label="组件类型" align="center" prop="type" width="108">
           <template #default="scope">
-            <el-select v-if="scope.row.isEditing" v-model.trim="scope.row.type" placeholder="请选择组件类型" size="small">
+            <el-select v-if="isEditMode" v-model.trim="scope.row.type" class="bom-cell-select" placeholder="类型">
               <el-option v-for="dict in mes_bom_component_type" :key="dict.value" :label="dict.label" :value="parseInt(dict.value)"></el-option>
             </el-select>
             <dict-tag v-else :options="mes_bom_component_type" :value="scope.row.type" />
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[4].visible" label="组件数量" align="center" prop="quantity">
+        <el-table-column label="校验配置" align="center" width="100">
           <template #default="scope">
-            <el-input-number v-if="scope.row.isEditing" v-model="scope.row.quantity" size="small" :min="1" :max="100" :step="1" :precision="3" />
+            <el-button v-if="scope.row.type === 2" link type="primary" @click="openBarcodeRuleDialog(scope.row)"> 配置({{ scope.row.barcodeCheckRuleList?.length || 0 }})</el-button>
+            <span v-else class="text-gray-400">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columns[4].visible" label="组件数量" align="center" prop="quantity" width="128">
+          <template #default="scope">
+            <el-input-number v-if="isEditMode" v-model="scope.row.quantity" class="bom-qty-input" :min="1" :max="100" :step="1" controls-position="right" />
             <span v-else>{{ scope.row.quantity }}</span>
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[5].visible" label="组件工序" align="center" prop="operation">
+        <el-table-column v-if="columns[5].visible" label="组件工序" align="center" prop="operation" width="100" show-overflow-tooltip>
           <template #default="scope">
-            <el-input v-if="scope.row.isEditing" v-model="scope.row.operation" placeholder="请输入组件工序" size="small" />
+            <el-input v-if="isEditMode" v-model="scope.row.operation" class="bom-cell-input" placeholder="工序" />
             <span v-else>{{ scope.row.operation }}</span>
           </template>
         </el-table-column>
-        <el-table-column v-if="columns[6].visible" label="条码规则" align="center" prop="snRegex">
-          <!--          <template #default="scope">
-            <el-input v-if="scope.row.isEditing" v-model="scope.row.snRegex" placeholder="请输入条码规则" size="small" />
-            <span v-else>{{ scope.row.snRegex }}</span>
-          </template>-->
-        </el-table-column>
-        <el-table-column v-if="columns[7].visible" label="备注" align="center" prop="remark">
+        <el-table-column v-if="columns[6].visible" label="条码规则" align="center" prop="snRegex" min-width="100">
           <template #default="scope">
-            <el-input v-if="scope.row.isEditing" v-model="scope.row.remark" placeholder="请输入备注" size="small" />
+            <el-input v-model.trim="scope.row.snRegex" class="bom-cell-input" placeholder="条码规则" clearable />
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columns[7].visible" label="备注" align="center" prop="remark" width="88" show-overflow-tooltip>
+          <template #default="scope">
+            <el-input v-if="isEditMode" v-model="scope.row.remark" class="bom-cell-input" placeholder="备注" />
             <span v-else>{{ scope.row.remark }}</span>
           </template>
         </el-table-column>
@@ -112,65 +111,50 @@
         <el-table-column v-if="columns[9].visible" label="创建时间" align="center" prop="createTime" />
         <el-table-column v-if="columns[10].visible" label="更新者" align="center" prop="updater" />
         <el-table-column v-if="columns[11].visible" label="更新时间" align="center" prop="modifyTime" />
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <el-table-column label="操作" align="center" width="56" class-name="small-padding bom-op-column">
           <template #default="scope">
-            <div v-if="scope.row.isEditing">
-              <!--              <el-button link type="primary" icon="Check" @click="saveInlineRow(scope.row)">保存</el-button>-->
-              <el-tooltip content="取消编辑模式" placement="top">
-                <el-button link type="info" icon="RefreshLeft" @click="cancelInlineRow(scope.row)"></el-button>
-              </el-tooltip>
-              <el-tooltip content="删除" placement="top">
-                <el-button link type="danger" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['mes:itemBomComponent:remove']"></el-button>
-              </el-tooltip>
-            </div>
-            <div v-else>
-              <el-tooltip content="编辑模式" placement="top">
-                <el-button link type="primary" icon="Edit" @click="handleEditInline(scope.row)" v-hasPermi="['mes:itemBomComponent:edit']"></el-button>
-              </el-tooltip>
-              <el-tooltip content="删除" placement="top">
-                <el-button link type="danger" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['mes:itemBomComponent:remove']"></el-button>
-              </el-tooltip>
-            </div>
+            <el-tooltip content="删除" placement="top">
+              <el-button link type="danger" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['mes:itemBomComponent:remove']"></el-button>
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>
 
-      <!-- 在表格下方添加新增行按钮 -->
-      <div class="mt-4 flex justify-center">
-        <el-button type="primary" plain icon="Plus" @click="handleAddInline">新增行</el-button>
+      <div class="table-add-strip">
+        <el-tooltip content="新增行" placement="top">
+          <el-button class="table-add-icon-btn" type="primary" circle icon="Plus" @click="handleAddInline" />
+        </el-tooltip>
       </div>
     </el-card>
 
     <!-- 工单号同步区域 -->
-    <el-card shadow="never" class="mt-4">
+    <el-card shadow="never" class="shop-order-sync-card">
       <template #header>
-        <div class="flex items-center justify-between">
-          <span>工单号同步</span>
-          <el-row :gutter="24">
-            <el-col :sm="12" :md="12" :lg="12">
-              <el-input v-model="shopOrderQueryParams.shopOrder" placeholder="请输入工单" clearable @keyup.enter="handleShopOrderQuery" />
-            </el-col>
-            <el-col :sm="12" :md="12" :lg="12">
+        <div class="shop-order-sync-header">
+          <span class="shop-order-sync-title">工单号同步</span>
+          <div class="shop-order-sync-toolbar">
+            <el-input v-model="shopOrderQueryParams.shopOrder" class="shop-order-search-input" placeholder="请输入工单" clearable @keyup.enter="handleShopOrderQuery" />
+            <div class="shop-order-sync-actions">
               <el-button type="primary" icon="Search" @click="handleShopOrderQuery">搜索</el-button>
               <el-button :loading="buttonLoading" type="success" icon="Refresh" @click="syncSelectedOrders" v-hasPermi="['mes:shopOrderBomComponent:save']">同步</el-button>
-            </el-col>
-          </el-row>
+            </div>
+          </div>
         </div>
       </template>
 
-      <el-table ref="workOrderTableRef" v-loading="tableLoading" :data="shopOrderList" @selection-change="handleWorkOrderSelectionChange">
+      <el-table ref="workOrderTableRef" v-loading="tableLoading" stripe class="shop-order-table" table-layout="fixed" style="width: 100%" :data="shopOrderList" @selection-change="handleWorkOrderSelectionChange">
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="工单" align="center" prop="shopOrder" width="140" fixed />
         <el-table-column label="状态" align="center" prop="statusDesc" />
         <el-table-column label="工单类型" align="center" prop="shopOrderTypeDesc" />
         <el-table-column label="计划工作中心" align="center" prop="plannedWorkCenter" width="180" />
         <el-table-column label="计划物料" align="center" prop="plannedItem" width="180" />
-        <el-table-column label="描述" align="left" prop="itemDesc" min-width="200" />
+        <el-table-column label="描述" align="left" prop="itemDesc" min-width="120" show-overflow-tooltip />
         <el-table-column label="计划工艺路线" align="center" prop="plannedRouter" width="180" />
         <el-table-column label="计划数量" align="center" prop="qtyToBuild" />
       </el-table>
 
-      <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      <pagination v-show="shopOrderTotal > 0" :total="shopOrderTotal" v-model:page="shopOrderQueryParams.pageNum" v-model:limit="shopOrderQueryParams.pageSize" @pagination="handleShopOrderQuery" />
     </el-card>
 
     <!-- 原有的弹窗保持不变，用于批量修改 -->
@@ -200,7 +184,7 @@
           <el-input v-model="form.snRegex" placeholder="请输入条码规则" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea"  placeholder="请输入备注" />
+          <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -210,25 +194,30 @@
         </div>
       </template>
     </el-dialog>
+
+    <BarcodeRuleConfigDialog v-model:visible="barcodeRuleDialogVisible" :row="barcodeRuleDialogRow" :barcode-check-type-options="mes_barcode_check_type" />
+
+    <SnRegexTestDialog v-model:visible="snRegexTestVisible" :default-regex="snRegexTestDefaultRegex" :default-content="snRegexTestDefaultContent" />
   </div>
 </template>
 
 <script setup name="ItemBomComponent" lang="ts">
-import { listItemBomComponent, getItemBomComponent, addBatchItemBomComponent, addItemBomComponent, updateItemBomComponent } from '@/api/mes/itemBomComponent';
-import { ItemBomComponentVO, ItemBomComponentQuery, ItemBomComponentForm } from '@/api/mes/itemBomComponent/types';
+import { addBatchItemBomComponent, addItemBomComponent, getItemBomComponent, listItemBomComponent, updateItemBomComponent } from '@/api/mes/itemBomComponent';
+import { ItemBomComponentForm, ItemBomComponentQuery, ItemBomComponentVO } from '@/api/mes/itemBomComponent/types';
 
 import { listShopOrder } from '@/api/mes/shopOrder';
-import { ShopOrderQuery, ShopOrderForm } from '@/api/mes/shopOrder/types';
+import { ShopOrderForm, ShopOrderQuery } from '@/api/mes/shopOrder/types';
 
-import { ref, computed, nextTick } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { enableRowDrop } from '@/utils/sortable';
-import { Sort } from '@element-plus/icons-vue';
 import HistoryInput from '@/components/HistoryInput/index.vue';
+import BarcodeRuleConfigDialog from './components/BarcodeRuleConfigDialog.vue';
+import SnRegexTestDialog from './components/SnRegexTestDialog.vue';
 import { HistoryConfig } from '@/types/history';
 import { addBatchShopOrderBomComponent } from '@/api/mes/shopOrderBomComponent';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
-const { mes_bom_component_type } = toRefs<any>(proxy?.useDict('mes_bom_component_type'));
+const { mes_bom_component_type, mes_barcode_check_type } = toRefs<any>(proxy?.useDict('mes_bom_component_type', 'mes_barcode_check_type'));
 
 const itemBomComponentList = ref<ItemBomComponentVO[]>([]);
 const buttonLoading = ref(false);
@@ -239,20 +228,43 @@ const ids = ref<Array<string | number>>([]);
 const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
-// 开启编辑模式
-const isEditMode = ref(false);
-// 是否开启排序
-const isSort = ref(false);
+// 默认编辑模式（同时启用行拖拽排序）
+const isEditMode = ref(true);
 // 排序完后的id数组
 const realSortIdArray = ref<number[]>([]);
 
 // 工单相关
 const shopOrderList = ref<any[]>([]);
+const shopOrderTotal = ref(0);
 const selectedWorkOrders = ref<any[]>([]);
 const workOrderTableRef = ref();
 
 const queryFormRef = ref<ElFormInstance>();
 const itemBomComponentFormRef = ref<ElFormInstance>();
+
+const snRegexTestVisible = ref(false);
+const snRegexTestDefaultRegex = ref('');
+const snRegexTestDefaultContent = ref('');
+
+const openSnRegexTestDialog = () => {
+  if (ids.value.length === 1) {
+    const row = itemBomComponentList.value.find((item) => item.id === ids.value[0]);
+    snRegexTestDefaultRegex.value = row?.snRegex || '';
+    snRegexTestDefaultContent.value = row?.componentItem || '';
+  } else {
+    snRegexTestDefaultRegex.value = '';
+    snRegexTestDefaultContent.value = '';
+  }
+  snRegexTestVisible.value = true;
+};
+
+const barcodeRuleDialogVisible = ref(false);
+const barcodeRuleDialogRow = ref<ItemBomComponentVO>();
+
+const openBarcodeRuleDialog = (row: ItemBomComponentVO) => {
+  barcodeRuleDialogRow.value = row;
+  barcodeRuleDialogVisible.value = true;
+};
 
 // 计算属性：包含编辑行的完整表格数据
 const displayTableData = computed(() => {
@@ -315,12 +327,25 @@ const data = reactive<PageData<ItemBomComponentForm, ItemBomComponentQuery>>({
 
 const { queryParams, form, rules } = toRefs(data);
 
+/** 工单同步区查询（扩展列表筛选字段） */
+type ShopOrderSyncQuery = ShopOrderQuery & {
+  plannedItem?: string;
+};
+
+interface ItemBomShopOrderState {
+  shopOrderForm: ShopOrderForm;
+  shopOrderQueryParams: ShopOrderSyncQuery;
+}
+
 const initShopOrderFormData: ShopOrderForm = {
   id: undefined,
   handle: undefined,
   shopOrder: undefined,
+  sample: false,
   status: undefined,
+  statusList: [],
   shopOrderType: undefined,
+  shopOrderTypeList: [],
   priority: undefined,
   plannedWorkCenterBo: undefined,
   plannedItemBo: undefined,
@@ -342,31 +367,20 @@ const initShopOrderFormData: ShopOrderForm = {
   customerOrder: undefined,
   overDeliveryTolerance: undefined,
   considerScrap: undefined,
-  remark: undefined,
-  createUserId: undefined,
-  creator: undefined,
-  modifyUserId: undefined,
-  updater: undefined,
-  modifyTime: undefined,
-  deleteFlag: undefined,
-  auditDataVersion: undefined,
-  secBuId: undefined,
-  secUserId: undefined,
-  secOuId: undefined,
-  belongOrgId: undefined,
-  tenantOrgId: undefined,
-  dataModifyTime: undefined,
-  dataModifyUser: undefined
+  remark: undefined
 };
-const shopOrderData = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
+
+const shopOrderData = reactive<ItemBomShopOrderState>({
   shopOrderForm: { ...initShopOrderFormData },
   shopOrderQueryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 20,
     handle: undefined,
     shopOrder: undefined,
     status: undefined,
+    statusList: [],
     shopOrderType: undefined,
+    shopOrderTypeList: [],
     priority: undefined,
     plannedWorkCenterBo: undefined,
     plannedItemBo: undefined,
@@ -388,16 +402,11 @@ const shopOrderData = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
     customerOrder: undefined,
     overDeliveryTolerance: undefined,
     considerScrap: undefined,
-    createUserId: undefined,
-    creator: undefined,
-    modifyUserId: undefined,
-    updater: undefined,
-    modifyTime: undefined,
     params: {}
   }
 });
 
-const { shopOrderQueryParams, shopOrderForm } = toRefs(shopOrderData);
+const { shopOrderQueryParams } = toRefs(shopOrderData);
 
 const columns = ref<FieldOption[]>([
   { key: 1, label: 'BOM料号', visible: true },
@@ -406,7 +415,7 @@ const columns = ref<FieldOption[]>([
   { key: 4, label: '组件类型', visible: true },
   { key: 5, label: '组件数量', visible: true },
   { key: 6, label: '组件工序', visible: true },
-  { key: 7, label: '条码规则', visible: false },
+  { key: 7, label: '条码规则', visible: true },
   { key: 8, label: '备注', visible: false },
   { key: 9, label: '创建者', visible: false },
   { key: 10, label: '创建时间', visible: false },
@@ -446,9 +455,13 @@ const componentItemConfig: HistoryConfig = {
 const getList = async () => {
   loading.value = true;
   const res = await listItemBomComponent(queryParams.value);
-  itemBomComponentList.value = res.rows;
+  itemBomComponentList.value = res.rows.map((row) => ({
+    ...row,
+    isEditing: isEditMode.value
+  }));
   total.value = res.total;
   loading.value = false;
+  syncTableRowDrag();
 };
 
 /**
@@ -456,43 +469,30 @@ const getList = async () => {
  * @param sortArray 排序好的id数组
  */
 const setNewSortArray = (sortArray: number[]) => {
-  if (sortArray && sortArray.length > 0) {
-    realSortIdArray.value = sortArray;
-
-    // 根据新的排序数组自动更新顺序号
-    sortArray.forEach((id, index) => {
-      const targetRow = itemBomComponentList.value.find((row) => row.id === id);
-      if (targetRow) {
-        // 顺序号从10开始，每次递增10
-        targetRow.sequence = (index + 1) * 10;
-      }
-    });
+  if (!sortArray?.length) {
+    return;
   }
+  realSortIdArray.value = sortArray;
+  const rowMap = new Map(itemBomComponentList.value.map((row) => [row.id, row]));
+  itemBomComponentList.value = sortArray.map((id) => rowMap.get(id)).filter((row): row is ItemBomComponentVO => !!row);
+  sortArray.forEach((id, index) => {
+    const targetRow = rowMap.get(id);
+    if (targetRow) {
+      targetRow.sequence = (index + 1) * 10;
+    }
+  });
 };
 
-/** 切换排序 */
-const handleSort = async () => {
-  isSort.value = !isSort.value;
-  if (isSort.value) {
-    // 当前是编辑模式，执行取消操作
-    itemBomComponentList.value = itemBomComponentList.value.map((row) => ({
-      ...row,
-      isEditing: false
-    }));
-    isEditMode.value = false;
-  }
-  enableRowDrop(setNewSortArray, itemBomComponentList.value, isSort.value, 'bomItemComponentTable');
-};
-
-/** 取消排序 */
-const cancelSort = async () => {
-  isSort.value = false;
-  enableRowDrop(setNewSortArray, itemBomComponentList.value, isSort.value, 'bomItemComponentTable');
+/** 编辑模式下启用表格行拖拽排序 */
+const syncTableRowDrag = () => {
+  void nextTick(() => {
+    enableRowDrop(setNewSortArray, itemBomComponentList.value, isEditMode.value, 'bomItemComponentTable', '.bom-row-drag-handle');
+  });
 };
 
 /** 表格行样式类名 */
-const tableRowClassName = ({ row }: any) => {
-  return row.isEditing ? 'editing-row' : '';
+const tableRowClassName = () => {
+  return isEditMode.value ? 'editing-row' : '';
 };
 
 /** 取消按钮 */
@@ -511,9 +511,10 @@ const reset = () => {
 const handleQuery = () => {
   queryFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
-      isEditMode.value = false;
       queryParams.value.pageNum = 1;
-      await getList().then(() => cancelSort());
+      shopOrderQueryParams.value.pageNum = 1;
+      await getList();
+      await handleShopOrderQuery();
     }
   });
 };
@@ -554,6 +555,9 @@ const handleAddInline = () => {
         isNew: true // 标识为新行
       };
       itemBomComponentList.value.push(newRow);
+      if (isEditMode.value) {
+        syncTableRowDrag();
+      }
     }
   });
 };
@@ -600,6 +604,11 @@ const validateForm = () => {
 
     if (!item.operation) {
       proxy.$modal.msgError(`第${i + 1}行：组件工序不能为空`);
+      return false;
+    }
+
+    if (item.type === 2 && (!item.barcodeCheckRuleList || item.barcodeCheckRuleList.length === 0)) {
+      proxy.$modal.msgError(`第${i + 1}行：SN校验类型必须配置至少一个校验项`);
       return false;
     }
 
@@ -668,8 +677,8 @@ const toggleEditMode = () => {
       handleAddInline();
     }
     isEditMode.value = true;
-    isSort.value = false;
   }
+  syncTableRowDrag();
 };
 
 /** 修改按钮操作（弹窗模式） */
@@ -701,7 +710,6 @@ const submitForm = () => {
 
 /** 删除按钮操作 */
 const handleDelete = async (row?: ItemBomComponentVO) => {
-  const _ids = row?.id || ids.value;
   if (row?.id) {
     const index = itemBomComponentList.value.findIndex((item) => item.id === row?.id);
     if (index > -1) {
@@ -744,6 +752,7 @@ const handleShopOrderQuery = async () => {
     shopOrderQueryParams.value.plannedItem = queryParams.value.bomItem;
     const res = await listShopOrder(shopOrderQueryParams.value);
     shopOrderList.value = res.rows;
+    shopOrderTotal.value = res.total;
   } catch (error) {
     proxy?.$modal.msgError('刷新失败');
   } finally {
@@ -787,6 +796,136 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+.item-bom-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bom-main-card :deep(.el-card__body) {
+  padding-top: 12px;
+  padding-bottom: 8px;
+}
+
+.bom-toolbar-row {
+  row-gap: 8px;
+}
+
+.shop-order-sync-card {
+  margin-top: 4px;
+}
+
+.shop-order-sync-card :deep(.el-card__body) {
+  padding-top: 8px;
+}
+
+.shop-order-sync-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+
+.shop-order-sync-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  flex-shrink: 0;
+}
+
+.shop-order-sync-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px 12px;
+  flex: 1;
+  min-width: 260px;
+}
+
+.shop-order-search-input {
+  width: min(320px, 100%);
+}
+
+.shop-order-sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.bom-component-table {
+  width: 100%;
+}
+
+.bom-row-drag-handle {
+  cursor: grab;
+  font-size: 18px;
+  color: var(--el-text-color-secondary);
+  vertical-align: middle;
+}
+
+.bom-row-drag-handle:active {
+  cursor: grabbing;
+}
+
+.bom-row-sortable :deep(.el-table__body tbody tr.sortable-chosen) .bom-row-drag-handle,
+.bom-row-sortable :deep(.el-table__body tbody tr.sortable-ghost) .bom-row-drag-handle {
+  cursor: grabbing;
+}
+
+.bom-component-table :deep(.bom-drag-column .cell) {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.bom-component-table :deep(.el-table__cell) {
+  padding: 10px 8px;
+  vertical-align: middle;
+  font-size: 14px;
+}
+
+.bom-component-table :deep(.el-table__header th.el-table__cell .cell) {
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+.bom-component-table :deep(.cell) {
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+.bom-component-table :deep(.bom-op-column .cell) {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.bom-ellipsis {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bom-cell-input {
+  width: 100%;
+}
+
+.bom-cell-select {
+  width: 100%;
+}
+
+.bom-qty-input {
+  width: 100%;
+  max-width: 118px;
+}
+
+.shop-order-table :deep(.el-table__cell) {
+  padding: 10px 8px;
+}
+
 .editing-row {
   background-color: #f0f9ff;
 }
@@ -823,7 +962,39 @@ onMounted(() => {
   overflow: visible !important;
 }
 
+.search-card :deep(.el-card__body),
 :deep(.el-card) {
   overflow: visible !important;
+}
+
+.table-add-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 0 6px;
+  margin-top: 8px;
+  border-top: 1px dashed var(--el-border-color-lighter);
+  background: linear-gradient(180deg, transparent, rgba(64, 158, 255, 0.04));
+  border-radius: 0 0 6px 6px;
+}
+
+.table-add-icon-btn {
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+  border: none;
+  box-shadow: 0 2px 10px rgba(64, 158, 255, 0.35);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.table-add-icon-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(64, 158, 255, 0.45);
+}
+
+.table-add-icon-btn:active {
+  transform: translateY(0);
 }
 </style>

@@ -31,19 +31,21 @@ export const disassemblyComponent = (data: any) => {
   });
 };
 
-export const querySfcQueueInfo = (data: any) => {
+export const querySfcQueueInfo = (data: any, config?: Record<string, any>) => {
   return request({
     url: '/mes/sfc/queue',
     method: 'post',
-    data
+    data,
+    ...config
   });
 };
 
-export const querySfcProcessList = (data: any) => {
+export const querySfcProcessList = (data: any, config?: Record<string, any>) => {
   return request({
     url: '/mes/sfc/process',
     method: 'post',
-    data
+    data,
+    ...config
   });
 };
 
@@ -55,11 +57,12 @@ export const querySfcBomComponentList = (data: any) => {
   });
 };
 
-export const querySfcShopOrderBomComponentList = (data: any) => {
+export const querySfcShopOrderBomComponentList = (data: any, config?: Record<string, any>) => {
   return request({
     url: '/mes/sfc/shopOrderBomComponent/list',
     method: 'post',
-    data
+    data,
+    ...config
   });
 };
 
@@ -107,7 +110,11 @@ export const saveShopOrderWeightNoSn = (data: any) => {
   return request({
     url: '/mes/dataCollection/saveShopOrderWeightNoSn',
     method: 'post',
-    data
+    data,
+    headers: {
+      // 页面使用 el-alert 展示接口业务消息，避免全局 ElMessage 重复提示
+      isShowError: false
+    }
   });
 };
 

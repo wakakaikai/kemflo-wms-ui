@@ -1,6 +1,15 @@
 import request from '@/utils/request';
 import { AxiosPromise } from 'axios';
-import { PalletSnVO, PalletSnForm, PalletSnQuery } from '@/api/mes/palletSn/types';
+import { MiPalletSnPrintQuery, MiPalletSnPrintVO, PalletSnVO, PalletSnForm, PalletSnQuery } from '@/api/mes/palletSn/types';
+
+/** 查询小米栈板标签打印数据 */
+export const getMiPalletSn = (query: MiPalletSnPrintQuery): AxiosPromise<MiPalletSnPrintVO> => {
+  return request({
+    url: '/mes/palletSn/getMiPalletSn',
+    method: 'get',
+    params: query
+  });
+};
 
 /**
  * 查询栈板SN列表
@@ -8,11 +17,12 @@ import { PalletSnVO, PalletSnForm, PalletSnQuery } from '@/api/mes/palletSn/type
  * @returns {*}
  */
 
-export const listPalletSn = (query?: PalletSnQuery): AxiosPromise<PalletSnVO[]> => {
+export const listPalletSn = (query?: PalletSnQuery, silent = false): AxiosPromise<PalletSnVO[]> => {
   return request({
     url: '/mes/palletSn/list',
     method: 'get',
-    params: query
+    params: query,
+    headers: silent ? { isShowError: false } : undefined
   });
 };
 

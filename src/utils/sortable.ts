@@ -11,13 +11,14 @@ let sortableInstance: Sortable | null = null; // 定义一个变量来存储Sort
  * @param data 排序数据
  * @param isSort  控制表单是否开启拖拽排序
  * @param id 表单唯一标识，用于获取表单dom
+ * @param handle 拖拽手柄选择器，例如 `.move`
  */
-export const enableRowDrop = (setNewSortArray: any, data: any, isSort: boolean, id: string) => {
+export const enableRowDrop = (setNewSortArray: any, data: any, isSort: boolean, id: string, handle?: string) => {
   let tbody = document.querySelector('.el-table__body-wrapper tbody') as any;
 
   // 如果传了 id，就根据 id 获取表单dom
   if (id) {
-    tbody = document.querySelector(`#${id} tbody`) as any;
+    tbody = document.querySelector(`#${id} .el-table__body-wrapper tbody`) as any;
   }
 
   // 销毁现有Sortable实例（如果存在）
@@ -32,8 +33,7 @@ export const enableRowDrop = (setNewSortArray: any, data: any, isSort: boolean, 
   // 深拷贝数据
   newFormTable.value = JSON.parse(JSON.stringify(data));
 
-  // 使用更新后的isSort值创建新的Sortable实例
-  sortableInstance = new Sortable(tbody, {
+  const sortableOptions: Sortable.Options = {
     disabled: !isSort,
     // ms, number 单位：ms，定义排序动画的时间
     animation: 150,
@@ -69,5 +69,16 @@ export const enableRowDrop = (setNewSortArray: any, data: any, isSort: boolean, 
       // newFormTable.value 就是排序之后的数组
       setNewSortArray(newFormTable.value.map((item) => item.id));
     }
-  });
+  };
+
+  if (handle) {
+    sortableOptions.handle = handle;
+  } else if (isSort) {
+    // 整行拖拽时，点击输入框/按钮不触发拖拽
+    sortableOptions.filter =
+      'input, textarea, button, a, .el-input, .el-input-number, .el-select, .el-select__wrapper, .el-checkbox, .el-switch, .el-button, .el-textarea, .bom-cell-input, .bom-cell-select, .bom-qty-input';
+    sortableOptions.preventOnFilter = true;
+  }
+
+  sortableInstance = new Sortable(tbody, sortableOptions);
 };

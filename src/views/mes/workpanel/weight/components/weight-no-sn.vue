@@ -49,23 +49,30 @@
       </div>
     </transition>
     <el-card shadow="hover" class="weight-form-card">
-      <template #header>
-        <div class="card-header">
-          <span>称重采集</span>
-          <el-tag :type="isConnected ? 'success' : 'info'" size="small">
-            {{ isConnected ? `已连接` : '未连接' }}
-          </el-tag>
-          <div class="dc-btn-group">
-            <div class="serial-debugger" tabindex="0" @keydown.enter="submitForm"></div>
-            <el-button :type="isConnected ? 'success' : 'info'" size="small" @click="handleConnect" :loading="connecting">
-              {{ isConnected ? '关闭串口' : '打开串口' }}
-            </el-button>
-            <el-button size="small" @click="getDataCollectionByShopOrder"> 刷新 </el-button>
-            <el-button color="#10b981" class="text-white" size="small" @click="submitForm" :loading="loading"> <span class="truncate">手动提交</span> </el-button>
-            <el-checkbox v-model="autoUpload">自动上传</el-checkbox>
+      <div class="weight-toolbar mb-3">
+        <div class="weight-toolbar-row">
+          <div class="no-sn-toolbar-title">称重采集</div>
+          <div class="weight-toolbar-actions">
+            <button type="button" class="serial-port-switch" :class="{ 'is-connected': isConnected, 'is-connecting': connecting }" :disabled="connecting" @click="handleConnect">
+              <span class="serial-led" aria-hidden="true" />
+              <span class="serial-status-label">
+                <span class="serial-status-title">{{ connecting ? '连接中' : isConnected ? '已连接' : '未连接' }}</span>
+                <span class="serial-status-hint">{{ connecting ? '请稍候' : isConnected ? '点击断开' : '点击连接' }}</span>
+              </span>
+            </button>
+            <el-button size="small" @click="getDataCollectionByShopOrder">刷新</el-button>
+            <el-button type="primary" size="small" :loading="loading" @click="submitForm">手动提交</el-button>
+            <el-checkbox v-model="autoUpload" size="small" border>自动上传</el-checkbox>
           </div>
         </div>
-      </template>
+        <div v-if="resultMessage">
+          <el-alert show-icon center :title="resultMessage" :type="resultStatus ? 'success' : 'error'" :closable="false">
+            <template #icon>
+              <Bell />
+            </template>
+          </el-alert>
+        </div>
+      </div>
 
       <el-form ref="queryFormRef" :model="workOrderQueryParams" :rules="workOrderRules" label-width="auto">
         <el-row :gutter="24">
@@ -102,7 +109,7 @@
           <el-col :lg="5" :md="5" :sm="24">
             <el-form-item label="产品总数:" prop="qtyToBuild">
               <el-button class="dashed-blue-btn w-[100%]">
-                {{ workOrderQueryParams.qtyToBuild ? parseFloat(workOrderQueryParams.qtyToBuild) : '' }}
+                {{ workOrderQueryParams.qtyToBuild != null ? parseFloat(String(workOrderQueryParams.qtyToBuild)) : '' }}
               </el-button>
             </el-form-item>
           </el-col>
@@ -148,56 +155,69 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :lg="24" :md="24" :sm="24">
-            <div v-if="resultMessage">
-              <el-alert show-icon center :title="resultMessage" :type="resultStatus ? 'success' : 'error'" :closable="false">
-                <template #icon>
-                  <Bell />
-                </template>
-              </el-alert>
+          <el-col v-if="latestHistoryRow" :lg="24" :md="24" :sm="24">
+            <div
+              class="latest-history-summary"
+              :class="{
+                'is-pass': latestHistoryRow.result === 'PASS',
+                'is-fail': latestHistoryRow.result === 'FAIL',
+                'is-pending': latestHistoryRow.result !== 'PASS' && latestHistoryRow.result !== 'FAIL'
+              }"
+            >
+              <span class="summary-title">最新称重结果</span>
+              <span class="summary-time">{{ latestHistoryRow.timestamp }}</span>
+              <span class="summary-sep" aria-hidden="true" />
+              <span class="summary-inline-label">工单</span>
+              <span class="hero-sfc">{{ latestHistoryRow.shopOrder }}</span>
+              <span class="summary-sep" aria-hidden="true" />
+              <span class="summary-inline-label">重量</span>
+              <span class="hero-weight">{{ latestHistoryRow.actualWeight }}</span>
+              <span class="summary-meta">
+                下限 <span class="limit-num">{{ latestHistoryRow.lowLimit }}</span> 上限 <span class="limit-num">{{ latestHistoryRow.hightLimit }}</span>
+              </span>
+              <el-tag class="summary-result-tag" size="small" :type="latestHistoryRow.result === 'PASS' ? 'success' : latestHistoryRow.result === 'FAIL' ? 'danger' : 'warning'">
+                {{ latestHistoryRow.result === 'PASS' ? '成功' : latestHistoryRow.result === 'FAIL' ? '失败' : latestHistoryRow.result }}
+              </el-tag>
             </div>
           </el-col>
         </el-row>
       </el-form>
     </el-card>
 
-    <el-card shadow="never" class="mt-2">
+    <el-card shadow="never" class="mt-2 history-card">
       <template #header>
-        <div class="card-header">
-          <span>历史数据</span>
-          <div>
-            <el-button type="info" size="small" @click="clearHistoryData"> 清空历史 </el-button>
+        <div class="history-card-header">
+          <div class="history-header-left" @click="historyExpanded = !historyExpanded">
+            <el-icon class="history-collapse-icon" :class="{ 'is-expanded': historyExpanded }">
+              <ArrowRight />
+            </el-icon>
+            <span class="history-header-title">历史数据</span>
+            <span v-if="pagination.total" class="text-gray-400 text-sm font-normal">（{{ pagination.total }} 条）</span>
           </div>
+          <el-button type="info" size="small" @click.stop="clearHistoryData">清空历史</el-button>
         </div>
       </template>
 
-      <el-table :data="paginatedHistoryData" style="width: 100%" size="small" max-height="300" border>
-        <el-table-column prop="timestamp" label="时间" min-width="160" />
-        <el-table-column prop="shopOrder" label="工单号" min-width="140" />
-        <el-table-column prop="item" label="产品编码" min-width="120" />
-        <el-table-column prop="itemDesc" label="物料描述" min-width="150" />
-        <el-table-column prop="actualWeight" label="重量" min-width="90" />
-        <el-table-column prop="lowLimit" label="下限" min-width="80" />
-        <el-table-column prop="hightLimit" label="上限" min-width="80" />
-        <el-table-column label="结果" min-width="80">
-          <template #default="scope">
-            <el-tag :type="scope.row.result === 'PASS' ? 'success' : scope.row.result === 'FAIL' ? 'danger' : 'warning'">
-              {{ scope.row.result === 'PASS' ? '成功' : scope.row.result === 'FAIL' ? '失败' : scope.row.result }}
-            </el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div v-show="historyExpanded" class="history-card-body">
+        <el-table :data="paginatedHistoryData" style="width: 100%" size="small" max-height="300" border>
+          <el-table-column prop="timestamp" label="时间" min-width="160" />
+          <el-table-column prop="shopOrder" label="工单号" min-width="140" />
+          <el-table-column prop="item" label="产品编码" min-width="120" />
+          <el-table-column prop="itemDesc" label="物料描述" min-width="150" />
+          <el-table-column prop="actualWeight" label="重量" min-width="90" />
+          <el-table-column prop="lowLimit" label="下限" min-width="80" />
+          <el-table-column prop="hightLimit" label="上限" min-width="80" />
+          <el-table-column label="结果" min-width="80">
+            <template #default="scope">
+              <el-tag :type="scope.row.result === 'PASS' ? 'success' : scope.row.result === 'FAIL' ? 'danger' : 'warning'">
+                {{ scope.row.result === 'PASS' ? '成功' : scope.row.result === 'FAIL' ? '失败' : scope.row.result }}
+              </el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
 
-      <el-pagination
-        v-model:current-page="pagination.currentPage"
-        v-model:page-size="pagination.pageSize"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="pagination.total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-        style="margin-top: 10px; justify-content: flex-end"
-      />
+        <el-pagination v-model:current-page="pagination.currentPage" v-model:page-size="pagination.pageSize" :page-sizes="[10, 20, 50, 100]" :total="pagination.total" layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange" @current-change="handleCurrentChange" style="margin-top: 10px; justify-content: flex-end" />
+      </div>
     </el-card>
 
     <!-- 弹框 -->
@@ -207,12 +227,11 @@
 </template>
 
 <script lang="ts" setup>
-import { ElMessage } from 'element-plus';
 import { ShopOrderForm, ShopOrderQuery, ShopOrderVO } from '@/api/mes/shopOrder/types';
 import type { OperationObj, ResourceObj } from '@/components/common-type';
 import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
 import ResourceDialog from '@/views/mes/workpanel/components/resourceDialog.vue';
-import { Close, Cpu, Operation, Bell } from '@element-plus/icons-vue';
+import { ArrowRight, Bell, Close, Cpu, Operation } from '@element-plus/icons-vue';
 import { queryDataCollectionByShopOrder, saveShopOrderWeightNoSn, getShopOrderWeightNoSnInfo } from '@/api/mes/workpanel';
 import { parseTime } from '@/utils/ruoyi';
 import { weightHistoryDB } from '@/utils/indexedDB';
@@ -258,6 +277,13 @@ interface HistoryRow {
 }
 
 const historyData = ref<HistoryRow[]>([]);
+/** 历史明细展开状态，默认收起 */
+const historyExpanded = ref(false);
+
+const latestHistoryRow = computed(() => {
+  const list = historyData.value;
+  return list.length ? list[list.length - 1] : null;
+});
 
 const pagination = ref({
   currentPage: 1,
@@ -313,13 +339,27 @@ const pushHistory = (result: HistoryRow['result']) => {
   return uuid;
 };
 
-interface PageData<T, Q> {
-  form: T;
-  queryParams: Q;
-  rules: any;
+interface BoxQtyOption {
+  label: string;
+  value: string;
+  dcGroup: string;
+  dcParameter: string;
+  minValue: string;
+  maxValue: string;
+  dcGroupBo: string;
+  dcParameterBo: string;
 }
+
+type WorkOrderQueryState = ShopOrderQuery & Record<string, any>;
+
+interface WeightNoSnShopOrderState {
+  workOrderForm: ShopOrderForm;
+  workOrderQueryParams: WorkOrderQueryState;
+  workOrderRules: Record<string, unknown>;
+}
+
 // 添加箱数选项状态
-const boxQtyOptions = ref<Array<{ label: string; value: string }>>([]);
+const boxQtyOptions = ref<BoxQtyOption[]>([]);
 const loading = ref(false);
 const total = ref(0);
 const queryFormRef = ref<ElFormInstance>();
@@ -353,9 +393,12 @@ const initWorkOrderFormData: ShopOrderForm = {
   customerOrder: undefined,
   overDeliveryTolerance: undefined,
   considerScrap: undefined,
-  remark: undefined
+  remark: undefined,
+  sample: false,
+  statusList: [],
+  shopOrderTypeList: []
 };
-const shopOrderData = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
+const shopOrderData = reactive<WeightNoSnShopOrderState>({
   workOrderForm: { ...initWorkOrderFormData },
   workOrderQueryParams: {
     pageNum: 1,
@@ -363,7 +406,9 @@ const shopOrderData = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
     handle: undefined,
     shopOrder: undefined,
     status: undefined,
+    statusList: [],
     shopOrderType: undefined,
+    shopOrderTypeList: [],
     priority: undefined,
     plannedWorkCenterBo: undefined,
     plannedItemBo: undefined,
@@ -386,7 +431,7 @@ const shopOrderData = reactive<PageData<ShopOrderForm, ShopOrderQuery>>({
     overDeliveryTolerance: undefined,
     considerScrap: undefined,
     params: {}
-  },
+  } as WorkOrderQueryState,
   workOrderRules: {}
 });
 const { workOrderQueryParams, workOrderForm, workOrderRules } = toRefs(shopOrderData);
@@ -403,7 +448,7 @@ const getDataCollectionByShopOrder = () => {
   })
     .then((res) => {
       // 提取 QUANTITY 字段值作为下拉选项
-      const quantityValues: Array<{ label: string; value: string; dcGroup: string; dcParameter: string; minValue: string; maxValue: string }> = [];
+      const quantityValues: BoxQtyOption[] = [];
 
       if (res.data.dcGroupVoList && res.data.dcGroupVoList.length > 0) {
         const dataCollectionList = res.data.dcGroupVoList[0].dcParameterVoList;
@@ -558,6 +603,11 @@ const removeOperationInLocalStorage = () => {
 const warnVoice = () => audioPlayer.playWarning();
 const successVoice = () => audioPlayer.playSuccess();
 
+/** 优先展示后端接口返回的业务错误信息 */
+const getApiErrorMessage = (error: any, fallback = '数据上传失败') => {
+  return error?.msg || error?.response?.data?.msg || error?.data?.msg || error?.message || fallback;
+};
+
 const AUTO_UPLOAD_KEY = 'workPanelNoSnAutoUpload';
 const AUTO_UPLOAD_BURST_MSG = '电子秤出现连续上传，请联系资讯调试电子秤稳定发送重量';
 const autoUpload = ref(false);
@@ -600,7 +650,6 @@ const handleAutoUploadBurst = () => {
   resultMessage.value = AUTO_UPLOAD_BURST_MSG;
   resultStatus.value = false;
   warnVoice();
-  ElMessage.error(AUTO_UPLOAD_BURST_MSG);
 };
 
 // 全局键盘事件处理函数
@@ -709,7 +758,7 @@ const submitForm = async () => {
     }
   } catch (error: any) {
     pushHistory('FAIL');
-    resultMessage.value = error?.message || '数据上传失败';
+    resultMessage.value = getApiErrorMessage(error);
     resultStatus.value = false;
     warnVoice();
     console.error('发送数据到后台失败:', error);
@@ -811,7 +860,10 @@ onBeforeUnmount(async () => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../styles/latest-history-summary.scss';
+@use '../styles/weight-toolbar.scss';
+
 .dashed-blue-btn.text-ellipsis {
   white-space: nowrap;
   overflow: hidden;
@@ -845,10 +897,54 @@ onBeforeUnmount(async () => {
   padding: 20px;
 }
 
-.card-header {
+.no-sn-toolbar-title {
+  flex-shrink: 0;
+  padding-right: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.weight-toolbar-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.history-card :deep(.el-card__body) {
+  padding: 0;
+}
+
+.history-card-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.history-collapse-icon {
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+  transition: transform 0.2s;
+}
+
+.history-collapse-icon.is-expanded {
+  transform: rotate(90deg);
+}
+
+.history-header-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.history-card-body {
+  padding: 0 0 12px;
 }
 
 .send-options {
@@ -866,15 +962,5 @@ onBeforeUnmount(async () => {
 
 .el-textarea {
   font-family: monospace;
-}
-.dc-btn-group {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 5px;
-}
-
-.text-white {
-  color: white !important;
 }
 </style>
