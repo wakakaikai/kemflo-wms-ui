@@ -12,13 +12,6 @@
               <p class="heading-desc">选择产品后依次扫描栈板号与产品SN</p>
             </div>
           </div>
-          <div v-if="resultMessage" class="status-alert">
-            <el-alert show-icon :closable="false" :title="resultMessage" :type="resultStatus ? 'success' : 'error'">
-              <template #icon>
-                <Bell />
-              </template>
-            </el-alert>
-          </div>
         </div>
       </template>
       <el-form :model="searchForm" label-position="top" class="work-form">
@@ -26,9 +19,7 @@
           <el-col :xs="24" :sm="24" :md="12">
             <div class="form-field">
               <el-form-item label="选择产品">
-                <el-select v-model="searchForm.item" filterable clearable placeholder="请选择需要绑定的产品" class="w-full" @change="handleItemChange">
-                  <el-option v-for="opt in itemPalletOptions" :key="opt.item" :label="opt.description ? `${opt.item} - ${opt.description}` : opt.item" :value="opt.item" />
-                </el-select>
+                <ItemPalletPickField v-model="searchForm.item" @pick="handleItemPick" />
               </el-form-item>
             </div>
           </el-col>
@@ -44,11 +35,12 @@
             </div>
           </el-col>
           <el-col :xs="24" :sm="8" :md="4">
-            <div class="metric-card">
-              <div>
-                <div class="metric-label">已扫描SN</div>
-                <div class="metric-value">{{ dataSource.length }}</div>
-              </div>
+            <div class="form-field">
+              <el-form-item label="已扫描SN">
+                <div class="flex items-center w-full pallet-metric-line">
+                  <span class="pallet-num-text">{{ dataSource.length }}</span>
+                </div>
+              </el-form-item>
             </div>
           </el-col>
         </el-row>
@@ -84,6 +76,15 @@
             <el-button v-if="dataSource.length > 0 && searchForm.palletNum > 0 && dataSource.length === searchForm.palletNum" type="primary" class="primary-action" @click="bindPalletSn"> 绑定栈板</el-button>
           </div>
         </el-col>
+        <el-col v-if="resultMessage" :span="24">
+          <div class="status-alert sn-status-alert">
+            <el-alert show-icon closable :title="resultMessage" :type="resultStatus ? 'success' : 'error'" @close="clearScanResult">
+              <template #icon>
+                <Bell />
+              </template>
+            </el-alert>
+          </div>
+        </el-col>
         <el-col :span="24">
           <div class="table-shell">
             <el-table :data="pagedDataSource" stripe row-key="sfc">
@@ -109,8 +110,9 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { Aim, Bell, Setting } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
 import { audioPlayer } from '@/utils/audioPlayer';
-import { bindWorkPanelBoxSn, checkWorkPanelPalletNo, checkWorkPanelSn, listWorkPanelItemPallet } from '@/api/mes/workpanel/pallet';
+import { bindWorkPanelBoxSn, checkWorkPanelPalletNo, checkWorkPanelSn } from '@/api/mes/workpanel/pallet';
 import type { WorkPanelItemPalletVO, WorkPanelPalletSnRow } from '@/api/mes/workpanel/pallet/types';
+import ItemPalletPickField from '@/views/mes/workpanel/pallet/components/ItemPalletPickField.vue';
 
 const isApiSuccess = (res: any) => res?.code === HttpStatus.SUCCESS || res?.success === true;
 
@@ -120,6 +122,10 @@ const resultStatus = ref(false);
 const setResult = (message: string, success = false) => {
   resultMessage.value = message;
   resultStatus.value = success;
+};
+
+const clearScanResult = () => {
+  resultMessage.value = '';
 };
 
 const getErrorMessage = (error: any, fallback: string) => error?.msg || error?.response?.data?.msg || fallback;
@@ -138,8 +144,6 @@ const result = reactive({
 });
 
 const dataSource = ref<WorkPanelPalletSnRow[]>([]);
-const itemPalletOptions = ref<WorkPanelItemPalletVO[]>([]);
-const itemPalletMap = new Map<string, WorkPanelItemPalletVO>();
 const editPalletNumDisabled = ref(false);
 const palletNo = ref('');
 const scanSn = ref('');
@@ -153,27 +157,9 @@ const pagedDataSource = computed(() => {
   return dataSource.value.slice(start, start + pageSize.value);
 });
 
-const loadItemPallet = async () => {
-  try {
-    const res: any = await listWorkPanelItemPallet();
-    if (!isApiSuccess(res)) {
-      throw res;
-    }
-    const list = (res.data || []) as WorkPanelItemPalletVO[];
-    itemPalletOptions.value = list;
-    itemPalletMap.clear();
-    list.forEach((obj) => itemPalletMap.set(obj.item, obj));
-  } catch (error: any) {
-    setResult(getErrorMessage(error, '获取产品栈板信息失败'), false);
-  }
-};
-
-const handleItemChange = (value: string) => {
-  if (itemPalletMap.has(value)) {
-    const row = itemPalletMap.get(value)!;
-    if (row.palletNum != null) {
-      searchForm.palletNum = row.palletNum;
-    }
+const handleItemPick = (row: WorkPanelItemPalletVO) => {
+  if (row.palletNum != null) {
+    searchForm.palletNum = Number(row.palletNum);
   }
 };
 
@@ -262,7 +248,8 @@ const checkSnStatus = async () => {
     const res: any = await checkWorkPanelSn({
       sfc,
       item: searchForm.item,
-      useType: 1
+      useType: 1,
+      palletSnList: dataSource.value
     });
     if (!isApiSuccess(res)) {
       throw res;
@@ -323,7 +310,6 @@ const delTableRecord = (_record: WorkPanelPalletSnRow, index: number) => {
 
 onMounted(() => {
   editPalletNumDisabled.value = false;
-  loadItemPallet();
   focusPalletNo();
 });
 </script>

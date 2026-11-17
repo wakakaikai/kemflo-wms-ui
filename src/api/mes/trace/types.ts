@@ -45,8 +45,8 @@ export interface SfcAssyVO {
   removed?: string;
 }
 
-/** 不良记录 */
-export interface NcDataReportVO {
+/** 不良记录（NcDataVo） */
+export interface NcDataVO {
   sfc?: string;
   operation?: string;
   dateTime?: string;
@@ -86,24 +86,41 @@ export interface ShopOrderHistoryVO {
   createTime?: string;
 }
 
+/** 栈板 WMS 出货绑定（追溯） */
+export interface SfcTracePalletOutboundVO {
+  shippingNo?: string;
+  palletNo?: string;
+  destWarehouseCode?: string;
+  destWarehouseName?: string;
+  /** 0-草稿 1-绑定中 2-已确认 3-已取消 */
+  status?: number;
+  confirmTime?: string;
+}
+
 /** 条码追溯结果 */
 export interface ProductTraceVO {
   transferSfc?: string;
   oldSfc?: string;
-  palletSnEntity?: PalletSnEntityVO;
-  shopOrderEntity?: ShopOrderEntityVO;
+  palletSnVo?: PalletSnEntityVO;
+  /** 栈板已绑 WMS 出货单时的目的地等信息 */
+  palletOutboundVoList?: SfcTracePalletOutboundVO[];
+  /** 条码状态（sfc.status） */
+  sfcStatus?: string;
+  /** 条码状态描述 */
+  sfcStatusDesc?: string;
+  shopOrderVo?: ShopOrderEntityVO;
   itemDesc?: string;
   qty?: number | string;
   fqcSfc?: string;
   sfcStep?: number;
-  sfcStepList?: SfcStepVO[];
-  bomComponentEntityList?: BomComponentVO[];
-  shopOrderEntityList?: ShopOrderHistoryVO[];
-  operationActivityLogList?: ActivityLogVO[][];
-  sfcAssyList?: SfcAssyVO[];
-  operationParametricMeasureList?: ParametricMeasureVO[][];
-  activityLogList?: ActivityLogVO[];
-  ncDataReportVOList?: NcDataReportVO[];
+  sfcStepVoList?: SfcStepVO[];
+  bomComponentVoList?: BomComponentVO[];
+  shopOrderVoList?: ShopOrderHistoryVO[];
+  operationActivityLogVoList?: ActivityLogVO[][];
+  sfcAssyVoList?: SfcAssyVO[];
+  operationParametricMeasureVoList?: ParametricMeasureVO[][];
+  activityLogVoList?: ActivityLogVO[];
+  ncDataVoList?: NcDataVO[];
 }
 
 export interface ProductTraceQuery {

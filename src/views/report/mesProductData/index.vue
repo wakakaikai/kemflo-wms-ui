@@ -17,7 +17,7 @@
               </el-input>
             </el-form-item>
             <el-form-item label="物料" prop="item">
-              <el-input v-model="queryParams.item" placeholder="仅物料查询需配合扫码时间（最多90天）" clearable @keyup.enter="handleQuery" />
+              <el-input v-model="queryParams.item" placeholder="请输入物料" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="产品条码" prop="sfcStr">
               <el-input v-model="queryParams.sfcStr" placeholder="请输入产品条码" clearable @keyup.enter="handleQuery">
@@ -26,8 +26,21 @@
                 </template>
               </el-input>
             </el-form-item>
+            <el-form-item label="栈板码" prop="palletNo">
+              <el-input v-model="queryParams.palletNo" placeholder="MES 栈板号" clearable style="width: 220px" @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="目的地" prop="destWarehouseCode">
+              <div class="dest-warehouse-field">
+                <el-input v-model="queryParams.destWarehouseCode" class="dest-warehouse-input" placeholder="目的仓标签二维码(仓库编码)" clearable @keyup.enter="handleQuery" @clear="clearDestWarehouse" @blur="syncDestWarehouseNameFromCode">
+                  <template #append>
+                    <el-button icon="Search" @click="openDestWarehouseDialog" />
+                  </template>
+                </el-input>
+                <!--                <span v-if="destWarehouseName" class="dest-warehouse-hint">{{ destWarehouseName }}</span>-->
+              </div>
+            </el-form-item>
             <el-form-item label="扫码时间" prop="dateTimeRange">
-              <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" :shortcuts="shortcuts" value-format="YYYY-MM-DD HH:mm:ss" range-separator="-" start-placeholder="开始时间" end-placeholder="结束时间（仅物料查询必选，最多90天）" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]" />
+              <el-date-picker v-model="queryParams.dateTimeRange" type="datetimerange" :shortcuts="shortcuts" value-format="YYYY-MM-DD HH:mm:ss" range-separator="-" start-placeholder="开始时间" end-placeholder="结束时间" :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]" />
             </el-form-item>
 
             <el-form-item>
@@ -103,6 +116,23 @@
       </el-table>
     </el-dialog>
     <ShopOrderDialog ref="shopOrderDialogRef" :pod-config="podConfig" @shop-order-call-back="shopOrderCallBack" />
+
+    <el-dialog v-model="destWarehouseDialogVisible" title="选择出货目的仓" width="60%" append-to-body destroy-on-close>
+      <el-input v-model="destWarehouseKeyword" placeholder="按仓库名称或编码搜索" clearable class="mb-3" />
+      <el-table v-loading="destWarehouseLoading" :data="filteredDestWarehouseOptions" border stripe highlight-current-row max-height="420" empty-text="目的仓字典暂无数据" @row-click="selectDestWarehouseRow">
+        <el-table-column width="56" align="center">
+          <template #default="scope">
+            <el-radio v-model="pendingDestWarehouseCode" :value="String(scope.row.dictValue || '')" @click.stop />
+          </template>
+        </el-table-column>
+        <el-table-column prop="dictLabel" label="目的仓名称" min-width="220" show-overflow-tooltip />
+        <el-table-column prop="dictValue" label="仓库编码" min-width="150" show-overflow-tooltip />
+      </el-table>
+      <template #footer>
+        <el-button @click="destWarehouseDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!pendingDestWarehouseCode" @click="confirmDestWarehouseSelection">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -111,7 +141,11 @@ import type { TabsPaneContext } from 'element-plus';
 import { listMesProductData } from '@/api/report/mesProductData';
 import { MesProductDataForm, MesProductDataQuery } from '@/api/report/mesProductData/types';
 import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
-import { ref } from 'vue';
+import { getDicts } from '@/api/system/dict/data';
+import type { DictDataVO } from '@/api/system/dict/data/types';
+import { computed, ref } from 'vue';
+
+const DEST_WAREHOUSE_DICT = 'wms_mi_shipping_destination_warehouse';
 
 const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
 const podConfig = ref<Record<string, unknown>>({});
@@ -241,7 +275,73 @@ const isItemOnlyQuery = () => {
   const hasShopOrder = !!String(q.shopOrder ?? '').trim();
   const hasSfc = !!String(q.sfcStr ?? '').trim() || (q.sfcList?.length ?? 0) > 0;
   const hasShipping = q.shippingCustomerNoticeId != null && q.shippingCustomerNoticeId !== '';
-  return hasItem && !hasShopOrder && !hasSfc && !hasShipping;
+  const hasPallet = !!String(q.palletNo ?? '').trim();
+  const hasDest = !!String(q.destWarehouseCode ?? '').trim();
+  return hasItem && !hasShopOrder && !hasSfc && !hasShipping && !hasPallet && !hasDest;
+};
+
+const destWarehouseDialogVisible = ref(false);
+const destWarehouseLoading = ref(false);
+const destWarehouseKeyword = ref('');
+const destWarehouseOptions = ref<DictDataVO[]>([]);
+const pendingDestWarehouseCode = ref('');
+const destWarehouseName = ref('');
+
+const filteredDestWarehouseOptions = computed(() => {
+  const keyword = destWarehouseKeyword.value.trim().toLowerCase();
+  if (!keyword) {
+    return destWarehouseOptions.value;
+  }
+  return destWarehouseOptions.value.filter((item) => `${item.dictLabel || ''} ${item.dictValue || ''} ${item.remark || ''}`.toLowerCase().includes(keyword));
+});
+
+const loadDestWarehouseDict = async () => {
+  destWarehouseLoading.value = true;
+  try {
+    const res = await getDicts(DEST_WAREHOUSE_DICT);
+    destWarehouseOptions.value = res.data || [];
+  } finally {
+    destWarehouseLoading.value = false;
+  }
+};
+
+const openDestWarehouseDialog = async () => {
+  destWarehouseDialogVisible.value = true;
+  pendingDestWarehouseCode.value = queryParams.value.destWarehouseCode || '';
+  destWarehouseKeyword.value = '';
+  if (!destWarehouseOptions.value.length) {
+    await loadDestWarehouseDict();
+  }
+};
+
+const selectDestWarehouseRow = (row: DictDataVO) => {
+  pendingDestWarehouseCode.value = String(row.dictValue || '');
+};
+
+const confirmDestWarehouseSelection = () => {
+  const row = destWarehouseOptions.value.find((item) => String(item.dictValue) === pendingDestWarehouseCode.value);
+  queryParams.value.destWarehouseCode = pendingDestWarehouseCode.value || undefined;
+  destWarehouseName.value = row?.dictLabel || '';
+  destWarehouseDialogVisible.value = false;
+};
+
+const clearDestWarehouse = () => {
+  queryParams.value.destWarehouseCode = undefined;
+  destWarehouseName.value = '';
+  pendingDestWarehouseCode.value = '';
+};
+
+const syncDestWarehouseNameFromCode = async () => {
+  const code = String(queryParams.value.destWarehouseCode ?? '').trim();
+  if (!code) {
+    destWarehouseName.value = '';
+    return;
+  }
+  if (!destWarehouseOptions.value.length) {
+    await loadDestWarehouseDict();
+  }
+  const row = destWarehouseOptions.value.find((item) => String(item.dictValue) === code);
+  destWarehouseName.value = row?.dictLabel || '';
 };
 
 const scanTimeRangeDays = (start: string, end: string) => {
@@ -288,6 +388,8 @@ const data = reactive<PageData<MesProductDataForm, MesProductDataQuery>>({
     customerCode: undefined,
     sfcStr: undefined,
     sfcList: undefined,
+    palletNo: undefined,
+    destWarehouseCode: undefined,
     params: {}
   },
   rules: {
@@ -455,6 +557,7 @@ const handleQuery = () => {
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields();
+  clearDestWarehouse();
   handleQuery();
 };
 
@@ -514,6 +617,22 @@ const flexColumnWidth = (label, prop, data) => {
 onMounted(() => {});
 </script>
 <style scoped lang="scss">
+.dest-warehouse-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dest-warehouse-input {
+  width: 280px;
+}
+
+.dest-warehouse-hint {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.2;
+}
+
 .badge-content {
   margin-left: 25px;
 }

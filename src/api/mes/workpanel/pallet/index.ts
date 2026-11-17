@@ -11,14 +11,16 @@ import type {
   WorkPanelPalletSnListForm,
   WorkPanelPalletSnRow,
   WorkPanelPalletSnUnbindForm,
+  WorkPanelItemPalletQuery,
   WorkPanelPalletSnValidateForm
 } from '@/api/mes/workpanel/pallet/types';
 
-/** 产品栈板数量列表 */
-export const listWorkPanelItemPallet = (): AxiosPromise<WorkPanelItemPalletVO[]> => {
+/** 分页查询栈板类型产品配置（type 默认 2） */
+export const pageWorkPanelItemPallet = (query: WorkPanelItemPalletQuery) => {
   return request({
-    url: '/mes/itemPallet/get',
+    url: '/mes/itemPallet/list',
     method: 'get',
+    params: query,
     headers: { isShowError: false }
   });
 };

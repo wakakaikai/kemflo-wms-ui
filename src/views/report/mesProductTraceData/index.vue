@@ -2,9 +2,9 @@
   <div class="mes-product-trace-page">
     <div ref="captureRef" class="p-2 mes-product-trace" :class="{ 'is-capturing': capturing }">
       <el-card shadow="hover">
-        <el-form ref="queryFormRef" :model="queryParams" :rules="queryRules" :inline="true" label-width="auto" @submit.prevent>
-          <el-form-item label="追溯条码" prop="sfc">
-            <HistoryInput v-model.trim="queryParams.sfc" :config="traceSfcConfig" placeholder="产品条码/关键件条码" clearable style="width: 100%" @keyup.enter="handleQuery" />
+        <el-form ref="queryFormRef" :model="queryParams" :rules="queryRules" :inline="true" label-width="auto" class="trace-query-form" @submit.prevent>
+          <el-form-item label="追溯条码" prop="sfc" class="trace-query-sfc">
+            <HistoryInput v-model.trim="queryParams.sfc" :config="traceSfcConfig" placeholder="产品条码/关键件条码" clearable @keyup.enter="handleQuery" />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" icon="Search" :loading="loading" @click="handleQuery">查询</el-button>
@@ -12,43 +12,61 @@
           </el-form-item>
         </el-form>
 
-        <div v-loading="loading" element-loading-text="数据加载中..." class="trace-result-area">
+        <div
+          v-loading="loading"
+          element-loading-text="数据加载中..."
+          class="trace-result-area"
+          :class="{ 'is-loading': loading }"
+        >
           <template v-if="hasTraceData">
             <div v-for="(item, index) in resultData" :key="index" class="trace-result-block">
               <el-divider content-position="left">基本信息</el-divider>
               <el-descriptions :column="3" border class="trace-descriptions">
                 <el-descriptions-item label="产品条码">{{ item.transferSfc }}</el-descriptions-item>
                 <el-descriptions-item label="追溯码">{{ item.oldSfc }}</el-descriptions-item>
-                <el-descriptions-item label="栈板码/外箱">{{ item.palletSnEntity?.palletNo || '' }}</el-descriptions-item>
-                <el-descriptions-item label="工单号">{{ item.shopOrderEntity?.shopOrder }}</el-descriptions-item>
-                <el-descriptions-item label="料号">{{ item.shopOrderEntity?.itemBo }}</el-descriptions-item>
+                <el-descriptions-item label="栈板码/外箱">{{ item.palletSnVo?.palletNo || '' }}</el-descriptions-item>
+                <el-descriptions-item label="条码状态">{{ item.sfcStatusDesc || item.sfcStatus || '' }}</el-descriptions-item>
+                <el-descriptions-item label="目的地">{{ formatTraceDestWarehouse(item) }}</el-descriptions-item>
+                <el-descriptions-item label="工单号">{{ item.shopOrderVo?.shopOrder }}</el-descriptions-item>
+                <el-descriptions-item label="料号">{{ item.shopOrderVo?.itemBo }}</el-descriptions-item>
                 <el-descriptions-item label="描述">{{ item.itemDesc }}</el-descriptions-item>
-                <el-descriptions-item label="计划工艺路线">{{ item.shopOrderEntity?.plannedRouterBo }}</el-descriptions-item>
-                <el-descriptions-item label="实际工艺路线">{{ item.shopOrderEntity?.routerBo }}</el-descriptions-item>
-                <el-descriptions-item label="工作中心">{{ item.shopOrderEntity?.plannedWorkCenterBo }}</el-descriptions-item>
-                <el-descriptions-item label="条码数量">{{ item.qty }}</el-descriptions-item>
-                <el-descriptions-item label="计划数量">{{ item.shopOrderEntity?.qtyToBuild }}</el-descriptions-item>
-                <el-descriptions-item label="完成数量">{{ item.shopOrderEntity?.qtyDone }}</el-descriptions-item>
+                <el-descriptions-item label="计划工艺路线">{{ item.shopOrderVo?.plannedRouterBo }}</el-descriptions-item>
+                <el-descriptions-item label="实际工艺路线">{{ item.shopOrderVo?.routerBo }}</el-descriptions-item>
+                <el-descriptions-item label="工作中心">{{ item.shopOrderVo?.plannedWorkCenterBo }}</el-descriptions-item>
+                <el-descriptions-item label="条码数量">{{ formatTraceQty(item.qty) }}</el-descriptions-item>
+                <el-descriptions-item label="计划数量">{{ formatTraceQty(item.shopOrderVo?.qtyToBuild) }}</el-descriptions-item>
+                <el-descriptions-item label="完成数量">{{ formatTraceQty(item.shopOrderVo?.qtyDone) }}</el-descriptions-item>
                 <el-descriptions-item label="FQC">{{ item.fqcSfc || '' }}</el-descriptions-item>
               </el-descriptions>
 
-              <el-divider content-position="left">工艺路线</el-divider>
-              <el-steps :active="item.sfcStep ?? 0" finish-status="success" size="small" class="trace-steps">
-                <el-step v-for="(step, stepIdx) in item.sfcStepList || []" :key="stepIdx" :title="step.operation" :description="step.operationDescription" hollow="true" />
-              </el-steps>
-
-              <template v-if="item.bomComponentEntityList?.length">
-                <el-divider content-position="left">工单BOM</el-divider>
-                <trace-table :columns="bomColumns" :data="item.bomComponentEntityList" />
+              <template v-if="item.palletOutboundVoList?.length">
+                <el-divider content-position="left">出货信息</el-divider>
+                <trace-table :columns="palletOutboundColumns" :data="item.palletOutboundVoList">
+                  <template #outboundStatus="{ row }">
+                    <el-tag :type="getOutboundBindStatusMeta(row.status).type" size="small">
+                      {{ getOutboundBindStatusMeta(row.status).label }}
+                    </el-tag>
+                  </template>
+                </trace-table>
               </template>
 
-              <template v-if="(item.shopOrderEntityList?.length ?? 0) > 1">
+              <el-divider content-position="left">工艺路线</el-divider>
+              <el-steps :active="item.sfcStep ?? 0" finish-status="success" size="small" class="trace-steps">
+                <el-step v-for="(step, stepIdx) in item.sfcStepVoList || []" :key="stepIdx" :title="step.operation" :description="step.operationDescription" hollow="true" />
+              </el-steps>
+
+              <template v-if="item.bomComponentVoList?.length">
+                <el-divider content-position="left">工单BOM</el-divider>
+                <trace-table :columns="bomColumns" :data="item.bomComponentVoList" />
+              </template>
+
+              <template v-if="(item.shopOrderVoList?.length ?? 0) > 1">
                 <el-divider content-position="left">工单流转历史</el-divider>
                 <div class="trace-toolbar">
                   <el-button plain size="small" @click="shopOrderReverse = !shopOrderReverse">排序</el-button>
                 </div>
                 <el-timeline class="trace-timeline">
-                  <el-timeline-item v-for="(shopOrderItem, shopOrderIdx) in getShopOrderHistory(item.shopOrderEntityList)" :key="shopOrderIdx" hollow>
+                  <el-timeline-item v-for="(shopOrderItem, shopOrderIdx) in getShopOrderHistory(item.shopOrderVoList)" :key="shopOrderIdx" hollow>
                     <span class="trace-meta-text">工单号：{{ shopOrderItem.shopOrder }}</span>
                     <span class="trace-meta-text trace-meta-text--gap">条码创建时间：{{ shopOrderItem.createTime }}</span>
                   </el-timeline-item>
@@ -64,7 +82,7 @@
               </div>
 
               <el-timeline class="trace-timeline trace-operation-timeline">
-                <el-timeline-item v-for="(operActivityLogItem, operIdx) in getOperationActivityLogs(item.operationActivityLogList)" :key="operIdx" hollow>
+                <el-timeline-item v-for="(operActivityLogItem, operIdx) in getOperationActivityLogs(item.operationActivityLogVoList)" :key="operIdx" hollow>
                   <div class="trace-operation-block">
                     <div class="trace-operation-title">{{ formatOperationTitle(operActivityLogItem[0]) }}</div>
                     <el-divider content-position="left">操作记录</el-divider>
@@ -98,7 +116,7 @@
 
           <template v-else-if="hasComponentOnlyData">
             <el-divider content-position="left">关键件记录</el-divider>
-            <trace-table v-for="(item, idx) in resultData" :key="idx" :columns="componentColumns" :data="item.sfcAssyList || []">
+            <trace-table v-for="(item, idx) in resultData" :key="idx" :columns="componentColumns" :data="item.sfcAssyVoList || []">
               <template #removed="{ row }">
                 <el-icon v-if="row.removed === 'true'" color="#f56c6c"><CircleCloseFilled /></el-icon>
                 <el-icon v-else color="#67c23a"><CircleCheckFilled /></el-icon>
@@ -111,11 +129,11 @@
       </el-card>
 
       <el-dialog v-model="activityLogVisible" title="操作记录" width="92%" destroy-on-close append-to-body>
-        <trace-table :columns="activityLogColumns" :data="currentItem?.activityLogList || []" bordered />
+        <trace-table :columns="activityLogColumns" :data="currentItem?.activityLogVoList || []" bordered />
       </el-dialog>
 
       <el-dialog v-model="componentVisible" title="关键件记录" width="92%" destroy-on-close append-to-body>
-        <trace-table :columns="componentColumns" :data="currentItem?.sfcAssyList || []" bordered>
+        <trace-table :columns="componentColumns" :data="currentItem?.sfcAssyVoList || []" bordered>
           <template #removed="{ row }">
             <el-icon v-if="row.removed === 'true'" color="#f56c6c"><CircleCloseFilled /></el-icon>
             <el-icon v-else color="#67c23a"><CircleCheckFilled /></el-icon>
@@ -124,7 +142,7 @@
       </el-dialog>
 
       <el-dialog v-model="ncDataVisible" title="不良记录" width="92%" destroy-on-close append-to-body>
-        <trace-table :columns="ncDataColumns" :data="currentItem?.ncDataReportVOList || []" bordered />
+        <trace-table :columns="ncDataColumns" :data="currentItem?.ncDataVoList || []" bordered />
       </el-dialog>
     </div>
 
@@ -310,6 +328,54 @@ const bomColumns = [
   { label: '装配数量', prop: 'qty', width: 90 }
 ];
 
+const palletOutboundColumns = [
+  { label: '出货号', prop: 'shippingNo', width: 160 },
+  { label: '栈板号', prop: 'palletNo', width: 180 },
+  { label: '目的地', prop: 'destWarehouseName', minWidth: 160 },
+  { label: '目的仓编码', prop: 'destWarehouseCode', width: 120 },
+  { label: '状态', prop: 'status', width: 100, slot: 'outboundStatus' },
+  { label: '确认时间', prop: 'confirmTime', width: 170 }
+];
+
+const getOutboundBindStatusMeta = (status?: number) => {
+  const map: Record<number, { label: string; type: 'info' | 'primary' | 'success' | 'danger' }> = {
+    0: { label: '草稿', type: 'info' },
+    1: { label: '绑定中', type: 'primary' },
+    2: { label: '已确认', type: 'success' },
+    3: { label: '已取消', type: 'danger' }
+  };
+  if (status == null) {
+    return { label: '-', type: 'info' as const };
+  }
+  return map[status] || { label: '未知', type: 'info' as const };
+};
+
+/** 基本信息「目的地」：优先已确认出货单，否则取最新一条 */
+const formatTraceDestWarehouse = (item: ProductTraceVO) => {
+  const list = item.palletOutboundVoList || [];
+  if (!list.length) {
+    return '';
+  }
+  const confirmed = list.find((row) => row.status === 2 && row.destWarehouseName);
+  if (confirmed?.destWarehouseName) {
+    return confirmed.destWarehouseName;
+  }
+  const names = [...new Set(list.map((row) => row.destWarehouseName).filter(Boolean))] as string[];
+  return names.join(' / ');
+};
+
+/** 追溯数量展示：去掉小数位 */
+const formatTraceQty = (value?: number | string | null) => {
+  if (value == null || value === '') {
+    return '';
+  }
+  const num = Number(value);
+  if (Number.isNaN(num)) {
+    return String(value);
+  }
+  return String(Math.trunc(num));
+};
+
 const queryFormRef = ref<ElFormInstance>();
 const captureRef = ref<HTMLElement>();
 const capturing = ref(false);
@@ -345,7 +411,7 @@ const hasTraceData = computed(() => resultData.value.length > 0 && !!resultData.
 
 const hasComponentOnlyData = computed(() => {
   const first = resultData.value[0];
-  return resultData.value.length > 0 && !first?.transferSfc && (first?.sfcAssyList?.length ?? 0) > 0;
+  return resultData.value.length > 0 && !first?.transferSfc && (first?.sfcAssyVoList?.length ?? 0) > 0;
 });
 
 const canCapture = computed(() => hasTraceData.value || hasComponentOnlyData.value);
@@ -371,12 +437,12 @@ const formatOperationTitle = (log?: ActivityLogVO) => {
 
 const getOperAssyList = (item: ProductTraceVO, operActivityLogItem: ActivityLogVO[]) => {
   const operation = operActivityLogItem[0]?.operation;
-  return (item.sfcAssyList || []).filter((sfcAssyItem) => sfcAssyItem.operationBo === operation);
+  return (item.sfcAssyVoList || []).filter((sfcAssyItem) => sfcAssyItem.operationBo === operation);
 };
 
 const getOperTestDataList = (item: ProductTraceVO, operActivityLogItem: ActivityLogVO[]) => {
   const operation = operActivityLogItem[0]?.operation;
-  return (item.operationParametricMeasureList || []).filter((testGroup) => testGroup[0]?.operation === operation);
+  return (item.operationParametricMeasureVoList || []).filter((testGroup) => testGroup[0]?.operation === operation);
 };
 
 const isPassStatus = (status?: string) => {
@@ -519,8 +585,31 @@ const handleCapture = async () => {
     margin-top: 24px;
   }
 
+  .trace-query-form {
+  .trace-query-sfc {
+    flex: 1 1 520px;
+    min-width: 420px;
+    max-width: 720px;
+    margin-right: 12px;
+
+    :deep(.el-form-item__content) {
+      width: 100%;
+    }
+
+    :deep(.el-input),
+    :deep(.history-input-container) {
+      width: 100%;
+    }
+  }
+  }
+
   .trace-result-area {
-    margin-top: 4px;
+    margin-top: 8px;
+    min-height: 48px;
+
+    &.is-loading {
+      min-height: min(48vh, 520px);
+    }
   }
 
   :deep(.el-divider__text.is-left) {

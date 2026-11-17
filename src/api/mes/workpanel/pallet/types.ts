@@ -1,3 +1,12 @@
+/** 作业面板栈板产品分页查询 */
+export interface WorkPanelItemPalletQuery {
+  pageNum?: number;
+  pageSize?: number;
+  /** 物料编码（精确匹配） */
+  item?: string;
+  type?: number;
+}
+
 /** 产品栈板配置（作业面板） */
 export interface WorkPanelItemPalletVO {
   item: string;
@@ -39,6 +48,7 @@ export interface WorkPanelPalletSnValidateForm {
   sfc?: string;
   item?: string;
   useType?: number;
+  palletSnList?: WorkPanelPalletSnRow[];
 }
 
 /** 栈板 SN 列表查询 */

@@ -66,10 +66,11 @@ export const delShopOrderSfcPrintHistory = (id: string | number | Array<string |
  * 保存工单条码打印历史
  * @param data
  */
-export const savePrintHistory = (data: any) => {
+export const savePrintHistory = (data: any, config?: Record<string, any>) => {
   return request({
     url: '/mes/shopOrderSfcPrintHistory/savePrintHistory',
     method: 'post',
-    data: data
+    data: data,
+    ...config
   });
 };

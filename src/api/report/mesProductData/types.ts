@@ -56,6 +56,12 @@ export interface MesProductDataQuery extends PageQuery {
    */
   sfcList?: Array<string>;
 
+  /** MES 栈板号 */
+  palletNo?: string;
+
+  /** 目的仓编码（字典 wms_mi_shipping_destination_warehouse） */
+  destWarehouseCode?: string;
+
   /**
    * 日期范围参数
    */

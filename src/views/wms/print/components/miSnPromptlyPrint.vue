@@ -84,6 +84,7 @@
               <h3>MI即扫即打预览(47mm*30mm)</h3>
             </div>
           </div>
+          <el-alert v-if="apiMessage" :title="apiMessage" :type="apiMessageType" show-icon closable class="preview-api-alert" @close="apiMessage = ''" />
 
           <!-- 预览内容 -->
           <div class="single-preview">
@@ -182,6 +183,7 @@ import { getLodop } from '@/utils/LodopFuncs';
 import { savePrintHistory } from '@/api/mes/shopOrderSfcPrintHistory';
 import { HttpStatus } from '@/enums/RespEnum';
 import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
+import { audioPlayer } from '@/utils/audioPlayer';
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
@@ -223,6 +225,31 @@ const podConfig = ref<{ [key: string]: any }>({});
 const scanInput = ref('');
 const copies = ref(1);
 const printing = ref(false);
+const apiMessage = ref('');
+const apiMessageType = ref<'success' | 'error' | 'warning' | 'info'>('error');
+
+const playSuccessSound = () => audioPlayer.playSuccess();
+const playErrorSound = () => audioPlayer.playWarning();
+
+const setApiMessage = (message: unknown, type: 'success' | 'error' | 'warning' | 'info' = 'error') => {
+  const text = message == null ? '' : String(message).trim();
+  apiMessage.value = text;
+  apiMessageType.value = type;
+  if (text) {
+    type === 'success' ? playSuccessSound() : playErrorSound();
+  }
+};
+
+const getApiMessage = (error: any, fallback: string) => {
+  const message = error?.response?.data?.msg || error?.response?.data?.message || error?.data?.msg || error?.data?.message || error?.msg || error?.message;
+  return message && String(message).trim() ? String(message) : fallback;
+};
+
+/** 接口反馈后先释放主线程，让 Alert 和提示音在标签截图前完成渲染。 */
+const waitForInterfaceFeedback = async () => {
+  await nextTick();
+  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+};
 // 扫描历史
 const scanHistory = ref<Array<{ content: string; time: string }>>([]);
 // 预览设置
@@ -253,15 +280,18 @@ const shopOrderCallBack = (data: any) => {
 /** 查询工序列表 */
 const getShopOrderList = async () => {
   try {
-    const res = await listShopOrder({
-      shopOrder: workOrderInfo.value.shopOrder
-    });
+    const res = await listShopOrder(
+      {
+        shopOrder: workOrderInfo.value.shopOrder
+      },
+      { headers: { isShowError: false } }
+    );
     if (res.total == 0) {
-      proxy.$modal.msgError('工单号' + workOrderInfo.value.shopOrder + '资料不存在');
+      setApiMessage('工单号' + workOrderInfo.value.shopOrder + '资料不存在');
       return;
     }
     if (res.total > 1) {
-      proxy.$modal.msgError('工单号' + workOrderInfo.value.shopOrder + '存在多笔资料');
+      setApiMessage('工单号' + workOrderInfo.value.shopOrder + '存在多笔资料');
       return;
     }
     const data = res.rows[0];
@@ -271,7 +301,7 @@ const getShopOrderList = async () => {
     workOrderInfo.value.productDesc = data.productDesc;
     generateSixtyNineBarcode();
   } catch (error) {
-    proxy.$modal.msgError('查询工单数据失败: ' + (error as Error).message);
+    setApiMessage(getApiMessage(error, '查询工单数据失败'));
   }
 };
 
@@ -618,6 +648,8 @@ const renderPrintImage = async () => {
 const keyDownTab = async () => {
   if (!scanInput.value.trim()) return;
 
+  apiMessage.value = '';
+
   workOrderInfo.value.sfcContent = scanInput.value.trim();
   scanInput.value = '';
 
@@ -639,24 +671,30 @@ const keyDownTab = async () => {
   // await handlePrint();
   try {
     printing.value = true;
-    const res = await savePrintHistory({
-      shopOrderSfcBoList: [
-        {
-          shopOrder: workOrderInfo.value.shopOrder,
-          sfc: workOrderInfo.value.sfcContent
-        }
-      ],
-      printType: 2,
-      businessCode: 'MI'
-    });
+    const res = await savePrintHistory(
+      {
+        shopOrderSfcBoList: [
+          {
+            shopOrder: workOrderInfo.value.shopOrder,
+            sfc: workOrderInfo.value.sfcContent
+          }
+        ],
+        printType: 2,
+        businessCode: 'MI'
+      },
+      { headers: { isShowError: false } }
+    );
     if (res.code !== HttpStatus.SUCCESS) {
-      printing.value = false;
+      setApiMessage(res.msg || res.message || '扫码打印数据处理失败');
       return;
     }
     workOrderInfo.value.productDate = res.data[0].productDate;
+    // 接口已成功返回后立即反馈，避免等待标签截图渲染和 Lodop 提交后才播放提示音。
+    setApiMessage(res.msg || res.message || '接口处理成功，正在生成打印任务', 'success');
+    await waitForInterfaceFeedback();
     const LODOP = getLodop();
     if (!LODOP) {
-      proxy.$modal.msgError('未检测到Lodop打印服务，请安装Lodop插件');
+      setApiMessage('未检测到Lodop打印服务，请安装Lodop插件');
       return;
     }
     // 按标签实际尺寸初始化任务，避免沿用 A4 画布后再由驱动缩放
@@ -680,6 +718,8 @@ const keyDownTab = async () => {
     // LODOP.PRINT_DESIGN(); // 设计模式，调试时使用
     // LODOP.PREVIEW(); // 预览
     LODOP.PRINT(); // 直接打印
+  } catch (error) {
+    setApiMessage(getApiMessage(error, '扫码打印数据处理失败'));
   } finally {
     printing.value = false;
   }
@@ -788,6 +828,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.preview-api-alert {
+  flex: 0 0 auto;
+  width: 100%;
+  margin: 0 0 12px;
+  border-radius: 0;
+  box-sizing: border-box;
 }
 
 .preview-header {

@@ -15,11 +15,12 @@ export const changeShopOrderRouter = (data: ShopOrderRouterChangeForm) => reques
  * @returns {*}
  */
 
-export const listShopOrder = (query?: any) => {
+export const listShopOrder = (query?: any, config?: Record<string, any>) => {
   return request({
     url: '/mes/shopOrder/list',
     method: 'get',
-    params: query
+    params: query,
+    ...config
   });
 };
 

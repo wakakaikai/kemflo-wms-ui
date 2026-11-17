@@ -25,9 +25,7 @@
           <el-col :xs="24" :sm="24" :md="10">
             <div class="form-field">
               <el-form-item label="选择产品" prop="item">
-                <el-select v-model="searchForm.item" filterable clearable placeholder="请选择需要下达条码的产品" class="w-full" @change="handleItemChange">
-                  <el-option v-for="opt in itemPalletOptions" :key="opt.item" :label="opt.description ? `${opt.item} - ${opt.description}` : opt.item" :value="opt.item" />
-                </el-select>
+                <ItemPalletPickField v-model="searchForm.item" @pick="handleItemPick" />
               </el-form-item>
             </div>
           </el-col>
@@ -61,12 +59,13 @@
 </template>
 
 <script setup name="WorkPanelPalletRelease" lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import { Bell, DocumentAdd } from '@element-plus/icons-vue';
 import { HttpStatus } from '@/enums/RespEnum';
-import { exportWorkPanelPalletExcel, generateWorkPanelPallet, listWorkPanelItemPallet } from '@/api/mes/workpanel/pallet';
+import { exportWorkPanelPalletExcel, generateWorkPanelPallet } from '@/api/mes/workpanel/pallet';
 import type { WorkPanelItemPalletVO } from '@/api/mes/workpanel/pallet/types';
+import ItemPalletPickField from '@/views/mes/workpanel/pallet/components/ItemPalletPickField.vue';
 
 const isApiSuccess = (res: any) => res?.code === HttpStatus.SUCCESS || res?.success === true;
 
@@ -81,8 +80,6 @@ const searchForm = reactive<ReleaseForm>({
   palletLevel: '1'
 });
 
-const itemPalletOptions = ref<WorkPanelItemPalletVO[]>([]);
-const itemPalletMap = new Map<string, WorkPanelItemPalletVO>();
 const loading = ref(false);
 const formRef = ref<FormInstance>();
 const resultMessage = ref('');
@@ -101,28 +98,11 @@ const rules: FormRules = {
   qty: [{ required: true, message: '请填写下达数量!', trigger: 'blur' }]
 };
 
-const loadItemPallet = async () => {
-  try {
-    const res: any = await listWorkPanelItemPallet();
-    if (!isApiSuccess(res)) {
-      throw res;
-    }
-    const list = (res.data || []) as WorkPanelItemPalletVO[];
-    itemPalletOptions.value = list;
-    itemPalletMap.clear();
-    list.forEach((obj) => itemPalletMap.set(obj.item, obj));
-  } catch (error: any) {
-    setResult(getErrorMessage(error, '获取产品栈板信息失败'), false);
+const handleItemPick = (row: WorkPanelItemPalletVO) => {
+  if (row.palletNum != null) {
+    searchForm.palletNum = Number(row.palletNum);
   }
-};
-
-const handleItemChange = (value: string) => {
-  if (itemPalletMap.has(value)) {
-    const row = itemPalletMap.get(value)!;
-    if (row.palletNum != null) {
-      searchForm.palletNum = row.palletNum;
-    }
-  }
+  formRef.value?.validateField('item').catch(() => undefined);
 };
 
 const releasePallet = async () => {
@@ -171,9 +151,6 @@ const releasePallet = async () => {
   }
 };
 
-onMounted(() => {
-  loadItemPallet();
-});
 </script>
 
 <style scoped lang="scss">

@@ -80,6 +80,18 @@
     min-width: min(520px, 48vw);
     border-radius: 9px;
 
+    &.sn-status-alert {
+      min-width: 0;
+      width: 100%;
+      margin-top: 2px;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+
+      :deep(.el-alert) {
+        width: 100%;
+      }
+    }
+
     :deep(.el-alert--success .el-alert__title) {
       color: var(--el-color-success);
     }
@@ -87,6 +99,10 @@
     :deep(.el-alert--error .el-alert__title) {
       color: var(--el-color-error);
     }
+  }
+
+  .pallet-metric-line {
+    min-height: 34px;
   }
 
   .section-label {
