@@ -239,14 +239,14 @@
 
       <div class="history-filter-panel">
         <el-form :model="historyQueryParams" :inline="true" class="history-query-form" label-width="auto" @submit.prevent>
-        <el-form-item label="出货号">
-          <el-input v-model="historyQueryParams.shippingNo" clearable placeholder="请输入出货号" style="width: 230px" @keyup.enter="handleHistoryQuery" />
-        </el-form-item>
-        <el-form-item label="栈板号">
-          <el-input v-model="historyQueryParams.palletNo" clearable placeholder="请输入明细栈板号" style="width: 230px" @keyup.enter="handleHistoryQuery" />
-        </el-form-item>
-        <el-form-item label="目的仓">
-          <DestWarehouseSelectDialog v-model:warehouse-code="historyQueryParams.destWarehouseCode" v-model:warehouse-name="historyWarehousePickerName" :warehouse-options="warehouseOptions" placeholder="请选择目的仓" clearable field-width="340px" />
+          <el-form-item label="出货号">
+            <el-input v-model="historyQueryParams.shippingNo" clearable placeholder="请输入出货号" style="width: 230px" @keyup.enter="handleHistoryQuery" />
+          </el-form-item>
+          <el-form-item label="栈板号">
+            <el-input v-model="historyQueryParams.palletNo" clearable placeholder="请输入明细栈板号" style="width: 230px" @keyup.enter="handleHistoryQuery" />
+          </el-form-item>
+          <el-form-item label="目的仓">
+            <DestWarehouseSelectDialog v-model:warehouse-code="historyQueryParams.destWarehouseCode" v-model:warehouse-name="historyWarehousePickerName" :warehouse-options="warehouseOptions" placeholder="请选择目的仓" clearable field-width="340px" />
           </el-form-item>
           <el-form-item label="状态">
             <el-select v-model="historyQueryParams.status" clearable placeholder="全部" style="width: 110px">
@@ -294,8 +294,8 @@
         <el-table-column label="创建人" prop="createByName" width="100" align="center" />
         <el-table-column label="操作" width="150" align="center" fixed="right">
           <template #default="scope">
-            <el-button link type="primary" @click="openBind(scope.row.id)">打开</el-button>
-            <el-button v-if="canUnbindHistoryRow(scope.row)" link type="primary" @click="openDestWarehouseDialog(scope.row)">改目的仓</el-button>
+            <el-button link type="primary" @click="openBind(scope.row.id)">打印</el-button>
+            <el-button v-if="canUnbindHistoryRow(scope.row)" link type="primary" @click="openDestWarehouseDialog(scope.row)">修改</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -834,8 +834,8 @@ const openPrintWindow = async (items: LabelPrintItem[]) => {
       .print-page{width:${LABEL_WIDTH_MM}mm;height:${LABEL_HEIGHT_MM}mm;overflow:hidden;break-after:page;page-break-after:always}
       .print-page:last-child{break-after:auto;page-break-after:auto}.label{position:relative;width:100%;height:100%;font-family:Arial,"Microsoft YaHei",sans-serif;color:#000;background:#fff}
       .logo{position:absolute;top:9mm;left:9mm;width:17mm;height:17mm;border-radius:5mm;object-fit:cover}.qr{position:absolute;top:8mm;right:8mm;width:31mm;height:31mm}
-      .destination{position:absolute;left:10mm;right:8mm;bottom:10mm}.title{font-size:9mm;line-height:1.15}.line{display:flex;align-items:flex-end;justify-content:space-between;gap:4mm;margin-top:2mm}
-      .name{flex:1;font-size:8mm;line-height:1.12;word-break:break-all}.index{flex:none;font-size:7mm;line-height:1;white-space:nowrap}
+      .destination{position:absolute;left:10mm;right:8mm;bottom:10mm}.title,.name{font-family:黑体,SimHei,sans-serif;font-size:36px;font-weight:bold;line-height:1.15}.line{display:flex;align-items:last baseline;justify-content:space-between;gap:4mm;margin-top:2mm}
+      .name{flex:1;line-height:1.12;word-break:break-all}.index{flex:none;font-size:7mm;line-height:1;white-space:nowrap;align-self:last baseline}
     </style></head><body>${pages.join('')}<script>window.onload=function(){window.onafterprint=function(){window.close()};window.focus();window.print()}<\/script></body></html>`);
     printWindow.document.close();
   } catch {
@@ -1356,13 +1356,15 @@ onMounted(async () => {
 }
 
 .destination-title {
-  font-size: 9mm;
+  font-family: 黑体, SimHei, sans-serif;
+  font-size: 36px;
+  font-weight: bold;
   line-height: 1.15;
 }
 
 .destination-line {
   display: flex;
-  align-items: flex-end;
+  align-items: last baseline;
   justify-content: space-between;
   gap: 4mm;
   margin-top: 2mm;
@@ -1370,7 +1372,9 @@ onMounted(async () => {
 
 .destination-name {
   flex: 1;
-  font-size: 8mm;
+  font-family: 黑体, SimHei, sans-serif;
+  font-size: 36px;
+  font-weight: bold;
   line-height: 1.12;
   word-break: break-all;
 }
@@ -1380,6 +1384,7 @@ onMounted(async () => {
   font-size: 7mm;
   line-height: 1;
   white-space: nowrap;
+  align-self: last baseline;
 }
 
 .qr-payload-box {

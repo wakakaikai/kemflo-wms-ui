@@ -35,8 +35,8 @@
           <el-col :span="1.5">
             <el-button type="danger" plain icon="Download" @click="exportDiffData" v-hasPermi="['wms:inventoryDifference:export']">导出差异物料</el-button>
           </el-col>
-          <el-col :span="1.5">
-            <el-switch v-model="onlyShowDiff" active-text="只显示差异" inactive-text="显示全部" inline-prompt @change="handleQuery()" />
+          <el-col :span="1.5" class="flex items-center">
+            <el-checkbox v-model="onlyShowDiff" @change="handleOnlyShowDiffChange">只显示差异</el-checkbox>
           </el-col>
           <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
         </el-row>
@@ -149,10 +149,16 @@ const warehouseCodeConfig: HistoryConfig = {
   }
 };
 
+/** 差异数量是否非零（后端 BigDecimal 常以 "0.000" 字符串返回，不能用 !== 0） */
+const hasDiff = (qty: number | string | null | undefined) => {
+  const n = Number(qty);
+  return Number.isFinite(n) && n !== 0;
+};
+
 /** SAP前端分页总条数 */
 const sapTotal = computed(() => {
   if (!onlyShowDiff.value) return sapRawList.value.length;
-  return sapRawList.value.filter((item) => item.diffQuantity !== 0).length;
+  return sapRawList.value.filter((item) => hasDiff(item.diffQuantity)).length;
 });
 
 /** 经过筛选与分页的显示列表 */
@@ -160,14 +166,14 @@ const displayList = computed(() => {
   if (activeTab.value === 'sap') {
     let list = sapRawList.value;
     if (onlyShowDiff.value) {
-      list = list.filter((item) => item.diffQuantity !== 0);
+      list = list.filter((item) => hasDiff(item.diffQuantity));
     }
     const start = (sapPageNum.value - 1) * sapPageSize.value;
     const end = start + sapPageSize.value;
     return list.slice(start, end);
   }
   if (!onlyShowDiff.value) return inventoryDiffList.value;
-  return inventoryDiffList.value.filter((item) => item.diffQuantity !== 0);
+  return inventoryDiffList.value.filter((item) => hasDiff(item.diffQuantity));
 });
 
 /** 查询库存差异列表 */
@@ -186,8 +192,8 @@ const getList = async () => {
       const res = await listInventoryDiff(params);
       sapRawList.value = res.rows || [];
     } else {
-      // WMS页签：后端分页
-      const params = { ...queryParams.value };
+      // WMS页签：后端分页；只显示差异时传 diffFlag，由后端过滤后再分页
+      const params = { ...queryParams.value, diffFlag: onlyShowDiff.value || undefined };
       delete params.itemCodeStr;
       const res = await listInventoryDiff(params);
       inventoryDiffList.value = res.rows;
@@ -195,6 +201,15 @@ const getList = async () => {
     }
   } finally {
     loading.value = false;
+  }
+};
+
+/** 只显示差异切换 */
+const handleOnlyShowDiffChange = () => {
+  sapPageNum.value = 1;
+  if (activeTab.value === 'wms') {
+    queryParams.value.pageNum = 1;
+    getList();
   }
 };
 

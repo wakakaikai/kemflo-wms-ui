@@ -34,6 +34,8 @@ export interface PalletOutboundBindForm {
 }
 
 export interface PalletOutboundBindQuery extends PageQuery {
+  orderByColumn?: string;
+  isAsc?: string;
   shippingNo?: string;
   destWarehouseCode?: string;
   destWarehouseName?: string;
