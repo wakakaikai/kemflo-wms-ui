@@ -165,7 +165,9 @@ export interface ImmediateShopOrderQuery extends PageQuery {
   plannedItem?: string;
   plannedWorkCenter?: string;
   status?: string;
+  statusList?: string[];
   shopOrderType?: string;
+  shopOrderTypeList?: string[];
   plannedStartDateFrom?: string;
   plannedStartDateTo?: string;
   plannedCompDateFrom?: string;

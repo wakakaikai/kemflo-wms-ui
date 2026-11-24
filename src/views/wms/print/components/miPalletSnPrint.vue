@@ -25,7 +25,7 @@
           </el-col>
           <el-col :xs="24" :sm="9" :md="6" :lg="6" :xl="6">
             <el-form-item label="产品SN">
-              <el-input v-model="query.sfc" clearable placeholder="可输入栈板内任一产品SN" @keyup.enter="search" />
+              <el-input ref="sfcInputRef" v-model="query.sfc" clearable placeholder="可输入栈板内任一产品SN" @keyup.enter="search" />
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
@@ -146,7 +146,8 @@
 </template>
 
 <script setup name="MiPalletSnPrint" lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
+import type { ElInput } from 'element-plus';
 import JsBarcode from 'jsbarcode';
 import { Box, Printer, RefreshLeft, Search } from '@element-plus/icons-vue';
 import { getMiPalletSn } from '@/api/mes/palletSn';
@@ -236,7 +237,7 @@ const createBarcode = (value?: string, height = 50, barWidth = 1.6) => {
 
 const formatProductDate = (value?: string) => (value ? value.slice(0, 10).replaceAll('-', '') : '');
 
-const formatWeight = (value?: number) => (value == null ? '' : `${Number(value).toFixed(3)}Kg`);
+const formatWeight = (value?: number) => (value == null ? '' : `${Number(value)}Kg`);
 
 /** 备注 SN 展示为 SN:xxx（与 v3 标签一致，不裁剪正文） */
 const displaySn = (value: string) => {
@@ -256,6 +257,7 @@ const printData = ref<MiPalletSnPrintVO>();
 const message = ref('');
 const messageType = ref<'success' | 'error'>('success');
 const labelRef = ref<HTMLDivElement>();
+const sfcInputRef = ref<InstanceType<typeof ElInput>>();
 
 const productDate = computed(() => formatProductDate(printData.value?.productTime));
 const weightText = computed(() => formatWeight(printData.value?.palletGrossWeight));
@@ -304,15 +306,25 @@ const resetQuery = () => {
   message.value = '';
 };
 
-const openPrintWindow = (labels: string[], targetWindow?: Window | null) => {
+/** 打印后清空栈板号/SN 并聚焦产品 SN，便于连续扫码。 */
+const clearScanFieldsAndFocusSn = () => {
+  query.value.palletNo = '';
+  query.value.sfc = '';
+  nextTick(() => {
+    sfcInputRef.value?.focus?.();
+  });
+};
+
+const openPrintWindow = (labels: string[], targetWindow?: Window | null): boolean => {
   const printWindow = targetWindow || window.open('', '_blank');
   if (!printWindow) {
     setMessage('浏览器阻止了打印窗口，请允许弹出窗口后重试', false);
-    return;
+    return false;
   }
   printWindow.document.open();
   printWindow.document.write(`<!doctype html><html><head><meta charset="UTF-8"><title>小米栈板标签</title><style>${MI_PALLET_LABEL_PRINT_STYLE}</style></head><body>${labels.map((label) => `<div class="print-page">${label}</div>`).join('')}<script>window.onload=()=>{window.onafterprint=()=>window.close();window.print();};<\/script></body></html>`);
   printWindow.document.close();
+  return true;
 };
 
 const printLabel = () => {
@@ -322,7 +334,10 @@ const printLabel = () => {
     setMessage('标签未渲染完成，请稍后重试', false);
     return;
   }
-  openPrintWindow([html]);
+  if (!openPrintWindow([html])) {
+    return;
+  }
+  clearScanFieldsAndFocusSn();
 };
 </script>
 

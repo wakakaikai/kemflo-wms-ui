@@ -288,6 +288,7 @@
                     <el-option v-for="item in group.options" :key="item.value" :label="item.label" :value="item.value" />
                   </el-option-group>
                 </el-select>
+                <div v-if="protocolGroup === 'mc'" class="form-tip">MC 按协议小端序解码，字节序选项仅用于显示兼容，实际以数据类型为准。</div>
               </el-form-item>
             </el-col>
             <el-col :span="showPlcFormat ? 8 : 24">
@@ -300,7 +301,7 @@
           </el-row>
         </div>
 
-        <!-- S7 / 其它非 TCP 协议地址 -->
+        <!-- S7 / 三菱 MC 地址 -->
         <div v-if="protocolGroup !== 'modbus' && protocolGroup !== 'other' && !isTcpClientDevice" class="form-section">
           <div class="form-section__title">地址配置</div>
           <el-row :gutter="16">
@@ -351,6 +352,7 @@
                   <div class="addr-preview">
                     预览：<code>{{ generatedAddress || '请完善地址参数' }}</code>
                   </div>
+                  <div v-if="protocolGroup === 'mc' && ['X', 'Y', 'W', 'B'].includes(addrBuilder.area)" class="form-tip">X/Y/W/B 使用十六进制编号；包含 A-F 时请切换“手动”并直接输入，例如 X1F、W2A:UINT。</div>
                 </div>
               </el-form-item>
             </el-col>
@@ -460,7 +462,7 @@ import IotReadCollectDialog from '@/views/iot/components/IotReadCollectDialog.vu
 import TcpCollectDialog from '@/views/iot/components/TcpCollectDialog.vue';
 
 // ===== iot-options (inlined) =====
-/** IoT 前端写死选项（PLC4X 协议编码） */
+/** IoT 工业协议选项 */
 
 interface IotOption {
   label: string;
@@ -469,11 +471,13 @@ interface IotOption {
 }
 
 const IOT_PROTOCOL_OPTIONS: IotOption[] = [
+  { label: 'Mitsubishi MC', value: 'mc' },
   { label: 'Modbus TCP', value: 'modbus-tcp' },
   { label: 'Modbus RTU', value: 'modbus-rtu' },
   { label: 'Siemens S7', value: 's7' },
   { label: 'OPC UA', value: 'opcua' },
   { label: 'EtherNet/IP', value: 'eip' },
+  { label: 'Beckhoff ADS', value: 'ads' },
   { label: 'TCP Client', value: 'tcp-client' }
 ];
 
@@ -575,6 +579,7 @@ const IOT_DISPLAY_FORMAT_OPTIONS: IotOption[] = [
   { label: '有符号', value: 'SIGNED' },
   { label: '无符号', value: 'UNSIGNED' },
   { label: '十六进制', value: 'HEX' },
+  { label: 'ASCII - Hex', value: 'ASCII_HEX' },
   { label: '二进制', value: 'BINARY' }
 ];
 
@@ -616,28 +621,50 @@ const POLL_FMT_INT_OPTIONS: IotPlcFormatOption[] = [
   plcFmt('Signed', 'SIGNED', 'INT', 'SIGNED', 'ABCD'),
   plcFmt('Unsigned', 'UNSIGNED', 'UINT', 'UNSIGNED', 'ABCD'),
   plcFmt('Hex', 'HEX', 'INT', 'HEX', 'ABCD'),
+  plcFmt('ASCII - Hex', 'ASCII_HEX', 'INT', 'ASCII_HEX', 'ABCD'),
   plcFmt('Binary', 'BINARY', 'INT', 'BINARY', 'ABCD')
 ];
 
 const POLL_FMT_LONG_OPTIONS: IotPlcFormatOption[] = [
-  plcFmt('Long AB CD', 'LONG_ABCD', 'DINT', 'SIGNED', 'ABCD'),
-  plcFmt('Long CD AB', 'LONG_CDAB', 'DINT', 'SIGNED', 'CDAB'),
-  plcFmt('Long BA DC', 'LONG_BADC', 'DINT', 'SIGNED', 'BADC'),
-  plcFmt('Long DC BA', 'LONG_DCBA', 'DINT', 'SIGNED', 'DCBA')
+  plcFmt('32-bit Signed (AB CD)', 'LONG_ABCD', 'DINT', 'SIGNED', 'ABCD'),
+  plcFmt('32-bit Signed (CD AB)', 'LONG_CDAB', 'DINT', 'SIGNED', 'CDAB'),
+  plcFmt('32-bit Signed (BA DC)', 'LONG_BADC', 'DINT', 'SIGNED', 'BADC'),
+  plcFmt('32-bit Signed (DC BA)', 'LONG_DCBA', 'DINT', 'SIGNED', 'DCBA')
+];
+
+const POLL_FMT_ULONG_OPTIONS: IotPlcFormatOption[] = [
+  plcFmt('32-bit Unsigned (AB CD)', 'ULONG_ABCD', 'UDINT', 'UNSIGNED', 'ABCD'),
+  plcFmt('32-bit Unsigned (CD AB)', 'ULONG_CDAB', 'UDINT', 'UNSIGNED', 'CDAB'),
+  plcFmt('32-bit Unsigned (BA DC)', 'ULONG_BADC', 'UDINT', 'UNSIGNED', 'BADC'),
+  plcFmt('32-bit Unsigned (DC BA)', 'ULONG_DCBA', 'UDINT', 'UNSIGNED', 'DCBA')
 ];
 
 const POLL_FMT_FLOAT_OPTIONS: IotPlcFormatOption[] = [
-  plcFmt('Float AB CD', 'FLOAT_ABCD', 'FLOAT', 'SIGNED', 'ABCD'),
-  plcFmt('Float CD AB', 'FLOAT_CDAB', 'FLOAT', 'SIGNED', 'CDAB'),
-  plcFmt('Float BA DC', 'FLOAT_BADC', 'FLOAT', 'SIGNED', 'BADC'),
-  plcFmt('Float DC BA', 'FLOAT_DCBA', 'FLOAT', 'SIGNED', 'DCBA')
+  plcFmt('32-bit Float (AB CD)', 'FLOAT_ABCD', 'FLOAT', 'SIGNED', 'ABCD'),
+  plcFmt('32-bit Float (CD AB)', 'FLOAT_CDAB', 'FLOAT', 'SIGNED', 'CDAB'),
+  plcFmt('32-bit Float (BA DC)', 'FLOAT_BADC', 'FLOAT', 'SIGNED', 'BADC'),
+  plcFmt('32-bit Float (DC BA)', 'FLOAT_DCBA', 'FLOAT', 'SIGNED', 'DCBA')
+];
+
+const POLL_FMT_LINT_OPTIONS: IotPlcFormatOption[] = [
+  plcFmt('64-bit Signed (AB CD EF GH)', 'LINT_ABCDEFGH', 'LINT', 'SIGNED', 'ABCDEFGH'),
+  plcFmt('64-bit Signed (GH EF CD AB)', 'LINT_GHEFCDAB', 'LINT', 'SIGNED', 'GHEFCDAB'),
+  plcFmt('64-bit Signed (BA DC FE HG)', 'LINT_BADCFEHG', 'LINT', 'SIGNED', 'BADCFEHG'),
+  plcFmt('64-bit Signed (HG FE DC BA)', 'LINT_HGFEDCBA', 'LINT', 'SIGNED', 'HGFEDCBA')
+];
+
+const POLL_FMT_ULINT_OPTIONS: IotPlcFormatOption[] = [
+  plcFmt('64-bit Unsigned (AB CD EF GH)', 'ULINT_ABCDEFGH', 'ULINT', 'UNSIGNED', 'ABCDEFGH'),
+  plcFmt('64-bit Unsigned (GH EF CD AB)', 'ULINT_GHEFCDAB', 'ULINT', 'UNSIGNED', 'GHEFCDAB'),
+  plcFmt('64-bit Unsigned (BA DC FE HG)', 'ULINT_BADCFEHG', 'ULINT', 'UNSIGNED', 'BADCFEHG'),
+  plcFmt('64-bit Unsigned (HG FE DC BA)', 'ULINT_HGFEDCBA', 'ULINT', 'UNSIGNED', 'HGFEDCBA')
 ];
 
 const POLL_FMT_DOUBLE_OPTIONS: IotPlcFormatOption[] = [
-  plcFmt('Double AB CD EF GH', 'DOUBLE_ABCDEFGH', 'DOUBLE', 'SIGNED', 'ABCDEFGH'),
-  plcFmt('Double GH EF CD AB', 'DOUBLE_GHEFCDAB', 'DOUBLE', 'SIGNED', 'GHEFCDAB'),
-  plcFmt('Double BA DC FE HG', 'DOUBLE_BADCFEHG', 'DOUBLE', 'SIGNED', 'BADCFEHG'),
-  plcFmt('Double HG FE DC BA', 'DOUBLE_HGFEDCBA', 'DOUBLE', 'SIGNED', 'HGFEDCBA')
+  plcFmt('64-bit Double (AB CD EF GH)', 'DOUBLE_ABCDEFGH', 'DOUBLE', 'SIGNED', 'ABCDEFGH'),
+  plcFmt('64-bit Double (GH EF CD AB)', 'DOUBLE_GHEFCDAB', 'DOUBLE', 'SIGNED', 'GHEFCDAB'),
+  plcFmt('64-bit Double (BA DC FE HG)', 'DOUBLE_BADCFEHG', 'DOUBLE', 'SIGNED', 'BADCFEHG'),
+  plcFmt('64-bit Double (HG FE DC BA)', 'DOUBLE_HGFEDCBA', 'DOUBLE', 'SIGNED', 'HGFEDCBA')
 ];
 
 const POLL_FMT_STRING_OPTIONS: IotPlcFormatOption[] = [
@@ -648,7 +675,10 @@ const POLL_FMT_STRING_OPTIONS: IotPlcFormatOption[] = [
 const POLL_UNIFIED_FORMAT_OPTIONS: IotPlcFormatOption[] = [
   ...POLL_FMT_INT_OPTIONS,
   ...POLL_FMT_LONG_OPTIONS,
+  ...POLL_FMT_ULONG_OPTIONS,
   ...POLL_FMT_FLOAT_OPTIONS,
+  ...POLL_FMT_LINT_OPTIONS,
+  ...POLL_FMT_ULINT_OPTIONS,
   ...POLL_FMT_DOUBLE_OPTIONS,
   ...POLL_FMT_STRING_OPTIONS
 ];
@@ -656,10 +686,13 @@ const POLL_UNIFIED_FORMAT_OPTIONS: IotPlcFormatOption[] = [
 /** Poll 完整 Format 分组（选项英文，与 Modbus Poll 菜单一致） */
 function resolvePollUnifiedFormatGroups(): IotPlcFormatGroup[] {
   return [
-    { label: '整数 (INT)', options: POLL_FMT_INT_OPTIONS },
-    { label: '长整型 (DINT)', options: POLL_FMT_LONG_OPTIONS },
-    { label: '浮点 (FLOAT)', options: POLL_FMT_FLOAT_OPTIONS },
-    { label: '双精度 (DOUBLE)', options: POLL_FMT_DOUBLE_OPTIONS },
+    { label: '16 位寄存器', options: POLL_FMT_INT_OPTIONS },
+    { label: '32 位有符号', options: POLL_FMT_LONG_OPTIONS },
+    { label: '32 位无符号', options: POLL_FMT_ULONG_OPTIONS },
+    { label: '32 位浮点', options: POLL_FMT_FLOAT_OPTIONS },
+    { label: '64 位有符号', options: POLL_FMT_LINT_OPTIONS },
+    { label: '64 位无符号', options: POLL_FMT_ULINT_OPTIONS },
+    { label: '64 位双精度', options: POLL_FMT_DOUBLE_OPTIONS },
     { label: '字符串 (STRING)', options: POLL_FMT_STRING_OPTIONS }
   ];
 }
@@ -672,7 +705,8 @@ function normalizePlcDataType(dataType?: string): string {
   const type = (dataType || '').toUpperCase();
   if (type === 'REAL') return 'FLOAT';
   if (type === 'LREAL') return 'DOUBLE';
-  if (type === 'LONG' || type === 'DWORD') return 'DINT';
+  if (type === 'LONG') return 'DINT';
+  if (type === 'DWORD') return 'UDINT';
   if (type === 'CHAR') return 'STRING';
   return type;
 }
@@ -697,10 +731,19 @@ function encodePlcFormat(displayFormat?: string, byteOrder?: string, dataType?: 
   if (type === 'DOUBLE') {
     return POLL_FMT_DOUBLE_OPTIONS.find((o) => o.byteOrder === order)?.value || 'DOUBLE_GHEFCDAB';
   }
-  if (type === 'DINT' || type === 'UDINT') {
+  if (type === 'DINT' || type === 'LONG') {
     if (display === 'SIGNED') {
       return POLL_FMT_LONG_OPTIONS.find((o) => o.byteOrder === order)?.value || 'LONG_CDAB';
     }
+  }
+  if (type === 'UDINT' || type === 'DWORD') {
+    return POLL_FMT_ULONG_OPTIONS.find((o) => o.byteOrder === order)?.value || 'ULONG_CDAB';
+  }
+  if (type === 'LINT') {
+    return POLL_FMT_LINT_OPTIONS.find((o) => o.byteOrder === order)?.value || 'LINT_GHEFCDAB';
+  }
+  if (type === 'ULINT') {
+    return POLL_FMT_ULINT_OPTIONS.find((o) => o.byteOrder === order)?.value || 'ULINT_GHEFCDAB';
   }
   if (type === 'STRING') {
     return order === 'CDAB' ? 'STR_CDAB' : 'STR_ABCD';
@@ -856,7 +899,7 @@ function resolveModbusRegisterQuantity(dataType?: string, stringLength = 10): nu
   if (type === 'BOOL') return 1;
   if (type === 'INT' || type === 'UINT' || type === 'WORD') return 1;
   if (type === 'FLOAT' || type === 'REAL' || type === 'DINT' || type === 'UDINT' || type === 'LONG' || type === 'DWORD') return 2;
-  if (type === 'DOUBLE' || type === 'LREAL') return 4;
+  if (type === 'DOUBLE' || type === 'LREAL' || type === 'LINT' || type === 'ULINT') return 4;
   if (type === 'STRING' || type === 'CHAR') return Math.max(1, Number(stringLength) || 1);
   return 1;
 }
@@ -890,7 +933,18 @@ const IOT_S7_AREA_OPTIONS: IotOption[] = [
   { label: '标志位 M', value: 'M' }
 ];
 
-type IotAddressProtocolGroup = 'modbus' | 's7' | 'tcp' | 'other';
+/** 三菱 MELSEC 软元件区（常用） */
+const IOT_MC_AREA_OPTIONS: IotOption[] = [
+  { label: '数据寄存器 D（十进制）', value: 'D' },
+  { label: '内部继电器 M（十进制）', value: 'M' },
+  { label: '文件寄存器 R（十进制）', value: 'R' },
+  { label: '输入 X（十六进制）', value: 'X' },
+  { label: '输出 Y（十六进制）', value: 'Y' },
+  { label: '链接寄存器 W（十六进制）', value: 'W' },
+  { label: '链接继电器 B（十六进制）', value: 'B' }
+];
+
+type IotAddressProtocolGroup = 'modbus' | 's7' | 'mc' | 'tcp' | 'other';
 
 interface IotAddressBuilder {
   area: string;
@@ -914,10 +968,18 @@ function normalizeProtocolValue(value?: string): string {
     modbus: 'modbus-tcp',
     'modbus-rtu': 'modbus-rtu',
     modbusrtu: 'modbus-rtu',
+    mc: 'mc',
+    melsec: 'mc',
+    slmp: 'mc',
+    'mc-protocol': 'mc',
+    mcprotocol: 'mc',
+    'mitsubishi-mc': 'mc',
+    mitsubishimc: 'mc',
     s7: 's7',
     opcua: 'opcua',
     'opc-ua': 'opcua',
     eip: 'eip',
+    ads: 'ads',
     'tcp-client': 'tcp-client',
     tcpclient: 'tcp-client',
     tcp: 'tcp-client'
@@ -929,6 +991,7 @@ function getProtocolGroup(protocol?: string): IotAddressProtocolGroup {
   const value = normalizeProtocolValue(protocol);
   if (value.startsWith('modbus')) return 'modbus';
   if (value === 's7') return 's7';
+  if (value === 'mc') return 'mc';
   if (value === 'tcp-client') return 'tcp';
   return 'other';
 }
@@ -954,6 +1017,17 @@ function createDefaultAddressBuilder(protocol?: string, dataType?: string): IotA
       byteOffset: 0,
       bitOffset: 0,
       stringLength: 10,
+      tcpRequest: ''
+    };
+  }
+  if (group === 'mc') {
+    return {
+      area: dataType === 'BOOL' ? 'M' : 'D',
+      address: 100,
+      dbNumber: 1,
+      byteOffset: 0,
+      bitOffset: 0,
+      stringLength: 16,
       tcpRequest: ''
     };
   }
@@ -1081,6 +1155,19 @@ function buildPlcTagAddress(protocol: string | undefined, dataType: string | und
     return `${area}:${address}:${type}`;
   }
 
+  if (group === 'mc') {
+    const area = (builder.area || (dataType === 'BOOL' ? 'M' : 'D')).toUpperCase();
+    const type = (dataType || 'UINT').toUpperCase();
+    const baseAddress = `${area}${address}`;
+    if (type === 'BOOL' || type === 'BOOLEAN' || type === 'BIT') {
+      return baseAddress;
+    }
+    if (type === 'STRING' || type === 'CHAR') {
+      return `${baseAddress}:STRING(${stringLength})`;
+    }
+    return `${baseAddress}:${type}`;
+  }
+
   if (group === 's7') {
     const area = builder.area || 'DB';
     if (area === 'DB') {
@@ -1130,6 +1217,18 @@ function parsePlcTagAddress(protocol: string | undefined, tagAddress?: string, d
         area: baseMatch[1].toLowerCase(),
         address: Number(baseMatch[2]),
         stringLength: Number(strMatch?.[1] || defaults.stringLength)
+      };
+    }
+  }
+
+  if (group === 'mc') {
+    const mcMatch = text.match(/^([A-Z]+)([0-9]+)(?::[A-Z0-9_]+(?:\((\d+)\)|\[(\d+)])?)?$/i);
+    if (mcMatch) {
+      return {
+        ...defaults,
+        area: mcMatch[1].toUpperCase(),
+        address: Number(mcMatch[2]),
+        stringLength: Number(mcMatch[3] || mcMatch[4] || defaults.stringLength)
       };
     }
   }
@@ -1341,10 +1440,15 @@ const protocolGroup = computed(() => getProtocolGroup(selectedProtocol.value));
 const isModbusDeviceList = computed(() => protocolGroup.value === 'modbus');
 const isTcpClientDevice = computed(() => protocolGroup.value === 'tcp');
 const protocolLabel = computed(() => IOT_PROTOCOL_OPTIONS.find((item) => item.value === normalizeProtocolValue(selectedProtocol.value))?.label || selectedProtocol.value || '未知协议');
-const addressAreaOptions = computed(() => (protocolGroup.value === 's7' ? IOT_S7_AREA_OPTIONS : IOT_MODBUS_AREA_OPTIONS));
+const addressAreaOptions = computed(() => {
+  if (protocolGroup.value === 's7') return IOT_S7_AREA_OPTIONS;
+  if (protocolGroup.value === 'mc') return IOT_MC_AREA_OPTIONS;
+  return IOT_MODBUS_AREA_OPTIONS;
+});
 const addressPlaceholder = computed(() => {
   if (protocolGroup.value === 'modbus') return '例如 holding-register:1740:REAL（占 1740-1741 两寄存器）或 holding-register:1:CHAR[10]';
   if (protocolGroup.value === 's7') return '例如 %DB1.DBD0:REAL';
+  if (protocolGroup.value === 'mc') return '例如 D100:UINT、D200:FLOAT、M100、D300:STRING(20)';
   if (protocolGroup.value === 'tcp') return 'V.GetData(TEST_STATUS) 或 V.GetData(GB_VALUE)';
   return '请输入协议对应点位地址';
 });

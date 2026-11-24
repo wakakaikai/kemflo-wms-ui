@@ -232,20 +232,20 @@ export const blobValidate = (data: any) => {
 };
 
 /**
- * 数量格式化：去掉末尾无意义的 0，最多保留 3 位小数
+ * 数量格式化：去掉末尾无意义的 0 保留真实小数位
  */
 export const formatQty = (qty: number | string | null | undefined): string => {
   if (qty === null || qty === undefined || qty === '') {
     return '';
   }
-  const num = Number(qty);
-  if (isNaN(num)) {
+  const num = Number(String(qty).trim().replace(/,/g, ''));
+  if (!Number.isFinite(num)) {
     return '';
   }
-  return new Intl.NumberFormat('en-US', {
+  return num.toLocaleString('en-US', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 3
-  }).format(num);
+    maximumFractionDigits: 20
+  });
 };
 
 /** 数量 + 单位展示（数量带千分位，最多 3 位小数） */

@@ -50,11 +50,6 @@ export interface ItemVO {
   outboundInspectionCheck: boolean;
 
   /**
-   * 栈板检查：0: 正常 1: 停用
-   */
-  palletCheckFlag?: number | string;
-
-  /**
    * 栈板SN检查
    */
   palletSnCheck?: boolean;
@@ -127,11 +122,6 @@ export interface ItemForm extends BaseEntity {
   outboundInspectionCheck?: boolean;
 
   /**
-   * 栈板检查：0: 正常 1: 停用
-   */
-  palletCheckFlag?: number | string;
-
-  /**
    * 栈板SN检查
    */
   palletSnCheck?: boolean;
@@ -197,11 +187,6 @@ export interface ItemQuery extends PageQuery {
    * 启用质检结果：0: 正常 1: 停用
    */
   outboundInspectionCheck?: boolean;
-
-  /**
-   * 栈板检查：0: 正常 1: 停用
-   */
-  palletCheckFlag?: number | string;
 
   /**
    * 栈板SN检查

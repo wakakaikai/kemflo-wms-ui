@@ -17,7 +17,11 @@
               </el-input>
             </el-form-item>
             <el-form-item label="物料" prop="item">
-              <el-input v-model="queryParams.item" placeholder="请输入物料" clearable @keyup.enter="handleQuery" />
+              <el-input v-model="queryParams.item" placeholder="请选择或输入物料" clearable @keyup.enter="handleQuery">
+                <template #append>
+                  <el-button icon="Search" @click="openItemDialog" />
+                </template>
+              </el-input>
             </el-form-item>
             <el-form-item label="产品条码" prop="sfcStr">
               <el-input v-model="queryParams.sfcStr" placeholder="请输入产品条码" clearable @keyup.enter="handleQuery">
@@ -116,6 +120,7 @@
       </el-table>
     </el-dialog>
     <ShopOrderDialog ref="shopOrderDialogRef" :pod-config="podConfig" @shop-order-call-back="shopOrderCallBack" />
+    <ItemDialog ref="itemDialogRef" @item-select-call-back="itemSelectCallBack" />
 
     <el-dialog v-model="destWarehouseDialogVisible" title="选择出货目的仓" width="60%" append-to-body destroy-on-close>
       <el-input v-model="destWarehouseKeyword" placeholder="按仓库名称或编码搜索" clearable class="mb-3" />
@@ -141,6 +146,7 @@ import type { TabsPaneContext } from 'element-plus';
 import { listMesProductData } from '@/api/report/mesProductData';
 import { MesProductDataForm, MesProductDataQuery } from '@/api/report/mesProductData/types';
 import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
+import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
 import { getDicts } from '@/api/system/dict/data';
 import type { DictDataVO } from '@/api/system/dict/data/types';
 import { computed, ref } from 'vue';
@@ -148,6 +154,7 @@ import { computed, ref } from 'vue';
 const DEST_WAREHOUSE_DICT = 'wms_mi_shipping_destination_warehouse';
 
 const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
+const itemDialogRef = ref<InstanceType<typeof ItemDialog>>();
 const podConfig = ref<Record<string, unknown>>({});
 
 const { proxy } = getCurrentInstance() as ComponentInternalInstance;
@@ -476,6 +483,15 @@ const shopOrderCallBack = (data: { shopOrder?: string; plannedItem?: string }) =
   if (data?.plannedItem) {
     queryParams.value.item = data.plannedItem;
   }
+};
+
+const openItemDialog = () => {
+  itemDialogRef.value?.openDialog();
+  itemDialogRef.value?.handleQuery();
+};
+
+const itemSelectCallBack = (record: { item?: string }) => {
+  queryParams.value.item = record?.item || '';
 };
 /** 提交按钮 */
 const submitForm = (ignoreError: number) => {

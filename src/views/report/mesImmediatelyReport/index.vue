@@ -2,20 +2,32 @@
   <div class="p-2">
     <el-card v-show="showSearch" shadow="hover" class="mb-[10px]">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
-        <el-form-item label="工单" prop="shopOrder">
-          <el-input v-model="queryParams.shopOrder" placeholder="请输入工单" clearable @keyup.enter="handleQuery" />
+        <el-form-item label="工单号" prop="shopOrder">
+          <el-input v-model="queryParams.shopOrder" placeholder="请输入工单号" clearable @keyup.enter="handleQuery">
+            <template #append>
+              <el-button icon="Search" @click="openShopOrderDialog" />
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item label="计划物料" prop="plannedItem">
-          <el-input v-model="queryParams.plannedItem" placeholder="请输入计划物料" clearable @keyup.enter="handleQuery" />
+          <el-input v-model="queryParams.plannedItem" placeholder="请选择或输入计划物料" clearable @keyup.enter="handleQuery">
+            <template #append>
+              <el-button icon="Search" @click="openItemDialog" />
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item label="工作中心" prop="plannedWorkCenter">
           <el-input v-model="queryParams.plannedWorkCenter" placeholder="请输入工作中心" clearable @keyup.enter="handleQuery" />
         </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-input v-model="queryParams.status" placeholder="请输入状态" clearable @keyup.enter="handleQuery" />
+        <el-form-item label="状态" prop="statusList" style="width: 308px">
+          <el-select v-model="queryParams.statusList" placeholder="请选择状态" clearable multiple collapse-tags collapse-tags-tooltip :max-collapse-tags="3">
+            <el-option v-for="dict in mes_shop_order_status" :key="dict.value" :label="dict.label" :value="dict.value" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="工单类型" prop="shopOrderType">
-          <el-input v-model="queryParams.shopOrderType" placeholder="请输入工单类型" clearable @keyup.enter="handleQuery" />
+        <el-form-item label="工单类型" prop="shopOrderTypeList" style="width: 308px">
+          <el-select v-model="queryParams.shopOrderTypeList" placeholder="请选择工单类型" clearable multiple collapse-tags collapse-tags-tooltip :max-collapse-tags="3">
+            <el-option v-for="dict in mes_shop_order_type" :key="dict.value" :label="dict.label" :value="dict.value" />
+          </el-select>
         </el-form-item>
         <el-form-item label="计划开始时间">
           <el-date-picker v-model="plannedStartRange" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间" clearable />
@@ -47,13 +59,21 @@
       <el-tabs v-model="activeTab">
         <el-tab-pane label="工单信息" name="shopOrder">
           <el-table v-loading="shopOrderLoading" :data="shopOrderList" border @row-dblclick="openOperation">
-            <el-table-column label="工单" prop="shopOrder" fixed="left" min-width="130">
+            <el-table-column label="工单" prop="shopOrder" fixed="left" min-width="150">
               <template #default="scope">
                 <el-button link type="primary" @click="openOperation(scope.row)">{{ scope.row.shopOrder }}</el-button>
               </template>
             </el-table-column>
-            <el-table-column label="类型" prop="shopOrderType" min-width="90" />
-            <el-table-column label="状态" prop="status" min-width="90" />
+            <el-table-column label="类型" prop="shopOrderType" min-width="120">
+              <template #default="scope">
+                <dict-tag :options="mes_shop_order_type" :value="scope.row.shopOrderType" />
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" prop="status" min-width="110">
+              <template #default="scope">
+                <dict-tag :options="mes_shop_order_status" :value="scope.row.status" />
+              </template>
+            </el-table-column>
             <el-table-column label="计划物料" min-width="160">
               <template #default="scope">{{ formatItem(scope.row.plannedItem, scope.row.plannedItemRevision) }}</template>
             </el-table-column>
@@ -73,10 +93,18 @@
             <el-table-column label="实际完成时间" prop="actualCompDate" min-width="170">
               <template #default="scope">{{ parseTime(scope.row.actualCompDate) }}</template>
             </el-table-column>
-            <el-table-column label="计划数量" prop="qtyToBuild" align="right" min-width="110" />
-            <el-table-column label="已下达数量" prop="qtyReleased" align="right" min-width="110" />
-            <el-table-column label="报废数量" prop="qtyScrapped" align="right" min-width="110" />
-            <el-table-column label="完工数量" prop="qtyDone" align="right" min-width="110" />
+            <el-table-column label="计划数量" prop="qtyToBuild" align="right" min-width="110">
+              <template #default="scope">{{ formatQty(scope.row.qtyToBuild) }}</template>
+            </el-table-column>
+            <el-table-column label="已下达数量" prop="qtyReleased" align="right" min-width="110">
+              <template #default="scope">{{ formatQty(scope.row.qtyReleased) }}</template>
+            </el-table-column>
+            <el-table-column label="报废数量" prop="qtyScrapped" align="right" min-width="110">
+              <template #default="scope">{{ formatQty(scope.row.qtyScrapped) }}</template>
+            </el-table-column>
+            <el-table-column label="完工数量" prop="qtyDone" align="right" min-width="110">
+              <template #default="scope">{{ formatQty(scope.row.qtyDone) }}</template>
+            </el-table-column>
             <el-table-column label="创建人" prop="creator" min-width="100" />
             <el-table-column label="创建时间" prop="createTime" min-width="170">
               <template #default="scope">{{ parseTime(scope.row.createTime) }}</template>
@@ -102,9 +130,15 @@
             <el-table-column label="工艺路线版本" min-width="180">
               <template #default="scope">{{ formatItem(scope.row.router, scope.row.routerRevision) }}</template>
             </el-table-column>
-            <el-table-column label="排队中数量" prop="qtyInQueue" align="right" min-width="120" />
-            <el-table-column label="在制数量" prop="qtyInWork" align="right" min-width="110" />
-            <el-table-column label="已完成数量" prop="qtyCompleted" align="right" min-width="120" />
+            <el-table-column label="排队中数量" prop="qtyInQueue" align="right" min-width="120">
+              <template #default="scope">{{ formatQty(scope.row.qtyInQueue) }}</template>
+            </el-table-column>
+            <el-table-column label="在制数量" prop="qtyInWork" align="right" min-width="110">
+              <template #default="scope">{{ formatQty(scope.row.qtyInWork) }}</template>
+            </el-table-column>
+            <el-table-column label="已完成数量" prop="qtyCompleted" align="right" min-width="120">
+              <template #default="scope">{{ formatQty(scope.row.qtyCompleted) }}</template>
+            </el-table-column>
           </el-table>
           <pagination v-show="operationTotal > 0" :total="operationTotal" v-model:page="operationQuery.pageNum" v-model:limit="operationQuery.pageSize" @pagination="getOperationList" />
         </el-tab-pane>
@@ -119,21 +153,33 @@
             </el-table-column>
             <el-table-column label="物料描述" prop="itemDescription" min-width="200" />
             <el-table-column label="工单" prop="shopOrder" min-width="140" />
-            <el-table-column label="数量" prop="qty" align="right" min-width="90" />
-            <el-table-column label="进站时间" prop="sfcInWorkDateTime" min-width="170">
-              <template #default="scope">{{ parseTime(scope.row.sfcInWorkDateTime) }}</template>
+            <el-table-column label="数量" prop="qty" align="right" min-width="90">
+              <template #default="scope">{{ formatQty(scope.row.qty) }}</template>
             </el-table-column>
           </el-table>
           <pagination v-show="sfcTotal > 0" :total="sfcTotal" v-model:page="sfcQuery.pageNum" v-model:limit="sfcQuery.pageSize" @pagination="getSfcList" />
         </el-tab-pane>
       </el-tabs>
     </el-card>
+
+    <ShopOrderDialog ref="shopOrderDialogRef" :pod-config="podConfig" @shop-order-call-back="shopOrderCallBack" />
+    <ItemDialog ref="itemDialogRef" @item-select-call-back="itemSelectCallBack" />
   </div>
 </template>
 
 <script setup name="ImmediatelyReport" lang="ts">
 import { listImmediateOperation, listImmediateSfc, listImmediateShopOrder } from '@/api/mes/shopOrder';
 import type { ImmediateOperationQuery, ImmediateOperationVO, ImmediateSfcQuery, ImmediateSfcVO, ImmediateShopOrderQuery, ImmediateShopOrderVO } from '@/api/mes/shopOrder/types';
+import ShopOrderDialog from '@/views/mes/workpanel/components/shopOrderDialog.vue';
+import ItemDialog from '@/views/wms/item/components/itemDialog.vue';
+import { formatQty } from '@/utils/ruoyi';
+
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+const { mes_shop_order_status, mes_shop_order_type } = toRefs<any>(proxy?.useDict('mes_shop_order_status', 'mes_shop_order_type'));
+
+const shopOrderDialogRef = ref<InstanceType<typeof ShopOrderDialog>>();
+const itemDialogRef = ref<InstanceType<typeof ItemDialog>>();
+const podConfig = ref<Record<string, unknown>>({});
 
 const queryFormRef = ref<ElFormInstance>();
 const showSearch = ref(true);
@@ -163,7 +209,9 @@ const queryParams = reactive<ImmediateShopOrderQuery>({
   plannedItem: undefined,
   plannedWorkCenter: undefined,
   status: undefined,
-  shopOrderType: undefined
+  statusList: [],
+  shopOrderType: undefined,
+  shopOrderTypeList: []
 });
 
 const operationQuery = reactive<ImmediateOperationQuery>({
@@ -240,6 +288,29 @@ const getSfcList = async () => {
   }
 };
 
+const openShopOrderDialog = () => {
+  podConfig.value = {
+    shopOrderTypeList: ['PRODUCTION', 'PRODUCTION-ZZ']
+  };
+  shopOrderDialogRef.value?.openDialog();
+};
+
+const shopOrderCallBack = (data: { shopOrder?: string; plannedItem?: string }) => {
+  queryParams.shopOrder = data?.shopOrder || '';
+  if (data?.plannedItem) {
+    queryParams.plannedItem = data.plannedItem;
+  }
+};
+
+const openItemDialog = () => {
+  itemDialogRef.value?.openDialog();
+  itemDialogRef.value?.handleQuery();
+};
+
+const itemSelectCallBack = (record: { item?: string }) => {
+  queryParams.plannedItem = record?.item || '';
+};
+
 const handleQuery = () => {
   queryParams.pageNum = 1;
   clearDrillData();
@@ -253,6 +324,8 @@ const resetQuery = () => {
   plannedCompRange.value = [];
   actualStartRange.value = [];
   actualCompRange.value = [];
+  queryParams.statusList = [];
+  queryParams.shopOrderTypeList = [];
   queryParams.pageNum = 1;
   queryParams.pageSize = 10;
   handleQuery();
