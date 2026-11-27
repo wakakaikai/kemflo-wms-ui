@@ -8,19 +8,41 @@ export interface PalletOutboundBindDetailVO {
   palletNo: string;
   sequence?: number;
   materialCode?: string;
+  /** 物料描述（item_pallet.description） */
+  materialDesc?: string;
 }
 
 export interface PalletOutboundBindVO {
   id: string | number;
   shippingNo: string;
+  shippingFactory?: string;
+  carrier?: string;
+  vehicleType?: string;
+  channel?: string;
+  planNo?: string;
+  lineItem?: string;
+  customerItemCode?: string;
+  customerItemDesc?: string;
+  productId?: string;
+  purchaseOrderNo?: string;
+  purchaseLineNo?: string;
+  qty?: number;
+  receiveProvince?: string;
+  receiveCity?: string;
   destWarehouseCode: string;
   destWarehouseName: string;
+  address?: string;
+  contactPerson?: string;
+  ecommercePhone?: string;
+  directOrderNo?: string;
+  jdPurchaseOrderNo?: string;
   sourceType: number;
   status: number;
   palletCount: number;
   snCount: number;
   confirmTime?: string;
   createTime?: string;
+  createByName?: string;
   remark?: string;
   detailList: PalletOutboundBindDetailVO[];
   palletNos: string[];
@@ -37,6 +59,9 @@ export interface PalletOutboundBindQuery extends PageQuery {
   orderByColumn?: string;
   isAsc?: string;
   shippingNo?: string;
+  planNo?: string;
+  customerItemCode?: string;
+  purchaseOrderNo?: string;
   destWarehouseCode?: string;
   destWarehouseName?: string;
   sourceType?: number;

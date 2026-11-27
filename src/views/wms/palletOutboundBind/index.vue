@@ -9,11 +9,12 @@
             </div>
             <div>
               <div class="page-title">栈板出货绑定</div>
-              <div class="page-subtitle">选择目的仓并创建任务，扫描栈板后完成确认与标签打印</div>
+              <div class="page-subtitle">导入智米配货单后，从下方记录打开任务，扫描栈板完成确认与标签打印</div>
             </div>
           </div>
           <div class="flow-steps">
-            <div class="flow-step is-active"><span>1</span>创建任务</div>
+            <el-button v-hasPermi="['wms:palletOutboundBind:import']" type="primary" icon="Upload" class="create-button flow-import-button" @click="handleImport">导入配货单</el-button>
+            <div class="flow-step is-active"><span>1</span>导入配货单</div>
             <i></i>
             <div class="flow-step" :class="{ 'is-active': activeBind }"><span>2</span>扫描绑定</div>
             <i></i>
@@ -21,32 +22,6 @@
           </div>
         </div>
       </template>
-
-      <div class="create-form-panel">
-        <div class="create-form-tip">
-          <el-icon>
-            <InfoFilled />
-          </el-icon>
-          <span>出货号由系统自动生成，新建时无需填写</span>
-        </div>
-        <el-form :inline="true" :model="createForm" class="create-form" label-width="auto">
-          <el-form-item label="栈板来源" required>
-            <el-radio-group v-model="createForm.sourceType">
-              <el-radio :value="PALLET_OUTBOUND_BIND_SOURCE_MES">MES 栈板</el-radio>
-              <!--            <el-radio :value="PALLET_OUTBOUND_BIND_SOURCE_WMS">WMS 栈板</el-radio>-->
-            </el-radio-group>
-          </el-form-item>
-          <el-form-item label="目的仓" required>
-            <DestWarehouseSelectDialog v-model:warehouse-code="createForm.destWarehouseCode" v-model:warehouse-name="createForm.destWarehouseName" :warehouse-options="warehouseOptions" field-width="360px" />
-          </el-form-item>
-          <!--        <el-form-item label="备注">
-                  <el-input v-model="createForm.remark" maxlength="255" clearable placeholder="选填" style="width: 280px" />
-                </el-form-item>-->
-          <el-form-item>
-            <el-button type="primary" icon="Plus" class="create-button" :loading="creating" @click="handleCreate">新建绑定任务</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
     </el-card>
 
     <div v-if="activeBind" class="workspace-grid">
@@ -68,13 +43,23 @@
               </div>
             </div>
             <div class="binding-header-actions">
-              <el-button v-if="canEditDestWarehouse" link type="primary" @click="openDestWarehouseDialog(activeBind)">修改目的仓</el-button>
+              <!--              <el-button v-if="canEditDestWarehouse" link type="primary" @click="openDestWarehouseDialog(activeBind)">修改目的仓</el-button>-->
               <el-tag :type="statusMeta.type">{{ statusMeta.label }}</el-tag>
             </div>
           </div>
         </template>
 
         <div class="stat-row">
+          <div class="stat-item">
+            <div class="stat-icon qty-stat">
+              <el-icon>
+                <Goods />
+              </el-icon>
+            </div>
+            <div>
+              <span>出货数量</span><strong>{{ activeBind.qty ?? 0 }}</strong>
+            </div>
+          </div>
           <div class="stat-item">
             <div class="stat-icon pallet-stat">
               <el-icon>
@@ -145,12 +130,12 @@
             </el-icon>
             <span>已绑定栈板明细</span>
           </div>
-          <span>点击行切换标签序号；每张标签 QR 内容相同（全部栈板号）</span>
         </div>
         <el-table class="detail-table" :data="activeBind.detailList || []" border stripe row-key="id" empty-text="请扫描栈板号进行绑定" highlight-current-row :row-class-name="detailRowClassName" @row-click="selectPreviewDetail">
           <el-table-column prop="sequence" label="序号" width="80" align="center" />
           <el-table-column prop="palletNo" label="栈板号" min-width="190" />
           <el-table-column prop="materialCode" label="物料编码" min-width="130" />
+          <el-table-column prop="materialDesc" label="物料描述" min-width="180" show-overflow-tooltip />
           <el-table-column label="操作" width="150" align="center" fixed="right">
             <template #default="scope">
               <el-button link type="primary" :disabled="!isPrintAllowed || !scope.row.palletNo" @click.stop="printSingleLabel(scope.row)">打印</el-button>
@@ -172,7 +157,7 @@
               <div>
                 <div class="card-title">标签预览</div>
                 <div class="card-subtitle">
-                  97 × 84 mm · 点击明细行预览序号 · QR 为全部栈板号（英文逗号分隔）
+                  97 × 84 mm
                   <span v-if="previewDetail">（{{ previewIndexText }}）</span>
                 </div>
               </div>
@@ -217,7 +202,7 @@
         </el-icon>
       </div>
       <div class="empty-title">尚未打开绑定任务</div>
-      <div class="empty-description">请在上方选择目的仓并新建任务，或从下方历史记录中打开已有任务</div>
+      <div class="empty-description">请先导入智米配货单，再从下方绑定记录中打开任务</div>
     </div>
 
     <el-card shadow="never" class="history-card">
@@ -240,7 +225,16 @@
       <div class="history-filter-panel">
         <el-form :model="historyQueryParams" :inline="true" class="history-query-form" label-width="auto" @submit.prevent>
           <el-form-item label="出货号">
-            <el-input v-model="historyQueryParams.shippingNo" clearable placeholder="请输入出货号" style="width: 230px" @keyup.enter="handleHistoryQuery" />
+            <el-input v-model="historyQueryParams.shippingNo" clearable placeholder="出货号/智米发货单号" style="width: 230px" @keyup.enter="handleHistoryQuery" />
+          </el-form-item>
+          <el-form-item label="计划号">
+            <el-input v-model="historyQueryParams.planNo" clearable placeholder="请输入计划号" style="width: 180px" @keyup.enter="handleHistoryQuery" />
+          </el-form-item>
+          <el-form-item label="客户物料编码">
+            <el-input v-model="historyQueryParams.customerItemCode" clearable placeholder="请输入客户物料编码" style="width: 180px" @keyup.enter="handleHistoryQuery" />
+          </el-form-item>
+          <el-form-item label="采购订单">
+            <el-input v-model="historyQueryParams.purchaseOrderNo" clearable placeholder="请输入采购订单" style="width: 180px" @keyup.enter="handleHistoryQuery" />
           </el-form-item>
           <el-form-item label="栈板号">
             <el-input v-model="historyQueryParams.palletNo" clearable placeholder="请输入明细栈板号" style="width: 230px" @keyup.enter="handleHistoryQuery" />
@@ -260,14 +254,15 @@
         </el-form>
       </div>
 
-      <el-table v-loading="historyLoading" :data="historyRows" border stripe row-key="id" @expand-change="handleHistoryExpandChange">
+      <el-table v-loading="historyLoading" :data="historyRows" border stripe row-key="id">
         <el-table-column type="expand">
           <template #default="{ row }">
-            <div v-loading="historyExpandLoading[row.id]" class="history-expand-panel">
-              <el-table :data="historyDetailMap[row.id] || []" border size="small" empty-text="暂无栈板明细">
+            <div class="history-expand-panel">
+              <el-table :data="row.detailList || []" border size="small" empty-text="暂无栈板明细">
                 <el-table-column prop="sequence" label="序号" width="70" align="center" />
-                <el-table-column prop="palletNo" label="栈板号" min-width="160" />
-                <el-table-column prop="materialCode" label="物料编码" min-width="120" />
+                <el-table-column prop="palletNo" label="栈板号" width="160" />
+                <el-table-column prop="materialCode" label="物料编码" width="160" />
+                <el-table-column prop="materialDesc" label="物料描述" min-width="180" show-overflow-tooltip />
                 <el-table-column label="操作" width="90" align="center">
                   <template #default="scope">
                     <el-button link type="danger" :disabled="!canUnbindHistoryRow(row)" @click="handleHistoryUnbind(row, scope.row.palletNo)">解绑</el-button>
@@ -277,25 +272,29 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="shippingNo" label="出货号" min-width="170" />
-        <el-table-column label="栈板来源" width="100" align="center">
-          <template #default="scope">{{ sourceTypeLabel(scope.row.sourceType) }}</template>
-        </el-table-column>
-        <el-table-column prop="destWarehouseName" label="目的仓" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="palletCount" label="栈板数" width="80" align="center" />
-        <el-table-column prop="snCount" label="SN 数" width="80" align="center" />
+        <el-table-column prop="shippingNo" label="出货号" min-width="160" show-overflow-tooltip />
         <el-table-column label="状态" width="90" align="center">
           <template #default="scope">
             <el-tag :type="getStatusMeta(scope.row.status).type">{{ getStatusMeta(scope.row.status).label }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="确认时间" prop="confirmTime" width="170" align="center" />
-        <el-table-column label="创建时间" prop="createTime" width="170" align="center" />
-        <el-table-column label="创建人" prop="createByName" width="100" align="center" />
+        <!--        <el-table-column prop="planNo" label="计划号" min-width="120" show-overflow-tooltip />-->
+        <el-table-column prop="customerItemCode" label="客户物料编码" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="productId" label="商品ID" min-width="80" show-overflow-tooltip />
+        <el-table-column prop="purchaseOrderNo" label="采购订单" min-width="110" show-overflow-tooltip />
+        <el-table-column prop="qty" label="出货数量" width="80" align="center" />
+        <el-table-column prop="snCount" label="绑定数量" width="80" align="center" />
+        <el-table-column prop="destWarehouseName" label="收货仓库" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="receiveProvince" label="收货省" width="90" show-overflow-tooltip />
+        <!--        <el-table-column prop="receiveCity" label="收货市" width="100" show-overflow-tooltip />-->
+        <!--        <el-table-column prop="palletCount" label="栈板数" width="80" align="center" />-->
+        <!--       <el-table-column label="确认时间" prop="confirmTime" width="170" align="center" />
+       <el-table-column label="创建时间" prop="createTime" width="170" align="center" />
+               <el-table-column label="创建人" prop="createByName" width="100" align="center" />-->
         <el-table-column label="操作" width="150" align="center" fixed="right">
           <template #default="scope">
-            <el-button link type="primary" @click="openBind(scope.row.id)">打印</el-button>
-            <el-button v-if="canUnbindHistoryRow(scope.row)" link type="primary" @click="openDestWarehouseDialog(scope.row)">修改</el-button>
+            <el-button link type="primary" @click="openBind(scope.row.id)">绑定</el-button>
+            <!--            <el-button v-if="canUnbindHistoryRow(scope.row)" link type="primary" @click="openDestWarehouseDialog(scope.row)">修改</el-button>-->
           </template>
         </el-table-column>
       </el-table>
@@ -332,21 +331,51 @@
         <el-button type="primary" :loading="destWarehouseSaving" @click="submitDestWarehouse">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="upload.open" :title="upload.title" width="420px" append-to-body>
+      <el-upload ref="uploadRef" :limit="1" accept=".xlsx, .xls" :headers="upload.headers" :action="upload.url + '?updateSupport=' + upload.updateSupport" :disabled="upload.isUploading" :on-progress="handleFileUploadProgress" :on-success="handleFileSuccess" :auto-upload="false" drag>
+        <el-icon class="el-icon--upload">
+          <i-ep-upload-filled />
+        </el-icon>
+        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+        <template #tip>
+          <div class="text-center el-upload__tip">
+            <div class="el-upload__tip">
+              <el-checkbox v-model="upload.updateSupport" />
+              是否更新已存在的出货号
+            </div>
+            <span>仅允许导入 xls、xlsx 格式文件。</span>
+            <el-link type="primary" :underline="false" style="font-size: 12px; vertical-align: baseline" @click="importTemplate">下载模板</el-link>
+          </div>
+        </template>
+      </el-upload>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="upload.open = false">取 消</el-button>
+          <el-button type="primary" @click="submitFileForm">确 定</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup name="PalletOutboundBind" lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
-import { Aim, Bell, Box, Clock, Document, FullScreen, InfoFilled, List, Printer, Tickets } from '@element-plus/icons-vue';
+import type { ComponentInternalInstance } from 'vue';
+import { computed, getCurrentInstance, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { Aim, Bell, Box, Clock, Document, FullScreen, Goods, List, Printer, Tickets } from '@element-plus/icons-vue';
+import type { UploadFile } from 'element-plus';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import QRCode from 'qrcode';
 import { getDicts } from '@/api/system/dict/data';
 import type { DictDataVO } from '@/api/system/dict/data/types';
-import { addPalletOutboundBind, bindOutboundPallet, confirmPalletOutboundBind, getPalletOutboundBind, listPalletOutboundBind, removeOutboundPallet, updatePalletOutboundBindDestWarehouse } from '@/api/wms/palletOutboundBind';
-import { PALLET_OUTBOUND_BIND_SOURCE_MES, PALLET_OUTBOUND_BIND_SOURCE_WMS, type PalletOutboundBindDetailVO, type PalletOutboundBindForm, type PalletOutboundBindQuery, type PalletOutboundBindVO } from '@/api/wms/palletOutboundBind/types';
+import { bindOutboundPalletMi, confirmPalletOutboundBind, getPalletOutboundBind, listPalletOutboundBind, removeOutboundPallet, updatePalletOutboundBindDestWarehouse } from '@/api/wms/palletOutboundBind';
+import { PALLET_OUTBOUND_BIND_SOURCE_MES, PALLET_OUTBOUND_BIND_SOURCE_WMS, type PalletOutboundBindDetailVO, type PalletOutboundBindQuery, type PalletOutboundBindVO } from '@/api/wms/palletOutboundBind/types';
 import miLogo from '@/assets/logo/milogo.jpg';
 import { audioPlayer } from '@/utils/audioPlayer';
+import { globalHeaders } from '@/utils/request';
 import DestWarehouseSelectDialog from './components/DestWarehouseSelectDialog.vue';
+
+const { proxy } = getCurrentInstance() as ComponentInternalInstance;
 
 const STATUS_CONFIRMED = 2;
 const LABEL_WIDTH_MM = 97;
@@ -363,8 +392,6 @@ const warehouseOptions = ref<DictDataVO[]>([]);
 const activeBind = ref<PalletOutboundBindVO>();
 const historyRows = ref<PalletOutboundBindVO[]>([]);
 const historyTotal = ref(0);
-const historyDetailMap = reactive<Record<string | number, PalletOutboundBindDetailVO[]>>({});
-const historyExpandLoading = reactive<Record<string | number, boolean>>({});
 const historyWarehousePickerName = ref('');
 const historyQueryParams = reactive<PalletOutboundBindQuery>({
   pageNum: 1,
@@ -372,14 +399,25 @@ const historyQueryParams = reactive<PalletOutboundBindQuery>({
   orderByColumn: 'shippingNo',
   isAsc: 'desc',
   shippingNo: '',
+  planNo: '',
+  customerItemCode: '',
+  purchaseOrderNo: '',
   destWarehouseCode: '',
   destWarehouseName: '',
   sourceType: undefined,
   status: undefined,
   palletNo: ''
 });
+const uploadRef = ref<ElUploadInstance>();
+const upload = reactive<ImportOption>({
+  open: false,
+  title: '',
+  isUploading: false,
+  updateSupport: 0,
+  headers: globalHeaders(),
+  url: import.meta.env.VITE_APP_BASE_API + '/wms/palletOutboundBind/importData'
+});
 const palletNo = ref('');
-const creating = ref(false);
 const binding = ref(false);
 const historyLoading = ref(false);
 const palletInputRef = ref();
@@ -389,12 +427,6 @@ const previewDetailId = ref<string | number>();
 const printAlertMessage = ref('');
 const resultMessage = ref('');
 const resultStatus = ref(false);
-const createForm = reactive<PalletOutboundBindForm>({
-  destWarehouseCode: '',
-  destWarehouseName: '',
-  sourceType: PALLET_OUTBOUND_BIND_SOURCE_MES,
-  remark: ''
-});
 
 const sourceTypeLabel = (sourceType?: number) => {
   if (sourceType === PALLET_OUTBOUND_BIND_SOURCE_WMS) return 'WMS栈板';
@@ -572,6 +604,9 @@ const buildHistoryQuery = (): PalletOutboundBindQuery => {
     orderByColumn: historyQueryParams.orderByColumn || 'shippingNo',
     isAsc: historyQueryParams.isAsc || 'desc',
     shippingNo: historyQueryParams.shippingNo || undefined,
+    planNo: historyQueryParams.planNo || undefined,
+    customerItemCode: historyQueryParams.customerItemCode || undefined,
+    purchaseOrderNo: historyQueryParams.purchaseOrderNo || undefined,
     destWarehouseCode: historyQueryParams.destWarehouseCode || undefined,
     destWarehouseName: historyQueryParams.destWarehouseName || undefined,
     sourceType: historyQueryParams.sourceType,
@@ -603,38 +638,50 @@ const resetHistoryQuery = () => {
   historyQueryParams.orderByColumn = 'shippingNo';
   historyQueryParams.isAsc = 'desc';
   historyQueryParams.shippingNo = '';
+  historyQueryParams.planNo = '';
+  historyQueryParams.customerItemCode = '';
+  historyQueryParams.purchaseOrderNo = '';
   historyQueryParams.destWarehouseCode = '';
   historyQueryParams.destWarehouseName = '';
   historyWarehousePickerName.value = '';
   historyQueryParams.sourceType = undefined;
   historyQueryParams.status = undefined;
   historyQueryParams.palletNo = '';
-  Object.keys(historyDetailMap).forEach((key) => delete historyDetailMap[key]);
   void loadHistory();
 };
 
-const handleHistoryExpandChange = async (row: PalletOutboundBindVO, expandedRows: PalletOutboundBindVO[]) => {
-  if (!expandedRows.some((item) => item.id === row.id)) {
-    return;
-  }
-  if (historyDetailMap[row.id] !== undefined) {
-    return;
-  }
-  historyExpandLoading[row.id] = true;
-  try {
-    const res = await getPalletOutboundBind(row.id);
-    historyDetailMap[row.id] = res.data.detailList || [];
-  } finally {
-    historyExpandLoading[row.id] = false;
-  }
+const handleImport = () => {
+  upload.title = '智米配货单导入';
+  upload.open = true;
+};
+
+const importTemplate = () => {
+  proxy?.download('wms/palletOutboundBind/importTemplate', {}, `智米配货单详情_template_${new Date().getTime()}.xlsx`);
+};
+
+const handleFileUploadProgress = () => {
+  upload.isUploading = true;
+};
+
+const handleFileSuccess = async (response: any, file: UploadFile) => {
+  upload.open = false;
+  upload.isUploading = false;
+  uploadRef.value?.handleRemove(file);
+  ElMessageBox.alert("<div style='overflow: auto;overflow-x: hidden;max-height: 70vh;padding: 10px 20px 0;'>" + response.msg + '</div>', '导入结果', {
+    dangerouslyUseHTMLString: true
+  });
+  await Promise.all([loadWarehouseOptions(), loadHistory()]);
+};
+
+const submitFileForm = () => {
+  uploadRef.value?.submit();
 };
 
 const syncHistoryRowAndDetails = (vo: PalletOutboundBindVO) => {
   const index = historyRows.value.findIndex((item) => item.id === vo.id);
   if (index >= 0) {
-    historyRows.value[index] = { ...historyRows.value[index], ...vo, detailList: vo.detailList };
+    historyRows.value[index] = { ...historyRows.value[index], ...vo, detailList: vo.detailList || [] };
   }
-  historyDetailMap[vo.id] = vo.detailList || [];
 };
 
 const doRemovePallet = async (bindId: string | number, palletNoValue: string) => {
@@ -658,33 +705,13 @@ const handleHistoryUnbind = async (row: PalletOutboundBindVO, palletNoValue: str
   await loadHistory();
 };
 
-const handleCreate = async () => {
-  if (!createForm.destWarehouseCode || !createForm.destWarehouseName) {
-    ElMessage.warning('请选择目的仓');
-    return;
-  }
-  creating.value = true;
-  try {
-    const res = await addPalletOutboundBind(createForm);
-    activeBind.value = res.data;
-    syncPreviewSelection();
-    palletNo.value = '';
-    ElMessage.success('绑定任务已创建');
-    await loadHistory();
-    await nextTick();
-    palletInputRef.value?.focus();
-  } finally {
-    creating.value = false;
-  }
-};
-
 const handleBindPallet = async () => {
   const value = palletNo.value.trim();
   if (!activeBind.value || !value || !editable.value || binding.value) return;
   binding.value = true;
   resultMessage.value = '';
   try {
-    const res = await bindOutboundPallet(activeBind.value.id, value);
+    const res = await bindOutboundPalletMi(activeBind.value.id, value);
     activeBind.value = res.data;
     syncPreviewSelection();
     palletNo.value = '';
@@ -994,6 +1021,10 @@ onMounted(async () => {
   gap: 8px;
 }
 
+.flow-import-button {
+  margin-right: 4px;
+}
+
 .flow-steps > i {
   width: 28px;
   height: 1px;
@@ -1042,23 +1073,16 @@ onMounted(async () => {
 
 .create-form-tip {
   display: flex;
-  flex: none;
+  flex: 1;
   align-items: center;
   gap: 7px;
-  padding-right: 18px;
   color: var(--el-text-color-secondary);
   font-size: 12px;
-  border-right: 1px solid var(--el-border-color-lighter);
 }
 
 .create-form-tip .el-icon {
   color: var(--el-color-primary);
   font-size: 17px;
-}
-
-.create-form {
-  flex: 1;
-  margin-bottom: -18px;
 }
 
 .create-button {
@@ -1151,7 +1175,7 @@ onMounted(async () => {
 
 .stat-row {
   display: grid;
-  grid-template-columns: 170px 170px minmax(240px, 1fr);
+  grid-template-columns: 170px 170px 170px minmax(200px, 1fr);
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -1196,6 +1220,11 @@ onMounted(async () => {
   height: 42px;
   font-size: 21px;
   border-radius: 10px;
+}
+
+.qty-stat {
+  color: var(--el-color-info);
+  background: var(--el-color-info-light-9);
 }
 
 .pallet-stat {
@@ -1485,17 +1514,7 @@ onMounted(async () => {
   .flow-steps {
     width: 100%;
     justify-content: center;
-  }
-
-  .create-form-tip {
-    width: 100%;
-    padding: 0 0 10px;
-    border-right: 0;
-    border-bottom: 1px solid var(--el-border-color-lighter);
-  }
-
-  .create-form {
-    width: 100%;
+    flex-wrap: wrap;
   }
 
   .stat-row {

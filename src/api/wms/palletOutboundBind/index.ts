@@ -1,6 +1,6 @@
 import request from '@/utils/request';
 import type { AxiosPromise } from 'axios';
-import { bindOutboundPalletSilent } from './bindRequest';
+import { bindOutboundPalletMiSilent, bindOutboundPalletSilent } from './bindRequest';
 import type { PalletOutboundBindForm, PalletOutboundBindQuery, PalletOutboundBindVO } from './types';
 
 export const listPalletOutboundBind = (params?: PalletOutboundBindQuery): AxiosPromise<PalletOutboundBindVO[]> =>
@@ -23,6 +23,9 @@ export const addPalletOutboundBind = (data: PalletOutboundBindForm): AxiosPromis
   });
 
 export const bindOutboundPallet = bindOutboundPalletSilent;
+
+/** 小米专用绑板 */
+export const bindOutboundPalletMi = bindOutboundPalletMiSilent;
 
 export const removeOutboundPallet = (id: string | number, palletNo: string): AxiosPromise<PalletOutboundBindVO> =>
   request({ url: `/wms/palletOutboundBind/${id}/pallet`, method: 'delete', params: { palletNo } });

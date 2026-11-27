@@ -19,16 +19,10 @@ const resolveApiMessage = (body: ApiResponseBody) => {
   return formatApiErrorMessage(rawMsg) || errorCode['default'];
 };
 
-/**
- * 栈板绑定专用请求：错误由页面 el-alert 展示，不经过全局 request 拦截器的 ElMessage。
- */
-export const bindOutboundPalletSilent = (
-  bindId: string | number,
-  palletNo: string
-): AxiosPromise<PalletOutboundBindVO> => {
+const postBindPalletSilent = (url: string, bindId: string | number, palletNo: string): AxiosPromise<PalletOutboundBindVO> => {
   return axios
     .post<ApiResponseBody<PalletOutboundBindVO>>(
-      `${import.meta.env.VITE_APP_BASE_API}/wms/palletOutboundBind/bindPallet`,
+      url,
       { bindId, palletNo },
       {
         timeout: 120000,
@@ -59,3 +53,15 @@ export const bindOutboundPalletSilent = (
       return Promise.reject(error);
     }) as AxiosPromise<PalletOutboundBindVO>;
 };
+
+/**
+ * 栈板绑定专用请求：错误由页面 el-alert 展示，不经过全局 request 拦截器的 ElMessage。
+ */
+export const bindOutboundPalletSilent = (bindId: string | number, palletNo: string): AxiosPromise<PalletOutboundBindVO> =>
+  postBindPalletSilent(`${import.meta.env.VITE_APP_BASE_API}/wms/palletOutboundBind/bindPallet`, bindId, palletNo);
+
+/**
+ * 小米专用栈板绑定请求
+ */
+export const bindOutboundPalletMiSilent = (bindId: string | number, palletNo: string): AxiosPromise<PalletOutboundBindVO> =>
+  postBindPalletSilent(`${import.meta.env.VITE_APP_BASE_API}/wms/palletOutboundBind/mi/bindPallet`, bindId, palletNo);
